@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #0f1117;
+  color: #e2e8f0;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* Textarea reset */
+textarea {
+  font-family: inherit;
+  resize: vertical;
+}
+
+/* Drag handle cursor */
+.drag-handle { cursor: grab; }
+.drag-handle:active { cursor: grabbing; }

@@ -1,0 +1,942 @@
+import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import type {
+  Project, Scene, Block, Character, CharacterVarIds,
+  Variable, VariableGroup, VariableTreeNode,
+  Asset, AssetGroup, AssetTreeNode,
+  ChoiceOption, ConditionBranch,
+  SidebarPanel, SidebarTab, SidebarRow, SidebarCell, CellContent,
+  AvatarConfig, AvatarMode,
+} from '../types';
+import { flattenVariables, flattenAssets } from '../utils/treeUtils';
+
+export { flattenVariables, flattenAssets };
+
+// ─── Defaults ─────────────────────────────────────────────────────────────────
+
+function uuid(): string { return crypto.randomUUID(); }
+function generateIfid(): string { return uuid().toUpperCase(); }
+
+const DEFAULT_PANEL: SidebarPanel = { tabs: [], liveUpdate: false };
+
+function makeDefaultProject(): Project {
+  return {
+    id: uuid(),
+    title: 'Новый проект',
+    ifid: generateIfid(),
+    scenes: [{ id: uuid(), name: 'Start', tags: [], blocks: [] }],
+    characters: [],
+    variableNodes: [],
+    assetNodes: [],
+    sidebarPanel: DEFAULT_PANEL,
+  };
+}
+
+// ─── Generic tree helpers (shared by variable & asset trees) ──────────────────
+
+type AnyNode = { id: string; kind: string; children?: AnyNode[] };
+
+function removeNode<T extends AnyNode>(nodes: T[], id: string): T[] {
+  return nodes
+    .filter(n => n.id !== id)
+    .map(n => n.children ? { ...n, children: removeNode(n.children as T[], id) } : n) as T[];
+}
+
+function addNode<T extends AnyNode>(nodes: T[], parentId: string | null, node: T): T[] {
+  if (parentId === null) return [...nodes, node];
+  return nodes.map(n => {
+    if (n.kind !== 'group' || n.id !== parentId) {
+      if (n.children) return { ...n, children: addNode(n.children as T[], parentId, node) };
+      return n;
+    }
+    return { ...n, children: [...(n.children ?? []), node] };
+  }) as T[];
+}
+
+// ─── Variable tree helpers ─────────────────────────────────────────────────────
+
+function updateVarInTree(
+  nodes: VariableTreeNode[],
+  id: string,
+  patch: Partial<Variable>,
+): VariableTreeNode[] {
+  return nodes.map(n => {
+    if (n.kind === 'variable' && n.id === id) return { ...n, ...patch };
+    if (n.kind === 'group') return { ...n, children: updateVarInTree(n.children, id, patch) };
+    return n;
+  });
+}
+
+// ─── Character variable helpers ────────────────────────────────────────────────
+
+/**
+ * Cyrillic → Latin transliteration table (Russian + common letters).
+ * SugarCube variables must be ASCII-only identifiers.
+ */
+const CYRILLIC_MAP: Record<string, string> = {
+  'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'zh',
+  'з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o',
+  'п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'kh','ц':'ts',
+  'ч':'ch','ш':'sh','щ':'shch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya',
+};
+
+function transliterate(s: string): string {
+  return s.split('').map(c => CYRILLIC_MAP[c] ?? c).join('');
+}
+
+/**
+ * Sanitize a character name into a valid SugarCube variable prefix.
+ * Cyrillic is transliterated to Latin first; spaces → underscore;
+ * strips non-ASCII and leading digits/underscores.
+ * Examples: "John Doe" → "john_doe", "Дима" → "dima", "Поля" → "polya"
+ */
+function charToVarPrefix(name: string): string {
+  const s = transliterate(name.trim().toLowerCase())
+    .replace(/\s+/g, '_')
+    .replace(/[^a-z0-9_]/g, '')   // keep only ASCII letters, digits, underscores
+    .replace(/_+/g, '_')
+    .replace(/^[\d_]+/, '')        // strip leading digits / underscores
+    .replace(/_+$/g, '');
+  return s || 'char';
+}
+
+/**
+ * Rename a group node anywhere in the variable tree.
+ */
+function updateGroupNameInTree(
+  nodes: VariableTreeNode[],
+  groupId: string,
+  name: string,
+): VariableTreeNode[] {
+  return nodes.map(n => {
+    if (n.kind === 'group' && n.id === groupId) return { ...n, name };
+    if (n.kind === 'group') return { ...n, children: updateGroupNameInTree(n.children, groupId, name) };
+    return n;
+  });
+}
+
+interface CharVarBuildResult {
+  group: VariableGroup;
+  varIds: CharacterVarIds;
+}
+
+/**
+ * Build the VariableGroup subtree for a newly created character.
+ * Returns the root group (ready to push onto variableNodes) and the varIds map.
+ */
+function buildCharVarNodes(
+  charName: string,
+  colors: { bgColor: string; borderColor: string; nameColor: string; avatarConfig?: AvatarConfig },
+): CharVarBuildResult {
+  const prefix = charToVarPrefix(charName);
+
+  const nameVarId        = uuid();
+  const bgColorVarId     = uuid();
+  const borderColorVarId = uuid();
+  const nameColorVarId   = uuid();
+  const avatarVarId      = uuid();
+  const stylesGroupId    = uuid();
+  const groupId          = uuid();
+
+  const nameVar: Variable = {
+    kind: 'variable', id: nameVarId,
+    name: `${prefix}_name`,
+    varType: 'string',
+    defaultValue: charName,
+    description: `Имя персонажа «${charName}»`,
+  };
+
+  const bgColorVar: Variable = {
+    kind: 'variable', id: bgColorVarId,
+    name: `${prefix}_bgColor`,
+    varType: 'string',
+    defaultValue: colors.bgColor,
+    description: 'Цвет фона диалогового окна',
+  };
+
+  const borderColorVar: Variable = {
+    kind: 'variable', id: borderColorVarId,
+    name: `${prefix}_borderColor`,
+    varType: 'string',
+    defaultValue: colors.borderColor,
+    description: 'Цвет рамки диалогового окна',
+  };
+
+  const nameColorVar: Variable = {
+    kind: 'variable', id: nameColorVarId,
+    name: `${prefix}_nameColor`,
+    varType: 'string',
+    defaultValue: colors.nameColor,
+    description: 'Цвет имени персонажа',
+  };
+
+  const avatarVar: Variable = {
+    kind: 'variable', id: avatarVarId,
+    name: `${prefix}_avatar`,
+    varType: 'string',
+    defaultValue: colors.avatarConfig?.mode === 'static' ? (colors.avatarConfig.src ?? '') : '',
+    description: `URL аватарки персонажа «${charName}» (пусто = скрыта)`,
+  };
+
+  const stylesGroup: VariableGroup = {
+    kind: 'group', id: stylesGroupId,
+    name: 'styles',
+    children: [bgColorVar, borderColorVar, nameColorVar, avatarVar],
+  };
+
+  const group: VariableGroup = {
+    kind: 'group', id: groupId,
+    name: charName,
+    children: [nameVar, stylesGroup],
+  };
+
+  return {
+    group,
+    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, avatarVarId },
+  };
+}
+
+// ─── Asset tree helpers ────────────────────────────────────────────────────────
+
+function updateChildPaths(
+  nodes: AssetTreeNode[],
+  oldPrefix: string,
+  newPrefix: string,
+): AssetTreeNode[] {
+  return nodes.map(n => {
+    const rel = newPrefix + n.relativePath.slice(oldPrefix.length);
+    if (n.kind === 'asset') return { ...n, relativePath: rel };
+    return { ...n, relativePath: rel, children: updateChildPaths(n.children, oldPrefix, newPrefix) };
+  });
+}
+
+function renameGroupInAssetTree(
+  nodes: AssetTreeNode[], id: string, name: string, oldRel: string, newRel: string,
+): AssetTreeNode[] {
+  return nodes.map(n => {
+    if (n.id === id && n.kind === 'group') {
+      return { ...n, name, relativePath: newRel, children: updateChildPaths(n.children, oldRel, newRel) };
+    }
+    if (n.kind === 'group') {
+      return { ...n, children: renameGroupInAssetTree(n.children, id, name, oldRel, newRel) };
+    }
+    return n;
+  });
+}
+
+// ─── Project migration ────────────────────────────────────────────────────────
+
+/**
+ * Fix character variable names that were created with Cyrillic prefixes
+ * (before transliteration was introduced). Runs idempotently.
+ */
+function migrateCharacterVarNames(p: Project): Project {
+  let variableNodes = p.variableNodes;
+  let changed = false;
+  for (const char of p.characters) {
+    if (!char.varIds) continue;
+    const { varIds } = char;
+    const correctPrefix = charToVarPrefix(char.name);
+    const allVars = flattenVariables(variableNodes);
+    const nameVar = allVars.find(v => v.id === varIds.nameVarId);
+    if (!nameVar) continue;
+    if (nameVar.name === `${correctPrefix}_name`) continue; // already correct
+    // Rename all 4 variable identifiers to use the ASCII prefix
+    variableNodes = updateVarInTree(variableNodes, varIds.nameVarId,        { name: `${correctPrefix}_name` });
+    variableNodes = updateVarInTree(variableNodes, varIds.bgColorVarId,     { name: `${correctPrefix}_bgColor` });
+    variableNodes = updateVarInTree(variableNodes, varIds.borderColorVarId, { name: `${correctPrefix}_borderColor` });
+    variableNodes = updateVarInTree(variableNodes, varIds.nameColorVarId,   { name: `${correctPrefix}_nameColor` });
+    changed = true;
+  }
+  return changed ? { ...p, variableNodes } : p;
+}
+
+/**
+ * Add $prefix_avatar variable to characters that were created before it existed.
+ * Runs idempotently (skips if avatarVarId already present).
+ */
+function migrateCharacterAvatarVar(p: Project): Project {
+  let variableNodes = p.variableNodes;
+  let characters = p.characters;
+  let changed = false;
+
+  for (let i = 0; i < characters.length; i++) {
+    const char = characters[i];
+    // Skip if no varIds at all, or if avatarVarId already exists
+    if (!char.varIds || char.varIds.avatarVarId) continue;
+
+    const prefix = charToVarPrefix(char.name);
+    const avatarVarId = uuid();
+
+    const avatarVar: Variable = {
+      kind: 'variable', id: avatarVarId,
+      name: `${prefix}_avatar`,
+      varType: 'string',
+      defaultValue: char.avatarUrl || '',
+      description: `URL аватарки персонажа «${char.name}» (пусто = скрыта)`,
+    };
+
+    // Append to the styles sub-group
+    variableNodes = addNode(
+      variableNodes as AnyNode[],
+      char.varIds.stylesGroupId,
+      avatarVar as AnyNode,
+    ) as VariableTreeNode[];
+
+    const updatedVarIds: CharacterVarIds = { ...char.varIds, avatarVarId };
+    characters = characters.map((c, idx) => idx === i ? { ...c, varIds: updatedVarIds } : c);
+    changed = true;
+  }
+
+  return changed ? { ...p, variableNodes, characters } : p;
+}
+
+/**
+ * Add avatarConfig to characters created before AvatarConfig was introduced.
+ * Converts legacy avatarUrl → avatarConfig { mode: 'static', src: avatarUrl }.
+ * Runs idempotently (skips characters that already have avatarConfig).
+ */
+function migrateCharacterAvatarConfig(p: Project): Project {
+  const needsMigration = p.characters.some(c => !c.avatarConfig);
+  if (!needsMigration) return p;
+  const characters = p.characters.map(c => {
+    if (c.avatarConfig) return c;
+    return {
+      ...c,
+      avatarConfig: {
+        mode: 'static' as AvatarMode,
+        src: c.avatarUrl ?? '',
+        variableId: '',
+        mapping: [],
+        defaultSrc: '',
+      } satisfies AvatarConfig,
+    };
+  });
+  return { ...p, characters };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function migrateProject(raw: any): Project {
+  let p = { ...raw };
+
+  // variables: Variable[] → variableNodes: VariableTreeNode[]
+  if ('variables' in p && !('variableNodes' in p)) {
+    p.variableNodes = (p.variables as any[]).map(v => ({ kind: 'variable', ...v }));
+    delete p.variables;
+  }
+  if (!p.variableNodes) p.variableNodes = [];
+
+  // assets: Asset[] → assetNodes: AssetTreeNode[]
+  if ('assets' in p && !('assetNodes' in p)) {
+    delete p.assets;
+  }
+  if (!p.assetNodes) p.assetNodes = [];
+
+  // sidebarPanel
+  if (!p.sidebarPanel) p.sidebarPanel = DEFAULT_PANEL;
+
+  // Fix Cyrillic variable names created before transliteration was added
+  p = migrateCharacterVarNames(p as Project);
+  // Add $prefix_avatar variable to characters that predate this feature
+  p = migrateCharacterAvatarVar(p as Project);
+  // Add avatarConfig to characters that predate this feature
+  p = migrateCharacterAvatarConfig(p as Project);
+
+  return p as Project;
+}
+
+function findAssetNodeById(nodes: AssetTreeNode[], id: string): AssetTreeNode | null {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    if (n.kind === 'group') { const f = findAssetNodeById(n.children, id); if (f) return f; }
+  }
+  return null;
+}
+
+// ─── Store shape ──────────────────────────────────────────────────────────────
+
+type SidebarTabId = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel';
+
+interface ProjectState {
+  project: Project;
+  activeSceneId: string | null;
+  activeSidebarTab: SidebarTabId;
+  projectDir: string | null;
+
+  setProjectDir: (dir: string | null) => void;
+  setProjectTitle: (title: string) => void;
+  loadProject: (project: Project, dir?: string) => void;
+  resetProject: () => void;
+  setSidebarTab: (tab: SidebarTabId) => void;
+  fixVariableNames: () => void;
+
+  // Scenes
+  setActiveScene: (id: string) => void;
+  addScene: () => void;
+  deleteScene: (id: string) => void;
+  renameScene: (id: string, name: string) => void;
+  updateSceneTags: (id: string, tags: string[]) => void;
+
+  // Blocks
+  addBlock: (sceneId: string, block: Block) => void;
+  updateBlock: (sceneId: string, blockId: string, patch: Partial<Block>) => void;
+  deleteBlock: (sceneId: string, blockId: string) => void;
+  reorderBlocks: (sceneId: string, blocks: Block[]) => void;
+
+  // Nested blocks
+  addNestedBlock: (sceneId: string, blockId: string, branchId: string, block: Block) => void;
+  updateNestedBlock: (sceneId: string, blockId: string, branchId: string, nestedBlockId: string, patch: Partial<Block>) => void;
+  deleteNestedBlock: (sceneId: string, blockId: string, branchId: string, nestedBlockId: string) => void;
+
+  // Choice options
+  addChoiceOption: (sceneId: string, blockId: string) => void;
+  updateChoiceOption: (sceneId: string, blockId: string, optionId: string, patch: Partial<ChoiceOption>) => void;
+  deleteChoiceOption: (sceneId: string, blockId: string, optionId: string) => void;
+
+  // Condition branches
+  addConditionBranch: (sceneId: string, blockId: string) => void;
+  updateConditionBranch: (sceneId: string, blockId: string, branchId: string, patch: Partial<ConditionBranch>) => void;
+  deleteConditionBranch: (sceneId: string, blockId: string, branchId: string) => void;
+
+  // Characters
+  addCharacter: (char: Omit<Character, 'id'>) => void;
+  updateCharacter: (id: string, patch: Partial<Character>) => void;
+  deleteCharacter: (id: string) => void;
+
+  // Variable tree
+  addVariableGroup: (parentId: string | null, name: string) => void;
+  addVariable: (parentId: string | null, v: Omit<Variable, 'id' | 'kind'>) => void;
+  updateVariable: (id: string, patch: Partial<Variable>) => void;
+  deleteVariableNode: (id: string) => void;
+
+  // Asset tree
+  addAssetGroup: (parentGroupId: string | null, name: string, relativePath: string) => void;
+  renameAssetGroup: (id: string, name: string, newRelativePath: string) => void;
+  addAsset: (parentGroupId: string | null, a: Omit<Asset, 'id' | 'kind'>) => void;
+  deleteAssetNode: (id: string) => void;
+
+  // Sidebar panel
+  setPanelLiveUpdate: (v: boolean) => void;
+  addPanelTab: (label: string) => void;
+  updatePanelTab: (tabId: string, patch: Partial<Omit<SidebarTab, 'id' | 'rows'>>) => void;
+  deletePanelTab: (tabId: string) => void;
+  reorderPanelTabs: (tabs: SidebarTab[]) => void;
+  addPanelRow: (tabId: string) => void;
+  updatePanelRow: (tabId: string, rowId: string, patch: Partial<Omit<SidebarRow, 'id' | 'cells'>>) => void;
+  deletePanelRow: (tabId: string, rowId: string) => void;
+  addPanelCell: (tabId: string, rowId: string) => void;
+  updatePanelCell: (tabId: string, rowId: string, cellId: string, patch: Partial<Omit<SidebarCell, 'id'>>) => void;
+  deletePanelCell: (tabId: string, rowId: string, cellId: string) => void;
+  updateCellContent: (tabId: string, rowId: string, cellId: string, content: CellContent) => void;
+}
+
+// ─── Inner updaters ───────────────────────────────────────────────────────────
+
+function updateScene(project: Project, sceneId: string, updater: (s: Scene) => Scene): Project {
+  return { ...project, scenes: project.scenes.map(s => s.id === sceneId ? updater(s) : s) };
+}
+
+function updateBlockInScene(scene: Scene, blockId: string, updater: (b: Block) => Block): Scene {
+  return { ...scene, blocks: scene.blocks.map(b => b.id === blockId ? updater(b) : b) };
+}
+
+function updatePanel(project: Project, updater: (p: SidebarPanel) => SidebarPanel): Project {
+  return { ...project, sidebarPanel: updater(project.sidebarPanel) };
+}
+
+function updateTab(panel: SidebarPanel, tabId: string, updater: (t: SidebarTab) => SidebarTab): SidebarPanel {
+  return { ...panel, tabs: panel.tabs.map(t => t.id === tabId ? updater(t) : t) };
+}
+
+function updateRow(tab: SidebarTab, rowId: string, updater: (r: SidebarRow) => SidebarRow): SidebarTab {
+  return { ...tab, rows: tab.rows.map(r => r.id === rowId ? updater(r) : r) };
+}
+
+function updateCell(row: SidebarRow, cellId: string, updater: (c: SidebarCell) => SidebarCell): SidebarRow {
+  return { ...row, cells: row.cells.map(c => c.id === cellId ? updater(c) : c) };
+}
+
+// ─── Store ────────────────────────────────────────────────────────────────────
+
+export const useProjectStore = create<ProjectState>()(
+  persist(
+    (set, get) => {
+      const defaultProject = makeDefaultProject();
+      return {
+        project: defaultProject,
+        activeSceneId: defaultProject.scenes[0].id,
+        activeSidebarTab: 'scenes',
+        projectDir: null,
+
+        setProjectDir: (dir) => set({ projectDir: dir }),
+
+        setProjectTitle: (title) =>
+          set(s => ({ project: { ...s.project, title } })),
+
+        loadProject: (rawProject, dir) => {
+          const project = migrateProject(rawProject);
+          set({
+            project,
+            activeSceneId: project.scenes[0]?.id ?? null,
+            ...(dir !== undefined ? { projectDir: dir } : {}),
+          });
+        },
+
+        resetProject: () => {
+          const p = makeDefaultProject();
+          set({ project: p, activeSceneId: p.scenes[0].id, projectDir: null });
+        },
+
+        setSidebarTab: (tab) => set({ activeSidebarTab: tab }),
+
+        // Run migration via set() so it's reactive + persisted.
+        // Called once on app mount to handle HMR / warm-reload scenarios
+        // where onRehydrateStorage doesn't re-run.
+        fixVariableNames: () =>
+          set(s => {
+            const step1 = migrateCharacterVarNames(s.project);
+            const step2 = migrateCharacterAvatarVar(step1);
+            const step3 = migrateCharacterAvatarConfig(step2);
+            return step3 === s.project ? s : { project: step3 };
+          }),
+
+        // ── Scenes ──────────────────────────────────────────────────────────
+
+        setActiveScene: (id) => set({ activeSceneId: id }),
+
+        addScene: () => {
+          const id = uuid();
+          const name = `Сцена ${get().project.scenes.length + 1}`;
+          const scene: Scene = { id, name, tags: [], blocks: [] };
+          set(s => ({
+            project: { ...s.project, scenes: [...s.project.scenes, scene] },
+            activeSceneId: id,
+          }));
+        },
+
+        deleteScene: (id) =>
+          set(s => {
+            const scenes = s.project.scenes.filter(sc => sc.id !== id);
+            const activeSceneId = s.activeSceneId === id ? (scenes[0]?.id ?? null) : s.activeSceneId;
+            return { project: { ...s.project, scenes }, activeSceneId };
+          }),
+
+        renameScene: (id, name) =>
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, name })) })),
+
+        updateSceneTags: (id, tags) =>
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, tags })) })),
+
+        // ── Blocks ──────────────────────────────────────────────────────────
+
+        addBlock: (sceneId, block) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc => ({ ...sc, blocks: [...sc.blocks, block] })),
+          })),
+
+        updateBlock: (sceneId, blockId, patch) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => ({ ...b, ...patch } as Block))
+            ),
+          })),
+
+        deleteBlock: (sceneId, blockId) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc => ({
+              ...sc, blocks: sc.blocks.filter(b => b.id !== blockId),
+            })),
+          })),
+
+        reorderBlocks: (sceneId, blocks) =>
+          set(s => ({ project: updateScene(s.project, sceneId, sc => ({ ...sc, blocks })) })),
+
+        // ── Nested blocks ─────────────────────────────────────────────────────
+
+        addNestedBlock: (sceneId, blockId, branchId, block) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'condition') return b;
+                return {
+                  ...b,
+                  branches: b.branches.map(br =>
+                    br.id === branchId ? { ...br, blocks: [...br.blocks, block] } : br
+                  ),
+                };
+              })
+            ),
+          })),
+
+        updateNestedBlock: (sceneId, blockId, branchId, nestedBlockId, patch) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'condition') return b;
+                return {
+                  ...b,
+                  branches: b.branches.map(br =>
+                    br.id === branchId
+                      ? { ...br, blocks: br.blocks.map(nb => nb.id === nestedBlockId ? { ...nb, ...patch } as Block : nb) }
+                      : br
+                  ),
+                };
+              })
+            ),
+          })),
+
+        deleteNestedBlock: (sceneId, blockId, branchId, nestedBlockId) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'condition') return b;
+                return {
+                  ...b,
+                  branches: b.branches.map(br =>
+                    br.id === branchId
+                      ? { ...br, blocks: br.blocks.filter(nb => nb.id !== nestedBlockId) }
+                      : br
+                  ),
+                };
+              })
+            ),
+          })),
+
+        // ── Choice options ────────────────────────────────────────────────────
+
+        addChoiceOption: (sceneId, blockId) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'choice') return b;
+                const opt: ChoiceOption = { id: uuid(), label: 'Вариант', targetSceneId: '', condition: '' };
+                return { ...b, options: [...b.options, opt] };
+              })
+            ),
+          })),
+
+        updateChoiceOption: (sceneId, blockId, optionId, patch) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'choice') return b;
+                return { ...b, options: b.options.map(o => o.id === optionId ? { ...o, ...patch } : o) };
+              })
+            ),
+          })),
+
+        deleteChoiceOption: (sceneId, blockId, optionId) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'choice') return b;
+                return { ...b, options: b.options.filter(o => o.id !== optionId) };
+              })
+            ),
+          })),
+
+        // ── Condition branches ─────────────────────────────────────────────────
+
+        addConditionBranch: (sceneId, blockId) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'condition') return b;
+                const hasElse = b.branches.some(br => br.branchType === 'else');
+                if (hasElse) return b;
+                const isFirst = b.branches.length === 0;
+                const branch: ConditionBranch = {
+                  id: uuid(), branchType: isFirst ? 'if' : 'elseif',
+                  variableId: '', operator: '==', value: '', blocks: [],
+                };
+                return { ...b, branches: [...b.branches, branch] };
+              })
+            ),
+          })),
+
+        updateConditionBranch: (sceneId, blockId, branchId, patch) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'condition') return b;
+                return { ...b, branches: b.branches.map(br => br.id === branchId ? { ...br, ...patch } : br) };
+              })
+            ),
+          })),
+
+        deleteConditionBranch: (sceneId, blockId, branchId) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, blockId, b => {
+                if (b.type !== 'condition') return b;
+                return { ...b, branches: b.branches.filter(br => br.id !== branchId) };
+              })
+            ),
+          })),
+
+        // ── Characters ────────────────────────────────────────────────────────
+
+        addCharacter: (char) =>
+          set(s => {
+            const charId = uuid();
+            const { group, varIds } = buildCharVarNodes(char.name, {
+              bgColor: char.bgColor,
+              borderColor: char.borderColor,
+              nameColor: char.nameColor,
+              avatarConfig: char.avatarConfig,
+            });
+            const character: Character = { ...char, id: charId, varIds };
+            return {
+              project: {
+                ...s.project,
+                characters: [...s.project.characters, character],
+                variableNodes: [...s.project.variableNodes, group],
+              },
+            };
+          }),
+
+        updateCharacter: (id, patch) =>
+          set(s => {
+            const oldChar = s.project.characters.find(c => c.id === id);
+            if (!oldChar) return s;
+
+            const updatedChar: Character = { ...oldChar, ...patch };
+            let variableNodes = s.project.variableNodes;
+
+            if (oldChar.varIds) {
+              const { varIds } = oldChar;
+
+              // Name changed → rename group, rename variable identifiers, update defaultValue
+              if (patch.name !== undefined && patch.name !== oldChar.name) {
+                const newPrefix = charToVarPrefix(patch.name);
+                // Rename the top-level group to the new character name
+                variableNodes = updateGroupNameInTree(variableNodes, varIds.groupId, patch.name);
+                // Rename all four variable identifiers AND update the name var's defaultValue
+                variableNodes = updateVarInTree(variableNodes, varIds.nameVarId, {
+                  name: `${newPrefix}_name`,
+                  defaultValue: patch.name,
+                  description: `Имя персонажа «${patch.name}»`,
+                });
+                variableNodes = updateVarInTree(variableNodes, varIds.bgColorVarId,     { name: `${newPrefix}_bgColor` });
+                variableNodes = updateVarInTree(variableNodes, varIds.borderColorVarId, { name: `${newPrefix}_borderColor` });
+                variableNodes = updateVarInTree(variableNodes, varIds.nameColorVarId,   { name: `${newPrefix}_nameColor` });
+                if (varIds.avatarVarId) {
+                  variableNodes = updateVarInTree(variableNodes, varIds.avatarVarId,    {
+                    name: `${newPrefix}_avatar`,
+                    description: `URL аватарки персонажа «${patch.name}» (пусто = скрыта)`,
+                  });
+                }
+              }
+
+              // Color changes → sync defaultValues
+              if (patch.bgColor !== undefined) {
+                variableNodes = updateVarInTree(variableNodes, varIds.bgColorVarId, { defaultValue: patch.bgColor });
+              }
+              if (patch.borderColor !== undefined) {
+                variableNodes = updateVarInTree(variableNodes, varIds.borderColorVarId, { defaultValue: patch.borderColor });
+              }
+              if (patch.nameColor !== undefined) {
+                variableNodes = updateVarInTree(variableNodes, varIds.nameColorVarId, { defaultValue: patch.nameColor });
+              }
+              // Avatar config change → sync $prefix_avatar defaultValue (static src only)
+              if (patch.avatarConfig !== undefined && varIds.avatarVarId) {
+                const defaultValue = patch.avatarConfig.mode === 'static' ? patch.avatarConfig.src : '';
+                variableNodes = updateVarInTree(variableNodes, varIds.avatarVarId, { defaultValue });
+              }
+            }
+
+            return {
+              project: {
+                ...s.project,
+                characters: s.project.characters.map(c => c.id === id ? updatedChar : c),
+                variableNodes,
+              },
+            };
+          }),
+
+        deleteCharacter: (id) =>
+          set(s => {
+            const char = s.project.characters.find(c => c.id === id);
+            const variableNodes = char?.varIds
+              ? removeNode(s.project.variableNodes as AnyNode[], char.varIds.groupId) as VariableTreeNode[]
+              : s.project.variableNodes;
+            return {
+              project: {
+                ...s.project,
+                characters: s.project.characters.filter(c => c.id !== id),
+                variableNodes,
+              },
+            };
+          }),
+
+        // ── Variable tree ──────────────────────────────────────────────────────
+
+        addVariableGroup: (parentId, name) => {
+          const group: VariableGroup = { kind: 'group', id: uuid(), name, children: [] };
+          set(s => ({
+            project: {
+              ...s.project,
+              variableNodes: addNode(s.project.variableNodes as AnyNode[], parentId, group as AnyNode) as VariableTreeNode[],
+            },
+          }));
+        },
+
+        addVariable: (parentId, v) => {
+          const variable: Variable = { kind: 'variable', id: uuid(), ...v };
+          set(s => ({
+            project: {
+              ...s.project,
+              variableNodes: addNode(s.project.variableNodes as AnyNode[], parentId, variable as AnyNode) as VariableTreeNode[],
+            },
+          }));
+        },
+
+        updateVariable: (id, patch) =>
+          set(s => ({
+            project: {
+              ...s.project,
+              variableNodes: updateVarInTree(s.project.variableNodes, id, patch),
+            },
+          })),
+
+        deleteVariableNode: (id) =>
+          set(s => ({
+            project: {
+              ...s.project,
+              variableNodes: removeNode(s.project.variableNodes as AnyNode[], id) as VariableTreeNode[],
+            },
+          })),
+
+        // ── Asset tree ────────────────────────────────────────────────────────
+
+        addAssetGroup: (parentGroupId, name, relativePath) => {
+          const group: AssetGroup = { kind: 'group', id: uuid(), name, relativePath, children: [] };
+          set(s => ({
+            project: {
+              ...s.project,
+              assetNodes: addNode(s.project.assetNodes as AnyNode[], parentGroupId, group as AnyNode) as AssetTreeNode[],
+            },
+          }));
+        },
+
+        renameAssetGroup: (id, name, newRelativePath) =>
+          set(s => {
+            const node = findAssetNodeById(s.project.assetNodes, id);
+            if (!node || node.kind !== 'group') return s;
+            return {
+              project: {
+                ...s.project,
+                assetNodes: renameGroupInAssetTree(s.project.assetNodes, id, name, node.relativePath, newRelativePath),
+              },
+            };
+          }),
+
+        addAsset: (parentGroupId, a) => {
+          const asset: Asset = { kind: 'asset', id: uuid(), ...a };
+          set(s => ({
+            project: {
+              ...s.project,
+              assetNodes: addNode(s.project.assetNodes as AnyNode[], parentGroupId, asset as AnyNode) as AssetTreeNode[],
+            },
+          }));
+        },
+
+        deleteAssetNode: (id) =>
+          set(s => ({
+            project: {
+              ...s.project,
+              assetNodes: removeNode(s.project.assetNodes as AnyNode[], id) as AssetTreeNode[],
+            },
+          })),
+
+        // ── Sidebar panel ──────────────────────────────────────────────────────
+
+        setPanelLiveUpdate: (v) =>
+          set(s => ({
+            project: { ...s.project, sidebarPanel: { ...s.project.sidebarPanel, liveUpdate: v } },
+          })),
+
+        addPanelTab: (label) => {
+          const tab: SidebarTab = { id: uuid(), label, rows: [] };
+          set(s => ({
+            project: updatePanel(s.project, p => ({ ...p, tabs: [...p.tabs, tab] })),
+          }));
+        },
+
+        updatePanelTab: (tabId, patch) =>
+          set(s => ({
+            project: updatePanel(s.project, p => updateTab(p, tabId, t => ({ ...t, ...patch }))),
+          })),
+
+        deletePanelTab: (tabId) =>
+          set(s => ({
+            project: updatePanel(s.project, p => ({ ...p, tabs: p.tabs.filter(t => t.id !== tabId) })),
+          })),
+
+        reorderPanelTabs: (tabs) =>
+          set(s => ({
+            project: updatePanel(s.project, p => ({ ...p, tabs })),
+          })),
+
+        addPanelRow: (tabId) => {
+          const row: SidebarRow = { id: uuid(), height: 32, cells: [] };
+          set(s => ({
+            project: updatePanel(s.project, p => updateTab(p, tabId, t => ({ ...t, rows: [...t.rows, row] }))),
+          }));
+        },
+
+        updatePanelRow: (tabId, rowId, patch) =>
+          set(s => ({
+            project: updatePanel(s.project, p => updateTab(p, tabId, t => updateRow(t, rowId, r => ({ ...r, ...patch })))),
+          })),
+
+        deletePanelRow: (tabId, rowId) =>
+          set(s => ({
+            project: updatePanel(s.project, p =>
+              updateTab(p, tabId, t => ({ ...t, rows: t.rows.filter(r => r.id !== rowId) }))
+            ),
+          })),
+
+        addPanelCell: (tabId, rowId) => {
+          const cell: SidebarCell = { id: uuid(), width: 1, content: { type: 'text', value: '' } };
+          set(s => ({
+            project: updatePanel(s.project, p =>
+              updateTab(p, tabId, t => updateRow(t, rowId, r => ({ ...r, cells: [...r.cells, cell] })))
+            ),
+          }));
+        },
+
+        updatePanelCell: (tabId, rowId, cellId, patch) =>
+          set(s => ({
+            project: updatePanel(s.project, p =>
+              updateTab(p, tabId, t => updateRow(t, rowId, r => updateCell(r, cellId, c => ({ ...c, ...patch }))))
+            ),
+          })),
+
+        deletePanelCell: (tabId, rowId, cellId) =>
+          set(s => ({
+            project: updatePanel(s.project, p =>
+              updateTab(p, tabId, t =>
+                updateRow(t, rowId, r => ({ ...r, cells: r.cells.filter(c => c.id !== cellId) }))
+              )
+            ),
+          })),
+
+        updateCellContent: (tabId, rowId, cellId, content) =>
+          set(s => ({
+            project: updatePanel(s.project, p =>
+              updateTab(p, tabId, t => updateRow(t, rowId, r => updateCell(r, cellId, c => ({ ...c, content }))))
+            ),
+          })),
+      };
+    },
+    {
+      name: 'twine-generator-project',
+      onRehydrateStorage: () => (state) => {
+        if (state?.project) {
+          state.project = migrateProject(state.project);
+        }
+      },
+    }
+  )
+);
