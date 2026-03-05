@@ -1,9 +1,34 @@
 import { useProjectStore } from '../../store/projectStore';
-import type { ChoiceBlock } from '../../types';
+import type { ChoiceBlock, ChoiceOption } from '../../types';
 
-export function ChoiceBlockEditor({ block, sceneId }: { block: ChoiceBlock; sceneId: string }) {
+export function ChoiceBlockEditor({
+  block,
+  sceneId,
+  onUpdate,
+}: {
+  block: ChoiceBlock;
+  sceneId: string;
+  onUpdate?: (patch: Partial<ChoiceBlock>) => void;
+}) {
   const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption } = useProjectStore();
   const { scenes } = project;
+
+  const handleAddOption = onUpdate
+    ? () => {
+        const opt: ChoiceOption = { id: crypto.randomUUID(), label: 'Вариант', targetSceneId: '', condition: '' };
+        onUpdate({ options: [...block.options, opt] });
+      }
+    : () => addChoiceOption(sceneId, block.id);
+
+  const handleUpdateOption = onUpdate
+    ? (optId: string, patch: Partial<ChoiceOption>) =>
+        onUpdate({ options: block.options.map(o => o.id === optId ? { ...o, ...patch } : o) })
+    : (optId: string, patch: Partial<ChoiceOption>) =>
+        updateChoiceOption(sceneId, block.id, optId, patch);
+
+  const handleDeleteOption = onUpdate
+    ? (optId: string) => onUpdate({ options: block.options.filter(o => o.id !== optId) })
+    : (optId: string) => deleteChoiceOption(sceneId, block.id, optId);
 
   return (
     <div className="flex flex-col gap-2">
@@ -19,12 +44,12 @@ export function ChoiceBlockEditor({ block, sceneId }: { block: ChoiceBlock; scen
               className="flex-1 bg-slate-700 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
               placeholder="Текст кнопки..."
               value={opt.label}
-              onChange={e => updateChoiceOption(sceneId, block.id, opt.id, { label: e.target.value })}
+              onChange={e => handleUpdateOption(opt.id, { label: e.target.value })}
             />
             <button
               className="text-slate-600 hover:text-red-400 text-xs cursor-pointer transition-colors"
               title="Удалить вариант"
-              onClick={() => deleteChoiceOption(sceneId, block.id, opt.id)}
+              onClick={() => handleDeleteOption(opt.id)}
             >
               ✕
             </button>
@@ -35,7 +60,7 @@ export function ChoiceBlockEditor({ block, sceneId }: { block: ChoiceBlock; scen
             <select
               className="flex-1 bg-slate-700 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={opt.targetSceneId}
-              onChange={e => updateChoiceOption(sceneId, block.id, opt.id, { targetSceneId: e.target.value })}
+              onChange={e => handleUpdateOption(opt.id, { targetSceneId: e.target.value })}
             >
               <option value="">— сцена —</option>
               {scenes.map(sc => (
@@ -50,7 +75,7 @@ export function ChoiceBlockEditor({ block, sceneId }: { block: ChoiceBlock; scen
               className="flex-1 bg-slate-700 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
               placeholder="$var == 1  (пусто = всегда)"
               value={opt.condition}
-              onChange={e => updateChoiceOption(sceneId, block.id, opt.id, { condition: e.target.value })}
+              onChange={e => handleUpdateOption(opt.id, { condition: e.target.value })}
             />
           </div>
         </div>
@@ -58,7 +83,7 @@ export function ChoiceBlockEditor({ block, sceneId }: { block: ChoiceBlock; scen
 
       <button
         className="text-xs text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded px-2 py-1 text-left transition-colors cursor-pointer"
-        onClick={() => addChoiceOption(sceneId, block.id)}
+        onClick={handleAddOption}
       >
         + Добавить вариант
       </button>

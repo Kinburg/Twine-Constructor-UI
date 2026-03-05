@@ -7,9 +7,22 @@ import { flattenVariables } from './treeUtils';
 
 // ─── Block → SugarCube markup ─────────────────────────────────────────────
 
+/** Escape a string for safe use inside an HTML double-quoted attribute value. */
+function htmlAttr(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 export function blockToSC(block: Block, chars: Character[], vars: Variable[], indent = ''): string {
   switch (block.type) {
     case 'text':
+      if (block.live) {
+        const attr = htmlAttr(block.content);
+        return `${indent}<span class="tg-live" data-wiki="${attr}">${block.content}</span>`;
+      }
       return indent + block.content;
 
     case 'dialogue': {
@@ -62,7 +75,12 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
       // placing the avatar on the right side without changing the DOM order.
       const inner = avatarHtml + body;
 
-      return `${indent}<div class="dialogue ${charClass} ${alignClass}">${inner}</div>`;
+      const divContent = `<div class="dialogue ${charClass} ${alignClass}">${inner}</div>`;
+      if (block.live) {
+        const attr = htmlAttr(divContent);
+        return `${indent}<span class="tg-live" data-wiki="${attr}">${divContent}</span>`;
+      }
+      return `${indent}${divContent}`;
     }
 
     case 'choice': {
@@ -113,9 +131,11 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
       const vname = `$${v.name}`;
       // numberbox for numeric variables, textbox for everything else
       const macro = v.varType === 'number' ? 'numberbox' : 'textbox';
-      const defVal = v.varType === 'number'
-        ? (block.placeholder || '0')
-        : `"${block.placeholder || ''}"`;
+      // Use the current variable value as the textbox default so the field
+      // keeps whatever the player typed if the passage is re-rendered (Engine.show).
+      // $varname evaluates to its StoryInit default on first load, and to the
+      // player's input on subsequent re-renders.
+      const defVal = `$${v.name}`;
       const lines: string[] = [];
       if (block.label) lines.push(`${indent}${block.label}`);
       lines.push(`${indent}<<${macro} "${vname}" ${defVal}>>`);
@@ -134,6 +154,7 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
           return `${indent}  <<set $${v.name} ${a.operator} ${val}>>`;
         })
         .filter(Boolean);
+      if (block.refreshScene) actionLines.push(`${indent}  <<run Engine.show()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
         `${indent}<span class="tg-btn ${cls}">` +
@@ -343,18 +364,26 @@ export function buildInputScript(scenes: Scene[]): string {
   }
   if (!scenes.some(s => hasInput(s.blocks))) return '';
 
+  // Helper snippet: re-render all tg-live spans using their stored wiki template.
+  // Harmless when no live blocks exist — selector simply matches nothing.
+  const refreshLive = "  $('.tg-live[data-wiki]').each(function() { $(this).empty().wiki($(this).attr('data-wiki')); });";
+
   return [
-    '/* TG: auto-refresh sidebar when textbox/numberbox values change */',
+    '/* TG: auto-refresh sidebar + live blocks when textbox/numberbox values change */',
     '/* change fires on Enter / blur / stepper-arrow — the moment SugarCube commits the value */',
     '$(document).on("change.tg-inp", ".macro-textbox, .macro-numberbox", function() {',
     '  UIBar.update();',
+    refreshLive,
     '});',
-    '/* input fires on every keystroke — debounced for live textbox preview */',
+    '/* input fires on every keystroke — debounced for live block preview */',
     '$(document).on("input.tg-inp", ".macro-textbox, .macro-numberbox", (function() {',
     '  var t;',
     '  return function() {',
     '    clearTimeout(t);',
-    '    t = setTimeout(function() { UIBar.update(); }, 400);',
+    '    t = setTimeout(function() {',
+    '      UIBar.update();',
+    refreshLive,
+    '    }, 200);',
     '  };',
     '})());',
   ].join('\n');

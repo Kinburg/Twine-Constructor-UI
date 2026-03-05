@@ -1,5 +1,8 @@
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
-import type { ConditionBlock, ConditionBranchType, ConditionOperator, Block } from '../../types';
+import type {
+  ConditionBlock, ConditionBranchType, ConditionOperator, Block,
+  TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock,
+} from '../../types';
 import { AddBlockMenu } from './AddBlockMenu';
 import { TextBlockEditor } from './TextBlockEditor';
 import { DialogueBlockEditor } from './DialogueBlockEditor';
@@ -18,14 +21,27 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
 ];
 
 /** Simplified block renderer for nested blocks (no DnD, no further nesting) */
-function NestedBlockEditor({ block, sceneId }: { block: Block; sceneId: string }) {
+function NestedBlockEditor({
+  block,
+  sceneId,
+  conditionBlockId,
+  branchId,
+}: {
+  block: Block;
+  sceneId: string;
+  conditionBlockId: string;
+  branchId: string;
+}) {
+  const { updateNestedBlock } = useProjectStore();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const onUpdate = (patch: any) => updateNestedBlock(sceneId, conditionBlockId, branchId, block.id, patch);
   switch (block.type) {
-    case 'text':         return <TextBlockEditor block={block} sceneId={sceneId} />;
-    case 'dialogue':     return <DialogueBlockEditor block={block} sceneId={sceneId} />;
-    case 'choice':       return <ChoiceBlockEditor block={block} sceneId={sceneId} />;
-    case 'variable-set': return <VariableSetBlockEditor block={block} sceneId={sceneId} />;
-    case 'image':        return <ImageBlockEditor block={block} sceneId={sceneId} />;
-    case 'video':        return <VideoBlockEditor block={block} sceneId={sceneId} />;
+    case 'text':         return <TextBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TextBlock>) => void} />;
+    case 'dialogue':     return <DialogueBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<DialogueBlock>) => void} />;
+    case 'choice':       return <ChoiceBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<ChoiceBlock>) => void} />;
+    case 'variable-set': return <VariableSetBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VariableSetBlock>) => void} />;
+    case 'image':        return <ImageBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<ImageBlock>) => void} />;
+    case 'video':        return <VideoBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VideoBlock>) => void} />;
     default:             return <span className="text-xs text-slate-500">Вложенный тип не поддерживается</span>;
   }
 }
@@ -162,7 +178,7 @@ export function ConditionBlockEditor({
                   </button>
                 </div>
                 <div className="p-2">
-                  <NestedBlockEditor block={nb} sceneId={sceneId} />
+                  <NestedBlockEditor block={nb} sceneId={sceneId} conditionBlockId={block.id} branchId={branch.id} />
                 </div>
               </div>
             ))}

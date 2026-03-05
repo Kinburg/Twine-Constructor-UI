@@ -879,7 +879,7 @@ export const useProjectStore = create<ProjectState>()(
           })),
 
         addPanelRow: (tabId) => {
-          const row: SidebarRow = { id: uuid(), height: 32, cells: [] };
+          const row: SidebarRow = { id: uuid(), height: 15, cells: [] };
           set(s => ({
             project: updatePanel(s.project, p => updateTab(p, tabId, t => ({ ...t, rows: [...t.rows, row] }))),
           }));

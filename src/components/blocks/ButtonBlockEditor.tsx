@@ -298,6 +298,19 @@ export function ButtonBlockEditor({
           />
         ))}
       </div>
+
+      {/* Refresh scene option */}
+      <label className="flex items-center gap-2 cursor-pointer select-none">
+        <input
+          type="checkbox"
+          checked={block.refreshScene ?? false}
+          onChange={e => updateBlock(sceneId, block.id, { refreshScene: e.target.checked })}
+          className="accent-indigo-500 cursor-pointer"
+        />
+        <span className="text-xs text-slate-400">
+          Обновить сцену после клика <span className="font-mono text-slate-500">(Engine.show)</span>
+        </span>
+      </label>
     </div>
   );
 }

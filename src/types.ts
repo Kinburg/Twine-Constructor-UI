@@ -4,6 +4,7 @@ export interface TextBlock {
   id: string;
   type: 'text';
   content: string;
+  live?: boolean;  // wrap in <<live 200>> on export for auto-refresh
 }
 
 export interface DialogueBlock {
@@ -12,6 +13,7 @@ export interface DialogueBlock {
   characterId: string;
   text: string;
   align?: 'left' | 'right';  // avatar + name position, default 'left'
+  live?: boolean;             // wrap in <<live 200>> on export for auto-refresh
 }
 
 export interface ChoiceOption {
@@ -102,6 +104,7 @@ export interface ButtonBlock {
   label: string;
   style: ButtonStyle;
   actions: ButtonAction[];
+  refreshScene?: boolean;  // add <<run Engine.show()>> on export to re-render passage
 }
 
 /**

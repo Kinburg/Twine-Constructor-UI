@@ -2,8 +2,17 @@ import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import type { ImageBlock } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 
-export function ImageBlockEditor({ block, sceneId }: { block: ImageBlock; sceneId: string }) {
+export function ImageBlockEditor({
+  block,
+  sceneId,
+  onUpdate,
+}: {
+  block: ImageBlock;
+  sceneId: string;
+  onUpdate?: (patch: Partial<ImageBlock>) => void;
+}) {
   const { project, projectDir, updateBlock } = useProjectStore();
+  const update = onUpdate ?? ((p: Partial<ImageBlock>) => updateBlock(sceneId, block.id, p as never));
   const imageAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
 
   /**
@@ -31,7 +40,7 @@ export function ImageBlockEditor({ block, sceneId }: { block: ImageBlock; sceneI
               const asset = imageAssets.find(a => a.id === e.target.value);
               if (asset) {
                 // Store the relative path as src so export uses it directly
-                updateBlock(sceneId, block.id, { src: asset.relativePath, alt: asset.name });
+                update({ src: asset.relativePath, alt: asset.name });
               }
             }}
           >
@@ -50,7 +59,7 @@ export function ImageBlockEditor({ block, sceneId }: { block: ImageBlock; sceneI
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
           placeholder="assets/bg.jpg или https://..."
           value={block.src}
-          onChange={e => updateBlock(sceneId, block.id, { src: e.target.value })}
+          onChange={e => update({ src: e.target.value })}
         />
       </div>
 
@@ -61,7 +70,7 @@ export function ImageBlockEditor({ block, sceneId }: { block: ImageBlock; sceneI
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
           placeholder="описание изображения"
           value={block.alt}
-          onChange={e => updateBlock(sceneId, block.id, { alt: e.target.value })}
+          onChange={e => update({ alt: e.target.value })}
         />
       </div>
 
@@ -74,7 +83,7 @@ export function ImageBlockEditor({ block, sceneId }: { block: ImageBlock; sceneI
           placeholder="авто"
           min={0}
           value={block.width || ''}
-          onChange={e => updateBlock(sceneId, block.id, { width: parseInt(e.target.value) || 0 })}
+          onChange={e => update({ width: parseInt(e.target.value) || 0 })}
         />
       </div>
 

@@ -23,8 +23,17 @@ function resolveEditorSrc(src: string, projectDir: string | null): string {
   return ''; // can't resolve local path without projectDir
 }
 
-export function DialogueBlockEditor({ block, sceneId }: { block: DialogueBlock; sceneId: string }) {
+export function DialogueBlockEditor({
+  block,
+  sceneId,
+  onUpdate,
+}: {
+  block: DialogueBlock;
+  sceneId: string;
+  onUpdate?: (patch: Partial<DialogueBlock>) => void;
+}) {
   const { project, projectDir, updateBlock } = useProjectStore();
+  const update = onUpdate ?? ((p: Partial<DialogueBlock>) => updateBlock(sceneId, block.id, p as never));
   const { characters } = project;
 
   const selectedChar = characters.find(c => c.id === block.characterId);
@@ -68,7 +77,7 @@ export function DialogueBlockEditor({ block, sceneId }: { block: DialogueBlock; 
         <select
           className="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
           value={block.characterId}
-          onChange={e => updateBlock(sceneId, block.id, { characterId: e.target.value })}
+          onChange={e => update({ characterId: e.target.value })}
         >
           <option value="">— выбрать —</option>
           {characters.map(c => (
@@ -90,7 +99,7 @@ export function DialogueBlockEditor({ block, sceneId }: { block: DialogueBlock; 
                 ? 'bg-indigo-600 border-indigo-500 text-white'
                 : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
             }`}
-            onClick={() => updateBlock(sceneId, block.id, { align: 'left' })}
+            onClick={() => update({ align: 'left' })}
           >
             ◀ Слева
           </button>
@@ -100,11 +109,25 @@ export function DialogueBlockEditor({ block, sceneId }: { block: DialogueBlock; 
                 ? 'bg-indigo-600 border-indigo-500 text-white'
                 : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
             }`}
-            onClick={() => updateBlock(sceneId, block.id, { align: 'right' })}
+            onClick={() => update({ align: 'right' })}
           >
             Справа ▶
           </button>
         </div>
+      </div>
+
+      {/* Live update toggle */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-slate-400 w-20 shrink-0">Обновление:</label>
+        <label className="flex items-center gap-2 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={block.live ?? false}
+            onChange={e => update({ live: e.target.checked })}
+            className="accent-indigo-500 cursor-pointer"
+          />
+          <span className="text-xs text-slate-400">Живое обновление <span className="font-mono text-slate-500">&lt;&lt;live&gt;&gt;</span></span>
+        </label>
       </div>
 
       {/* Text + preview */}
@@ -144,7 +167,7 @@ export function DialogueBlockEditor({ block, sceneId }: { block: DialogueBlock; 
             style={{ color: selectedChar ? '#e2e8f0' : undefined }}
             placeholder="Введите реплику..."
             value={block.text}
-            onChange={e => updateBlock(sceneId, block.id, { text: e.target.value })}
+            onChange={e => update({ text: e.target.value })}
           />
         </div>
       </div>

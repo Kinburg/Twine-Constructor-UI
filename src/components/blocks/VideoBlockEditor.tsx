@@ -2,8 +2,17 @@ import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import type { VideoBlock } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 
-export function VideoBlockEditor({ block, sceneId }: { block: VideoBlock; sceneId: string }) {
+export function VideoBlockEditor({
+  block,
+  sceneId,
+  onUpdate,
+}: {
+  block: VideoBlock;
+  sceneId: string;
+  onUpdate?: (patch: Partial<VideoBlock>) => void;
+}) {
   const { project, projectDir, updateBlock } = useProjectStore();
+  const update = onUpdate ?? ((p: Partial<VideoBlock>) => updateBlock(sceneId, block.id, p as never));
   const videoAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'video');
 
   /**
@@ -31,7 +40,7 @@ export function VideoBlockEditor({ block, sceneId }: { block: VideoBlock; sceneI
               const asset = videoAssets.find(a => a.id === e.target.value);
               if (asset) {
                 // Store the relative path as src so export uses it directly
-                updateBlock(sceneId, block.id, { src: asset.relativePath });
+                update({ src: asset.relativePath });
               }
             }}
           >
@@ -50,7 +59,7 @@ export function VideoBlockEditor({ block, sceneId }: { block: VideoBlock; sceneI
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
           placeholder="assets/intro.mp4 или https://..."
           value={block.src}
-          onChange={e => updateBlock(sceneId, block.id, { src: e.target.value })}
+          onChange={e => update({ src: e.target.value })}
         />
       </div>
 
@@ -63,7 +72,7 @@ export function VideoBlockEditor({ block, sceneId }: { block: VideoBlock; sceneI
           placeholder="авто"
           min={0}
           value={block.width || ''}
-          onChange={e => updateBlock(sceneId, block.id, { width: parseInt(e.target.value) || 0 })}
+          onChange={e => update({ width: parseInt(e.target.value) || 0 })}
         />
       </div>
 
@@ -79,7 +88,7 @@ export function VideoBlockEditor({ block, sceneId }: { block: VideoBlock; sceneI
               type="checkbox"
               className="accent-indigo-500"
               checked={block[key as keyof VideoBlock] as boolean}
-              onChange={e => updateBlock(sceneId, block.id, { [key]: e.target.checked })}
+              onChange={e => update({ [key]: e.target.checked })}
             />
             <span className="text-xs text-slate-300">{label}</span>
           </label>

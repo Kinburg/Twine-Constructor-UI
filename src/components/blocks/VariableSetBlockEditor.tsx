@@ -12,11 +12,14 @@ const OPERATORS: { value: VarOperator; label: string }[] = [
 export function VariableSetBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: VariableSetBlock;
   sceneId: string;
+  onUpdate?: (patch: Partial<VariableSetBlock>) => void;
 }) {
   const { project, updateBlock } = useProjectStore();
+  const update = onUpdate ?? ((p: Partial<VariableSetBlock>) => updateBlock(sceneId, block.id, p as never));
   const variables = flattenVariables(project.variableNodes);
   const selectedVar = variables.find(v => v.id === block.variableId);
 
@@ -27,7 +30,7 @@ export function VariableSetBlockEditor({
         <select
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
           value={block.variableId}
-          onChange={e => updateBlock(sceneId, block.id, { variableId: e.target.value })}
+          onChange={e => update({ variableId: e.target.value })}
         >
           <option value="">— выбрать —</option>
           {variables.map(v => (
@@ -44,7 +47,7 @@ export function VariableSetBlockEditor({
         <select
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
           value={block.operator}
-          onChange={e => updateBlock(sceneId, block.id, { operator: e.target.value as VarOperator })}
+          onChange={e => update({ operator: e.target.value as VarOperator })}
         >
           {OPERATORS.map(op => (
             <option key={op.value} value={op.value}>{op.label}</option>
@@ -58,7 +61,7 @@ export function VariableSetBlockEditor({
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
           placeholder={selectedVar?.varType === 'string' ? '"текст"' : selectedVar?.varType === 'boolean' ? 'true / false' : '0'}
           value={block.value}
-          onChange={e => updateBlock(sceneId, block.id, { value: e.target.value })}
+          onChange={e => update({ value: e.target.value })}
         />
       </div>
 

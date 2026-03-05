@@ -90,7 +90,7 @@ export function InputFieldBlockEditor({
         </p>
       )}
 
-      {/* Preview line */}
+      {/* Macro preview line */}
       {selectedVar && !isBoolean && (
         <div className="mt-1 flex items-center gap-2 flex-wrap">
           <span className="text-xs text-slate-500">Будет сгенерировано:</span>
@@ -104,6 +104,7 @@ export function InputFieldBlockEditor({
           </span>
         </div>
       )}
+
     </div>
   );
 }
