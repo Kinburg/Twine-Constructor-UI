@@ -931,7 +931,7 @@ export const useProjectStore = create<ProjectState>()(
       };
     },
     {
-      name: 'twine-generator-project',
+      name: 'twine-constructor-project',
       onRehydrateStorage: () => (state) => {
         if (state?.project) {
           state.project = migrateProject(state.project);

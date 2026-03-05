@@ -1,5 +1,5 @@
-const SC_TEMPLATE_KEY = 'twine-gen-sc-template';
-const SC_VERSION_KEY  = 'twine-gen-sc-version';
+const SC_TEMPLATE_KEY = 'twine-construct-sc-template';
+const SC_VERSION_KEY  = 'twine-construct-sc-version';
 
 export function hasSCTemplate(): boolean {
   return !!localStorage.getItem(SC_TEMPLATE_KEY);

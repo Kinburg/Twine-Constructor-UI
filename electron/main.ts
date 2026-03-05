@@ -14,8 +14,8 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
-// Projects stored in ~/Documents/TwineGenerator/Projects/
-const PROJECTS_DIR = path.join(app.getPath('documents'), 'TwineGenerator', 'Projects');
+// Projects stored in ~/Documents/TwineConstructor/Projects/
+const PROJECTS_DIR = path.join(app.getPath('documents'), 'TwineConstructor', 'Projects');
 
 let win: BrowserWindow | null;
 
@@ -27,7 +27,7 @@ function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    title: 'TwineGenerator',
+    title: 'TwineConstructor',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,

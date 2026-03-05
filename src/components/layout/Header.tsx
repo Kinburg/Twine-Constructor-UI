@@ -110,7 +110,7 @@ export function Header() {
   const handleOpenProject = async () => {
     const filePath = await fsApi.openFileDialog({
       title: 'Открыть проект',
-      filters: [{ name: 'TwineGenerator Project', extensions: ['tgproject', 'json'] }],
+      filters: [{ name: 'TwineConstructor Project', extensions: ['tgproject', 'json'] }],
     });
     if (!filePath) return;
     try {
@@ -247,7 +247,7 @@ export function Header() {
       {/* Left: logo + title */}
       <div className="flex items-center gap-3 shrink-0">
         <span className="text-indigo-400 font-bold text-sm tracking-wider uppercase select-none">
-          TwineGen
+          Twine Constructor
         </span>
         <span className="text-slate-600 select-none">|</span>
         {editingTitle ? (

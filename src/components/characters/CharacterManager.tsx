@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProjectStore, flattenVariables, flattenAssets } from '../../store/projectStore';
-import type { Character, AvatarConfig, AvatarMode, ImageBoundMapping, Variable, Asset } from '../../types';
+import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset } from '../../types';
 
 const DEFAULT_COLORS = [
   { nameColor: '#7dd3fc', bgColor: '#0c2340', borderColor: '#0ea5e9' },
