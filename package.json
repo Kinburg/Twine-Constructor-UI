@@ -17,7 +17,7 @@
       "output": "release"
     },
     "win": {
-      "target": "nsis"
+      "target": "dir"
     },
     "linux": {
       "target": "AppImage"

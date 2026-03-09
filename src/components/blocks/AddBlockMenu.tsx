@@ -1,18 +1,19 @@
 import { useState, useRef } from 'react';
 import { useProjectStore } from '../../store/projectStore';
+import { useT } from '../../i18n';
 import type { Block, BlockType } from '../../types';
 
-const BLOCK_TYPES: { type: BlockType; label: string; icon: string; desc: string }[] = [
-  { type: 'text',         label: 'Текст',       icon: '📝', desc: 'Нарративный текст' },
-  { type: 'dialogue',     label: 'Диалог',      icon: '💬', desc: 'Реплика персонажа' },
-  { type: 'choice',       label: 'Выбор',       icon: '🔀', desc: 'Варианты/переходы' },
-  { type: 'condition',    label: 'Условие',     icon: '❓', desc: 'if/elseif/else' },
-  { type: 'variable-set', label: 'Переменная',  icon: '📊', desc: 'Изменить переменную' },
-  { type: 'button',       label: 'Кнопка',      icon: '🔘', desc: 'Действие без перехода' },
-  { type: 'input-field',  label: 'Поле ввода',  icon: '✏️', desc: 'Игрок вводит значение' },
-  { type: 'image',        label: 'Картинка',    icon: '🖼️', desc: 'Вставить изображение' },
-  { type: 'video',        label: 'Видео',       icon: '🎥', desc: 'Вставить видео' },
-];
+const BLOCK_ICONS: Record<BlockType, string> = {
+  'text':         '📝',
+  'dialogue':     '💬',
+  'choice':       '🔀',
+  'condition':    '❓',
+  'variable-set': '📊',
+  'button':       '🔘',
+  'input-field':  '✏️',
+  'image':        '🖼️',
+  'video':        '🎥',
+};
 
 export function makeBlock(type: BlockType): Block {
   const id = crypto.randomUUID();
@@ -47,8 +48,21 @@ interface Props {
 
 export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
   const { addBlock } = useProjectStore();
+  const t = useT();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const BLOCK_ENTRIES: { type: BlockType; label: string; icon: string; desc: string }[] = [
+    { type: 'text',         icon: BLOCK_ICONS['text'],         label: t.addBlock.text.label,        desc: t.addBlock.text.desc },
+    { type: 'dialogue',     icon: BLOCK_ICONS['dialogue'],     label: t.addBlock.dialogue.label,    desc: t.addBlock.dialogue.desc },
+    { type: 'choice',       icon: BLOCK_ICONS['choice'],       label: t.addBlock.choice.label,      desc: t.addBlock.choice.desc },
+    { type: 'condition',    icon: BLOCK_ICONS['condition'],    label: t.addBlock.condition.label,   desc: t.addBlock.condition.desc },
+    { type: 'variable-set', icon: BLOCK_ICONS['variable-set'], label: t.addBlock.variableSet.label, desc: t.addBlock.variableSet.desc },
+    { type: 'button',       icon: BLOCK_ICONS['button'],       label: t.addBlock.button.label,      desc: t.addBlock.button.desc },
+    { type: 'input-field',  icon: BLOCK_ICONS['input-field'],  label: t.addBlock.inputField.label,  desc: t.addBlock.inputField.desc },
+    { type: 'image',        icon: BLOCK_ICONS['image'],        label: t.addBlock.image.label,       desc: t.addBlock.image.desc },
+    { type: 'video',        icon: BLOCK_ICONS['video'],        label: t.addBlock.video.label,       desc: t.addBlock.video.desc },
+  ];
 
   const add = (type: BlockType) => {
     const block = makeBlock(type);
@@ -60,7 +74,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     setOpen(false);
   };
 
-  const visible = BLOCK_TYPES.filter(bt => !excludeTypes.includes(bt.type));
+  const visible = BLOCK_ENTRIES.filter(bt => !excludeTypes.includes(bt.type));
 
   return (
     <div ref={ref} className="mt-1">
@@ -69,7 +83,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
           className="w-full py-1.5 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-500 hover:text-indigo-400 rounded text-xs transition-colors cursor-pointer"
           onClick={() => setOpen(true)}
         >
-          + Добавить блок
+          {t.addBlock.trigger}
         </button>
       ) : (
         <div className="border border-slate-600 rounded bg-slate-800 overflow-hidden">
@@ -92,7 +106,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
             className="w-full py-1 text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
             onClick={() => setOpen(false)}
           >
-            Отмена
+            {t.addBlock.cancel}
           </button>
         </div>
       )}

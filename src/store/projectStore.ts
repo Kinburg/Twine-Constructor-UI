@@ -224,6 +224,25 @@ function renameGroupInAssetTree(
   });
 }
 
+// ─── Block deep-clone ─────────────────────────────────────────────────────────
+
+/** Recursively clone a block, assigning fresh UUIDs to every block and branch. */
+export function deepCloneBlock(block: Block): Block {
+  const newId = uuid();
+  if (block.type === 'condition') {
+    return {
+      ...block,
+      id: newId,
+      branches: block.branches.map(br => ({
+        ...br,
+        id: uuid(),
+        blocks: br.blocks.map(nb => deepCloneBlock(nb)),
+      })),
+    };
+  }
+  return { ...block, id: newId };
+}
+
 // ─── Project migration ────────────────────────────────────────────────────────
 
 /**
@@ -376,17 +395,24 @@ interface ProjectState {
   deleteScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
   updateSceneTags: (id: string, tags: string[]) => void;
+  reorderScenes: (scenes: Scene[]) => void;
+  duplicateScene: (sceneId: string) => void;
 
   // Blocks
   addBlock: (sceneId: string, block: Block) => void;
   updateBlock: (sceneId: string, blockId: string, patch: Partial<Block>) => void;
   deleteBlock: (sceneId: string, blockId: string) => void;
   reorderBlocks: (sceneId: string, blocks: Block[]) => void;
+  duplicateBlock: (sceneId: string, blockId: string) => void;
+  pasteToScene: (sceneId: string, block: Block) => void;
 
   // Nested blocks
   addNestedBlock: (sceneId: string, blockId: string, branchId: string, block: Block) => void;
   updateNestedBlock: (sceneId: string, blockId: string, branchId: string, nestedBlockId: string, patch: Partial<Block>) => void;
   deleteNestedBlock: (sceneId: string, blockId: string, branchId: string, nestedBlockId: string) => void;
+  reorderNestedBlocks: (sceneId: string, conditionBlockId: string, branchId: string, blocks: Block[]) => void;
+  duplicateNestedBlock: (sceneId: string, conditionBlockId: string, branchId: string, nestedBlockId: string) => void;
+  pasteToNested: (sceneId: string, conditionBlockId: string, branchId: string, block: Block) => void;
 
   // Choice options
   addChoiceOption: (sceneId: string, blockId: string) => void;
@@ -527,6 +553,28 @@ export const useProjectStore = create<ProjectState>()(
         updateSceneTags: (id, tags) =>
           set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, tags })) })),
 
+        reorderScenes: (scenes) =>
+          set(s => ({ project: { ...s.project, scenes } })),
+
+        duplicateScene: (sceneId) =>
+          set(s => {
+            const original = s.project.scenes.find(sc => sc.id === sceneId);
+            if (!original) return s;
+            const clone: Scene = {
+              ...original,
+              id: uuid(),
+              name: `${original.name} (копия)`,
+              blocks: original.blocks.map(deepCloneBlock),
+            };
+            const idx = s.project.scenes.findIndex(sc => sc.id === sceneId);
+            const scenes = [...s.project.scenes];
+            scenes.splice(idx + 1, 0, clone);
+            return {
+              project: { ...s.project, scenes },
+              activeSceneId: clone.id,
+            };
+          }),
+
         // ── Blocks ──────────────────────────────────────────────────────────
 
         addBlock: (sceneId, block) =>
@@ -550,6 +598,24 @@ export const useProjectStore = create<ProjectState>()(
 
         reorderBlocks: (sceneId, blocks) =>
           set(s => ({ project: updateScene(s.project, sceneId, sc => ({ ...sc, blocks })) })),
+
+        duplicateBlock: (sceneId, blockId) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc => {
+              const idx = sc.blocks.findIndex(b => b.id === blockId);
+              if (idx === -1) return sc;
+              const blocks = [...sc.blocks];
+              blocks.splice(idx + 1, 0, deepCloneBlock(sc.blocks[idx]));
+              return { ...sc, blocks };
+            }),
+          })),
+
+        pasteToScene: (sceneId, block) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc => ({
+              ...sc, blocks: [...sc.blocks, deepCloneBlock(block)],
+            })),
+          })),
 
         // ── Nested blocks ─────────────────────────────────────────────────────
 
@@ -595,6 +661,58 @@ export const useProjectStore = create<ProjectState>()(
                   branches: b.branches.map(br =>
                     br.id === branchId
                       ? { ...br, blocks: br.blocks.filter(nb => nb.id !== nestedBlockId) }
+                      : br
+                  ),
+                };
+              })
+            ),
+          })),
+
+        reorderNestedBlocks: (sceneId, conditionBlockId, branchId, blocks) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, conditionBlockId, b => {
+                if (b.type !== 'condition') return b;
+                return {
+                  ...b,
+                  branches: b.branches.map(br =>
+                    br.id === branchId ? { ...br, blocks } : br
+                  ),
+                };
+              })
+            ),
+          })),
+
+        duplicateNestedBlock: (sceneId, conditionBlockId, branchId, nestedBlockId) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, conditionBlockId, b => {
+                if (b.type !== 'condition') return b;
+                return {
+                  ...b,
+                  branches: b.branches.map(br => {
+                    if (br.id !== branchId) return br;
+                    const idx = br.blocks.findIndex(nb => nb.id === nestedBlockId);
+                    if (idx === -1) return br;
+                    const blocks = [...br.blocks];
+                    blocks.splice(idx + 1, 0, deepCloneBlock(br.blocks[idx]));
+                    return { ...br, blocks };
+                  }),
+                };
+              })
+            ),
+          })),
+
+        pasteToNested: (sceneId, conditionBlockId, branchId, block) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, conditionBlockId, b => {
+                if (b.type !== 'condition') return b;
+                return {
+                  ...b,
+                  branches: b.branches.map(br =>
+                    br.id === branchId
+                      ? { ...br, blocks: [...br.blocks, deepCloneBlock(block)] }
                       : br
                   ),
                 };

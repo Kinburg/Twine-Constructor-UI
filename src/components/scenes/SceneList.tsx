@@ -1,79 +1,183 @@
 import { useState } from 'react';
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore } from '../../store/projectStore';
+import { useT } from '../../i18n';
+import type { Scene } from '../../types';
 
-export function SceneList() {
-  const { project, activeSceneId, setActiveScene, addScene, deleteScene, renameScene } =
-    useProjectStore();
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [nameDraft, setNameDraft] = useState('');
+function SortableSceneItem({
+  scene,
+  isActive,
+  onSelect,
+  onStartRename,
+  onDuplicate,
+  onDelete,
+  canDelete,
+}: {
+  scene: Scene;
+  isActive: boolean;
+  onSelect: () => void;
+  onStartRename: () => void;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  canDelete: boolean;
+}) {
+  const t = useT();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: scene.id });
 
-  const startRename = (id: string, currentName: string) => {
-    setEditingId(id);
-    setNameDraft(currentName);
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
   };
 
-  const commitRename = (id: string) => {
-    if (nameDraft.trim()) renameScene(id, nameDraft.trim());
-    setEditingId(null);
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-center rounded px-2 py-1.5 cursor-pointer transition-colors ${
+        isActive ? 'bg-indigo-700/40 text-white' : 'hover:bg-slate-800 text-slate-300'
+      }`}
+      onClick={onSelect}
+    >
+      <span
+        {...listeners}
+        {...attributes}
+        className="drag-handle text-slate-600 hover:text-slate-400 text-xs mr-1.5 select-none shrink-0 cursor-grab active:cursor-grabbing"
+        title={t.scene.drag}
+        onClick={e => e.stopPropagation()}
+      >
+        ⠿
+      </span>
+      <span className="flex-1 text-xs truncate">{scene.name}</span>
+      <button
+        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white text-xs px-0.5 transition-opacity cursor-pointer"
+        title={t.scene.rename}
+        onClick={e => { e.stopPropagation(); onStartRename(); }}
+      >
+        ✏️
+      </button>
+      <button
+        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-300 text-xs px-0.5 transition-opacity cursor-pointer"
+        title={t.scene.duplicate}
+        onClick={e => { e.stopPropagation(); onDuplicate(); }}
+      >
+        ⧉
+      </button>
+      {canDelete && (
+        <button
+          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 text-xs px-0.5 transition-opacity cursor-pointer"
+          title={t.scene.delete}
+          onClick={e => { e.stopPropagation(); onDelete(); }}
+        >
+          🗑️
+        </button>
+      )}
+    </div>
+  );
+}
+
+function RenamingSceneItem({
+  initialName,
+  onCommit,
+  onCancel,
+}: {
+  initialName: string;
+  onCommit: (name: string) => void;
+  onCancel: () => void;
+}) {
+  const [draft, setDraft] = useState(initialName);
+
+  return (
+    <div className="flex items-center rounded px-2 py-1.5 bg-indigo-700/20">
+      <span className="text-slate-600 text-xs mr-1.5 select-none">⠿</span>
+      <input
+        autoFocus
+        className="flex-1 bg-slate-700 text-white px-1 py-0 rounded text-xs outline-none border border-indigo-500"
+        value={draft}
+        onChange={e => setDraft(e.target.value)}
+        onBlur={() => { if (draft.trim()) onCommit(draft.trim()); else onCancel(); }}
+        onKeyDown={e => {
+          if (e.key === 'Enter' && draft.trim()) onCommit(draft.trim());
+          if (e.key === 'Escape') onCancel();
+        }}
+      />
+    </div>
+  );
+}
+
+export function SceneList() {
+  const {
+    project,
+    activeSceneId,
+    setActiveScene,
+    addScene,
+    deleteScene,
+    renameScene,
+    duplicateScene,
+    reorderScenes,
+  } = useProjectStore();
+  const t = useT();
+
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = project.scenes.findIndex(s => s.id === active.id);
+    const newIndex = project.scenes.findIndex(s => s.id === over.id);
+    if (oldIndex !== -1 && newIndex !== -1) {
+      reorderScenes(arrayMove(project.scenes, oldIndex, newIndex));
+    }
   };
 
   return (
     <div className="p-2 flex flex-col gap-0.5">
-      {project.scenes.map(scene => (
-        <div
-          key={scene.id}
-          className={`group flex items-center rounded px-2 py-1.5 cursor-pointer transition-colors ${
-            scene.id === activeSceneId
-              ? 'bg-indigo-700/40 text-white'
-              : 'hover:bg-slate-800 text-slate-300'
-          }`}
-          onClick={() => setActiveScene(scene.id)}
-        >
-          {editingId === scene.id ? (
-            <input
-              autoFocus
-              className="flex-1 bg-slate-700 text-white px-1 py-0 rounded text-xs outline-none border border-indigo-500"
-              value={nameDraft}
-              onClick={e => e.stopPropagation()}
-              onChange={e => setNameDraft(e.target.value)}
-              onBlur={() => commitRename(scene.id)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') commitRename(scene.id);
-                if (e.key === 'Escape') setEditingId(null);
-              }}
-            />
-          ) : (
-            <>
-              <span className="flex-1 text-xs truncate">{scene.name}</span>
-              <button
-                className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white text-xs px-0.5 transition-opacity cursor-pointer"
-                title="Переименовать"
-                onClick={e => { e.stopPropagation(); startRename(scene.id, scene.name); }}
-              >
-                ✏️
-              </button>
-              {project.scenes.length > 1 && (
-                <button
-                  className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 text-xs px-0.5 transition-opacity cursor-pointer"
-                  title="Удалить сцену"
-                  onClick={e => {
-                    e.stopPropagation();
-                    if (confirm(`Удалить сцену "${scene.name}"?`)) deleteScene(scene.id);
-                  }}
-                >
-                  🗑️
-                </button>
-              )}
-            </>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={project.scenes.map((s: Scene) => s.id)} strategy={verticalListSortingStrategy}>
+          {project.scenes.map((scene: Scene) =>
+            editingId === scene.id ? (
+              <RenamingSceneItem
+                key={scene.id}
+                initialName={scene.name}
+                onCommit={(name) => { renameScene(scene.id, name); setEditingId(null); }}
+                onCancel={() => setEditingId(null)}
+              />
+            ) : (
+              <SortableSceneItem
+                key={scene.id}
+                scene={scene}
+                isActive={scene.id === activeSceneId}
+                onSelect={() => setActiveScene(scene.id)}
+                onStartRename={() => setEditingId(scene.id)}
+                onDuplicate={() => duplicateScene(scene.id)}
+                onDelete={() => { if (confirm(t.scene.confirmDelete(scene.name))) deleteScene(scene.id); }}
+                canDelete={project.scenes.length > 1}
+              />
+            )
           )}
-        </div>
-      ))}
+        </SortableContext>
+      </DndContext>
 
       <button
         className="mt-1 w-full text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 text-left transition-colors cursor-pointer"
         onClick={addScene}
       >
-        + Добавить сцену
+        {t.scene.add}
       </button>
     </div>
   );

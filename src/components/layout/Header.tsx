@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
+import { useT, useLocaleStore, getLocales } from '../../i18n';
 import { exportToTwee } from '../../utils/exportToTwee';
 import { generateStandaloneHtml } from '../../utils/exportToHtml';
 import {
@@ -13,6 +14,8 @@ export function Header() {
     project, projectDir,
     setProjectTitle, setProjectDir, resetProject, loadProject,
   } = useProjectStore();
+  const { locale, setLocale } = useLocaleStore();
+  const t = useT();
 
   const [editingTitle, setEditingTitle]     = useState(false);
   const [titleDraft, setTitleDraft]         = useState('');
@@ -22,7 +25,6 @@ export function Header() {
   const [saveMenuOpen, setSaveMenuOpen]     = useState(false);
   const [busy, setBusy]                     = useState(false);
 
-  // Sync scReady state after upload
   useEffect(() => {
     setScReady(hasSCTemplate());
     setScVersion(getSCVersion());
@@ -38,26 +40,18 @@ export function Header() {
   const handleTitleBlur = () => {
     const newTitle = titleDraft.trim();
     if (!newTitle || newTitle === project.title) { setEditingTitle(false); return; }
-    // Only rename the project title — folder renaming removed since the folder
-    // is now user-chosen and may not match the project name
     setProjectTitle(newTitle);
     setEditingTitle(false);
   };
 
   // ─── Save helpers ─────────────────────────────────────────────────────────
 
-  /** Write project.tgproject into dir, creating assets/ subfolder */
   async function doSaveToDir(dir: string): Promise<void> {
     await fsApi.mkdir(joinPath(dir, 'assets'));
     const content = JSON.stringify(project, null, 2);
     await fsApi.writeFile(joinPath(dir, 'project.tgproject'), content);
   }
 
-  /**
-   * Returns the current project dir; if not set, opens a folder picker.
-   * Also creates the assets/ subfolder.
-   * Returns null if the user cancels the picker.
-   */
   async function ensureProjectDir(): Promise<string | null> {
     if (projectDir) {
       await fsApi.mkdir(joinPath(projectDir, 'assets'));
@@ -72,7 +66,6 @@ export function Header() {
 
   // ─── Save / Open ──────────────────────────────────────────────────────────
 
-  /** Silent save to existing dir; opens folder picker only if dir is unknown */
   const handleSaveProject = async () => {
     setSaveMenuOpen(false);
     setBusy(true);
@@ -91,7 +84,6 @@ export function Header() {
     }
   };
 
-  /** Save to a new user-chosen folder (Save As) */
   const handleSaveProjectAs = async () => {
     setSaveMenuOpen(false);
     const dir = await fsApi.openFolderDialog();
@@ -109,14 +101,13 @@ export function Header() {
 
   const handleOpenProject = async () => {
     const filePath = await fsApi.openFileDialog({
-      title: 'Открыть проект',
+      title: t.header.open,
       filters: [{ name: 'TwineConstructor Project', extensions: ['tgproject', 'json'] }],
     });
     if (!filePath) return;
     try {
       const text   = await fsApi.readFile(filePath);
       const loaded = JSON.parse(text);
-      // Derive project dir from the file path (strip filename)
       const dir = filePath.replace(/[/\\][^/\\]+$/, '');
       loadProject(loaded, dir);
     } catch {
@@ -124,12 +115,8 @@ export function Header() {
     }
   };
 
-  /**
-   * Confirm → pick folder → reset project.
-   * If the folder picker is canceled the project is still reset (user already confirmed).
-   */
   const handleNewProject = async () => {
-    if (!confirm('Создать новый проект? Несохранённые данные будут потеряны.')) return;
+    if (!confirm(t.header.confirmNew)) return;
     const folder = await fsApi.openFolderDialog();
     resetProject();
     if (folder) setProjectDir(folder);
@@ -164,7 +151,7 @@ export function Header() {
   };
 
   const handleClearSC = () => {
-    if (!confirm('Удалить загруженный SugarCube runtime?')) return;
+    if (!confirm(t.header.confirmClearSC)) return;
     clearSCTemplate();
     setScReady(false);
     setScVersion(null);
@@ -172,18 +159,15 @@ export function Header() {
 
   // ─── Export ───────────────────────────────────────────────────────────────
 
-  /** Export .twee — opens a Save dialog so the user can choose filename & location */
   const handleExportTwee = async () => {
     const defaultName = `${safeName(project.title)}.twee`;
     const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
-
     const filePath = await fsApi.saveFileDialog({
       title: 'Сохранить .twee файл',
       defaultPath,
       filters: [{ name: 'Twee Source File', extensions: ['twee'] }],
     });
     if (!filePath) return;
-
     try {
       const content = exportToTwee(project);
       await fsApi.writeFile(filePath, content);
@@ -192,7 +176,6 @@ export function Header() {
     }
   };
 
-  /** Export standalone HTML — saves index.html into the project folder */
   const handleExportHtml = async () => {
     const template = getSCTemplate();
     if (!template) return;
@@ -203,7 +186,7 @@ export function Header() {
       if (!dir) return;
       const html = generateStandaloneHtml(project, template);
       await fsApi.writeFile(joinPath(dir, 'index.html'), html);
-      if (confirm('index.html сохранён в папку проекта. Открыть папку?')) {
+      if (confirm(t.header.confirmHtmlSaved)) {
         await fsApi.openPath(dir);
       }
     } catch (e) {
@@ -213,22 +196,18 @@ export function Header() {
     }
   };
 
-  /** Export standalone HTML — save dialog so user can choose location & name */
   const handleExportHtmlAs = async () => {
     const template = getSCTemplate();
     if (!template) return;
     setExportMenuOpen(false);
-
     const defaultName = `${safeName(project.title)}.html`;
     const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
-
     const filePath = await fsApi.saveFileDialog({
       title: 'Сохранить HTML файл',
       defaultPath,
       filters: [{ name: 'HTML File', extensions: ['html'] }],
     });
     if (!filePath) return;
-
     setBusy(true);
     try {
       const html = generateStandaloneHtml(project, template);
@@ -241,6 +220,8 @@ export function Header() {
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
+
+  const locales = getLocales();
 
   return (
     <header className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-700 shrink-0 gap-4">
@@ -266,13 +247,12 @@ export function Header() {
           <button
             className="text-white text-sm font-medium hover:text-indigo-300 transition-colors cursor-pointer"
             onClick={handleTitleClick}
-            title="Нажмите чтобы переименовать проект"
+            title={t.header.renameProjectTitle}
           >
             {project.title}
           </button>
         )}
 
-        {/* Project dir indicator */}
         {projectDir && (
           <span
             className="text-xs text-slate-500 hover:text-slate-400 cursor-pointer transition-colors"
@@ -287,12 +267,28 @@ export function Header() {
       {/* Right: actions */}
       <div className="flex items-center gap-2 flex-wrap justify-end">
 
+        {/* Language selector */}
+        {locales.length > 1 && (
+          <select
+            value={locale}
+            onChange={e => setLocale(e.target.value)}
+            title={t.header.language}
+            className="bg-slate-800 text-slate-300 text-xs rounded px-2 py-1.5 border border-slate-600 outline-none cursor-pointer hover:border-slate-500 transition-colors"
+          >
+            {locales.map(l => (
+              <option key={l.code} value={l.code}>{l.name}</option>
+            ))}
+          </select>
+        )}
+
+        <span className="text-slate-700 select-none hidden sm:inline">|</span>
+
         {/* Open / New */}
-        <Btn variant="ghost" onClick={handleOpenProject} title="Открыть проект (.tgproject)" disabled={busy}>
-          Открыть
+        <Btn variant="ghost" onClick={handleOpenProject} title={t.header.openTitle} disabled={busy}>
+          {t.header.open}
         </Btn>
         <Btn variant="ghost" onClick={handleNewProject} disabled={busy}>
-          Новый
+          {t.header.new}
         </Btn>
 
         {/* Save — split button */}
@@ -301,15 +297,15 @@ export function Header() {
             <button
               className="px-3 py-1.5 rounded-l text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
               onClick={handleSaveProject}
-              title={projectDir ? `Сохранить в: ${projectDir}` : 'Выбрать папку и сохранить'}
+              title={projectDir ? t.header.saveTitle(projectDir) : t.header.saveNoDir}
               disabled={busy}
             >
-              {busy ? 'Сохранение...' : 'Сохранить'}
+              {busy ? t.header.saving : t.header.save}
             </button>
             <button
               className="px-2 py-1.5 rounded-r text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer border-l border-slate-600"
               onClick={() => setSaveMenuOpen(v => !v)}
-              title="Дополнительные варианты сохранения"
+              title={t.header.saveMoreOptions}
             >
               ▾
             </button>
@@ -321,8 +317,8 @@ export function Header() {
                 className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
                 onClick={handleSaveProjectAs}
               >
-                <div className="font-medium">Сохранить в новую папку</div>
-                <div className="text-xs text-slate-400 mt-0.5">Выбрать другую папку для проекта</div>
+                <div className="font-medium">{t.header.saveAsFolder}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{t.header.saveAsFolderDesc}</div>
               </button>
               {projectDir && (
                 <>
@@ -331,7 +327,7 @@ export function Header() {
                     className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
                     onClick={() => { setSaveMenuOpen(false); handleOpenProjectFolder(); }}
                   >
-                    <div className="font-medium">Открыть папку проекта</div>
+                    <div className="font-medium">{t.header.openFolder}</div>
                     <div className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{projectDir}</div>
                   </button>
                 </>
@@ -350,7 +346,7 @@ export function Header() {
         {scReady ? (
           <span
             className="text-xs text-emerald-400 px-2 py-1 rounded bg-emerald-900/30 border border-emerald-800 cursor-pointer"
-            title={`SugarCube ${scVersion} загружен. Нажмите чтобы удалить.`}
+            title={t.header.scLoaded(scVersion ?? '')}
             onClick={handleClearSC}
           >
             SC {scVersion} ✓
@@ -358,14 +354,14 @@ export function Header() {
         ) : (
           <Btn variant="ghost" onClick={handleLoadSCFormat}
             title="Загрузить SugarCube 2 format.js для экспорта самодостаточного HTML">
-            + SC Runtime
+            {t.header.scRuntime}
           </Btn>
         )}
 
         {/* .twee export */}
         <Btn variant="ghost" onClick={handleExportTwee}
-          title="Экспорт в .twee (выбор места сохранения)" disabled={busy}>
-          .twee
+          title={t.header.exportTweeTitle} disabled={busy}>
+          {t.header.exportTwee}
         </Btn>
 
         {/* HTML export — split button */}
@@ -375,15 +371,15 @@ export function Header() {
               <button
                 className="px-3 py-1.5 rounded-l text-sm font-medium bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
                 onClick={handleExportHtml}
-                title="Сохранить index.html в папку проекта"
+                title={t.header.exportSaveInFolder}
                 disabled={busy}
               >
-                {busy ? 'Сохранение...' : 'Экспорт HTML'}
+                {busy ? t.header.saving : t.header.exportHtml}
               </button>
               <button
                 className="px-2 py-1.5 rounded-r text-sm font-medium bg-indigo-700 hover:bg-indigo-600 text-white transition-colors cursor-pointer border-l border-indigo-500"
                 onClick={() => setExportMenuOpen(v => !v)}
-                title="Дополнительные опции"
+                title={t.header.exportMoreOptions}
               >
                 ▾
               </button>
@@ -395,24 +391,24 @@ export function Header() {
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
                   onClick={handleExportHtml}
                 >
-                  <div className="font-medium">Сохранить в папку проекта</div>
-                  <div className="text-xs text-slate-400 mt-0.5">Пишет index.html рядом с project.tgproject</div>
+                  <div className="font-medium">{t.header.exportSaveInFolder}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{t.header.exportSaveInFolderDesc}</div>
                 </button>
                 <div className="border-t border-slate-700" />
                 <button
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
                   onClick={handleExportHtmlAs}
                 >
-                  <div className="font-medium">Сохранить как...</div>
-                  <div className="text-xs text-slate-400 mt-0.5">Выбрать имя файла и место сохранения</div>
+                  <div className="font-medium">{t.header.exportSaveAs}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{t.header.exportSaveAsDesc}</div>
                 </button>
                 <div className="border-t border-slate-700" />
                 <button
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
                   onClick={() => { setExportMenuOpen(false); handleOpenProjectFolder(); }}
                 >
-                  <div className="font-medium">Открыть папку проекта</div>
-                  <div className="text-xs text-slate-400 mt-0.5">Показать в проводнике</div>
+                  <div className="font-medium">{t.header.openFolder}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{t.header.openFolderDesc}</div>
                 </button>
               </div>
             )}

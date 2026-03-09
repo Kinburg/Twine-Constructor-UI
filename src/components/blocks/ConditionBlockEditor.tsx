@@ -1,4 +1,21 @@
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
+import { useEditorStore } from '../../store/editorStore';
+import { useT, blockTypeLabel } from '../../i18n';
 import type {
   ConditionBlock, ConditionBranchType, ConditionOperator, Block,
   TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock,
@@ -20,7 +37,7 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: '<=', label: '<=' },
 ];
 
-/** Simplified block renderer for nested blocks (no DnD, no further nesting) */
+/** Simplified block renderer for nested blocks (no further nesting) */
 function NestedBlockEditor({
   block,
   sceneId,
@@ -33,6 +50,7 @@ function NestedBlockEditor({
   branchId: string;
 }) {
   const { updateNestedBlock } = useProjectStore();
+  const t = useT();
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const onUpdate = (patch: any) => updateNestedBlock(sceneId, conditionBlockId, branchId, block.id, patch);
   switch (block.type) {
@@ -42,14 +60,83 @@ function NestedBlockEditor({
     case 'variable-set': return <VariableSetBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VariableSetBlock>) => void} />;
     case 'image':        return <ImageBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<ImageBlock>) => void} />;
     case 'video':        return <VideoBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VideoBlock>) => void} />;
-    default:             return <span className="text-xs text-slate-500">Вложенный тип не поддерживается</span>;
+    default:             return <span className="text-xs text-slate-500">{t.block.unsupportedNested}</span>;
   }
 }
 
-const BLOCK_TYPE_LABEL: Record<string, string> = {
-  text: 'Текст', dialogue: 'Диалог', choice: 'Выбор',
-  'variable-set': 'Переменная', image: 'Картинка', video: 'Видео',
-};
+/** Sortable wrapper for a nested block with drag handle, copy, duplicate, delete */
+function SortableNestedBlock({
+  block,
+  sceneId,
+  conditionBlockId,
+  branchId,
+  onDuplicate,
+  onCopy,
+  onDelete,
+}: {
+  block: Block;
+  sceneId: string;
+  conditionBlockId: string;
+  branchId: string;
+  onDuplicate: () => void;
+  onCopy: () => void;
+  onDelete: () => void;
+}) {
+  const t = useT();
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="rounded border border-slate-700 bg-slate-800/50 overflow-hidden">
+      <div className="flex items-center justify-between px-2 py-1 bg-slate-800/80 border-b border-slate-700">
+        <div className="flex items-center gap-1.5">
+          <span
+            {...listeners}
+            {...attributes}
+            className="drag-handle text-slate-600 hover:text-slate-400 text-xs select-none cursor-grab active:cursor-grabbing"
+            title={t.block.drag}
+          >
+            ⠿
+          </span>
+          <span className="text-xs text-slate-400 uppercase tracking-wider">
+            {blockTypeLabel(t, block.type)}
+          </span>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <button
+            className="text-slate-600 hover:text-slate-300 text-xs cursor-pointer px-0.5 transition-colors"
+            title={t.block.copy}
+            onClick={onCopy}
+          >
+            📋
+          </button>
+          <button
+            className="text-slate-600 hover:text-indigo-400 text-xs cursor-pointer px-0.5 transition-colors"
+            title={t.block.duplicate}
+            onClick={onDuplicate}
+          >
+            ⧉
+          </button>
+          <button
+            className="text-slate-600 hover:text-red-400 text-xs cursor-pointer px-0.5 transition-colors"
+            title={t.block.delete}
+            onClick={onDelete}
+          >
+            ✕
+          </button>
+        </div>
+      </div>
+      <div className="p-2">
+        <NestedBlockEditor block={block} sceneId={sceneId} conditionBlockId={conditionBlockId} branchId={branchId} />
+      </div>
+    </div>
+  );
+}
 
 export function ConditionBlockEditor({
   block,
@@ -65,15 +152,19 @@ export function ConditionBlockEditor({
     deleteConditionBranch,
     addNestedBlock,
     deleteNestedBlock,
+    duplicateNestedBlock,
+    pasteToNested,
+    reorderNestedBlocks,
   } = useProjectStore();
+  const { clipboardBlock, copyToClipboard } = useEditorStore();
+  const t = useT();
   const variables = flattenVariables(project.variableNodes);
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const hasElse = block.branches.some(b => b.branchType === 'else');
 
   const addElseBranch = () => {
-    // We add a branch (which defaults to elseif), then immediately flip it to 'else'
-    // We do this by computing what the next id will be in the store after addConditionBranch fires
-    // Instead: find the current branch count, add one, then in a microtask update it
     addConditionBranch(sceneId, block.id);
     setTimeout(() => {
       const state = useProjectStore.getState();
@@ -87,6 +178,16 @@ export function ConditionBlockEditor({
         }
       }
     }, 0);
+  };
+
+  const handleNestedDragEnd = (event: DragEndEvent, branchId: string, branchBlocks: Block[]) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = branchBlocks.findIndex(b => b.id === active.id);
+    const newIndex = branchBlocks.findIndex(b => b.id === over.id);
+    if (oldIndex !== -1 && newIndex !== -1) {
+      reorderNestedBlocks(sceneId, block.id, branchId, arrayMove(branchBlocks, oldIndex, newIndex));
+    }
   };
 
   return (
@@ -123,7 +224,7 @@ export function ConditionBlockEditor({
                     updateConditionBranch(sceneId, block.id, branch.id, { variableId: e.target.value })
                   }
                 >
-                  <option value="">— $переменная —</option>
+                  <option value="">{t.condition.varPlaceholder}</option>
                   {variables.map(v => (
                     <option key={v.id} value={v.id}>${v.name}</option>
                   ))}
@@ -145,7 +246,7 @@ export function ConditionBlockEditor({
 
                 <input
                   className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
-                  placeholder="значение"
+                  placeholder={t.condition.valuePlaceholder}
                   value={branch.value}
                   onChange={e =>
                     updateConditionBranch(sceneId, block.id, branch.id, { value: e.target.value })
@@ -164,30 +265,45 @@ export function ConditionBlockEditor({
 
           {/* Nested blocks */}
           <div className="p-2 flex flex-col gap-1.5 bg-slate-900/20">
-            {branch.blocks.map(nb => (
-              <div key={nb.id} className="rounded border border-slate-700 bg-slate-800/50 overflow-hidden">
-                <div className="flex items-center justify-between px-2 py-1 bg-slate-800/80 border-b border-slate-700">
-                  <span className="text-xs text-slate-400 uppercase tracking-wider">
-                    {BLOCK_TYPE_LABEL[nb.type] ?? nb.type}
-                  </span>
-                  <button
-                    className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
-                    onClick={() => deleteNestedBlock(sceneId, block.id, branch.id, nb.id)}
-                  >
-                    ✕
-                  </button>
-                </div>
-                <div className="p-2">
-                  <NestedBlockEditor block={nb} sceneId={sceneId} conditionBlockId={block.id} branchId={branch.id} />
-                </div>
-              </div>
-            ))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={(e) => handleNestedDragEnd(e, branch.id, branch.blocks)}
+            >
+              <SortableContext
+                items={branch.blocks.map(nb => nb.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {branch.blocks.map(nb => (
+                  <SortableNestedBlock
+                    key={nb.id}
+                    block={nb}
+                    sceneId={sceneId}
+                    conditionBlockId={block.id}
+                    branchId={branch.id}
+                    onDuplicate={() => duplicateNestedBlock(sceneId, block.id, branch.id, nb.id)}
+                    onCopy={() => copyToClipboard(nb)}
+                    onDelete={() => deleteNestedBlock(sceneId, block.id, branch.id, nb.id)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
 
             <AddBlockMenu
               sceneId={sceneId}
               excludeTypes={['condition']}
               onAdd={(nb) => addNestedBlock(sceneId, block.id, branch.id, nb)}
             />
+
+            {clipboardBlock && (
+              <button
+                className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/50 rounded px-2 py-1 transition-colors cursor-pointer text-left border border-dashed border-indigo-800/50"
+                title={t.block.paste(blockTypeLabel(t, clipboardBlock.type))}
+                onClick={() => pasteToNested(sceneId, block.id, branch.id, clipboardBlock)}
+              >
+                {t.block.paste(blockTypeLabel(t, clipboardBlock.type))}
+              </button>
+            )}
           </div>
         </div>
       ))}
@@ -198,7 +314,7 @@ export function ConditionBlockEditor({
             className="text-xs text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
             onClick={() => addConditionBranch(sceneId, block.id)}
           >
-            + Ветка (if/elseif)
+            {t.condition.addBranch}
           </button>
         )}
         {block.branches.length > 0 && !hasElse && (
@@ -206,11 +322,11 @@ export function ConditionBlockEditor({
             className="text-xs text-slate-400 hover:text-slate-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
             onClick={addElseBranch}
           >
-            + Ветка (else)
+            {t.condition.addElse}
           </button>
         )}
         {block.branches.length === 0 && (
-          <span className="text-xs text-slate-600 italic px-2">Добавьте ветку (if)</span>
+          <span className="text-xs text-slate-600 italic px-2">{t.condition.noBranches}</span>
         )}
       </div>
     </div>

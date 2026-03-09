@@ -1,6 +1,8 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore } from '../../store/projectStore';
+import { useEditorStore } from '../../store/editorStore';
+import { useT, blockTypeLabel } from '../../i18n';
 import type { Block } from '../../types';
 import { TextBlockEditor } from './TextBlockEditor';
 import { DialogueBlockEditor } from './DialogueBlockEditor';
@@ -12,16 +14,16 @@ import { VideoBlockEditor } from './VideoBlockEditor';
 import { ButtonBlockEditor } from './ButtonBlockEditor';
 import { InputFieldBlockEditor } from './InputFieldBlockEditor';
 
-const BLOCK_LABELS: Record<Block['type'], { label: string; color: string }> = {
-  'text':         { label: 'Текст',       color: 'bg-slate-700' },
-  'dialogue':     { label: 'Диалог',      color: 'bg-indigo-900/40' },
-  'choice':       { label: 'Выбор',       color: 'bg-emerald-900/40' },
-  'condition':    { label: 'Условие',     color: 'bg-amber-900/40' },
-  'variable-set': { label: 'Переменная',  color: 'bg-purple-900/40' },
-  'button':       { label: 'Кнопка',      color: 'bg-blue-900/40' },
-  'input-field':  { label: 'Поле ввода',  color: 'bg-teal-900/40' },
-  'image':        { label: 'Картинка',    color: 'bg-pink-900/40' },
-  'video':        { label: 'Видео',       color: 'bg-red-900/40' },
+const BLOCK_COLORS: Record<Block['type'], string> = {
+  'text':         'bg-slate-700',
+  'dialogue':     'bg-indigo-900/40',
+  'choice':       'bg-emerald-900/40',
+  'condition':    'bg-amber-900/40',
+  'variable-set': 'bg-purple-900/40',
+  'button':       'bg-blue-900/40',
+  'input-field':  'bg-teal-900/40',
+  'image':        'bg-pink-900/40',
+  'video':        'bg-red-900/40',
 };
 
 interface Props {
@@ -30,7 +32,9 @@ interface Props {
 }
 
 export function BlockItem({ block, sceneId }: Props) {
-  const { deleteBlock } = useProjectStore();
+  const { deleteBlock, duplicateBlock } = useProjectStore();
+  const { copyToClipboard } = useEditorStore();
+  const t = useT();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
   const style = {
@@ -39,7 +43,8 @@ export function BlockItem({ block, sceneId }: Props) {
     opacity: isDragging ? 0.5 : 1,
   };
 
-  const { label, color } = BLOCK_LABELS[block.type];
+  const color = BLOCK_COLORS[block.type];
+  const label = blockTypeLabel(t, block.type);
 
   return (
     <div
@@ -53,20 +58,36 @@ export function BlockItem({ block, sceneId }: Props) {
           <span
             {...listeners}
             {...attributes}
-            className="drag-handle text-slate-500 hover:text-slate-300 text-sm select-none"
-            title="Перетащить"
+            className="drag-handle text-slate-500 hover:text-slate-300 text-sm select-none cursor-grab active:cursor-grabbing"
+            title={t.block.drag}
           >
             ⠿
           </span>
           <span className="text-xs font-medium text-slate-400 uppercase tracking-wider">{label}</span>
         </div>
-        <button
-          className="text-slate-600 hover:text-red-400 text-sm transition-colors cursor-pointer"
-          title="Удалить блок"
-          onClick={() => deleteBlock(sceneId, block.id)}
-        >
-          ✕
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            className="text-slate-600 hover:text-slate-300 text-sm transition-colors cursor-pointer"
+            title={t.block.copy}
+            onClick={() => copyToClipboard(block)}
+          >
+            📋
+          </button>
+          <button
+            className="text-slate-600 hover:text-indigo-400 text-sm transition-colors cursor-pointer"
+            title={t.block.duplicate}
+            onClick={() => duplicateBlock(sceneId, block.id)}
+          >
+            ⧉
+          </button>
+          <button
+            className="text-slate-600 hover:text-red-400 text-sm transition-colors cursor-pointer"
+            title={t.block.delete}
+            onClick={() => deleteBlock(sceneId, block.id)}
+          >
+            ✕
+          </button>
+        </div>
       </div>
 
       {/* Block body */}
@@ -78,7 +99,7 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'variable-set' && <VariableSetBlockEditor block={block} sceneId={sceneId} />}
         {block.type === 'image'        && <ImageBlockEditor       block={block} sceneId={sceneId} />}
         {block.type === 'video'        && <VideoBlockEditor       block={block} sceneId={sceneId} />}
-        {block.type === 'button'       && <ButtonBlockEditor       block={block} sceneId={sceneId} />}
+        {block.type === 'button'       && <ButtonBlockEditor      block={block} sceneId={sceneId} />}
         {block.type === 'input-field'  && <InputFieldBlockEditor  block={block} sceneId={sceneId} />}
       </div>
     </div>
