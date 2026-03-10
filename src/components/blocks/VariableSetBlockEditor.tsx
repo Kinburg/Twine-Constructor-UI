@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
-import type { VariableSetBlock, VarOperator, RandomConfig, VarValueMode } from '../../types';
+import type { VariableSetBlock, VarOperator, RandomConfig, VarValueMode, StringBoundEntry } from '../../types';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '= (присвоить)' },
@@ -10,7 +10,7 @@ const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '/=', label: '/= (разделить)' },
 ];
 
-/** Default RandomConfig for a given variable type */
+/** Default RandomConfig strictly matching the variable type */
 function defaultRandomConfig(varType: string): RandomConfig {
   switch (varType) {
     case 'number':  return { kind: 'number', min: 0, max: 100 };
@@ -19,7 +19,7 @@ function defaultRandomConfig(varType: string): RandomConfig {
   }
 }
 
-/** Preview of the SugarCube snippet that will be generated */
+/** Preview snippet for random mode */
 function randomPreview(varName: string, cfg: RandomConfig, operator: VarOperator): string {
   switch (cfg.kind) {
     case 'number': {
@@ -46,27 +46,54 @@ export function VariableSetBlockEditor({
 }) {
   const { project, updateBlock } = useProjectStore();
   const update = onUpdate ?? ((p: Partial<VariableSetBlock>) => updateBlock(sceneId, block.id, p as never));
-  const variables = flattenVariables(project.variableNodes);
+  const variables   = flattenVariables(project.variableNodes);
   const selectedVar = variables.find(v => v.id === block.variableId);
   const exprInputRef = useRef<HTMLInputElement>(null);
 
   // Backward compat: old saves used randomize boolean
-  const effectiveMode: VarValueMode = block.valueMode ?? (block.randomize ? 'random' : 'manual');
-  const isNumber = selectedVar?.varType === 'number';
-  const cfg = block.randomConfig ?? (selectedVar ? defaultRandomConfig(selectedVar.varType) : undefined);
+  const rawMode: VarValueMode = block.valueMode ?? (block.randomize ? 'random' : 'manual');
+  const isNumber  = selectedVar?.varType === 'number';
+  const isString  = selectedVar?.varType === 'string';
+  // isBoolean = everything else (including undefined)
 
+  // Normalize: if the stored mode is incompatible with the current variable type, display as 'manual'.
+  // This fixes the UI not updating when the user switches to a different variable type.
+  const effectiveMode: VarValueMode =
+    (rawMode === 'expression' && !isNumber) ? 'manual' :
+    (rawMode === 'dynamic'    && !isString) ? 'manual' :
+    rawMode;
+
+  // Always enforce the correct random config kind for the current variable type.
+  // Prevents stale config (e.g., string-length UI showing for a boolean variable).
+  const expectedKind = isNumber ? 'number' : selectedVar?.varType === 'boolean' ? 'boolean' : 'string';
+  const cfg: RandomConfig | undefined = selectedVar
+    ? (block.randomConfig?.kind === expectedKind ? block.randomConfig : defaultRandomConfig(selectedVar.varType))
+    : undefined;
+
+  // ── Mode options per variable type ─────────────────────────────────────────
+  const modeOptions: [VarValueMode, string][] = isNumber
+    ? [['manual', 'Вручную'], ['random', '🎲 Случайное'], ['expression', '⚙️ Выражение']]
+    : isString
+    ? [['manual', 'Вручную'], ['random', '🎲 Случайное'], ['dynamic', '⚙️ Динамически']]
+    : /* boolean */
+      [['manual', 'Вручную'], ['random', '🎲 Случайное']];
+
+  // ── Mode switch ─────────────────────────────────────────────────────────────
   const setMode = (mode: VarValueMode) => {
     if (mode === 'random' && selectedVar) {
       update({
         valueMode: 'random',
         randomize: true,
         // For numbers, keep current operator (e.g. $hp -= random(10, 15))
-        // For string/boolean, reset to = (only assignment makes sense)
+        // For string/boolean, only = makes sense
         ...(selectedVar.varType !== 'number' ? { operator: '=' as VarOperator } : {}),
-        randomConfig: block.randomConfig ?? defaultRandomConfig(selectedVar.varType),
+        // Always reset to the correct kind — prevents stale config bugs
+        randomConfig: defaultRandomConfig(selectedVar.varType),
       });
     } else if (mode === 'expression') {
       update({ valueMode: 'expression', randomize: false });
+    } else if (mode === 'dynamic') {
+      update({ valueMode: 'dynamic', randomize: false });
     } else {
       update({ valueMode: 'manual', randomize: false });
     }
@@ -77,7 +104,7 @@ export function VariableSetBlockEditor({
     update({ randomConfig: { ...cfg, ...patch } as RandomConfig });
   };
 
-  /** Insert $varname at cursor position in the expression input */
+  // ── Expression mode: insert $varname at cursor ──────────────────────────────
   const insertVar = (varName: string) => {
     const input = exprInputRef.current;
     const token = `$${varName}`;
@@ -87,10 +114,8 @@ export function VariableSetBlockEditor({
     }
     const start = input.selectionStart ?? 0;
     const end   = input.selectionEnd   ?? 0;
-    const current = block.expression ?? '';
-    const next = current.slice(0, start) + token + current.slice(end);
+    const next  = (block.expression ?? '').slice(0, start) + token + (block.expression ?? '').slice(end);
     update({ expression: next });
-    // Restore cursor after React re-render
     requestAnimationFrame(() => {
       input.focus();
       const pos = start + token.length;
@@ -98,7 +123,25 @@ export function VariableSetBlockEditor({
     });
   };
 
-  // Build the SugarCube preview string
+  // ── Dynamic mode mapping helpers ────────────────────────────────────────────
+  const dynMapping = block.dynamicMapping ?? [];
+
+  const addDynEntry = () => update({
+    dynamicMapping: [...dynMapping, {
+      id: crypto.randomUUID(),
+      matchType: 'exact',
+      value: '', rangeMin: '', rangeMax: '',
+      result: '',
+    } satisfies StringBoundEntry],
+  });
+
+  const patchDynEntry = (i: number, patch: Partial<StringBoundEntry>) =>
+    update({ dynamicMapping: dynMapping.map((m, j) => j === i ? { ...m, ...patch } : m) });
+
+  const removeDynEntry = (i: number) =>
+    update({ dynamicMapping: dynMapping.filter((_, j) => j !== i) });
+
+  // ── Preview ─────────────────────────────────────────────────────────────────
   let preview: string | null = null;
   if (selectedVar && block.variableId) {
     const op = block.operator === '=' ? 'to' : block.operator;
@@ -109,22 +152,42 @@ export function VariableSetBlockEditor({
     } else if (effectiveMode === 'manual' && block.value) {
       const val = selectedVar.varType === 'string' ? `"${block.value}"` : block.value;
       preview = `<<set $${selectedVar.name} ${op} ${val}>>`;
+    } else if (effectiveMode === 'dynamic' && dynMapping.length > 0) {
+      const cv = variables.find(v => v.id === block.dynamicVariableId);
+      const cvName = cv ? `$${cv.name}` : '$???';
+      const first = dynMapping[0];
+      const cond  = (first.matchType ?? 'exact') === 'range'
+        ? `${cvName} >= ${first.rangeMin ?? '0'} && ${cvName} <= ${first.rangeMax ?? '0'}`
+        : `${cvName} eq ${cv?.varType === 'string' ? `"${first.value}"` : first.value}`;
+      const more  = dynMapping.length > 1 ? `…` : '';
+      preview = `<<if ${cond}>><<set $${selectedVar.name} to "${first.result}">>${more}<</if>>`;
     }
   }
 
-  // Number variables available as chips in expression mode
   const numberVars = variables.filter(v => v.varType === 'number');
 
   return (
     <div className="flex flex-col gap-2">
 
-      {/* Variable selector */}
+      {/* ── Variable selector ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-20 shrink-0">Переменная:</label>
         <select
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
           value={block.variableId}
-          onChange={e => update({ variableId: e.target.value })}
+          onChange={e => {
+            const newVarId = e.target.value;
+            const newVar   = variables.find(v => v.id === newVarId);
+            // Reset mode when switching to an incompatible variable type:
+            // 'expression' only works for numbers, 'dynamic' only for strings.
+            const needsReset =
+              (rawMode === 'expression' && newVar?.varType !== 'number') ||
+              (rawMode === 'dynamic'    && newVar?.varType !== 'string');
+            update({
+              variableId: newVarId,
+              ...(needsReset ? { valueMode: 'manual', randomize: false } : {}),
+            });
+          }}
         >
           <option value="">— выбрать —</option>
           {variables.map(v => (
@@ -136,8 +199,8 @@ export function VariableSetBlockEditor({
         )}
       </div>
 
-      {/* Operator — shown when: manual (always), random+number, expression (always) */}
-      {selectedVar && (effectiveMode !== 'random' || cfg?.kind === 'number') && (
+      {/* ── Operator — hidden for dynamic mode (always =) ─────────────────── */}
+      {selectedVar && effectiveMode !== 'dynamic' && (effectiveMode !== 'random' || cfg?.kind === 'number') && (
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-20 shrink-0">Операция:</label>
           <select
@@ -152,52 +215,36 @@ export function VariableSetBlockEditor({
         </div>
       )}
 
-      {/* Mode selector — 3 pills for numbers, checkbox for others */}
+      {/* ── Mode selector — pills for all variable types ───────────────────── */}
       {selectedVar && (
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-20 shrink-0">Значение:</label>
-          {isNumber ? (
-            <div className="flex gap-1">
-              {([
-                ['manual',     'Вручную'],
-                ['random',     '🎲 Случайное'],
-                ['expression', '⚙️ Выражение'],
-              ] as [VarValueMode, string][]).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  onClick={() => setMode(mode)}
-                  className={`px-2 py-0.5 text-xs rounded cursor-pointer transition-colors ${
-                    effectiveMode === mode
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                checked={effectiveMode === 'random'}
-                onChange={e => setMode(e.target.checked ? 'random' : 'manual')}
-                className="accent-indigo-500 cursor-pointer"
-              />
-              <span className="text-xs text-slate-300">🎲 Случайное</span>
-            </label>
-          )}
+          <div className="flex gap-1">
+            {modeOptions.map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => setMode(mode)}
+                className={`px-2 py-0.5 text-xs rounded cursor-pointer transition-colors ${
+                  effectiveMode === mode
+                    ? 'bg-indigo-600 text-white'
+                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Manual value input */}
+      {/* ── Manual value input ────────────────────────────────────────────── */}
       {effectiveMode === 'manual' && (
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-20 shrink-0" />
           <input
             className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
             placeholder={
-              selectedVar?.varType === 'string'  ? '"текст"' :
+              selectedVar?.varType === 'string'  ? 'текст' :
               selectedVar?.varType === 'boolean' ? 'true / false' : '0'
             }
             value={block.value}
@@ -206,7 +253,7 @@ export function VariableSetBlockEditor({
         </div>
       )}
 
-      {/* Expression mode — text input + variable chips */}
+      {/* ── Expression mode (numbers) — text input + $var chips ───────────── */}
       {effectiveMode === 'expression' && (
         <div className="flex flex-col gap-1.5 pl-2 border-l-2 border-indigo-800/50">
           <div className="flex items-center gap-2">
@@ -219,7 +266,6 @@ export function VariableSetBlockEditor({
               onChange={e => update({ expression: e.target.value })}
             />
           </div>
-          {/* Clickable variable chips for quick insertion */}
           {numberVars.length > 0 && (
             <div className="flex flex-wrap gap-1 pl-[88px]">
               {numberVars.map(v => (
@@ -237,8 +283,129 @@ export function VariableSetBlockEditor({
         </div>
       )}
 
-      {/* Random config — only shown when random mode is active */}
-      {effectiveMode === 'random' && cfg && (
+      {/* ── Dynamic mode (strings) — variable + mapping ───────────────────── */}
+      {effectiveMode === 'dynamic' && (
+        <div className="flex flex-col gap-2 pl-2 border-l-2 border-indigo-800/50">
+
+          {/* Controlling variable */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">Зависит от:</label>
+            <select
+              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+              value={block.dynamicVariableId ?? ''}
+              onChange={e => update({ dynamicVariableId: e.target.value })}
+            >
+              <option value="">— выбрать переменную —</option>
+              {variables.map(v => (
+                <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Mapping list */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-slate-400">Соответствия (значение → текст):</span>
+              <button
+                className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
+                onClick={addDynEntry}
+              >
+                + Добавить
+              </button>
+            </div>
+
+            {dynMapping.length === 0 && (
+              <p className="text-xs text-slate-600 italic">Нет записей. Нажмите «+ Добавить».</p>
+            )}
+
+            {dynMapping.map((m, i) => {
+              const mt = m.matchType ?? 'exact';
+              return (
+                <div key={m.id ?? i} className="flex flex-col gap-1.5 border border-slate-700/60 rounded p-1.5">
+
+                  {/* Match type + delete */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-xs text-slate-500 shrink-0">Режим:</span>
+                    <select
+                      className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
+                      value={mt}
+                      onChange={e => patchDynEntry(i, { matchType: e.target.value as 'exact' | 'range' })}
+                    >
+                      <option value="exact">Точное значение</option>
+                      <option value="range">Диапазон</option>
+                    </select>
+                    <button
+                      className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
+                      onClick={() => removeDynEntry(i)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Exact value */}
+                  {mt === 'exact' && (
+                    <div className="flex gap-1 items-center">
+                      <span className="text-xs text-slate-500 shrink-0 w-12">Знач.:</span>
+                      <input
+                        className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                        placeholder="0"
+                        value={m.value}
+                        onChange={e => patchDynEntry(i, { value: e.target.value })}
+                      />
+                    </div>
+                  )}
+
+                  {/* Range */}
+                  {mt === 'range' && (
+                    <div className="flex gap-1 items-center">
+                      <span className="text-xs text-slate-500 shrink-0 w-12">От:</span>
+                      <input
+                        className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                        placeholder="0"
+                        value={m.rangeMin ?? ''}
+                        onChange={e => patchDynEntry(i, { rangeMin: e.target.value })}
+                      />
+                      <span className="text-xs text-slate-500 shrink-0">до</span>
+                      <input
+                        className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                        placeholder="100"
+                        value={m.rangeMax ?? ''}
+                        onChange={e => patchDynEntry(i, { rangeMax: e.target.value })}
+                      />
+                    </div>
+                  )}
+
+                  {/* Result string */}
+                  <div className="flex gap-1 items-center">
+                    <span className="text-xs text-slate-500 shrink-0 w-12">Текст:</span>
+                    <input
+                      className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                      placeholder="текст результата"
+                      value={m.result}
+                      onChange={e => patchDynEntry(i, { result: e.target.value })}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Default / fallback */}
+            <div className="flex gap-1 items-center mt-0.5">
+              <span className="text-xs text-slate-400 shrink-0 w-20">По умолч.:</span>
+              <input
+                className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                placeholder="текст если нет совпадений"
+                value={block.dynamicDefault ?? ''}
+                onChange={e => update({ dynamicDefault: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Random config — number range or string length ─────────────────── */}
+      {/* (not shown for boolean — pills are self-explanatory) */}
+      {effectiveMode === 'random' && cfg && cfg.kind !== 'boolean' && (
         <div className="flex flex-col gap-1.5 pl-2 border-l-2 border-indigo-800/50">
           {cfg.kind === 'number' && (
             <div className="flex items-center gap-2">
@@ -260,7 +427,6 @@ export function VariableSetBlockEditor({
               />
             </div>
           )}
-
           {cfg.kind === 'string' && (
             <div className="flex items-center gap-2">
               <label className="text-xs text-slate-400 w-20 shrink-0">Длина:</label>
@@ -275,17 +441,10 @@ export function VariableSetBlockEditor({
               <span className="text-xs text-slate-500">символов [a-z0-9]</span>
             </div>
           )}
-
-          {cfg.kind === 'boolean' && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400 w-20 shrink-0" />
-              <span className="text-xs text-slate-400 italic">true или false — выбирается случайно</span>
-            </div>
-          )}
         </div>
       )}
 
-      {/* SugarCube preview */}
+      {/* ── SugarCube preview ─────────────────────────────────────────────── */}
       {preview && (
         <div className="text-xs text-slate-500 font-mono bg-slate-800/60 px-2 py-1 rounded break-all">
           {preview}

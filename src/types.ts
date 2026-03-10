@@ -54,8 +54,9 @@ export type VarOperator = '=' | '+=' | '-=' | '*=' | '/=';
  * - 'manual'     — hardcoded literal
  * - 'random'     — generated randomly (see RandomConfig)
  * - 'expression' — arbitrary SugarCube numeric expression (number vars only)
+ * - 'dynamic'    — string value chosen by mapping another variable's value (string vars only)
  */
-export type VarValueMode = 'manual' | 'random' | 'expression';
+export type VarValueMode = 'manual' | 'random' | 'expression' | 'dynamic';
 
 /**
  * Configuration for generating a random value.
@@ -65,6 +66,19 @@ export type RandomConfig =
   | { kind: 'number';  min: number; max: number }
   | { kind: 'boolean' }
   | { kind: 'string';  length: number };
+
+/**
+ * A single entry in the dynamic string mapping.
+ * Maps a controlling variable's value (exact or range) to a string result.
+ */
+export interface StringBoundEntry {
+  id?: string;
+  matchType?: 'exact' | 'range';
+  value: string;       // used when matchType === 'exact' (or undefined)
+  rangeMin?: string;   // used when matchType === 'range'
+  rangeMax?: string;   // used when matchType === 'range'
+  result: string;      // the string value to assign to the target variable
+}
 
 export interface VariableSetBlock {
   id: string;
@@ -79,6 +93,11 @@ export interface VariableSetBlock {
   randomConfig?: RandomConfig;
   /** SugarCube expression used when valueMode is 'expression' (numbers only). */
   expression?: string;
+  // ── Dynamic mode (string vars only, valueMode === 'dynamic') ─────────────
+  /** Variable whose value controls which string is assigned. */
+  dynamicVariableId?: string;
+  dynamicMapping?: StringBoundEntry[];
+  dynamicDefault?: string;  // fallback string when no mapping entry matches
 }
 
 export type ImageMode = 'static' | 'bound';

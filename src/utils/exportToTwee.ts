@@ -108,10 +108,35 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
       // Effective mode — backward compat with old randomize boolean
       const mode = block.valueMode ?? (block.randomize ? 'random' : 'manual');
 
-      // ── Expression mode ──────────────────────────────────────────────────────
+      // ── Expression mode (numbers) ────────────────────────────────────────────
       if (mode === 'expression' && block.expression) {
         if (block.operator === '=') return `${indent}<<set $${v.name} to ${block.expression}>>`;
         return `${indent}<<set $${v.name} ${block.operator} ${block.expression}>>`;
+      }
+
+      // ── Dynamic mode (strings) — if/elseif/else chain ────────────────────────
+      if (mode === 'dynamic' && block.dynamicMapping && block.dynamicMapping.length > 0) {
+        const cv     = vars.find(x => x.id === block.dynamicVariableId);
+        const cvName = cv ? `$${cv.name}` : '$???';
+
+        const cases = block.dynamicMapping.map((m, i) => {
+          const kw = i === 0 ? '<<if' : '<<elseif';
+          const mt = m.matchType ?? 'exact';
+          let cond: string;
+          if (mt === 'range') {
+            cond = `${cvName} >= ${m.rangeMin ?? '0'} && ${cvName} <= ${m.rangeMax ?? '0'}`;
+          } else {
+            const val = cv?.varType === 'string' ? `"${m.value}"` : m.value;
+            cond = `${cvName} eq ${val}`;
+          }
+          return `${indent}${kw} ${cond}>><<set $${v.name} to "${m.result}">>`;
+        });
+
+        if (block.dynamicDefault !== undefined) {
+          cases.push(`${indent}<<else>><<set $${v.name} to "${block.dynamicDefault}">>`);
+        }
+        cases.push(`${indent}<</if>>`);
+        return cases.join('\n');
       }
 
       // ── Random value ────────────────────────────────────────────────────────
