@@ -30,6 +30,7 @@ export interface Translations {
     selectPrompt: string;
     note: string;
     notePlaceholder: string;
+    filterNoScenes: string;
   };
 
   block: {
@@ -79,6 +80,7 @@ export interface Translations {
   };
 
   header: {
+    searchPlaceholder: string;
     renameProjectTitle: string;
     open: string;
     openTitle: string;

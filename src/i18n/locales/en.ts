@@ -27,6 +27,7 @@ const en: Translations = {
     selectPrompt:  'Select a scene on the left',
     note:          'Scene note (not exported)',
     notePlaceholder: 'Developer note...',
+    filterNoScenes: 'No scenes match these tags',
   },
 
   block: {
@@ -74,6 +75,7 @@ const en: Translations = {
   },
 
   header: {
+    searchPlaceholder: 'Search scenes...',
     renameProjectTitle: 'Click to rename project',
     open:               'Open',
     openTitle:          'Open project (.tgproject)',

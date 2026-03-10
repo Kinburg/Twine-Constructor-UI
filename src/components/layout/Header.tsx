@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
+import { useEditorStore } from '../../store/editorStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
 import { generateStandaloneHtml } from '../../utils/exportToHtml';
 import {
@@ -14,6 +15,7 @@ export function Header() {
     setProjectTitle, setProjectDir, resetProject, loadProject,
   } = useProjectStore();
   const { locale, setLocale } = useLocaleStore();
+  const { searchQuery, setSearchQuery } = useEditorStore();
   const t = useT();
 
   const [editingTitle, setEditingTitle]     = useState(false);
@@ -206,7 +208,7 @@ export function Header() {
   const locales = getLocales();
 
   return (
-    <header className="flex items-center justify-between px-4 py-2 bg-slate-900 border-b border-slate-700 shrink-0 gap-4">
+    <header className="flex items-center px-4 py-2 bg-slate-900 border-b border-slate-700 shrink-0 gap-4">
       {/* Left: logo + title */}
       <div className="flex items-center gap-3 shrink-0">
         <span className="text-indigo-400 font-bold text-sm tracking-wider uppercase select-none">
@@ -246,8 +248,32 @@ export function Header() {
         )}
       </div>
 
+      {/* Center: search */}
+      <div className="flex-1 flex justify-center">
+        <div className="relative w-full max-w-xs">
+          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none select-none">
+            🔍
+          </span>
+          <input
+            className="w-full bg-slate-800 text-white text-xs pl-7 pr-6 py-1.5 rounded border border-slate-600 outline-none focus:border-indigo-500 placeholder-slate-500 transition-colors"
+            placeholder={t.header.searchPlaceholder}
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 cursor-pointer text-sm leading-none"
+              onClick={() => setSearchQuery('')}
+              title="Очистить поиск"
+            >
+              ×
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Right: actions */}
-      <div className="flex items-center gap-2 flex-wrap justify-end">
+      <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
 
         {/* Language selector */}
         {locales.length > 1 && (

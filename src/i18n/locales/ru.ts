@@ -27,6 +27,7 @@ const ru: Translations = {
     selectPrompt:  'Выберите сцену слева',
     note:          'Заметка сцены (не экспортируется)',
     notePlaceholder: 'Заметка для разработчика...',
+    filterNoScenes: 'Нет сцен с такими тегами',
   },
 
   block: {
@@ -74,6 +75,7 @@ const ru: Translations = {
   },
 
   header: {
+    searchPlaceholder: 'Поиск по сценам...',
     renameProjectTitle: 'Нажмите чтобы переименовать проект',
     open:               'Открыть',
     openTitle:          'Открыть проект (.tgproject)',
