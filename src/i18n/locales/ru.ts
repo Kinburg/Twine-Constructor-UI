@@ -110,6 +110,9 @@ const ru: Translations = {
     previewCode:        '</> Превью',
     previewCodeTitle:   'Открыть превью кода текущей сцены в отдельном окне',
     previewCodeClose:   'Закрыть превью кода',
+    graph:              '⬡ Граф',
+    graphTitle:         'Открыть граф сцен в отдельном окне',
+    graphClose:         'Закрыть граф сцен',
   },
 };
 

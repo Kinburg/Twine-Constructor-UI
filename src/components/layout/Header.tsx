@@ -27,6 +27,7 @@ export function Header() {
   const [saveMenuOpen, setSaveMenuOpen]     = useState(false);
   const [busy, setBusy]                     = useState(false);
   const [previewOpen, setPreviewOpen]       = useState(false);
+  const [graphOpen, setGraphOpen]           = useState(false);
 
   useEffect(() => {
     setScReady(hasSCTemplate());
@@ -38,6 +39,13 @@ export function Header() {
     const api = window.electronAPI;
     if (!api?.onPreviewClosed) return;
     api.onPreviewClosed(() => setPreviewOpen(false));
+  }, []);
+
+  // Sync button state when user closes the graph window via its × button
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onGraphClosed) return;
+    api.onGraphClosed(() => setGraphOpen(false));
   }, []);
 
   // ─── Title ────────────────────────────────────────────────────────────────
@@ -143,6 +151,13 @@ export function Header() {
     if (!api?.togglePreview) return;
     const isNowOpen = await api.togglePreview();
     setPreviewOpen(isNowOpen);
+  };
+
+  const handleToggleGraph = async () => {
+    const api = window.electronAPI;
+    if (!api?.toggleGraph) return;
+    const isNowOpen = await api.toggleGraph();
+    setGraphOpen(isNowOpen);
   };
 
   // ─── SC Runtime ───────────────────────────────────────────────────────────
@@ -323,6 +338,21 @@ export function Header() {
             title={previewOpen ? t.header.previewCodeClose : t.header.previewCodeTitle}
           >
             {t.header.previewCode}
+          </button>
+        )}
+
+        {/* Scene graph window toggle */}
+        {window.electronAPI?.toggleGraph && (
+          <button
+            className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
+              graphOpen
+                ? 'bg-violet-700 hover:bg-violet-600 text-violet-100'
+                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+            }`}
+            onClick={handleToggleGraph}
+            title={graphOpen ? t.header.graphClose : t.header.graphTitle}
+          >
+            {t.header.graph}
           </button>
         )}
 

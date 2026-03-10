@@ -115,5 +115,8 @@ export interface Translations {
     previewCode: string;
     previewCodeTitle: string;
     previewCodeClose: string;
+    graph: string;
+    graphTitle: string;
+    graphClose: string;
   };
 }

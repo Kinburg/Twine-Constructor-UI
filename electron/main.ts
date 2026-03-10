@@ -19,6 +19,38 @@ const PROJECTS_DIR = path.join(app.getPath('documents'), 'TwineConstructor', 'Pr
 
 let win: BrowserWindow | null;
 let previewWin: BrowserWindow | null = null;
+let graphWin: BrowserWindow | null = null;
+let lastGraphData: unknown = null;
+
+// ─── Graph window ─────────────────────────────────────────────────────────────
+
+function createGraphWindow() {
+  graphWin = new BrowserWindow({
+    width: 1100,
+    height: 720,
+    minWidth: 500,
+    minHeight: 400,
+    title: 'Scene Graph — TwineConstructor',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.mjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  if (VITE_DEV_SERVER_URL) {
+    graphWin.loadURL(VITE_DEV_SERVER_URL + '/?mode=graph');
+  } else {
+    graphWin.loadFile(path.join(RENDERER_DIST, 'index.html'), { query: { mode: 'graph' } });
+  }
+
+  graphWin.on('closed', () => {
+    graphWin = null;
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('graph:closed');
+    }
+  });
+}
 
 // ─── Preview window ───────────────────────────────────────────────────────────
 
@@ -103,6 +135,48 @@ ipcMain.handle('preview:toggle', () => {
 ipcMain.handle('preview:update', (_e, code: string) => {
   if (previewWin && !previewWin.isDestroyed()) {
     previewWin.webContents.send('preview:code', code);
+  }
+});
+
+// ─── IPC: graph window ───────────────────────────────────────────────────────
+
+ipcMain.handle('graph:toggle', () => {
+  if (graphWin && !graphWin.isDestroyed()) {
+    graphWin.close();
+    graphWin = null;
+    return false;
+  }
+  createGraphWindow();
+  return true;
+});
+
+// Main window pushes project snapshot → cache + relay to graph window
+ipcMain.handle('graph:update', (_e, data: unknown) => {
+  lastGraphData = data;
+  if (graphWin && !graphWin.isDestroyed()) {
+    graphWin.webContents.send('graph:project', data);
+  }
+});
+
+// Graph window signals it's ready → send cached data immediately
+ipcMain.handle('graph:ready', (e) => {
+  if (lastGraphData !== null) {
+    e.sender.send('graph:project', lastGraphData);
+  }
+});
+
+// Graph window sends node position after drag → relay to main window
+ipcMain.handle('graph:move', (_e, sceneId: string, x: number, y: number) => {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('graph:move', sceneId, x, y);
+  }
+});
+
+// Graph window requests navigation → relay to main window
+ipcMain.handle('graph:navigate', (_e, sceneId: string) => {
+  if (win && !win.isDestroyed()) {
+    win.webContents.send('graph:navigate', sceneId);
+    win.focus();
   }
 });
 

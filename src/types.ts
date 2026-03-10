@@ -216,6 +216,8 @@ export interface Scene {
   blocks: Block[];
   /** Optional developer note — shown in the editor only, never exported. */
   notes?: string;
+  /** Position of this scene's node in the scene graph window. */
+  graphPosition?: { x: number; y: number };
 }
 
 // ─── Character ──────────────────────────────────────────────────────────────

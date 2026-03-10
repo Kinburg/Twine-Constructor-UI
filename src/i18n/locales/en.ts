@@ -110,6 +110,9 @@ const en: Translations = {
     previewCode:        '</> Preview',
     previewCodeTitle:   'Open a live code preview of the current scene in a separate window',
     previewCodeClose:   'Close code preview',
+    graph:              '⬡ Graph',
+    graphTitle:         'Open the scene graph in a separate window',
+    graphClose:         'Close scene graph',
   },
 };
 

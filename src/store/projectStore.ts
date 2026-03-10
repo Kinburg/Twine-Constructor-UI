@@ -406,6 +406,7 @@ interface ProjectState {
   deleteScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
   updateSceneNote: (id: string, notes: string | undefined) => void;
+  updateSceneGraphPosition: (id: string, x: number, y: number) => void;
   updateSceneTags: (id: string, tags: string[]) => void;
   reorderScenes: (scenes: Scene[]) => void;
   duplicateScene: (sceneId: string) => void;
@@ -617,6 +618,11 @@ export const useProjectStore = create<ProjectState>()(
         updateSceneNote: (id, notes) => {
           get().saveSnapshot();
           set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, notes })) }));
+        },
+
+        // No undo snapshot — graph position is a cosmetic UI preference
+        updateSceneGraphPosition: (id, x, y) => {
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, graphPosition: { x, y } })) }));
         },
 
         updateSceneTags: (id, tags) => {

@@ -44,6 +44,17 @@ interface ElectronAPI {
   onPreviewCode(callback: (code: string) => void): void;
   /** Called in the main window when the user closes the preview window. */
   onPreviewClosed(callback: () => void): void;
+
+  // Scene graph window
+  toggleGraph(): Promise<boolean>;
+  updateGraph(data: unknown): Promise<void>;
+  onGraphProject(callback: (data: unknown) => void): void;
+  graphMove(sceneId: string, x: number, y: number): Promise<void>;
+  onGraphMove(callback: (sceneId: string, x: number, y: number) => void): void;
+  graphNavigate(sceneId: string): Promise<void>;
+  onGraphNavigate(callback: (sceneId: string) => void): void;
+  onGraphClosed(callback: () => void): void;
+  graphReady?(): Promise<void>;
 }
 
 declare interface Window {
