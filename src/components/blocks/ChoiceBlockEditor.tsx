@@ -10,7 +10,7 @@ export function ChoiceBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<ChoiceBlock>) => void;
 }) {
-  const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption } = useProjectStore();
+  const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption, saveSnapshot } = useProjectStore();
   const { scenes } = project;
 
   const handleAddOption = onUpdate
@@ -44,6 +44,7 @@ export function ChoiceBlockEditor({
               className="flex-1 bg-slate-700 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
               placeholder="Текст кнопки..."
               value={opt.label}
+              onFocus={saveSnapshot}
               onChange={e => handleUpdateOption(opt.id, { label: e.target.value })}
             />
             <button
@@ -75,6 +76,7 @@ export function ChoiceBlockEditor({
               className="flex-1 bg-slate-700 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
               placeholder="$var == 1  (пусто = всегда)"
               value={opt.condition}
+              onFocus={saveSnapshot}
               onChange={e => handleUpdateOption(opt.id, { condition: e.target.value })}
             />
           </div>

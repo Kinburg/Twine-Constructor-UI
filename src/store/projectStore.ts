@@ -17,6 +17,8 @@ export { flattenVariables, flattenAssets };
 function uuid(): string { return crypto.randomUUID(); }
 function generateIfid(): string { return uuid().toUpperCase(); }
 
+const HISTORY_LIMIT = 100;
+
 const DEFAULT_PANEL: SidebarPanel = { tabs: [], liveUpdate: false };
 
 function makeDefaultProject(): Project {
@@ -389,6 +391,15 @@ interface ProjectState {
   setSidebarTab: (tab: SidebarTabId) => void;
   fixVariableNames: () => void;
 
+  // History / undo / redo
+  _history: Project[];
+  _future: Project[];
+  canUndo: boolean;
+  canRedo: boolean;
+  saveSnapshot: () => void;
+  undo: () => void;
+  redo: () => void;
+
   // Scenes
   setActiveScene: (id: string) => void;
   addScene: () => void;
@@ -494,11 +505,17 @@ export const useProjectStore = create<ProjectState>()(
         activeSceneId: defaultProject.scenes[0].id,
         activeSidebarTab: 'scenes',
         projectDir: null,
+        _history: [],
+        _future: [],
+        canUndo: false,
+        canRedo: false,
 
         setProjectDir: (dir) => set({ projectDir: dir }),
 
-        setProjectTitle: (title) =>
-          set(s => ({ project: { ...s.project, title } })),
+        setProjectTitle: (title) => {
+          get().saveSnapshot();
+          set(s => ({ project: { ...s.project, title } }));
+        },
 
         loadProject: (rawProject, dir) => {
           const project = migrateProject(rawProject);
@@ -506,12 +523,13 @@ export const useProjectStore = create<ProjectState>()(
             project,
             activeSceneId: project.scenes[0]?.id ?? null,
             ...(dir !== undefined ? { projectDir: dir } : {}),
+            _history: [], _future: [], canUndo: false, canRedo: false,
           });
         },
 
         resetProject: () => {
           const p = makeDefaultProject();
-          set({ project: p, activeSceneId: p.scenes[0].id, projectDir: null });
+          set({ project: p, activeSceneId: p.scenes[0].id, projectDir: null, _history: [], _future: [], canUndo: false, canRedo: false });
         },
 
         setSidebarTab: (tab) => set({ activeSidebarTab: tab }),
@@ -527,11 +545,52 @@ export const useProjectStore = create<ProjectState>()(
             return step3 === s.project ? s : { project: step3 };
           }),
 
+        // ── History / Undo / Redo ────────────────────────────────────────────
+
+        saveSnapshot: () => {
+          const s = get();
+          // Skip if project hasn't changed since the last snapshot
+          const last = s._history[s._history.length - 1];
+          if (last === s.project) return;
+          const history = [...s._history, s.project];
+          if (history.length > HISTORY_LIMIT) history.shift();
+          set({ _history: history, _future: [], canUndo: true, canRedo: false });
+        },
+
+        undo: () => {
+          const s = get();
+          if (s._history.length === 0) return;
+          const previous = s._history[s._history.length - 1];
+          const newHistory = s._history.slice(0, -1);
+          set({
+            project: previous,
+            _history: newHistory,
+            _future: [s.project, ...s._future],
+            canUndo: newHistory.length > 0,
+            canRedo: true,
+          });
+        },
+
+        redo: () => {
+          const s = get();
+          if (s._future.length === 0) return;
+          const next = s._future[0];
+          const newFuture = s._future.slice(1);
+          set({
+            project: next,
+            _history: [...s._history, s.project],
+            _future: newFuture,
+            canUndo: true,
+            canRedo: newFuture.length > 0,
+          });
+        },
+
         // ── Scenes ──────────────────────────────────────────────────────────
 
         setActiveScene: (id) => set({ activeSceneId: id }),
 
         addScene: () => {
+          get().saveSnapshot();
           const id = uuid();
           const name = `Сцена ${get().project.scenes.length + 1}`;
           const scene: Scene = { id, name, tags: [], blocks: [] };
@@ -541,26 +600,37 @@ export const useProjectStore = create<ProjectState>()(
           }));
         },
 
-        deleteScene: (id) =>
+        deleteScene: (id) => {
+          get().saveSnapshot();
           set(s => {
             const scenes = s.project.scenes.filter(sc => sc.id !== id);
             const activeSceneId = s.activeSceneId === id ? (scenes[0]?.id ?? null) : s.activeSceneId;
             return { project: { ...s.project, scenes }, activeSceneId };
-          }),
+          });
+        },
 
-        renameScene: (id, name) =>
-          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, name })) })),
+        renameScene: (id, name) => {
+          get().saveSnapshot();
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, name })) }));
+        },
 
-        updateSceneNote: (id, notes) =>
-          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, notes })) })),
+        updateSceneNote: (id, notes) => {
+          get().saveSnapshot();
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, notes })) }));
+        },
 
-        updateSceneTags: (id, tags) =>
-          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, tags })) })),
+        updateSceneTags: (id, tags) => {
+          get().saveSnapshot();
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, tags })) }));
+        },
 
-        reorderScenes: (scenes) =>
-          set(s => ({ project: { ...s.project, scenes } })),
+        reorderScenes: (scenes) => {
+          get().saveSnapshot();
+          set(s => ({ project: { ...s.project, scenes } }));
+        },
 
-        duplicateScene: (sceneId) =>
+        duplicateScene: (sceneId) => {
+          get().saveSnapshot();
           set(s => {
             const original = s.project.scenes.find(sc => sc.id === sceneId);
             if (!original) return s;
@@ -577,14 +647,17 @@ export const useProjectStore = create<ProjectState>()(
               project: { ...s.project, scenes },
               activeSceneId: clone.id,
             };
-          }),
+          });
+        },
 
         // ── Blocks ──────────────────────────────────────────────────────────
 
-        addBlock: (sceneId, block) =>
+        addBlock: (sceneId, block) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc => ({ ...sc, blocks: [...sc.blocks, block] })),
-          })),
+          }));
+        },
 
         updateBlock: (sceneId, blockId, patch) =>
           set(s => ({
@@ -593,17 +666,22 @@ export const useProjectStore = create<ProjectState>()(
             ),
           })),
 
-        deleteBlock: (sceneId, blockId) =>
+        deleteBlock: (sceneId, blockId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc => ({
               ...sc, blocks: sc.blocks.filter(b => b.id !== blockId),
             })),
-          })),
+          }));
+        },
 
-        reorderBlocks: (sceneId, blocks) =>
-          set(s => ({ project: updateScene(s.project, sceneId, sc => ({ ...sc, blocks })) })),
+        reorderBlocks: (sceneId, blocks) => {
+          get().saveSnapshot();
+          set(s => ({ project: updateScene(s.project, sceneId, sc => ({ ...sc, blocks })) }));
+        },
 
-        duplicateBlock: (sceneId, blockId) =>
+        duplicateBlock: (sceneId, blockId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc => {
               const idx = sc.blocks.findIndex(b => b.id === blockId);
@@ -612,18 +690,22 @@ export const useProjectStore = create<ProjectState>()(
               blocks.splice(idx + 1, 0, deepCloneBlock(sc.blocks[idx]));
               return { ...sc, blocks };
             }),
-          })),
+          }));
+        },
 
-        pasteToScene: (sceneId, block) =>
+        pasteToScene: (sceneId, block) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc => ({
               ...sc, blocks: [...sc.blocks, deepCloneBlock(block)],
             })),
-          })),
+          }));
+        },
 
         // ── Nested blocks ─────────────────────────────────────────────────────
 
-        addNestedBlock: (sceneId, blockId, branchId, block) =>
+        addNestedBlock: (sceneId, blockId, branchId, block) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, blockId, b => {
@@ -636,7 +718,8 @@ export const useProjectStore = create<ProjectState>()(
                 };
               })
             ),
-          })),
+          }));
+        },
 
         updateNestedBlock: (sceneId, blockId, branchId, nestedBlockId, patch) =>
           set(s => ({
@@ -655,7 +738,8 @@ export const useProjectStore = create<ProjectState>()(
             ),
           })),
 
-        deleteNestedBlock: (sceneId, blockId, branchId, nestedBlockId) =>
+        deleteNestedBlock: (sceneId, blockId, branchId, nestedBlockId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, blockId, b => {
@@ -670,9 +754,11 @@ export const useProjectStore = create<ProjectState>()(
                 };
               })
             ),
-          })),
+          }));
+        },
 
-        reorderNestedBlocks: (sceneId, conditionBlockId, branchId, blocks) =>
+        reorderNestedBlocks: (sceneId, conditionBlockId, branchId, blocks) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, conditionBlockId, b => {
@@ -685,9 +771,11 @@ export const useProjectStore = create<ProjectState>()(
                 };
               })
             ),
-          })),
+          }));
+        },
 
-        duplicateNestedBlock: (sceneId, conditionBlockId, branchId, nestedBlockId) =>
+        duplicateNestedBlock: (sceneId, conditionBlockId, branchId, nestedBlockId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, conditionBlockId, b => {
@@ -705,9 +793,11 @@ export const useProjectStore = create<ProjectState>()(
                 };
               })
             ),
-          })),
+          }));
+        },
 
-        pasteToNested: (sceneId, conditionBlockId, branchId, block) =>
+        pasteToNested: (sceneId, conditionBlockId, branchId, block) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, conditionBlockId, b => {
@@ -722,11 +812,13 @@ export const useProjectStore = create<ProjectState>()(
                 };
               })
             ),
-          })),
+          }));
+        },
 
         // ── Choice options ────────────────────────────────────────────────────
 
-        addChoiceOption: (sceneId, blockId) =>
+        addChoiceOption: (sceneId, blockId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, blockId, b => {
@@ -735,7 +827,8 @@ export const useProjectStore = create<ProjectState>()(
                 return { ...b, options: [...b.options, opt] };
               })
             ),
-          })),
+          }));
+        },
 
         updateChoiceOption: (sceneId, blockId, optionId, patch) =>
           set(s => ({
@@ -747,7 +840,8 @@ export const useProjectStore = create<ProjectState>()(
             ),
           })),
 
-        deleteChoiceOption: (sceneId, blockId, optionId) =>
+        deleteChoiceOption: (sceneId, blockId, optionId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, blockId, b => {
@@ -755,11 +849,13 @@ export const useProjectStore = create<ProjectState>()(
                 return { ...b, options: b.options.filter(o => o.id !== optionId) };
               })
             ),
-          })),
+          }));
+        },
 
         // ── Condition branches ─────────────────────────────────────────────────
 
-        addConditionBranch: (sceneId, blockId) =>
+        addConditionBranch: (sceneId, blockId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, blockId, b => {
@@ -774,7 +870,8 @@ export const useProjectStore = create<ProjectState>()(
                 return { ...b, branches: [...b.branches, branch] };
               })
             ),
-          })),
+          }));
+        },
 
         updateConditionBranch: (sceneId, blockId, branchId, patch) =>
           set(s => ({
@@ -786,7 +883,8 @@ export const useProjectStore = create<ProjectState>()(
             ),
           })),
 
-        deleteConditionBranch: (sceneId, blockId, branchId) =>
+        deleteConditionBranch: (sceneId, blockId, branchId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, blockId, b => {
@@ -794,11 +892,13 @@ export const useProjectStore = create<ProjectState>()(
                 return { ...b, branches: b.branches.filter(br => br.id !== branchId) };
               })
             ),
-          })),
+          }));
+        },
 
         // ── Characters ────────────────────────────────────────────────────────
 
-        addCharacter: (char) =>
+        addCharacter: (char) => {
+          get().saveSnapshot();
           set(s => {
             const charId = uuid();
             const { group, varIds } = buildCharVarNodes(char.name, {
@@ -815,7 +915,8 @@ export const useProjectStore = create<ProjectState>()(
                 variableNodes: [...s.project.variableNodes, group],
               },
             };
-          }),
+          });
+        },
 
         updateCharacter: (id, patch) =>
           set(s => {
@@ -876,7 +977,8 @@ export const useProjectStore = create<ProjectState>()(
             };
           }),
 
-        deleteCharacter: (id) =>
+        deleteCharacter: (id) => {
+          get().saveSnapshot();
           set(s => {
             const char = s.project.characters.find(c => c.id === id);
             const variableNodes = char?.varIds
@@ -889,11 +991,13 @@ export const useProjectStore = create<ProjectState>()(
                 variableNodes,
               },
             };
-          }),
+          });
+        },
 
         // ── Variable tree ──────────────────────────────────────────────────────
 
         addVariableGroup: (parentId, name) => {
+          get().saveSnapshot();
           const group: VariableGroup = { kind: 'group', id: uuid(), name, children: [] };
           set(s => ({
             project: {
@@ -904,6 +1008,7 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         addVariable: (parentId, v) => {
+          get().saveSnapshot();
           const variable: Variable = { kind: 'variable', id: uuid(), ...v };
           set(s => ({
             project: {
@@ -921,17 +1026,20 @@ export const useProjectStore = create<ProjectState>()(
             },
           })),
 
-        deleteVariableNode: (id) =>
+        deleteVariableNode: (id) => {
+          get().saveSnapshot();
           set(s => ({
             project: {
               ...s.project,
               variableNodes: removeNode(s.project.variableNodes as AnyNode[], id) as VariableTreeNode[],
             },
-          })),
+          }));
+        },
 
         // ── Asset tree ────────────────────────────────────────────────────────
 
         addAssetGroup: (parentGroupId, name, relativePath) => {
+          get().saveSnapshot();
           const group: AssetGroup = { kind: 'group', id: uuid(), name, relativePath, children: [] };
           set(s => ({
             project: {
@@ -954,6 +1062,7 @@ export const useProjectStore = create<ProjectState>()(
           }),
 
         addAsset: (parentGroupId, a) => {
+          get().saveSnapshot();
           const asset: Asset = { kind: 'asset', id: uuid(), ...a };
           set(s => ({
             project: {
@@ -963,13 +1072,15 @@ export const useProjectStore = create<ProjectState>()(
           }));
         },
 
-        deleteAssetNode: (id) =>
+        deleteAssetNode: (id) => {
+          get().saveSnapshot();
           set(s => ({
             project: {
               ...s.project,
               assetNodes: removeNode(s.project.assetNodes as AnyNode[], id) as AssetTreeNode[],
             },
-          })),
+          }));
+        },
 
         // ── Sidebar panel ──────────────────────────────────────────────────────
 
@@ -979,6 +1090,7 @@ export const useProjectStore = create<ProjectState>()(
           })),
 
         addPanelTab: (label) => {
+          get().saveSnapshot();
           const tab: SidebarTab = { id: uuid(), label, rows: [] };
           set(s => ({
             project: updatePanel(s.project, p => ({ ...p, tabs: [...p.tabs, tab] })),
@@ -990,17 +1102,22 @@ export const useProjectStore = create<ProjectState>()(
             project: updatePanel(s.project, p => updateTab(p, tabId, t => ({ ...t, ...patch }))),
           })),
 
-        deletePanelTab: (tabId) =>
+        deletePanelTab: (tabId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updatePanel(s.project, p => ({ ...p, tabs: p.tabs.filter(t => t.id !== tabId) })),
-          })),
+          }));
+        },
 
-        reorderPanelTabs: (tabs) =>
+        reorderPanelTabs: (tabs) => {
+          get().saveSnapshot();
           set(s => ({
             project: updatePanel(s.project, p => ({ ...p, tabs })),
-          })),
+          }));
+        },
 
         addPanelRow: (tabId) => {
+          get().saveSnapshot();
           const row: SidebarRow = { id: uuid(), height: 15, cells: [] };
           set(s => ({
             project: updatePanel(s.project, p => updateTab(p, tabId, t => ({ ...t, rows: [...t.rows, row] }))),
@@ -1012,14 +1129,17 @@ export const useProjectStore = create<ProjectState>()(
             project: updatePanel(s.project, p => updateTab(p, tabId, t => updateRow(t, rowId, r => ({ ...r, ...patch })))),
           })),
 
-        deletePanelRow: (tabId, rowId) =>
+        deletePanelRow: (tabId, rowId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updatePanel(s.project, p =>
               updateTab(p, tabId, t => ({ ...t, rows: t.rows.filter(r => r.id !== rowId) }))
             ),
-          })),
+          }));
+        },
 
         addPanelCell: (tabId, rowId) => {
+          get().saveSnapshot();
           const cell: SidebarCell = { id: uuid(), width: 1, content: { type: 'text', value: '' } };
           set(s => ({
             project: updatePanel(s.project, p =>
@@ -1035,14 +1155,16 @@ export const useProjectStore = create<ProjectState>()(
             ),
           })),
 
-        deletePanelCell: (tabId, rowId, cellId) =>
+        deletePanelCell: (tabId, rowId, cellId) => {
+          get().saveSnapshot();
           set(s => ({
             project: updatePanel(s.project, p =>
               updateTab(p, tabId, t =>
                 updateRow(t, rowId, r => ({ ...r, cells: r.cells.filter(c => c.id !== cellId) }))
               )
             ),
-          })),
+          }));
+        },
 
         updateCellContent: (tabId, rowId, cellId, content) =>
           set(s => ({
@@ -1054,6 +1176,12 @@ export const useProjectStore = create<ProjectState>()(
     },
     {
       name: 'twine-constructor-project',
+      partialize: (state) => ({
+        project: state.project,
+        activeSceneId: state.activeSceneId,
+        activeSidebarTab: state.activeSidebarTab,
+        projectDir: state.projectDir,
+      }),
       onRehydrateStorage: () => (state) => {
         if (state?.project) {
           state.project = migrateProject(state.project);

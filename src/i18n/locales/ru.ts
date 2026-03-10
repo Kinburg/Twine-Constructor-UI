@@ -76,6 +76,10 @@ const ru: Translations = {
 
   header: {
     searchPlaceholder: 'Поиск по сценам...',
+    undo:      'Отменить',
+    undoTitle: 'Отменить (Ctrl+Z)',
+    redo:      'Повторить',
+    redoTitle: 'Повторить (Ctrl+Shift+Z)',
     renameProjectTitle: 'Нажмите чтобы переименовать проект',
     open:               'Открыть',
     openTitle:          'Открыть проект (.tgproject)',

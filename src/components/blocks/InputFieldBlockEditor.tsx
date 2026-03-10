@@ -22,7 +22,7 @@ export function InputFieldBlockEditor({
   block: InputFieldBlock;
   sceneId: string;
 }) {
-  const { project, updateBlock } = useProjectStore();
+  const { project, updateBlock, saveSnapshot } = useProjectStore();
   const variables = flattenVariables(project.variableNodes);
   const selectedVar = variables.find(v => v.id === block.variableId);
 
@@ -39,6 +39,7 @@ export function InputFieldBlockEditor({
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
           placeholder="Введи имя персонажа:"
           value={block.label}
+          onFocus={saveSnapshot}
           onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
         />
       </div>
@@ -78,6 +79,7 @@ export function InputFieldBlockEditor({
             className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
             placeholder={isNumber ? '0' : 'Герой'}
             value={block.placeholder}
+            onFocus={saveSnapshot}
             onChange={e => updateBlock(sceneId, block.id, { placeholder: e.target.value })}
           />
         </div>

@@ -169,9 +169,10 @@ interface ActionRowProps {
   variables: ReturnType<typeof flattenVariables>;
   onChange: (patch: Partial<ButtonAction>) => void;
   onDelete: () => void;
+  onFocusValue: () => void;
 }
 
-function ActionRow({ action, variables, onChange, onDelete }: ActionRowProps) {
+function ActionRow({ action, variables, onChange, onDelete, onFocusValue }: ActionRowProps) {
   const selVar = variables.find(v => v.id === action.variableId);
 
   return (
@@ -204,6 +205,7 @@ function ActionRow({ action, variables, onChange, onDelete }: ActionRowProps) {
         className="w-20 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none font-mono"
         placeholder={selVar?.varType === 'string' ? '"текст"' : selVar?.varType === 'boolean' ? 'true' : '1'}
         value={action.value}
+        onFocus={onFocusValue}
         onChange={e => onChange({ value: e.target.value })}
       />
 
@@ -227,7 +229,7 @@ export function ButtonBlockEditor({
   block: ButtonBlock;
   sceneId: string;
 }) {
-  const { project, updateBlock } = useProjectStore();
+  const { project, updateBlock, saveSnapshot } = useProjectStore();
   const variables = flattenVariables(project.variableNodes);
 
   // Patch helpers
@@ -261,6 +263,7 @@ export function ButtonBlockEditor({
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none"
           placeholder="Нажми меня"
           value={block.label}
+          onFocus={saveSnapshot}
           onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
         />
       </div>
@@ -295,6 +298,7 @@ export function ButtonBlockEditor({
             variables={variables}
             onChange={patch => patchAction(a.id, patch)}
             onDelete={() => removeAction(a.id)}
+            onFocusValue={saveSnapshot}
           />
         ))}
       </div>

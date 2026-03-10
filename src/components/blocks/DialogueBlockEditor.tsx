@@ -32,7 +32,7 @@ export function DialogueBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<DialogueBlock>) => void;
 }) {
-  const { project, projectDir, updateBlock } = useProjectStore();
+  const { project, projectDir, updateBlock, saveSnapshot } = useProjectStore();
   const update = onUpdate ?? ((p: Partial<DialogueBlock>) => updateBlock(sceneId, block.id, p as never));
   const { characters } = project;
 
@@ -167,6 +167,7 @@ export function DialogueBlockEditor({
             style={{ color: selectedChar ? '#e2e8f0' : undefined }}
             placeholder="Введите реплику..."
             value={block.text}
+            onFocus={saveSnapshot}
             onChange={e => update({ text: e.target.value })}
           />
         </div>

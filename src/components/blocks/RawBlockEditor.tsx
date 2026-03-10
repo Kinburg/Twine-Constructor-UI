@@ -10,7 +10,7 @@ export function RawBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<RawBlock>) => void;
 }) {
-  const { updateBlock } = useProjectStore();
+  const { updateBlock, saveSnapshot } = useProjectStore();
   const update = onUpdate ?? ((p: Partial<RawBlock>) => updateBlock(sceneId, block.id, p as never));
 
   return (
@@ -19,6 +19,7 @@ export function RawBlockEditor({
         className="w-full min-h-[80px] bg-slate-800 text-sm text-white font-mono rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-y leading-relaxed"
         placeholder={"<<set $x to 1>>\n<<audio 'theme' play>>\n..."}
         value={block.code}
+        onFocus={saveSnapshot}
         onChange={e => update({ code: e.target.value })}
         spellCheck={false}
       />

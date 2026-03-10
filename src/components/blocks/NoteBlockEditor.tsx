@@ -11,7 +11,7 @@ export function NoteBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<NoteBlock>) => void;
 }) {
-  const { updateBlock } = useProjectStore();
+  const { updateBlock, saveSnapshot } = useProjectStore();
   const t = useT();
   const update = onUpdate ?? ((p: Partial<NoteBlock>) => updateBlock(sceneId, block.id, p as never));
 
@@ -21,6 +21,7 @@ export function NoteBlockEditor({
       rows={3}
       placeholder={t.scene.notePlaceholder}
       value={block.text}
+      onFocus={saveSnapshot}
       onChange={e => update({ text: e.target.value })}
     />
   );

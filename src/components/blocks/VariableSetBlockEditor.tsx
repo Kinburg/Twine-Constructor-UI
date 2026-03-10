@@ -44,7 +44,7 @@ export function VariableSetBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<VariableSetBlock>) => void;
 }) {
-  const { project, updateBlock } = useProjectStore();
+  const { project, updateBlock, saveSnapshot } = useProjectStore();
   const update = onUpdate ?? ((p: Partial<VariableSetBlock>) => updateBlock(sceneId, block.id, p as never));
   const variables   = flattenVariables(project.variableNodes);
   const selectedVar = variables.find(v => v.id === block.variableId);
@@ -254,6 +254,7 @@ export function VariableSetBlockEditor({
               selectedVar?.varType === 'boolean' ? 'true / false' : '0'
             }
             value={block.value}
+            onFocus={saveSnapshot}
             onChange={e => update({ value: e.target.value })}
           />
         </div>
@@ -269,6 +270,7 @@ export function VariableSetBlockEditor({
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
               placeholder="$maxHp, $str + 5, ..."
               value={block.expression ?? ''}
+              onFocus={saveSnapshot}
               onChange={e => update({ expression: e.target.value })}
             />
           </div>
@@ -356,6 +358,7 @@ export function VariableSetBlockEditor({
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="0"
                         value={m.value}
+                        onFocus={saveSnapshot}
                         onChange={e => patchDynEntry(i, { value: e.target.value })}
                       />
                     </div>
@@ -369,6 +372,7 @@ export function VariableSetBlockEditor({
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="0"
                         value={m.rangeMin ?? ''}
+                        onFocus={saveSnapshot}
                         onChange={e => patchDynEntry(i, { rangeMin: e.target.value })}
                       />
                       <span className="text-xs text-slate-500 shrink-0">до</span>
@@ -376,6 +380,7 @@ export function VariableSetBlockEditor({
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="100"
                         value={m.rangeMax ?? ''}
+                        onFocus={saveSnapshot}
                         onChange={e => patchDynEntry(i, { rangeMax: e.target.value })}
                       />
                     </div>
@@ -388,6 +393,7 @@ export function VariableSetBlockEditor({
                       className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                       placeholder="текст результата"
                       value={m.result}
+                      onFocus={saveSnapshot}
                       onChange={e => patchDynEntry(i, { result: e.target.value })}
                     />
                   </div>
@@ -402,6 +408,7 @@ export function VariableSetBlockEditor({
                 className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                 placeholder="текст если нет совпадений"
                 value={block.dynamicDefault ?? ''}
+                onFocus={saveSnapshot}
                 onChange={e => update({ dynamicDefault: e.target.value })}
               />
             </div>
@@ -421,6 +428,7 @@ export function VariableSetBlockEditor({
                 className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
                 placeholder="от"
                 value={cfg.min}
+                onFocus={saveSnapshot}
                 onChange={e => updateCfg({ min: Number(e.target.value) })}
               />
               <span className="text-xs text-slate-500">—</span>
@@ -429,6 +437,7 @@ export function VariableSetBlockEditor({
                 className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
                 placeholder="до"
                 value={cfg.max}
+                onFocus={saveSnapshot}
                 onChange={e => updateCfg({ max: Number(e.target.value) })}
               />
             </div>
@@ -442,6 +451,7 @@ export function VariableSetBlockEditor({
                 max={256}
                 className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
                 value={cfg.length}
+                onFocus={saveSnapshot}
                 onChange={e => updateCfg({ length: Math.max(1, Number(e.target.value)) })}
               />
               <span className="text-xs text-slate-500">символов [a-z0-9]</span>

@@ -13,6 +13,7 @@ export function Header() {
   const {
     project, projectDir,
     setProjectTitle, setProjectDir, resetProject, loadProject,
+    undo, redo, canUndo, canRedo,
   } = useProjectStore();
   const { locale, setLocale } = useLocaleStore();
   const { searchQuery, setSearchQuery } = useEditorStore();
@@ -248,8 +249,26 @@ export function Header() {
         )}
       </div>
 
-      {/* Center: search */}
-      <div className="flex-1 flex justify-center">
+      {/* Center: undo/redo + search */}
+      <div className="flex-1 flex items-center justify-center gap-2">
+        {/* Undo / Redo buttons */}
+        <button
+          className="text-slate-400 hover:text-white disabled:text-slate-700 disabled:cursor-not-allowed transition-colors cursor-pointer text-base leading-none px-1"
+          title={t.header.undoTitle}
+          onClick={undo}
+          disabled={!canUndo}
+        >
+          ↩
+        </button>
+        <button
+          className="text-slate-400 hover:text-white disabled:text-slate-700 disabled:cursor-not-allowed transition-colors cursor-pointer text-base leading-none px-1"
+          title={t.header.redoTitle}
+          onClick={redo}
+          disabled={!canRedo}
+        >
+          ↪
+        </button>
+
         <div className="relative w-full max-w-xs">
           <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none select-none">
             🔍

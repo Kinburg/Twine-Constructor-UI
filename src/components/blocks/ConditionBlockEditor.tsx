@@ -168,6 +168,7 @@ export function ConditionBlockEditor({
     duplicateNestedBlock,
     pasteToNested,
     reorderNestedBlocks,
+    saveSnapshot,
   } = useProjectStore();
   const { clipboardBlock, copyToClipboard } = useEditorStore();
   const t = useT();
@@ -270,6 +271,7 @@ export function ConditionBlockEditor({
                   className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
                   placeholder={t.condition.valuePlaceholder}
                   value={branch.value}
+                  onFocus={saveSnapshot}
                   onChange={e =>
                     updateConditionBranch(sceneId, block.id, branch.id, { value: e.target.value })
                   }

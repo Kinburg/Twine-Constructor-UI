@@ -81,6 +81,10 @@ export interface Translations {
 
   header: {
     searchPlaceholder: string;
+    undo: string;
+    undoTitle: string;
+    redo: string;
+    redoTitle: string;
     renameProjectTitle: string;
     open: string;
     openTitle: string;

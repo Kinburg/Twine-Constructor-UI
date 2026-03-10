@@ -76,6 +76,10 @@ const en: Translations = {
 
   header: {
     searchPlaceholder: 'Search scenes...',
+    undo:      'Undo',
+    undoTitle: 'Undo (Ctrl+Z)',
+    redo:      'Redo',
+    redoTitle: 'Redo (Ctrl+Shift+Z)',
     renameProjectTitle: 'Click to rename project',
     open:               'Open',
     openTitle:          'Open project (.tgproject)',
