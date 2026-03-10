@@ -104,6 +104,37 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
     case 'variable-set': {
       const v = vars.find(x => x.id === block.variableId);
       if (!v) return `${indent}/* variable not found */`;
+
+      // Effective mode — backward compat with old randomize boolean
+      const mode = block.valueMode ?? (block.randomize ? 'random' : 'manual');
+
+      // ── Expression mode ──────────────────────────────────────────────────────
+      if (mode === 'expression' && block.expression) {
+        if (block.operator === '=') return `${indent}<<set $${v.name} to ${block.expression}>>`;
+        return `${indent}<<set $${v.name} ${block.operator} ${block.expression}>>`;
+      }
+
+      // ── Random value ────────────────────────────────────────────────────────
+      if (mode === 'random' && block.randomConfig) {
+        const cfg = block.randomConfig;
+        switch (cfg.kind) {
+          case 'number': {
+            const expr = `random(${cfg.min}, ${cfg.max})`;
+            // Respect the chosen operator — e.g. $hp -= random(10, 15)
+            if (block.operator === '=') return `${indent}<<set $${v.name} to ${expr}>>`;
+            return `${indent}<<set $${v.name} ${block.operator} ${expr}>>`;
+          }
+          case 'boolean':
+            return `${indent}<<set $${v.name} to either(true, false)>>`;
+          case 'string': {
+            const len = Math.max(1, cfg.length);
+            const expr = `Array(${len}).fill(0).map(()=>"abcdefghijklmnopqrstuvwxyz0123456789".charAt(random(0,35))).join("")`;
+            return `${indent}<<set $${v.name} to ${expr}>>`;
+          }
+        }
+      }
+
+      // ── Manual value ────────────────────────────────────────────────────────
       let val = block.value;
       if (v.varType === 'string') val = `"${val}"`;
       if (block.operator === '=') return `${indent}<<set $${v.name} to ${val}>>`;

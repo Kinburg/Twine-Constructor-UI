@@ -49,12 +49,36 @@ export interface ConditionBlock {
 
 export type VarOperator = '=' | '+=' | '-=' | '*=' | '/=';
 
+/**
+ * How the value is determined in a VariableSetBlock.
+ * - 'manual'     — hardcoded literal
+ * - 'random'     — generated randomly (see RandomConfig)
+ * - 'expression' — arbitrary SugarCube numeric expression (number vars only)
+ */
+export type VarValueMode = 'manual' | 'random' | 'expression';
+
+/**
+ * Configuration for generating a random value.
+ * Used when valueMode is 'random'.
+ */
+export type RandomConfig =
+  | { kind: 'number';  min: number; max: number }
+  | { kind: 'boolean' }
+  | { kind: 'string';  length: number };
+
 export interface VariableSetBlock {
   id: string;
   type: 'variable-set';
   variableId: string;
   operator: VarOperator;
   value: string;
+  /** How the value is set. Defaults to 'manual'. */
+  valueMode?: VarValueMode;
+  /** Kept for backward compatibility with saves that used the old randomize checkbox. */
+  randomize?: boolean;
+  randomConfig?: RandomConfig;
+  /** SugarCube expression used when valueMode is 'expression' (numbers only). */
+  expression?: string;
 }
 
 export interface ImageBlock {
