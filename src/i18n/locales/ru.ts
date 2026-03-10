@@ -107,6 +107,9 @@ const ru: Translations = {
     exportSaveAsDesc:   'Выбрать имя файла и место сохранения',
     confirmHtmlSaved:   'index.html сохранён в папку проекта. Открыть папку?',
     language:           'Язык',
+    previewCode:        '</> Превью',
+    previewCodeTitle:   'Открыть превью кода текущей сцены в отдельном окне',
+    previewCodeClose:   'Закрыть превью кода',
   },
 };
 

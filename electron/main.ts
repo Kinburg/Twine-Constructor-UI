@@ -18,6 +18,37 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 const PROJECTS_DIR = path.join(app.getPath('documents'), 'TwineConstructor', 'Projects');
 
 let win: BrowserWindow | null;
+let previewWin: BrowserWindow | null = null;
+
+// ─── Preview window ───────────────────────────────────────────────────────────
+
+function createPreviewWindow() {
+  previewWin = new BrowserWindow({
+    width: 720,
+    height: 640,
+    minWidth: 400,
+    minHeight: 300,
+    title: 'Code Preview — TwineConstructor',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.mjs'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  if (VITE_DEV_SERVER_URL) {
+    previewWin.loadURL(VITE_DEV_SERVER_URL + '/preview.html');
+  } else {
+    previewWin.loadFile(path.join(RENDERER_DIST, 'preview.html'));
+  }
+
+  previewWin.on('closed', () => {
+    previewWin = null;
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('preview:closed');
+    }
+  });
+}
 
 // ─── Window ───────────────────────────────────────────────────────────────────
 
@@ -55,6 +86,24 @@ app.whenReady().then(() => {
   fs.mkdir(PROJECTS_DIR, { recursive: true }).catch(() => {});
 
   createWindow();
+});
+
+// ─── IPC: preview window ─────────────────────────────────────────────────────
+
+ipcMain.handle('preview:toggle', () => {
+  if (previewWin && !previewWin.isDestroyed()) {
+    previewWin.close();
+    previewWin = null;
+    return false;
+  }
+  createPreviewWindow();
+  return true;
+});
+
+ipcMain.handle('preview:update', (_e, code: string) => {
+  if (previewWin && !previewWin.isDestroyed()) {
+    previewWin.webContents.send('preview:code', code);
+  }
 });
 
 // ─── IPC: filesystem ─────────────────────────────────────────────────────────

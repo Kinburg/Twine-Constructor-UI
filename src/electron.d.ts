@@ -34,6 +34,16 @@ interface ElectronAPI {
 
   // Shell
   openPath(filePath: string): Promise<void>;
+
+  // Code preview window
+  /** Open preview if closed, close if open. Returns new open state. */
+  togglePreview(): Promise<boolean>;
+  /** Send twee code to the preview window (no-op if closed). */
+  updatePreview(code: string): Promise<void>;
+  /** Called inside the preview window to receive code updates. */
+  onPreviewCode(callback: (code: string) => void): void;
+  /** Called in the main window when the user closes the preview window. */
+  onPreviewClosed(callback: () => void): void;
 }
 
 declare interface Window {

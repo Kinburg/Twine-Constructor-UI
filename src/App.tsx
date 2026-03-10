@@ -4,9 +4,13 @@ import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { SceneEditor } from './components/scenes/SceneEditor';
 import { PanelEditor } from './components/panel/PanelEditor';
+import { usePreviewSync } from './hooks/usePreviewSync';
 
 export default function App() {
   const { activeSidebarTab, fixVariableNames, undo, redo } = useProjectStore();
+
+  // Keeps the code preview window in sync with the active scene
+  usePreviewSync();
 
   // Migrate any legacy Cyrillic variable names to ASCII on every mount.
   // This covers HMR reloads where onRehydrateStorage doesn't re-run.

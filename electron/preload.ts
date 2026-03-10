@@ -46,4 +46,19 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Shell
   openPath: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('shell:openPath', filePath),
+
+  // Code preview window
+  togglePreview: (): Promise<boolean> =>
+    ipcRenderer.invoke('preview:toggle'),
+
+  updatePreview: (code: string): Promise<void> =>
+    ipcRenderer.invoke('preview:update', code),
+
+  onPreviewCode: (callback: (code: string) => void): void => {
+    ipcRenderer.on('preview:code', (_e, code: string) => callback(code));
+  },
+
+  onPreviewClosed: (callback: () => void): void => {
+    ipcRenderer.on('preview:closed', callback);
+  },
 });

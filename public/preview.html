@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Code Preview — TwineConstructor</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1e1e2e;
+      color: #cdd6f4;
+      font-family: 'Cascadia Code', 'Fira Code', 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── Toolbar ──────────────────────────────────────────────── */
+    #toolbar {
+      background: #181825;
+      border-bottom: 1px solid #313244;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+      -webkit-app-region: drag;
+      user-select: none;
+    }
+
+    #toolbar-icon {
+      font-size: 14px;
+      opacity: 0.6;
+      -webkit-app-region: no-drag;
+    }
+
+    #toolbar-title {
+      font-size: 11px;
+      color: #6c7086;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    #copy-btn {
+      background: #313244;
+      color: #cdd6f4;
+      border: none;
+      border-radius: 4px;
+      padding: 3px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+      -webkit-app-region: no-drag;
+      font-family: inherit;
+    }
+    #copy-btn:hover  { background: #45475a; }
+    #copy-btn.copied { background: #40a02b; color: #fff; }
+
+    /* ── Code area ────────────────────────────────────────────── */
+    #code-container {
+      flex: 1;
+      overflow: auto;
+      padding: 14px 18px;
+    }
+
+    #code-container::-webkit-scrollbar       { width: 8px; height: 8px; }
+    #code-container::-webkit-scrollbar-track { background: #1e1e2e; }
+    #code-container::-webkit-scrollbar-thumb { background: #45475a; border-radius: 4px; }
+    #code-container::-webkit-scrollbar-thumb:hover { background: #585b70; }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.65;
+      tab-size: 2;
+    }
+
+    /* ── Syntax colours (Catppuccin Mocha palette) ────────────── */
+    .hl-passage-dbl  { color: #6c7086; }               /* :: */
+    .hl-passage-name { color: #cba6f7; font-weight: bold; }  /* passage name */
+    .hl-passage-tag  { color: #89b4fa; }               /* [tags] */
+    .hl-macro        { color: #89dceb; }               /* <<macros>> */
+    .hl-var          { color: #a6e3a1; }               /* $variables */
+    .hl-string       { color: #f9e2af; }               /* "strings" */
+    .hl-htmltag      { color: #fab387; opacity: 0.85; }/* <html> */
+    .hl-comment      { color: #6c7086; font-style: italic; } /* /* ... */
+
+    /* ── Empty / placeholder state ────────────────────────────── */
+    #placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #45475a;
+      font-family: system-ui, sans-serif;
+      font-size: 13px;
+      letter-spacing: 0.02em;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="toolbar">
+    <span id="toolbar-icon">📄</span>
+    <span id="toolbar-title">Ожидание сцены…</span>
+    <button id="copy-btn">Копировать</button>
+  </div>
+
+  <div id="code-container">
+    <div id="placeholder">Открой сцену в редакторе — код появится здесь</div>
+    <pre id="code" style="display:none"></pre>
+  </div>
+
+  <script>
+    'use strict';
+
+    let rawCode = '';
+
+    // ── HTML escape ──────────────────────────────────────────────
+    function esc(s) {
+      return s
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+    }
+
+    // ── Tokenise one line into highlighted HTML ──────────────────
+    function highlightLine(line) {
+      // Passage header: :: ...
+      if (/^::/.test(line)) {
+        const m = line.match(/^(::)(.*?)(\s+\[.*\])?$/);
+        if (m) {
+          const dbl  = `<span class="hl-passage-dbl">::</span>`;
+          const name = `<span class="hl-passage-name">${esc(m[2])}</span>`;
+          const tags = m[3]
+            ? ` <span class="hl-passage-tag">${esc(m[3].trim())}</span>`
+            : '';
+          return dbl + name + tags;
+        }
+        return `<span class="hl-passage-name">${esc(line)}</span>`;
+      }
+
+      // General tokeniser — processes characters left-to-right
+      // so no overlapping replacements
+      const result = [];
+      let i = 0;
+
+      while (i < line.length) {
+        const ch = line[i];
+
+        // SugarCube macro: <<...>>
+        if (ch === '<' && line[i + 1] === '<') {
+          const end = line.indexOf('>>', i + 2);
+          if (end !== -1) {
+            const chunk = line.slice(i, end + 2);
+            result.push(`<span class="hl-macro">${esc(chunk)}</span>`);
+            i = end + 2;
+            continue;
+          }
+        }
+
+        // HTML tag: <tag> / </tag>  (but not <<)
+        if (ch === '<' && line[i + 1] !== '<' && line[i + 1] !== '>') {
+          const end = line.indexOf('>', i + 1);
+          if (end !== -1) {
+            const chunk = line.slice(i, end + 1);
+            result.push(`<span class="hl-htmltag">${esc(chunk)}</span>`);
+            i = end + 1;
+            continue;
+          }
+        }
+
+        // Double-quoted string
+        if (ch === '"') {
+          let j = i + 1;
+          while (j < line.length && line[j] !== '"') {
+            if (line[j] === '\\') j++;   // skip escaped char
+            j++;
+          }
+          const chunk = line.slice(i, j + 1);
+          result.push(`<span class="hl-string">${esc(chunk)}</span>`);
+          i = j + 1;
+          continue;
+        }
+
+        // SugarCube / Twine variable: $identifier
+        if (ch === '$' && i + 1 < line.length && /[a-zA-Z_]/.test(line[i + 1])) {
+          let j = i + 1;
+          while (j < line.length && /[a-zA-Z0-9_]/.test(line[j])) j++;
+          const chunk = line.slice(i, j);
+          result.push(`<span class="hl-var">${esc(chunk)}</span>`);
+          i = j;
+          continue;
+        }
+
+        // Plain character
+        result.push(esc(ch));
+        i++;
+      }
+
+      return result.join('');
+    }
+
+    function highlight(code) {
+      return code.split('\n').map(highlightLine).join('\n');
+    }
+
+    // ── Update display ───────────────────────────────────────────
+    function updateCode(code) {
+      rawCode = code;
+
+      const pre         = document.getElementById('code');
+      const placeholder = document.getElementById('placeholder');
+      const title       = document.getElementById('toolbar-title');
+
+      // Extract scene name for window/toolbar title
+      const m = code.match(/^::(.+?)(?:\s+\[|$)/m);
+      const sceneName = m ? m[1].trim() : '';
+      title.textContent = sceneName || 'Превью кода';
+      document.title    = sceneName
+        ? `${sceneName} — TwineConstructor`
+        : 'Code Preview — TwineConstructor';
+
+      placeholder.style.display = 'none';
+      pre.style.display         = '';
+      pre.innerHTML             = highlight(code);
+    }
+
+    // ── Copy button ──────────────────────────────────────────────
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      if (!rawCode) return;
+      navigator.clipboard.writeText(rawCode).then(() => {
+        const btn = document.getElementById('copy-btn');
+        btn.textContent = 'Скопировано!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Копировать';
+          btn.classList.remove('copied');
+        }, 1500);
+      }).catch(() => {
+        // Fallback: execCommand
+        const ta = document.createElement('textarea');
+        ta.value = rawCode;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      });
+    });
+
+    // ── IPC: receive code from main window ───────────────────────
+    if (window.electronAPI && typeof window.electronAPI.onPreviewCode === 'function') {
+      window.electronAPI.onPreviewCode(updateCode);
+    }
+  </script>
+
+</body>
+</html>

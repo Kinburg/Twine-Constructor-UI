@@ -107,6 +107,9 @@ const en: Translations = {
     exportSaveAsDesc:   'Choose filename and save location',
     confirmHtmlSaved:   'index.html saved to the project folder. Open folder?',
     language:           'Language',
+    previewCode:        '</> Preview',
+    previewCodeTitle:   'Open a live code preview of the current scene in a separate window',
+    previewCodeClose:   'Close code preview',
   },
 };
 

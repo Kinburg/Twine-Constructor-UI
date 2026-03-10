@@ -112,5 +112,8 @@ export interface Translations {
     exportSaveAsDesc: string;
     confirmHtmlSaved: string;
     language: string;
+    previewCode: string;
+    previewCodeTitle: string;
+    previewCodeClose: string;
   };
 }

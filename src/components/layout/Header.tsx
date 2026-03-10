@@ -26,10 +26,18 @@ export function Header() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [saveMenuOpen, setSaveMenuOpen]     = useState(false);
   const [busy, setBusy]                     = useState(false);
+  const [previewOpen, setPreviewOpen]       = useState(false);
 
   useEffect(() => {
     setScReady(hasSCTemplate());
     setScVersion(getSCVersion());
+  }, []);
+
+  // Sync button state when user closes the preview window via its × button
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onPreviewClosed) return;
+    api.onPreviewClosed(() => setPreviewOpen(false));
   }, []);
 
   // ─── Title ────────────────────────────────────────────────────────────────
@@ -126,6 +134,15 @@ export function Header() {
 
   const handleOpenProjectFolder = async () => {
     if (projectDir) await fsApi.openPath(projectDir);
+  };
+
+  // ─── Code preview window ──────────────────────────────────────────────────
+
+  const handleTogglePreview = async () => {
+    const api = window.electronAPI;
+    if (!api?.togglePreview) return;
+    const isNowOpen = await api.togglePreview();
+    setPreviewOpen(isNowOpen);
   };
 
   // ─── SC Runtime ───────────────────────────────────────────────────────────
@@ -293,6 +310,23 @@ export function Header() {
 
       {/* Right: actions */}
       <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
+
+        {/* Code preview window toggle */}
+        {window.electronAPI?.togglePreview && (
+          <button
+            className={`px-2.5 py-1.5 rounded text-sm font-mono font-medium transition-colors cursor-pointer whitespace-nowrap ${
+              previewOpen
+                ? 'bg-indigo-700 hover:bg-indigo-600 text-indigo-100'
+                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+            }`}
+            onClick={handleTogglePreview}
+            title={previewOpen ? t.header.previewCodeClose : t.header.previewCodeTitle}
+          >
+            {t.header.previewCode}
+          </button>
+        )}
+
+        <span className="text-slate-700 select-none hidden sm:inline">|</span>
 
         {/* Language selector */}
         {locales.length > 1 && (
