@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
-import { exportToTwee } from '../../utils/exportToTwee';
 import { generateStandaloneHtml } from '../../utils/exportToHtml';
 import {
   hasSCTemplate, getSCTemplate, getSCVersion,
@@ -158,23 +157,6 @@ export function Header() {
   };
 
   // ─── Export ───────────────────────────────────────────────────────────────
-
-  const handleExportTwee = async () => {
-    const defaultName = `${safeName(project.title)}.twee`;
-    const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
-    const filePath = await fsApi.saveFileDialog({
-      title: 'Сохранить .twee файл',
-      defaultPath,
-      filters: [{ name: 'Twee Source File', extensions: ['twee'] }],
-    });
-    if (!filePath) return;
-    try {
-      const content = exportToTwee(project);
-      await fsApi.writeFile(filePath, content);
-    } catch (e) {
-      alert(`Ошибка экспорта .twee: ${e}`);
-    }
-  };
 
   const handleExportHtml = async () => {
     const template = getSCTemplate();
@@ -358,13 +340,7 @@ export function Header() {
           </Btn>
         )}
 
-        {/* .twee export */}
-        <Btn variant="ghost" onClick={handleExportTwee}
-          title={t.header.exportTweeTitle} disabled={busy}>
-          {t.header.exportTwee}
-        </Btn>
-
-        {/* HTML export — split button */}
+{/* HTML export — split button */}
         {scReady && (
           <div className="relative">
             <div className="flex">

@@ -38,6 +38,17 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: '<=', label: '<=' },
 ];
 
+/** Returns only the operators valid for the given variable type.
+ *  boolean / string → == and != only (no arithmetic comparison)
+ *  number / unknown → all operators
+ */
+function operatorsForType(varType: string | undefined): typeof OPERATORS {
+  if (varType === 'boolean' || varType === 'string') {
+    return OPERATORS.filter(op => op.value === '==' || op.value === '!=');
+  }
+  return OPERATORS;
+}
+
 /** Simplified block renderer for nested blocks (no further nesting) */
 function NestedBlockEditor({
   block,
@@ -217,14 +228,23 @@ export function ConditionBlockEditor({
               )}
             </select>
 
-            {branch.branchType !== 'else' && (
+            {branch.branchType !== 'else' && (() => {
+              const branchVar = variables.find(v => v.id === branch.variableId);
+              const availableOps = operatorsForType(branchVar?.varType);
+              return (
               <>
                 <select
                   className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
                   value={branch.variableId}
-                  onChange={e =>
-                    updateConditionBranch(sceneId, block.id, branch.id, { variableId: e.target.value })
-                  }
+                  onChange={e => {
+                    const newVar = variables.find(v => v.id === e.target.value);
+                    const newOps = operatorsForType(newVar?.varType);
+                    const opStillValid = newOps.some(op => op.value === branch.operator);
+                    updateConditionBranch(sceneId, block.id, branch.id, {
+                      variableId: e.target.value,
+                      ...(!opStillValid ? { operator: newOps[0].value } : {}),
+                    });
+                  }}
                 >
                   <option value="">{t.condition.varPlaceholder}</option>
                   {variables.map(v => (
@@ -241,7 +261,7 @@ export function ConditionBlockEditor({
                     })
                   }
                 >
-                  {OPERATORS.map(op => (
+                  {availableOps.map(op => (
                     <option key={op.value} value={op.value}>{op.label}</option>
                   ))}
                 </select>
@@ -255,7 +275,8 @@ export function ConditionBlockEditor({
                   }
                 />
               </>
-            )}
+              );
+            })()}
 
             <button
               className="ml-auto text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0"
@@ -293,7 +314,7 @@ export function ConditionBlockEditor({
 
             <AddBlockMenu
               sceneId={sceneId}
-              excludeTypes={['condition']}
+              excludeTypes={['condition', 'note']}
               onAdd={(nb) => addNestedBlock(sceneId, block.id, branch.id, nb)}
             />
 

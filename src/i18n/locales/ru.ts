@@ -25,6 +25,8 @@ const ru: Translations = {
     editTagsTitle: 'Редактировать теги',
     empty:         'Сцена пустая. Добавьте блоки ниже.',
     selectPrompt:  'Выберите сцену слева',
+    note:          'Заметка сцены (не экспортируется)',
+    notePlaceholder: 'Заметка для разработчика...',
   },
 
   block: {
@@ -38,6 +40,7 @@ const ru: Translations = {
     image:       'Картинка',
     video:       'Видео',
     raw:         'Twine-код',
+    note:        'Заметка',
     drag:        'Перетащить',
     copy:        'Скопировать блок в буфер',
     duplicate:   'Дублировать блок',
@@ -59,6 +62,7 @@ const ru: Translations = {
     image:       { label: 'Картинка',    desc: 'Вставить изображение' },
     video:       { label: 'Видео',       desc: 'Вставить видео' },
     raw:         { label: 'Twine-код',   desc: 'Вставить SugarCube/HTML' },
+    note:        { label: 'Заметка',     desc: 'Не экспортируется' },
   },
 
   condition: {

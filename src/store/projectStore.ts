@@ -394,6 +394,7 @@ interface ProjectState {
   addScene: () => void;
   deleteScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
+  updateSceneNote: (id: string, notes: string | undefined) => void;
   updateSceneTags: (id: string, tags: string[]) => void;
   reorderScenes: (scenes: Scene[]) => void;
   duplicateScene: (sceneId: string) => void;
@@ -549,6 +550,9 @@ export const useProjectStore = create<ProjectState>()(
 
         renameScene: (id, name) =>
           set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, name })) })),
+
+        updateSceneNote: (id, notes) =>
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, notes })) })),
 
         updateSceneTags: (id, tags) =>
           set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, tags })) })),

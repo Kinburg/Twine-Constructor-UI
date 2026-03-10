@@ -182,6 +182,16 @@ export interface RawBlock {
   code: string;
 }
 
+/**
+ * Developer note block — visible only in the editor, never exported.
+ * Useful for inline logic comments and as a search target.
+ */
+export interface NoteBlock {
+  id: string;
+  type: 'note';
+  text: string;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -192,7 +202,8 @@ export type Block =
   | VideoBlock
   | ButtonBlock
   | InputFieldBlock
-  | RawBlock;
+  | RawBlock
+  | NoteBlock;
 
 export type BlockType = Block['type'];
 
@@ -203,6 +214,8 @@ export interface Scene {
   name: string;
   tags: string[];
   blocks: Block[];
+  /** Optional developer note — shown in the editor only, never exported. */
+  notes?: string;
 }
 
 // ─── Character ──────────────────────────────────────────────────────────────

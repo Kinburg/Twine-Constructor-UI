@@ -28,6 +28,8 @@ export interface Translations {
     editTagsTitle: string;
     empty: string;
     selectPrompt: string;
+    note: string;
+    notePlaceholder: string;
   };
 
   block: {
@@ -42,6 +44,7 @@ export interface Translations {
     image: string;
     video: string;
     raw: string;
+    note: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -64,6 +67,7 @@ export interface Translations {
     image:       { label: string; desc: string };
     video:       { label: string; desc: string };
     raw:         { label: string; desc: string };
+    note:        { label: string; desc: string };
   };
 
   condition: {

@@ -21,18 +21,24 @@ import type { Scene } from '../../types';
 function SortableSceneItem({
   scene,
   isActive,
+  noteOpen,
   onSelect,
   onStartRename,
   onDuplicate,
   onDelete,
+  onNoteToggle,
+  onNoteClose,
   canDelete,
 }: {
   scene: Scene;
   isActive: boolean;
+  noteOpen: boolean;
   onSelect: () => void;
   onStartRename: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
+  onNoteToggle: () => void;
+  onNoteClose: (text: string) => void;
   canDelete: boolean;
 }) {
   const t = useT();
@@ -44,47 +50,80 @@ function SortableSceneItem({
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const hasNote = !!scene.notes;
+
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`group flex items-center rounded px-2 py-1.5 cursor-pointer transition-colors ${
-        isActive ? 'bg-indigo-700/40 text-white' : 'hover:bg-slate-800 text-slate-300'
-      }`}
-      onClick={onSelect}
-    >
-      <span
-        {...listeners}
-        {...attributes}
-        className="drag-handle text-slate-600 hover:text-slate-400 text-xs mr-1.5 select-none shrink-0 cursor-grab active:cursor-grabbing"
-        title={t.scene.drag}
-        onClick={e => e.stopPropagation()}
+    <div ref={setNodeRef} style={style}>
+      <div
+        className={`group flex items-center rounded px-2 py-1.5 cursor-pointer transition-colors ${
+          isActive ? 'bg-indigo-700/40 text-white' : 'hover:bg-slate-800 text-slate-300'
+        }`}
+        onClick={onSelect}
       >
-        ⠿
-      </span>
-      <span className="flex-1 text-xs truncate">{scene.name}</span>
-      <button
-        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white text-xs px-0.5 transition-opacity cursor-pointer"
-        title={t.scene.rename}
-        onClick={e => { e.stopPropagation(); onStartRename(); }}
-      >
-        ✏️
-      </button>
-      <button
-        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-300 text-xs px-0.5 transition-opacity cursor-pointer"
-        title={t.scene.duplicate}
-        onClick={e => { e.stopPropagation(); onDuplicate(); }}
-      >
-        ⧉
-      </button>
-      {canDelete && (
-        <button
-          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 text-xs px-0.5 transition-opacity cursor-pointer"
-          title={t.scene.delete}
-          onClick={e => { e.stopPropagation(); onDelete(); }}
+        <span
+          {...listeners}
+          {...attributes}
+          className="drag-handle text-slate-600 hover:text-slate-400 text-xs mr-1.5 select-none shrink-0 cursor-grab active:cursor-grabbing"
+          title={t.scene.drag}
+          onClick={e => e.stopPropagation()}
         >
-          🗑️
+          ⠿
+        </span>
+        <span className="flex-1 text-xs truncate">{scene.name}</span>
+
+        {/* Note button — always visible if note exists, otherwise on hover */}
+        <button
+          className={`text-xs px-0.5 cursor-pointer transition-all ${
+            hasNote
+              ? 'text-amber-400 hover:text-amber-300'
+              : 'opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-300'
+          }`}
+          title={hasNote ? `${t.scene.note}: ${scene.notes}` : t.scene.note}
+          onClick={e => { e.stopPropagation(); onNoteToggle(); }}
+        >
+          📝
         </button>
+
+        <button
+          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white text-xs px-0.5 transition-opacity cursor-pointer"
+          title={t.scene.rename}
+          onClick={e => { e.stopPropagation(); onStartRename(); }}
+        >
+          ✏️
+        </button>
+        <button
+          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-300 text-xs px-0.5 transition-opacity cursor-pointer"
+          title={t.scene.duplicate}
+          onClick={e => { e.stopPropagation(); onDuplicate(); }}
+        >
+          ⧉
+        </button>
+        {canDelete && (
+          <button
+            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 text-xs px-0.5 transition-opacity cursor-pointer"
+            title={t.scene.delete}
+            onClick={e => { e.stopPropagation(); onDelete(); }}
+          >
+            🗑️
+          </button>
+        )}
+      </div>
+
+      {/* Inline note editor */}
+      {noteOpen && (
+        <div className="px-2 pb-1.5" onClick={e => e.stopPropagation()}>
+          <textarea
+            autoFocus
+            className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1 outline-none border border-amber-800/60 focus:border-amber-600 resize-none placeholder-slate-500"
+            rows={3}
+            placeholder={t.scene.notePlaceholder}
+            defaultValue={scene.notes ?? ''}
+            onBlur={e => onNoteClose(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Escape') onNoteClose(scene.notes ?? '');
+            }}
+          />
+        </div>
       )}
     </div>
   );
@@ -127,12 +166,14 @@ export function SceneList() {
     addScene,
     deleteScene,
     renameScene,
+    updateSceneNote,
     duplicateScene,
     reorderScenes,
   } = useProjectStore();
   const t = useT();
 
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId]       = useState<string | null>(null);
+  const [noteEditingId, setNoteEditingId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -162,10 +203,16 @@ export function SceneList() {
                 key={scene.id}
                 scene={scene}
                 isActive={scene.id === activeSceneId}
+                noteOpen={noteEditingId === scene.id}
                 onSelect={() => setActiveScene(scene.id)}
                 onStartRename={() => setEditingId(scene.id)}
                 onDuplicate={() => duplicateScene(scene.id)}
                 onDelete={() => { if (confirm(t.scene.confirmDelete(scene.name))) deleteScene(scene.id); }}
+                onNoteToggle={() => setNoteEditingId(id => id === scene.id ? null : scene.id)}
+                onNoteClose={(text) => {
+                  updateSceneNote(scene.id, text.trim() || undefined);
+                  setNoteEditingId(null);
+                }}
                 canDelete={project.scenes.length > 1}
               />
             )

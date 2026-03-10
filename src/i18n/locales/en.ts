@@ -25,6 +25,8 @@ const en: Translations = {
     editTagsTitle: 'Edit tags',
     empty:         'Scene is empty. Add blocks below.',
     selectPrompt:  'Select a scene on the left',
+    note:          'Scene note (not exported)',
+    notePlaceholder: 'Developer note...',
   },
 
   block: {
@@ -38,6 +40,7 @@ const en: Translations = {
     image:       'Image',
     video:       'Video',
     raw:         'Twine code',
+    note:        'Note',
     drag:        'Drag to reorder',
     copy:        'Copy block to clipboard',
     duplicate:   'Duplicate block',
@@ -59,6 +62,7 @@ const en: Translations = {
     image:       { label: 'Image',      desc: 'Insert an image' },
     video:       { label: 'Video',      desc: 'Insert a video' },
     raw:         { label: 'Twine code', desc: 'Raw SugarCube / HTML' },
+    note:        { label: 'Note',       desc: 'Not exported' },
   },
 
   condition: {

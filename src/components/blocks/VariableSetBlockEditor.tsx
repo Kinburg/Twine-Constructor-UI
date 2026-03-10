@@ -166,6 +166,9 @@ export function VariableSetBlockEditor({
 
   const numberVars = variables.filter(v => v.varType === 'number');
 
+  // number → all operators; string / boolean → only '='
+  const availableOperators = isNumber ? OPERATORS : OPERATORS.filter(op => op.value === '=');
+
   return (
     <div className="flex flex-col gap-2">
 
@@ -183,9 +186,12 @@ export function VariableSetBlockEditor({
             const needsReset =
               (rawMode === 'expression' && newVar?.varType !== 'number') ||
               (rawMode === 'dynamic'    && newVar?.varType !== 'string');
+            // Reset operator to '=' when switching to string/boolean (no arithmetic operators).
+            const needsOperatorReset = newVar?.varType !== 'number' && block.operator !== '=';
             update({
               variableId: newVarId,
               ...(needsReset ? { valueMode: 'manual', randomize: false } : {}),
+              ...(needsOperatorReset ? { operator: '=' as VarOperator } : {}),
             });
           }}
         >
@@ -208,7 +214,7 @@ export function VariableSetBlockEditor({
             value={block.operator}
             onChange={e => update({ operator: e.target.value as VarOperator })}
           >
-            {OPERATORS.map(op => (
+            {availableOperators.map(op => (
               <option key={op.value} value={op.value}>{op.label}</option>
             ))}
           </select>

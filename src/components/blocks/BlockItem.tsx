@@ -14,6 +14,7 @@ import { VideoBlockEditor } from './VideoBlockEditor';
 import { ButtonBlockEditor } from './ButtonBlockEditor';
 import { InputFieldBlockEditor } from './InputFieldBlockEditor';
 import { RawBlockEditor } from './RawBlockEditor';
+import { NoteBlockEditor } from './NoteBlockEditor';
 
 const BLOCK_COLORS: Record<Block['type'], string> = {
   'text':         'bg-slate-700',
@@ -26,6 +27,7 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'image':        'bg-pink-900/40',
   'video':        'bg-red-900/40',
   'raw':          'bg-zinc-700/60',
+  'note':         'bg-amber-950/60',
 };
 
 interface Props {
@@ -47,12 +49,13 @@ export function BlockItem({ block, sceneId }: Props) {
 
   const color = BLOCK_COLORS[block.type];
   const label = blockTypeLabel(t, block.type);
+  const border = block.type === 'note' ? 'border-amber-800/50' : 'border-slate-700';
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`rounded border border-slate-700 ${color} overflow-hidden`}
+      className={`rounded border ${border} ${color} overflow-hidden`}
     >
       {/* Block header */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-700/50">
@@ -104,6 +107,7 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'button'       && <ButtonBlockEditor      block={block} sceneId={sceneId} />}
         {block.type === 'input-field'  && <InputFieldBlockEditor  block={block} sceneId={sceneId} />}
         {block.type === 'raw'          && <RawBlockEditor         block={block} sceneId={sceneId} />}
+        {block.type === 'note'         && <NoteBlockEditor        block={block} sceneId={sceneId} />}
       </div>
     </div>
   );

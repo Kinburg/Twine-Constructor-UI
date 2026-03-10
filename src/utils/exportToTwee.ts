@@ -230,6 +230,10 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
       if (!block.code) return '';
       return block.code.split('\n').map(line => `${indent}${line}`).join('\n');
 
+    case 'note':
+      // Developer note — never exported
+      return '';
+
     case 'button': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
       const actionLines = block.actions
