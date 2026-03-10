@@ -81,12 +81,21 @@ export interface VariableSetBlock {
   expression?: string;
 }
 
+export type ImageMode = 'static' | 'bound';
+
 export interface ImageBlock {
   id: string;
   type: 'image';
+  /** Display mode. Defaults to 'static' for backward compat. */
+  mode?: ImageMode;
+  // ── Static mode ───────────────────────────────────────────────────────
   src: string;      // URL or asset relative path
   alt: string;
   width: number;    // 0 = auto
+  // ── Bound mode (image changes based on a variable's value) ───────────
+  variableId?: string;
+  mapping?: ImageBoundMapping[];
+  defaultSrc?: string;   // fallback when no mapping matches
 }
 
 export interface VideoBlock {
