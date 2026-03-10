@@ -13,6 +13,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'input-field':  '✏️',
   'image':        '🖼️',
   'video':        '🎥',
+  'raw':          '🧩',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -35,6 +36,7 @@ export function makeBlock(type: BlockType): Block {
       },
       actions: [],
     };
+    case 'raw':          return { id, type, code: '' };
   }
 }
 
@@ -62,6 +64,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     { type: 'input-field',  icon: BLOCK_ICONS['input-field'],  label: t.addBlock.inputField.label,  desc: t.addBlock.inputField.desc },
     { type: 'image',        icon: BLOCK_ICONS['image'],        label: t.addBlock.image.label,       desc: t.addBlock.image.desc },
     { type: 'video',        icon: BLOCK_ICONS['video'],        label: t.addBlock.video.label,       desc: t.addBlock.video.desc },
+    { type: 'raw',          icon: BLOCK_ICONS['raw'],          label: t.addBlock.raw.label,         desc: t.addBlock.raw.desc },
   ];
 
   const add = (type: BlockType) => {

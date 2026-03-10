@@ -37,6 +37,7 @@ const en: Translations = {
     inputField:  'Input field',
     image:       'Image',
     video:       'Video',
+    raw:         'Twine code',
     drag:        'Drag to reorder',
     copy:        'Copy block to clipboard',
     duplicate:   'Duplicate block',
@@ -57,6 +58,7 @@ const en: Translations = {
     inputField:  { label: 'Input',      desc: 'Player enters a value' },
     image:       { label: 'Image',      desc: 'Insert an image' },
     video:       { label: 'Video',      desc: 'Insert a video' },
+    raw:         { label: 'Twine code', desc: 'Raw SugarCube / HTML' },
   },
 
   condition: {

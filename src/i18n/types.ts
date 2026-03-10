@@ -41,6 +41,7 @@ export interface Translations {
     inputField: string;
     image: string;
     video: string;
+    raw: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -62,6 +63,7 @@ export interface Translations {
     inputField:  { label: string; desc: string };
     image:       { label: string; desc: string };
     video:       { label: string; desc: string };
+    raw:         { label: string; desc: string };
   };
 
   condition: {

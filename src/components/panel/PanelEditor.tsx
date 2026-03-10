@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useProjectStore, flattenVariables, flattenAssets } from '../../store/projectStore';
 import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent,
-  CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound,
+  CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
   ImageBoundMapping,
   Variable, Asset,
 } from '../../types';
@@ -293,6 +293,7 @@ function cellTypeLabel(type: CellContent['type']): string {
   const m: Record<CellContent['type'], string> = {
     text: 'Текст', variable: 'Переменная', progress: 'Прогресс-бар',
     'image-static': 'Картинка', 'image-bound': 'Картинка (переменная)',
+    raw: 'Twine-код',
   };
   return m[type];
 }
@@ -329,6 +330,13 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       </div>
     );
   }
+  if (c.type === 'raw') {
+    return (
+      <span className="text-xs text-zinc-400 font-mono p-1 truncate flex-1">
+        {c.code || <em className="text-slate-600 not-italic">код</em>}
+      </span>
+    );
+  }
   return null;
 }
 
@@ -340,6 +348,7 @@ const CELL_TYPES: { value: CellContent['type']; label: string }[] = [
   { value: 'progress',     label: 'Прогресс-бар' },
   { value: 'image-static', label: 'Картинка (статическая)' },
   { value: 'image-bound',  label: 'Картинка (по переменной)' },
+  { value: 'raw',          label: 'Twine-код' },
 ];
 
 function makeDefaultContent(type: CellContent['type']): CellContent {
@@ -349,6 +358,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'progress':     return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', showText: false } as CellProgress;
     case 'image-static': return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
     case 'image-bound':  return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
+    case 'raw':          return { type: 'raw', code: '' } as CellRaw;
   }
 }
 
@@ -559,6 +569,19 @@ function CellEditModal({
               </MField>
             </div>
           </>
+        )}
+
+        {c.type === 'raw' && (
+          <div className="flex flex-col gap-1">
+            <label className="text-xs text-slate-400">Twine-код (вставляется как есть):</label>
+            <textarea
+              className="w-full min-h-[100px] bg-slate-800 text-xs text-white font-mono rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-y leading-relaxed"
+              placeholder={"<<set $x to 1>>\n<<audio 'theme' play>>\n..."}
+              value={c.code}
+              onChange={e => onUpdateContent({ ...c, code: e.target.value })}
+              spellCheck={false}
+            />
+          </div>
         )}
 
         <button

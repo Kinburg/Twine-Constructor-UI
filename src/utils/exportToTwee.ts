@@ -226,6 +226,10 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
       return lines.join('\n');
     }
 
+    case 'raw':
+      if (!block.code) return '';
+      return block.code.split('\n').map(line => `${indent}${line}`).join('\n');
+
     case 'button': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
       const actionLines = block.actions
@@ -308,6 +312,10 @@ function cellToSC(cell: SidebarCell, vars: Variable[]): string {
 
     case 'image-static':
       inner = `<img class="tg-cell-img tg-lb" src="${c.src}" style="object-fit: ${c.objectFit};" onclick="tgOpenLightbox(this.src)" />`;
+      break;
+
+    case 'raw':
+      inner = c.code;
       break;
 
     case 'image-bound': {

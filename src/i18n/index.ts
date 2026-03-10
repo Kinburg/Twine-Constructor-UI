@@ -39,6 +39,7 @@ export function blockTypeLabel(t: Translations, type: Block['type']): string {
     'input-field':  t.block.inputField,
     'image':        t.block.image,
     'video':        t.block.video,
+    'raw':          t.block.raw,
   };
   return map[type] ?? type;
 }

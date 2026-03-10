@@ -172,6 +172,16 @@ export interface InputFieldBlock {
   placeholder: string;  // default value pre-filled in the field
 }
 
+/**
+ * Raw SugarCube / HTML code block.
+ * Content is inserted verbatim into the exported passage — no transformation.
+ */
+export interface RawBlock {
+  id: string;
+  type: 'raw';
+  code: string;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -181,7 +191,8 @@ export type Block =
   | ImageBlock
   | VideoBlock
   | ButtonBlock
-  | InputFieldBlock;
+  | InputFieldBlock
+  | RawBlock;
 
 export type BlockType = Block['type'];
 
@@ -352,12 +363,19 @@ export interface CellImageBound {
   objectFit: 'cover' | 'contain';
 }
 
+/** Raw SugarCube / HTML code inserted verbatim into the StoryCaption cell */
+export interface CellRaw {
+  type: 'raw';
+  code: string;
+}
+
 export type CellContent =
   | CellText
   | CellVariable
   | CellProgress
   | CellImageStatic
-  | CellImageBound;
+  | CellImageBound
+  | CellRaw;
 
 export interface SidebarCell {
   id: string;

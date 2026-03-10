@@ -37,6 +37,7 @@ const ru: Translations = {
     inputField:  'Поле ввода',
     image:       'Картинка',
     video:       'Видео',
+    raw:         'Twine-код',
     drag:        'Перетащить',
     copy:        'Скопировать блок в буфер',
     duplicate:   'Дублировать блок',
@@ -57,6 +58,7 @@ const ru: Translations = {
     inputField:  { label: 'Поле ввода',  desc: 'Игрок вводит значение' },
     image:       { label: 'Картинка',    desc: 'Вставить изображение' },
     video:       { label: 'Видео',       desc: 'Вставить видео' },
+    raw:         { label: 'Twine-код',   desc: 'Вставить SugarCube/HTML' },
   },
 
   condition: {
