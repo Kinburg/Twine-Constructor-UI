@@ -1,14 +1,7 @@
 import { useRef } from 'react';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { VariableSetBlock, VarOperator, RandomConfig, VarValueMode, StringBoundEntry } from '../../types';
-
-const OPERATORS: { value: VarOperator; label: string }[] = [
-  { value: '=',  label: '= (присвоить)' },
-  { value: '+=', label: '+= (прибавить)' },
-  { value: '-=', label: '-= (вычесть)' },
-  { value: '*=', label: '*= (умножить)' },
-  { value: '/=', label: '/= (разделить)' },
-];
+import { useT } from '../../i18n';
 
 /** Default RandomConfig strictly matching the variable type */
 function defaultRandomConfig(varType: string): RandomConfig {
@@ -44,11 +37,20 @@ export function VariableSetBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<VariableSetBlock>) => void;
 }) {
+  const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
   const update = onUpdate ?? ((p: Partial<VariableSetBlock>) => updateBlock(sceneId, block.id, p as never));
   const variables   = flattenVariables(project.variableNodes);
   const selectedVar = variables.find(v => v.id === block.variableId);
   const exprInputRef = useRef<HTMLInputElement>(null);
+
+  const OPERATORS: { value: VarOperator; label: string }[] = [
+    { value: '=',  label: t.variableSetBlock.opAssign },
+    { value: '+=', label: t.variableSetBlock.opAdd },
+    { value: '-=', label: t.variableSetBlock.opSubtract },
+    { value: '*=', label: t.variableSetBlock.opMultiply },
+    { value: '/=', label: t.variableSetBlock.opDivide },
+  ];
 
   // Backward compat: old saves used randomize boolean
   const rawMode: VarValueMode = block.valueMode ?? (block.randomize ? 'random' : 'manual');
@@ -72,11 +74,11 @@ export function VariableSetBlockEditor({
 
   // ── Mode options per variable type ─────────────────────────────────────────
   const modeOptions: [VarValueMode, string][] = isNumber
-    ? [['manual', 'Вручную'], ['random', '🎲 Случайное'], ['expression', '⚙️ Выражение']]
+    ? [['manual', t.variableSetBlock.modeManual], ['random', t.variableSetBlock.modeRandom], ['expression', t.variableSetBlock.modeExpression]]
     : isString
-    ? [['manual', 'Вручную'], ['random', '🎲 Случайное'], ['dynamic', '⚙️ Динамически']]
+    ? [['manual', t.variableSetBlock.modeManual], ['random', t.variableSetBlock.modeRandom], ['dynamic', t.variableSetBlock.modeDynamic]]
     : /* boolean */
-      [['manual', 'Вручную'], ['random', '🎲 Случайное']];
+      [['manual', t.variableSetBlock.modeManual], ['random', t.variableSetBlock.modeRandom]];
 
   // ── Mode switch ─────────────────────────────────────────────────────────────
   const setMode = (mode: VarValueMode) => {
@@ -174,7 +176,7 @@ export function VariableSetBlockEditor({
 
       {/* ── Variable selector ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Переменная:</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.variableLabel}</label>
         <select
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
           value={block.variableId}
@@ -195,20 +197,20 @@ export function VariableSetBlockEditor({
             });
           }}
         >
-          <option value="">— выбрать —</option>
+          <option value="">{t.variableSetBlock.selectVariable}</option>
           {variables.map(v => (
             <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
           ))}
         </select>
         {variables.length === 0 && (
-          <span className="text-xs text-slate-500 italic">Нет переменных</span>
+          <span className="text-xs text-slate-500 italic">{t.variableSetBlock.noVariables}</span>
         )}
       </div>
 
       {/* ── Operator — hidden for dynamic mode (always =) ─────────────────── */}
       {selectedVar && effectiveMode !== 'dynamic' && (effectiveMode !== 'random' || cfg?.kind === 'number') && (
         <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 w-20 shrink-0">Операция:</label>
+          <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.operationLabel}</label>
           <select
             className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
             value={block.operator}
@@ -224,7 +226,7 @@ export function VariableSetBlockEditor({
       {/* ── Mode selector — pills for all variable types ───────────────────── */}
       {selectedVar && (
         <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 w-20 shrink-0">Значение:</label>
+          <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.valueLabel}</label>
           <div className="flex gap-1">
             {modeOptions.map(([mode, label]) => (
               <button
@@ -250,7 +252,7 @@ export function VariableSetBlockEditor({
           <input
             className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
             placeholder={
-              selectedVar?.varType === 'string'  ? 'текст' :
+              selectedVar?.varType === 'string'  ? t.variableSetBlock.textPlaceholder :
               selectedVar?.varType === 'boolean' ? 'true / false' : '0'
             }
             value={block.value}
@@ -264,7 +266,7 @@ export function VariableSetBlockEditor({
       {effectiveMode === 'expression' && (
         <div className="flex flex-col gap-1.5 pl-2 border-l-2 border-indigo-800/50">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">Выражение:</label>
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.expressionLabel}</label>
             <input
               ref={exprInputRef}
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
@@ -280,7 +282,7 @@ export function VariableSetBlockEditor({
                 <button
                   key={v.id}
                   onClick={() => insertVar(v.name)}
-                  title={`Вставить $${v.name}`}
+                  title={t.variableSetBlock.insertVarTitle(v.name)}
                   className="px-1.5 py-0.5 text-xs rounded bg-slate-700 text-indigo-300 hover:bg-slate-600 font-mono cursor-pointer transition-colors"
                 >
                   ${v.name}
@@ -297,13 +299,13 @@ export function VariableSetBlockEditor({
 
           {/* Controlling variable */}
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">Зависит от:</label>
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.controlVariable}</label>
             <select
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={block.dynamicVariableId ?? ''}
               onChange={e => update({ dynamicVariableId: e.target.value })}
             >
-              <option value="">— выбрать переменную —</option>
+              <option value="">{t.variableSetBlock.selectControlVariable}</option>
               {variables.map(v => (
                 <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
               ))}
@@ -313,17 +315,17 @@ export function VariableSetBlockEditor({
           {/* Mapping list */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400">Соответствия (значение → текст):</span>
+              <span className="text-xs text-slate-400">{t.variableSetBlock.mappingsLabel}</span>
               <button
                 className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
                 onClick={addDynEntry}
               >
-                + Добавить
+                {t.variableSetBlock.addMapping}
               </button>
             </div>
 
             {dynMapping.length === 0 && (
-              <p className="text-xs text-slate-600 italic">Нет записей. Нажмите «+ Добавить».</p>
+              <p className="text-xs text-slate-600 italic">{t.variableSetBlock.noMappings}</p>
             )}
 
             {dynMapping.map((m, i) => {
@@ -333,14 +335,14 @@ export function VariableSetBlockEditor({
 
                   {/* Match type + delete */}
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-slate-500 shrink-0">Режим:</span>
+                    <span className="text-xs text-slate-500 shrink-0">{t.variableSetBlock.matchMode}</span>
                     <select
                       className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
                       value={mt}
                       onChange={e => patchDynEntry(i, { matchType: e.target.value as 'exact' | 'range' })}
                     >
-                      <option value="exact">Точное значение</option>
-                      <option value="range">Диапазон</option>
+                      <option value="exact">{t.variableSetBlock.matchExact}</option>
+                      <option value="range">{t.variableSetBlock.matchRange}</option>
                     </select>
                     <button
                       className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
@@ -353,7 +355,7 @@ export function VariableSetBlockEditor({
                   {/* Exact value */}
                   {mt === 'exact' && (
                     <div className="flex gap-1 items-center">
-                      <span className="text-xs text-slate-500 shrink-0 w-12">Знач.:</span>
+                      <span className="text-xs text-slate-500 shrink-0 w-12">{t.variableSetBlock.exactValueLabel}</span>
                       <input
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="0"
@@ -367,7 +369,7 @@ export function VariableSetBlockEditor({
                   {/* Range */}
                   {mt === 'range' && (
                     <div className="flex gap-1 items-center">
-                      <span className="text-xs text-slate-500 shrink-0 w-12">От:</span>
+                      <span className="text-xs text-slate-500 shrink-0 w-12">{t.variableSetBlock.fromLabel}</span>
                       <input
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="0"
@@ -375,7 +377,7 @@ export function VariableSetBlockEditor({
                         onFocus={saveSnapshot}
                         onChange={e => patchDynEntry(i, { rangeMin: e.target.value })}
                       />
-                      <span className="text-xs text-slate-500 shrink-0">до</span>
+                      <span className="text-xs text-slate-500 shrink-0">{t.variableSetBlock.toLabel}</span>
                       <input
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="100"
@@ -388,10 +390,10 @@ export function VariableSetBlockEditor({
 
                   {/* Result string */}
                   <div className="flex gap-1 items-center">
-                    <span className="text-xs text-slate-500 shrink-0 w-12">Текст:</span>
+                    <span className="text-xs text-slate-500 shrink-0 w-12">{t.variableSetBlock.resultLabel}</span>
                     <input
                       className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                      placeholder="текст результата"
+                      placeholder={t.variableSetBlock.textPlaceholder}
                       value={m.result}
                       onFocus={saveSnapshot}
                       onChange={e => patchDynEntry(i, { result: e.target.value })}
@@ -403,10 +405,10 @@ export function VariableSetBlockEditor({
 
             {/* Default / fallback */}
             <div className="flex gap-1 items-center mt-0.5">
-              <span className="text-xs text-slate-400 shrink-0 w-20">По умолч.:</span>
+              <span className="text-xs text-slate-400 shrink-0 w-20">{t.variableSetBlock.defaultLabel}</span>
               <input
                 className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                placeholder="текст если нет совпадений"
+                placeholder={t.variableSetBlock.textPlaceholder}
                 value={block.dynamicDefault ?? ''}
                 onFocus={saveSnapshot}
                 onChange={e => update({ dynamicDefault: e.target.value })}
@@ -422,11 +424,11 @@ export function VariableSetBlockEditor({
         <div className="flex flex-col gap-1.5 pl-2 border-l-2 border-indigo-800/50">
           {cfg.kind === 'number' && (
             <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400 w-20 shrink-0">Диапазон:</label>
+              <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.randomRange}</label>
               <input
                 type="number"
                 className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-                placeholder="от"
+                placeholder={t.variableSetBlock.fromLabel}
                 value={cfg.min}
                 onFocus={saveSnapshot}
                 onChange={e => updateCfg({ min: Number(e.target.value) })}
@@ -435,7 +437,7 @@ export function VariableSetBlockEditor({
               <input
                 type="number"
                 className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-                placeholder="до"
+                placeholder={t.variableSetBlock.toLabel}
                 value={cfg.max}
                 onFocus={saveSnapshot}
                 onChange={e => updateCfg({ max: Number(e.target.value) })}
@@ -444,7 +446,7 @@ export function VariableSetBlockEditor({
           )}
           {cfg.kind === 'string' && (
             <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400 w-20 shrink-0">Длина:</label>
+              <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.randomLength}</label>
               <input
                 type="number"
                 min={1}
@@ -454,7 +456,7 @@ export function VariableSetBlockEditor({
                 onFocus={saveSnapshot}
                 onChange={e => updateCfg({ length: Math.max(1, Number(e.target.value)) })}
               />
-              <span className="text-xs text-slate-500">символов [a-z0-9]</span>
+              <span className="text-xs text-slate-500">{t.variableSetBlock.randomLengthSuffix}</span>
             </div>
           )}
         </div>

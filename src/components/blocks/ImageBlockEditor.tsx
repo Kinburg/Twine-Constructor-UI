@@ -1,6 +1,7 @@
 import { useProjectStore, flattenAssets, flattenVariables } from '../../store/projectStore';
 import type { ImageBlock, ImageBoundMapping, Asset } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { useT } from '../../i18n';
 
 // ─── Asset image picker ───────────────────────────────────────────────────────
 // Dropdown from registered assets + manual path/URL input.
@@ -11,13 +12,16 @@ function AssetPicker({
   onChange,
   placeholder = 'assets/img.png',
   small = false,
+  noAssetLabel,
 }: {
   imageAssets: Asset[];
   value: string;
   onChange: (src: string) => void;
   placeholder?: string;
   small?: boolean;
+  noAssetLabel?: string;
 }) {
+  const t = useT();
   const matched = imageAssets.find(a => a.relativePath === value);
   const inputCls = small
     ? 'w-full bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono'
@@ -38,7 +42,7 @@ function AssetPicker({
             else if (e.target.value === '') onChange('');
           }}
         >
-          <option value="">— из ассетов —</option>
+          <option value="">{noAssetLabel ?? t.imageBlock.noAssetOption}</option>
           {imageAssets.map(a => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
@@ -67,6 +71,7 @@ export function ImageBlockEditor({
 }) {
   const { project, projectDir, updateBlock } = useProjectStore();
   const update = onUpdate ?? ((p: Partial<ImageBlock>) => updateBlock(sceneId, block.id, p as never));
+  const t = useT();
   const imageAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
   const variables   = flattenVariables(project.variableNodes);
 
@@ -108,11 +113,11 @@ export function ImageBlockEditor({
 
       {/* ── Mode selector ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Режим:</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.modeLabel}</label>
         <div className="flex gap-1">
           {([
-            ['static', '🖼️ Статически'],
-            ['bound',  '🔗 По переменной'],
+            ['static', t.imageBlock.modeStatic],
+            ['bound',  t.imageBlock.modeBound],
           ] as const).map(([m, label]) => (
             <button
               key={m}
@@ -134,7 +139,7 @@ export function ImageBlockEditor({
         <>
           {imageAssets.length > 0 && (
             <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400 w-20 shrink-0">Из ассетов:</label>
+              <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.assetLabel}</label>
               <select
                 className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
                 value=""
@@ -143,17 +148,17 @@ export function ImageBlockEditor({
                   if (asset) update({ src: asset.relativePath, alt: asset.name });
                 }}
               >
-                <option value="">— выбрать ассет —</option>
+                <option value="">{t.imageBlock.selectAsset}</option>
                 {imageAssets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
               </select>
             </div>
           )}
 
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">URL / путь:</label>
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.urlLabel}</label>
             <input
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder="assets/bg.jpg или https://..."
+              placeholder={t.imageBlock.urlPlaceholder}
               value={block.src}
               onChange={e => update({ src: e.target.value })}
             />
@@ -176,13 +181,13 @@ export function ImageBlockEditor({
 
           {/* Variable selector */}
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">Переменная:</label>
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.variableLabel}</label>
             <select
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={block.variableId ?? ''}
               onChange={e => update({ variableId: e.target.value })}
             >
-              <option value="">— выбрать —</option>
+              <option value="">{t.imageBlock.selectVariable}</option>
               {variables.map(v => (
                 <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
               ))}
@@ -192,17 +197,17 @@ export function ImageBlockEditor({
           {/* Mapping list */}
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-400">Соответствия (значение → файл):</span>
+              <span className="text-xs text-slate-400">{t.imageBlock.mappingsLabel}</span>
               <button
                 className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
                 onClick={addMapping}
               >
-                + Добавить
+                {t.imageBlock.addMapping}
               </button>
             </div>
 
             {mapping.length === 0 && (
-              <p className="text-xs text-slate-600 italic">Нет записей. Нажмите «+ Добавить».</p>
+              <p className="text-xs text-slate-600 italic">{t.imageBlock.noMappings}</p>
             )}
 
             {mapping.map((m, i) => {
@@ -212,14 +217,14 @@ export function ImageBlockEditor({
 
                   {/* Match type + delete */}
                   <div className="flex items-center gap-1">
-                    <span className="text-xs text-slate-500 shrink-0">Режим:</span>
+                    <span className="text-xs text-slate-500 shrink-0">{t.imageBlock.matchMode}</span>
                     <select
                       className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
                       value={mt}
                       onChange={e => patchMapping(i, { matchType: e.target.value as 'exact' | 'range' })}
                     >
-                      <option value="exact">Точное значение</option>
-                      <option value="range">Диапазон</option>
+                      <option value="exact">{t.imageBlock.matchExact}</option>
+                      <option value="range">{t.imageBlock.matchRange}</option>
                     </select>
                     <button
                       className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
@@ -232,7 +237,7 @@ export function ImageBlockEditor({
                   {/* Exact value */}
                   {mt === 'exact' && (
                     <div className="flex gap-1 items-center">
-                      <span className="text-xs text-slate-500 shrink-0 w-12">Знач.:</span>
+                      <span className="text-xs text-slate-500 shrink-0 w-12">{t.imageBlock.valueLabel}</span>
                       <input
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="100"
@@ -245,14 +250,14 @@ export function ImageBlockEditor({
                   {/* Range */}
                   {mt === 'range' && (
                     <div className="flex gap-1 items-center">
-                      <span className="text-xs text-slate-500 shrink-0 w-12">От:</span>
+                      <span className="text-xs text-slate-500 shrink-0 w-12">{t.imageBlock.fromLabel}</span>
                       <input
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="0"
                         value={m.rangeMin ?? ''}
                         onChange={e => patchMapping(i, { rangeMin: e.target.value })}
                       />
-                      <span className="text-xs text-slate-500 shrink-0">до</span>
+                      <span className="text-xs text-slate-500 shrink-0">{t.imageBlock.toLabel}</span>
                       <input
                         className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                         placeholder="20"
@@ -264,7 +269,7 @@ export function ImageBlockEditor({
 
                   {/* File picker */}
                   <div className="flex gap-1 items-start">
-                    <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-12">Файл:</span>
+                    <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-12">{t.imageBlock.fileLabel}</span>
                     <AssetPicker
                       imageAssets={imageAssets}
                       value={m.src}
@@ -278,7 +283,7 @@ export function ImageBlockEditor({
 
             {/* Default / fallback image */}
             <div className="flex gap-1 items-start mt-0.5">
-              <label className="text-xs text-slate-400 shrink-0 pt-1.5 w-20">По умолч.:</label>
+              <label className="text-xs text-slate-400 shrink-0 pt-1.5 w-20">{t.imageBlock.defaultLabel}</label>
               <AssetPicker
                 imageAssets={imageAssets}
                 value={block.defaultSrc ?? ''}
@@ -293,21 +298,21 @@ export function ImageBlockEditor({
       {/* ── Shared fields (both modes) ─────────────────────────────────────── */}
 
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Alt текст:</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.altLabel}</label>
         <input
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-          placeholder="описание изображения"
+          placeholder={t.imageBlock.altPlaceholder}
           value={block.alt}
           onChange={e => update({ alt: e.target.value })}
         />
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Ширина (px):</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.widthLabel}</label>
         <input
           type="number"
           className="w-24 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-          placeholder="авто"
+          placeholder={t.imageBlock.widthPlaceholder}
           min={0}
           value={block.width || ''}
           onChange={e => update({ width: parseInt(e.target.value) || 0 })}

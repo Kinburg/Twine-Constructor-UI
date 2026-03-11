@@ -58,5 +58,5 @@ interface ElectronAPI {
 }
 
 declare interface Window {
-  electronAPI: ElectronAPI;
+  electronAPI?: ElectronAPI;
 }

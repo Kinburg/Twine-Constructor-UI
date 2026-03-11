@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import type { Asset, AssetGroup, AssetTreeNode } from '../../types';
 import { fsApi, joinPath, safeName, toLocalFileUrl } from '../../lib/fsApi';
+import { useT } from '../../i18n';
 
 // ─── Video extensions ─────────────────────────────────────────────────────────
 
@@ -22,6 +23,7 @@ interface PendingGroup {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export function AssetManager() {
+  const t = useT();
   const {
     project, projectDir, setProjectDir,
     addAssetGroup, addAsset, deleteAssetNode,
@@ -95,7 +97,7 @@ export function AssetManager() {
         setExpandedIds(prev => new Set(prev).add(pendingGroup.parentGroupId!));
       }
     } catch (e) {
-      alert(`Ошибка создания папки: ${e}`);
+      alert(t.assets.errorCreateFolder(e));
     }
   }
 
@@ -103,17 +105,17 @@ export function AssetManager() {
 
   async function handleAddFiles(parentGroupId: string | null, groupRelPath: string) {
     const files = await fsApi.openFilesDialog({
-      title: 'Выбрать файлы (изображения или видео)',
+      title: t.assets.titleSelectFiles,
       filters: [
         {
-          name: 'Медиафайлы',
+          name: t.assets.filterMedia,
           extensions: [
             'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif',
             'mp4', 'webm', 'ogg', 'ogv', 'mov',
           ],
         },
-        { name: 'Изображения', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'] },
-        { name: 'Видео',       extensions: ['mp4', 'webm', 'ogg', 'ogv', 'mov'] },
+        { name: t.assets.filterImages, extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'] },
+        { name: t.assets.filterVideos, extensions: ['mp4', 'webm', 'ogg', 'ogv', 'mov'] },
       ],
     });
     if (!files || files.length === 0) return;
@@ -139,7 +141,7 @@ export function AssetManager() {
       // Auto-expand parent group
       if (parentGroupId) setExpandedIds(prev => new Set(prev).add(parentGroupId));
     } catch (e) {
-      alert(`Ошибка добавления файлов: ${e}`);
+      alert(t.assets.errorAddFiles(e));
     }
   }
 
@@ -157,7 +159,7 @@ export function AssetManager() {
           <input
             ref={groupInputRef}
             className="flex-1 bg-transparent text-xs text-white outline-none min-w-0"
-            placeholder="Название группы…"
+            placeholder={t.assets.groupNamePlaceholder}
             value={groupNameDraft}
             onChange={e => setGroupNameDraft(e.target.value)}
             onKeyDown={e => {
@@ -184,23 +186,23 @@ export function AssetManager() {
       <div className="flex gap-1 pb-1 border-b border-slate-800 mb-1">
         <button
           className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
-          title="Создать группу (папку) в корне"
+          title={t.assets.addGroupTitle}
           onClick={() => startAddGroup(null, '')}
         >
-          + Группа
+          {t.assets.addGroup}
         </button>
         <button
           className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
-          title="Добавить файлы в корень assets/"
+          title={t.assets.addFilesRootTitle}
           onClick={() => handleAddFiles(null, '')}
         >
-          + Файлы
+          {t.assets.addFiles}
         </button>
       </div>
 
       {assetNodes.length === 0 && !pendingGroup && (
         <p className="text-xs text-slate-600 italic px-1 py-2">
-          Нет ассетов. Создайте группу или добавьте файлы.
+          {t.assets.empty}
         </p>
       )}
 
@@ -247,6 +249,7 @@ function GroupRow({
   group, depth, expandedIds, onToggle,
   onStartAddGroup, onAddFiles, onDelete, projectDir,
 }: NodeViewProps & { group: AssetGroup }) {
+  const t = useT();
   const isOpen = expandedIds.has(group.id);
   const indent = depth * 14;
 
@@ -278,22 +281,22 @@ function GroupRow({
         {/* Actions (shown on hover) */}
         <div className="flex gap-0.5 opacity-0 group-hover/row:opacity-100 transition-opacity shrink-0">
           <ActionBtn
-            title="Добавить подгруппу"
+            title={t.assets.addSubgroupTitle}
             onClick={() => onStartAddGroup(group.id, group.relativePath)}
           >
             📁+
           </ActionBtn>
           <ActionBtn
-            title="Добавить файлы в группу"
+            title={t.assets.addFilesToGroupTitle}
             onClick={() => onAddFiles(group.id, group.relativePath)}
           >
             📄+
           </ActionBtn>
           <ActionBtn
-            title="Удалить группу (файлы на диске остаются)"
+            title={t.assets.deleteGroupTitle}
             danger
             onClick={() => {
-              if (confirm(`Удалить группу «${group.name}» из дерева?\nФайлы на диске останутся.`))
+              if (confirm(t.assets.confirmDeleteGroup(group.name)))
                 onDelete(group.id);
             }}
           >
@@ -310,7 +313,7 @@ function GroupRow({
               className="text-xs text-slate-700 italic py-0.5"
               style={{ paddingLeft: `${indent + 22}px` }}
             >
-              пусто
+              {t.assets.emptyGroup}
             </div>
           ) : (
             group.children.map(child => (
@@ -338,6 +341,7 @@ function GroupRow({
 function AssetRow({
   asset, depth, onDelete, projectDir,
 }: NodeViewProps & { asset: Asset }) {
+  const t = useT();
   const indent = depth * 14;
   const isVideo = asset.assetType === 'video';
 
@@ -352,7 +356,7 @@ function AssetRow({
     >
       {/* Thumbnail / icon */}
       {isVideo ? (
-        <span className="text-sm shrink-0 select-none" title="Видео">🎥</span>
+        <span className="text-sm shrink-0 select-none" title={t.assets.videoTitle}>🎥</span>
       ) : previewSrc ? (
         <img
           src={previewSrc}
@@ -375,7 +379,7 @@ function AssetRow({
       {/* Delete */}
       <button
         className="opacity-0 group-hover/row:opacity-100 text-slate-600 hover:text-red-400 text-xs cursor-pointer transition-opacity shrink-0 px-0.5"
-        title="Убрать из списка (файл на диске остаётся)"
+        title={t.assets.removeTitle}
         onClick={() => onDelete(asset.id)}
       >
         ✕

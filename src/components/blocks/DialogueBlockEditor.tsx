@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
+import { useT } from '../../i18n';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import type { DialogueBlock } from '../../types';
 
@@ -33,6 +34,7 @@ export function DialogueBlockEditor({
   onUpdate?: (patch: Partial<DialogueBlock>) => void;
 }) {
   const { project, projectDir, updateBlock, saveSnapshot } = useProjectStore();
+  const t = useT();
   const update = onUpdate ?? ((p: Partial<DialogueBlock>) => updateBlock(sceneId, block.id, p as never));
   const { characters } = project;
 
@@ -73,25 +75,25 @@ export function DialogueBlockEditor({
 
       {/* Character selector */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Персонаж:</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.dialogueBlock.characterLabel}</label>
         <select
           className="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
           value={block.characterId}
           onChange={e => update({ characterId: e.target.value })}
         >
-          <option value="">— выбрать —</option>
+          <option value="">{t.dialogueBlock.selectChar}</option>
           {characters.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
         {characters.length === 0 && (
-          <span className="text-xs text-slate-500 italic">Нет персонажей</span>
+          <span className="text-xs text-slate-500 italic">{t.dialogueBlock.noCharacters}</span>
         )}
       </div>
 
       {/* Alignment toggle */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Сторона:</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.dialogueBlock.sideLabel}</label>
         <div className="flex gap-1">
           <button
             className={`text-xs px-3 py-1 rounded border transition-colors cursor-pointer ${
@@ -101,7 +103,7 @@ export function DialogueBlockEditor({
             }`}
             onClick={() => update({ align: 'left' })}
           >
-            ◀ Слева
+            {t.dialogueBlock.sideLeft}
           </button>
           <button
             className={`text-xs px-3 py-1 rounded border transition-colors cursor-pointer ${
@@ -111,14 +113,14 @@ export function DialogueBlockEditor({
             }`}
             onClick={() => update({ align: 'right' })}
           >
-            Справа ▶
+            {t.dialogueBlock.sideRight}
           </button>
         </div>
       </div>
 
       {/* Live update toggle */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Обновление:</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.dialogueBlock.liveUpdateLabel}</label>
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -126,7 +128,7 @@ export function DialogueBlockEditor({
             onChange={e => update({ live: e.target.checked })}
             className="accent-indigo-500 cursor-pointer"
           />
-          <span className="text-xs text-slate-400">Живое обновление <span className="font-mono text-slate-500">&lt;&lt;live&gt;&gt;</span></span>
+          <span className="text-xs text-slate-400">{t.dialogueBlock.liveUpdateDesc} <span className="font-mono text-slate-500">&lt;&lt;live&gt;&gt;</span></span>
         </label>
       </div>
 
@@ -144,7 +146,7 @@ export function DialogueBlockEditor({
         {showBound && (
           <div
             className="w-10 h-10 rounded flex-shrink-0 bg-slate-700 flex items-center justify-center text-slate-500 text-xs"
-            title="Динамическая аватарка (зависит от переменной)"
+            title={t.dialogueBlock.dynamicAvatarTitle}
           >
             📊
           </div>
@@ -165,7 +167,7 @@ export function DialogueBlockEditor({
           <textarea
             className="w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500"
             style={{ color: selectedChar ? '#e2e8f0' : undefined }}
-            placeholder="Введите реплику..."
+            placeholder={t.dialogueBlock.linePlaceholder}
             value={block.text}
             onFocus={saveSnapshot}
             onChange={e => update({ text: e.target.value })}

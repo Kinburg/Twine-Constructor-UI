@@ -1,7 +1,7 @@
 {
-  "name": "twine-gen",
+  "name": "twine-constructor",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -12,13 +12,19 @@
     "lint:fix": "eslint . --fix"
   },
   "build": {
-    "appId": "com.twinegen.app",
-    "productName": "TwineGenerator",
+    "appId": "com.twineconstructor.app",
+    "productName": "TwineConstructor",
     "directories": {
       "output": "release"
     },
     "win": {
-      "target": "dir"
+      "target": [{ "target": "nsis", "arch": ["x64"] }, { "target": "zip" }]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
     },
     "linux": {
       "target": "AppImage"

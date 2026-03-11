@@ -17,7 +17,7 @@ export function blockSearchText(block: Block, vars: Variable[]): string {
         return block.content ?? '';
 
       case 'dialogue':
-        return block.content ?? '';
+        return block.text ?? '';
 
       case 'note':
         return block.text ?? '';

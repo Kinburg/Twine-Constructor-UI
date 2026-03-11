@@ -19,7 +19,7 @@ export function usePreviewSync(): void {
 
     const scene = project.scenes.find(s => s.id === activeSceneId);
     if (!scene) {
-      api.updatePreview('(сцена не выбрана)');
+      api.updatePreview('(no scene selected)');
       return;
     }
 
@@ -30,6 +30,6 @@ export function usePreviewSync(): void {
       .filter(Boolean)
       .join('\n');
 
-    api.updatePreview(`::${scene.name}${tags}\n${body || '(пустая сцена)'}`);
+    api.updatePreview(`::${scene.name}${tags}\n${body || '(empty scene)'}`);
   }, [project, activeSceneId]);
 }

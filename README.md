@@ -1,73 +1,70 @@
-# React + TypeScript + Vite
+# Twine Constructor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A visual editor for building interactive stories with [SugarCube 2](https://www.motoslave.net/sugarcube/2/), exporting to `.twee` format.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### Scene Editor
+- **Content blocks**: text, character dialogue, choice (branching), condition (IF/ELSE IF/ELSE), variable set, image, video, button, input field, HTML table, raw SugarCube code, note
+- **Drag-and-drop** sorting for blocks and scenes
+- **Nested blocks** inside condition branches
+- **Search** by text and variable usage — click results to navigate to the scene and block
+- **Undo / Redo** (Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y), 100-step history
 
-## React Compiler
+### Project Management
+- Characters with avatars
+- Variables (number, string, boolean) with types and default values
+- Media assets (images, video) with variable bindings
+- Sidebar panel (StoryCaption) — visual cell editor: text, variable, progress bar, image, raw code
+- Export to `.twee` / `.zip`
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Tools
+- **Scene graph** — interactive transition map with drag-and-drop nodes (separate window)
+- **Code preview** — live-updating `.twee` output for the active scene (separate window)
+- UI available in **English and Russian**
 
-## Expanding the ESLint configuration
+## Installation
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+Download the latest release from the [Releases](../../releases) page:
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- `TwineConstructor-Setup-x.x.x.exe` — installer with custom install directory
+- `TwineConstructor-x.x.x-win.zip` — portable version
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Development
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+# Install dependencies
+npm install
+
+# Start in development mode (Electron + Vite HMR)
+npm run dev
+
+# Build installer
+npm run dist
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+**Requirements:** Node.js 20+
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Stack
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Layer | Technologies |
+|---|---|
+| UI | React 19, TypeScript, Tailwind CSS 4 |
+| State | Zustand 5 |
+| Desktop | Electron 40, vite-plugin-electron |
+| Build | Vite 7, esbuild |
+| Graph | @xyflow/react, @dagrejs/dagre |
+| Packaging | electron-builder (NSIS + ZIP) |
+
+## Releasing
+
+```bash
+npm version patch   # 1.0.0 → 1.0.1  (or minor / major)
+git push && git push --tags
 ```
+
+GitHub Actions will automatically build the installer and create a Release with artifacts.
+
+## License
+
+MIT

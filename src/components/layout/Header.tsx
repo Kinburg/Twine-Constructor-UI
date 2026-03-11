@@ -96,7 +96,7 @@ export function Header() {
       }
       await doSaveToDir(dir);
     } catch (e) {
-      alert(`Ошибка сохранения: ${e}`);
+      alert(t.header.errorSave(String(e)));
     } finally {
       setBusy(false);
     }
@@ -111,7 +111,7 @@ export function Header() {
       setProjectDir(dir);
       await doSaveToDir(dir);
     } catch (e) {
-      alert(`Ошибка сохранения: ${e}`);
+      alert(t.header.errorSave(String(e)));
     } finally {
       setBusy(false);
     }
@@ -129,7 +129,7 @@ export function Header() {
       const dir = filePath.replace(/[/\\][^/\\]+$/, '');
       loadProject(loaded, dir);
     } catch {
-      alert('Ошибка: невалидный файл проекта.');
+      alert(t.header.errorInvalidProject);
     }
   };
 
@@ -164,7 +164,7 @@ export function Header() {
 
   const handleLoadSCFormat = async () => {
     const filePath = await fsApi.openFileDialog({
-      title: 'Выбрать SugarCube 2 format.js',
+      title: t.header.dialogSelectSC,
       filters: [{ name: 'JavaScript', extensions: ['js'] }],
     });
     if (!filePath) return;
@@ -172,15 +172,15 @@ export function Header() {
       const text   = await fsApi.readFile(filePath);
       const result = parseSCFormatJs(text);
       if (!result) {
-        alert('Не удалось распознать format.js. Убедитесь, что файл — это SugarCube 2 format.js.');
+        alert(t.header.errorInvalidSC);
         return;
       }
       storeSCTemplate(result.source, result.version);
       setScReady(true);
       setScVersion(result.version);
-      alert(`SugarCube ${result.version} успешно загружен! Теперь доступен экспорт HTML.`);
+      alert(t.header.scLoadedAlert(result.version));
     } catch (e) {
-      alert(`Ошибка чтения файла: ${e}`);
+      alert(t.header.errorReadFile(String(e)));
     }
   };
 
@@ -207,7 +207,7 @@ export function Header() {
         await fsApi.openPath(dir);
       }
     } catch (e) {
-      alert(`Ошибка экспорта HTML: ${e}`);
+      alert(t.header.errorExportHtml(String(e)));
     } finally {
       setBusy(false);
     }
@@ -220,7 +220,7 @@ export function Header() {
     const defaultName = `${safeName(project.title)}.html`;
     const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
     const filePath = await fsApi.saveFileDialog({
-      title: 'Сохранить HTML файл',
+      title: t.header.dialogSaveHtml,
       defaultPath,
       filters: [{ name: 'HTML File', extensions: ['html'] }],
     });
@@ -230,7 +230,7 @@ export function Header() {
       const html = generateStandaloneHtml(project, template);
       await fsApi.writeFile(filePath, html);
     } catch (e) {
-      alert(`Ошибка экспорта HTML: ${e}`);
+      alert(t.header.errorExportHtml(String(e)));
     } finally {
       setBusy(false);
     }
@@ -315,7 +315,7 @@ export function Header() {
             <button
               className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 cursor-pointer text-sm leading-none"
               onClick={() => setSearchQuery('')}
-              title="Очистить поиск"
+              title={t.header.clearSearch}
             >
               ×
             </button>
@@ -444,7 +444,7 @@ export function Header() {
           </span>
         ) : (
           <Btn variant="ghost" onClick={handleLoadSCFormat}
-            title="Загрузить SugarCube 2 format.js для экспорта самодостаточного HTML">
+            title={t.header.scLoadTitle}>
             {t.header.scRuntime}
           </Btn>
         )}

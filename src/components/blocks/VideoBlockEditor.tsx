@@ -1,6 +1,7 @@
 import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import type { VideoBlock } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { useT } from '../../i18n';
 
 export function VideoBlockEditor({
   block,
@@ -13,6 +14,7 @@ export function VideoBlockEditor({
 }) {
   const { project, projectDir, updateBlock } = useProjectStore();
   const update = onUpdate ?? ((p: Partial<VideoBlock>) => updateBlock(sceneId, block.id, p as never));
+  const t = useT();
   const videoAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'video');
 
   /**
@@ -32,7 +34,7 @@ export function VideoBlockEditor({
       {/* Asset picker */}
       {videoAssets.length > 0 && (
         <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 w-20 shrink-0">Из ассетов:</label>
+          <label className="text-xs text-slate-400 w-20 shrink-0">{t.videoBlock.assetLabel}</label>
           <select
             className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
             value=""
@@ -44,7 +46,7 @@ export function VideoBlockEditor({
               }
             }}
           >
-            <option value="">— выбрать ассет —</option>
+            <option value="">{t.videoBlock.selectAsset}</option>
             {videoAssets.map(a => (
               <option key={a.id} value={a.id}>{a.name}</option>
             ))}
@@ -54,10 +56,10 @@ export function VideoBlockEditor({
 
       {/* Manual URL / path entry */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">URL / путь:</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.videoBlock.urlLabel}</label>
         <input
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-          placeholder="assets/intro.mp4 или https://..."
+          placeholder={t.videoBlock.urlPlaceholder}
           value={block.src}
           onChange={e => update({ src: e.target.value })}
         />
@@ -65,11 +67,11 @@ export function VideoBlockEditor({
 
       {/* Width */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Ширина (px):</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.videoBlock.widthLabel}</label>
         <input
           type="number"
           className="w-24 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-          placeholder="авто"
+          placeholder={t.videoBlock.widthPlaceholder}
           min={0}
           value={block.width || ''}
           onChange={e => update({ width: parseInt(e.target.value) || 0 })}
@@ -79,9 +81,9 @@ export function VideoBlockEditor({
       {/* Playback options */}
       <div className="flex items-center gap-4">
         {[
-          { key: 'controls', label: 'Управление' },
-          { key: 'autoplay', label: 'Авто-старт' },
-          { key: 'loop',     label: 'Повтор' },
+          { key: 'controls', label: t.videoBlock.controls },
+          { key: 'autoplay', label: t.videoBlock.autoplay },
+          { key: 'loop',     label: t.videoBlock.loop },
         ].map(({ key, label }) => (
           <label key={key} className="flex items-center gap-1.5 cursor-pointer">
             <input

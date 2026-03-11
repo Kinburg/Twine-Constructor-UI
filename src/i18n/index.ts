@@ -56,7 +56,7 @@ interface LocaleState {
 export const useLocaleStore = create<LocaleState>()(
   persist(
     (set) => ({
-      locale: 'ru',
+      locale: 'en',
       setLocale: (locale) => set({ locale }),
     }),
     { name: 'twine-constructor-locale' },
@@ -76,5 +76,5 @@ export const useLocaleStore = create<LocaleState>()(
  */
 export function useT(): Translations {
   const { locale } = useLocaleStore();
-  return localeMap[locale] ?? localeMap['ru'];
+  return localeMap[locale] ?? localeMap['en'];
 }

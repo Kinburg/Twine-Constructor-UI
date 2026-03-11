@@ -1,5 +1,6 @@
 import { useProjectStore } from '../../store/projectStore';
 import type { ChoiceBlock, ChoiceOption } from '../../types';
+import { useT } from '../../i18n';
 
 export function ChoiceBlockEditor({
   block,
@@ -12,10 +13,11 @@ export function ChoiceBlockEditor({
 }) {
   const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption, saveSnapshot } = useProjectStore();
   const { scenes } = project;
+  const t = useT();
 
   const handleAddOption = onUpdate
     ? () => {
-        const opt: ChoiceOption = { id: crypto.randomUUID(), label: 'Вариант', targetSceneId: '', condition: '' };
+        const opt: ChoiceOption = { id: crypto.randomUUID(), label: t.choiceBlock.defaultOption, targetSceneId: '', condition: '' };
         onUpdate({ options: [...block.options, opt] });
       }
     : () => addChoiceOption(sceneId, block.id);
@@ -33,7 +35,7 @@ export function ChoiceBlockEditor({
   return (
     <div className="flex flex-col gap-2">
       {block.options.length === 0 && (
-        <p className="text-xs text-slate-500 italic">Нет вариантов. Добавьте ниже.</p>
+        <p className="text-xs text-slate-500 italic">{t.choiceBlock.empty}</p>
       )}
 
       {block.options.map((opt, idx) => (
@@ -42,14 +44,14 @@ export function ChoiceBlockEditor({
             <span className="text-xs text-slate-500 shrink-0">#{idx + 1}</span>
             <input
               className="flex-1 bg-slate-700 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder="Текст кнопки..."
+              placeholder={t.choiceBlock.optionPlaceholder}
               value={opt.label}
               onFocus={saveSnapshot}
               onChange={e => handleUpdateOption(opt.id, { label: e.target.value })}
             />
             <button
               className="text-slate-600 hover:text-red-400 text-xs cursor-pointer transition-colors"
-              title="Удалить вариант"
+              title={t.choiceBlock.deleteOption}
               onClick={() => handleDeleteOption(opt.id)}
             >
               ✕
@@ -57,13 +59,13 @@ export function ChoiceBlockEditor({
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-16 shrink-0">Переход:</label>
+            <label className="text-xs text-slate-400 w-16 shrink-0">{t.choiceBlock.targetScene}</label>
             <select
               className="flex-1 bg-slate-700 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={opt.targetSceneId}
               onChange={e => handleUpdateOption(opt.id, { targetSceneId: e.target.value })}
             >
-              <option value="">— сцена —</option>
+              <option value="">{t.choiceBlock.noScene}</option>
               {scenes.map(sc => (
                 <option key={sc.id} value={sc.name}>{sc.name}</option>
               ))}
@@ -71,10 +73,10 @@ export function ChoiceBlockEditor({
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-16 shrink-0">Условие:</label>
+            <label className="text-xs text-slate-400 w-16 shrink-0">{t.choiceBlock.conditionLabel}</label>
             <input
               className="flex-1 bg-slate-700 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-              placeholder="$var == 1  (пусто = всегда)"
+              placeholder={t.choiceBlock.conditionPlaceholder}
               value={opt.condition}
               onFocus={saveSnapshot}
               onChange={e => handleUpdateOption(opt.id, { condition: e.target.value })}
@@ -87,7 +89,7 @@ export function ChoiceBlockEditor({
         className="text-xs text-emerald-400 hover:text-emerald-300 hover:bg-slate-800 rounded px-2 py-1 text-left transition-colors cursor-pointer"
         onClick={handleAddOption}
       >
-        + Добавить вариант
+        {t.choiceBlock.addOption}
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProjectStore, flattenVariables, flattenAssets } from '../../store/projectStore';
 import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset } from '../../types';
+import { useT } from '../../i18n';
 
 const DEFAULT_COLORS = [
   { nameColor: '#7dd3fc', bgColor: '#0c2340', borderColor: '#0ea5e9' },
@@ -21,10 +22,10 @@ function defaultAvatarConfig(): AvatarConfig {
   return { mode: 'static', src: '', variableId: '', mapping: [], defaultSrc: '' };
 }
 
-function newChar(): Omit<Character, 'id'> {
+function newChar(defaultName: string): Omit<Character, 'id'> {
   const c = nextColor();
   return {
-    name: 'Персонаж',
+    name: defaultName,
     nameColor: c.nameColor,
     bgColor: c.bgColor,
     borderColor: c.borderColor,
@@ -33,6 +34,7 @@ function newChar(): Omit<Character, 'id'> {
 }
 
 export function CharacterManager() {
+  const t = useT();
   const { project, addCharacter, updateCharacter, deleteCharacter } = useProjectStore();
   const { characters } = project;
   const vars = flattenVariables(project.variableNodes);
@@ -61,7 +63,7 @@ export function CharacterManager() {
           onToggle={() => setExpandedId(expandedId === char.id ? null : char.id)}
           onUpdate={patch => updateCharacter(char.id, patch)}
           onDelete={() => {
-            if (confirm(`Удалить персонажа "${char.name}"?`)) {
+            if (confirm(t.characters.confirmDelete(char.name))) {
               deleteCharacter(char.id);
               if (expandedId === char.id) setExpandedId(null);
             }
@@ -70,14 +72,14 @@ export function CharacterManager() {
       ))}
 
       {characters.length === 0 && (
-        <p className="text-xs text-slate-600 italic px-2 py-1">Нет персонажей</p>
+        <p className="text-xs text-slate-600 italic px-2 py-1">{t.characters.empty}</p>
       )}
 
       <button
         className="mt-1 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 text-left transition-colors cursor-pointer"
-        onClick={() => addCharacter(newChar())}
+        onClick={() => addCharacter(newChar(t.characters.defaultName))}
       >
-        + Добавить персонажа
+        {t.characters.add}
       </button>
     </div>
   );
@@ -100,6 +102,7 @@ function CharacterCard({
   onUpdate: (patch: Partial<Character>) => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   const nameInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     if (expanded) {
@@ -122,7 +125,7 @@ function CharacterCard({
           style={{ background: char.borderColor }}
         />
         <span className="flex-1 text-xs text-white truncate" style={{ color: char.nameColor }}>
-          {char.name || 'Без имени'}
+          {char.name || t.characters.noName}
         </span>
         <button
           className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
@@ -139,7 +142,7 @@ function CharacterCard({
           className="px-3 py-2 flex flex-col gap-2 border-t border-slate-700"
           style={{ background: char.bgColor, borderLeft: `3px solid ${char.borderColor}` }}
         >
-          <Field label="Имя">
+          <Field label={t.characters.fieldName}>
             <input
               ref={nameInputRef}
               className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
@@ -147,7 +150,7 @@ function CharacterCard({
               onChange={e => onUpdate({ name: e.target.value })}
             />
           </Field>
-          <Field label="Цвет имени">
+          <Field label={t.characters.fieldNameColor}>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -158,7 +161,7 @@ function CharacterCard({
               <span className="text-xs font-mono" style={{ color: char.nameColor }}>{char.nameColor}</span>
             </div>
           </Field>
-          <Field label="Фон диалога">
+          <Field label={t.characters.fieldDialogBg}>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -169,7 +172,7 @@ function CharacterCard({
               <span className="text-xs font-mono text-slate-300">{char.bgColor}</span>
             </div>
           </Field>
-          <Field label="Акцент">
+          <Field label={t.characters.fieldAccent}>
             <div className="flex items-center gap-2">
               <input
                 type="color"
@@ -198,9 +201,9 @@ function CharacterCard({
             }}
           >
             <span className="text-xs font-bold block" style={{ color: char.nameColor }}>
-              {char.name || 'Имя'}
+              {char.name || t.characters.fieldName}
             </span>
-            <p className="text-xs text-slate-300 italic m-0">Пример реплики персонажа.</p>
+            <p className="text-xs text-slate-300 italic m-0">{t.characters.exampleLine}</p>
           </div>
         </div>
       )}
@@ -221,11 +224,12 @@ function AvatarEditor({
   imgAssets: Asset[];
   onChange: (c: AvatarConfig) => void;
 }) {
+  const t = useT();
   return (
     <div className="flex flex-col gap-2">
       {/* Mode toggle */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">Аватар:</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.characters.avatarLabel}</label>
         <div className="flex gap-1">
           <button
             className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
@@ -235,7 +239,7 @@ function AvatarEditor({
             }`}
             onClick={() => onChange({ ...cfg, mode: 'static' })}
           >
-            🔗 Статич.
+            {t.characters.avatarStatic}
           </button>
           <button
             className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
@@ -245,14 +249,14 @@ function AvatarEditor({
             }`}
             onClick={() => onChange({ ...cfg, mode: 'bound' })}
           >
-            📊 Динамич.
+            {t.characters.avatarDynamic}
           </button>
         </div>
       </div>
 
       {/* Static mode: asset picker + manual URL */}
       {cfg.mode === 'static' && (
-        <Field label="Картинка">
+        <Field label={t.characters.fieldImage}>
           <AvatarImagePicker
             imgAssets={imgAssets}
             value={cfg.src}
@@ -265,13 +269,13 @@ function AvatarEditor({
       {cfg.mode === 'bound' && (
         <div className="flex flex-col gap-1.5">
           {/* Variable selector */}
-          <Field label="Переменная">
+          <Field label={t.characters.fieldVariable}>
             <select
               className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={cfg.variableId}
               onChange={e => onChange({ ...cfg, variableId: e.target.value })}
             >
-              <option value="">— выбрать —</option>
+              <option value="">{t.characters.selectVariable}</option>
               {vars.map(v => (
                 <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
               ))}
@@ -281,7 +285,7 @@ function AvatarEditor({
           {/* Mappings */}
           <div className="flex flex-col gap-1">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">Соответствия (значение → файл):</span>
+              <span className="text-xs text-slate-500">{t.characters.mappingsLabel}</span>
               <button
                 className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
                 onClick={() => onChange({
@@ -299,7 +303,7 @@ function AvatarEditor({
                   ],
                 })}
               >
-                + Добавить
+                {t.characters.addMapping}
               </button>
             </div>
 
@@ -320,12 +324,12 @@ function AvatarEditor({
             ))}
 
             {cfg.mapping.length === 0 && (
-              <p className="text-xs text-slate-600 italic">Добавьте хотя бы одно соответствие.</p>
+              <p className="text-xs text-slate-600 italic">{t.characters.noMappings}</p>
             )}
 
             {/* Default image */}
             <div className="flex flex-col gap-1 mt-0.5">
-              <span className="text-xs text-slate-400">По умолч. (нет совпадений):</span>
+              <span className="text-xs text-slate-400">{t.characters.defaultMapping}</span>
               <AvatarImagePicker
                 imgAssets={imgAssets}
                 value={cfg.defaultSrc}
@@ -352,6 +356,7 @@ function MappingEntry({
   onChange: (patch: Partial<ImageBoundMapping>) => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   const mt = m.matchType ?? 'exact';
   return (
     <div className="flex flex-col gap-1 border border-slate-700/60 rounded p-1.5">
@@ -362,8 +367,8 @@ function MappingEntry({
           value={mt}
           onChange={e => onChange({ matchType: e.target.value as 'exact' | 'range' })}
         >
-          <option value="exact">Точное значение</option>
-          <option value="range">Диапазон</option>
+          <option value="exact">{t.cellModal.matchExact}</option>
+          <option value="range">{t.cellModal.matchRange}</option>
         </select>
         <button
           className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
@@ -376,7 +381,7 @@ function MappingEntry({
       {/* Exact value */}
       {mt === 'exact' && (
         <div className="flex gap-1 items-center">
-          <span className="text-xs text-slate-500 shrink-0 w-10">Знач.:</span>
+          <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.valueLabel}</span>
           <input
             className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
             placeholder="happy"
@@ -389,14 +394,14 @@ function MappingEntry({
       {/* Range values */}
       {mt === 'range' && (
         <div className="flex gap-1 items-center">
-          <span className="text-xs text-slate-500 shrink-0 w-6">От:</span>
+          <span className="text-xs text-slate-500 shrink-0 w-6">{t.cellModal.fromLabel}</span>
           <input
             className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
             placeholder="0"
             value={m.rangeMin ?? ''}
             onChange={e => onChange({ rangeMin: e.target.value })}
           />
-          <span className="text-xs text-slate-500 shrink-0">До:</span>
+          <span className="text-xs text-slate-500 shrink-0">{t.cellModal.toLabel}</span>
           <input
             className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
             placeholder="20"
@@ -408,7 +413,7 @@ function MappingEntry({
 
       {/* Image picker */}
       <div className="flex gap-1 items-start">
-        <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">Файл:</span>
+        <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">{t.cellModal.fileLabel}</span>
         <AvatarImagePicker
           imgAssets={imgAssets}
           value={m.src}
@@ -431,6 +436,7 @@ function AvatarImagePicker({
   value: string;
   onChange: (src: string) => void;
 }) {
+  const t = useT();
   const matched = imgAssets.find(a => a.relativePath === value);
 
   return (
@@ -445,7 +451,7 @@ function AvatarImagePicker({
             else if (e.target.value === '') onChange('');
           }}
         >
-          <option value="">— выбрать из ассетов —</option>
+          <option value="">{t.cellModal.selectAsset}</option>
           {imgAssets.map(a => (
             <option key={a.id} value={a.id}>{a.name}</option>
           ))}
@@ -453,7 +459,7 @@ function AvatarImagePicker({
       )}
       <input
         className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-        placeholder="assets/img.png или https://..."
+        placeholder="assets/img.png or https://..."
         value={value}
         onChange={e => onChange(e.target.value)}
       />

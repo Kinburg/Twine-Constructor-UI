@@ -33,7 +33,7 @@ const DEFAULT_PANEL: SidebarPanel = { tabs: [], liveUpdate: false, style: DEFAUL
 function makeDefaultProject(): Project {
   return {
     id: uuid(),
-    title: 'Новый проект',
+    title: 'New Project',
     ifid: generateIfid(),
     scenes: [{ id: uuid(), name: 'Start', tags: [], blocks: [] }],
     characters: [],
@@ -154,7 +154,7 @@ function buildCharVarNodes(
     name: `${prefix}_name`,
     varType: 'string',
     defaultValue: charName,
-    description: `Имя персонажа «${charName}»`,
+    description: `Character name "${charName}"`,
   };
 
   const bgColorVar: Variable = {
@@ -162,7 +162,7 @@ function buildCharVarNodes(
     name: `${prefix}_bgColor`,
     varType: 'string',
     defaultValue: colors.bgColor,
-    description: 'Цвет фона диалогового окна',
+    description: 'Dialogue background color',
   };
 
   const borderColorVar: Variable = {
@@ -170,7 +170,7 @@ function buildCharVarNodes(
     name: `${prefix}_borderColor`,
     varType: 'string',
     defaultValue: colors.borderColor,
-    description: 'Цвет рамки диалогового окна',
+    description: 'Dialogue border color',
   };
 
   const nameColorVar: Variable = {
@@ -178,7 +178,7 @@ function buildCharVarNodes(
     name: `${prefix}_nameColor`,
     varType: 'string',
     defaultValue: colors.nameColor,
-    description: 'Цвет имени персонажа',
+    description: 'Character name color',
   };
 
   const avatarVar: Variable = {
@@ -186,7 +186,7 @@ function buildCharVarNodes(
     name: `${prefix}_avatar`,
     varType: 'string',
     defaultValue: colors.avatarConfig?.mode === 'static' ? (colors.avatarConfig.src ?? '') : '',
-    description: `URL аватарки персонажа «${charName}» (пусто = скрыта)`,
+    description: `Avatar URL for character "${charName}" (empty = hidden)`,
   };
 
   const stylesGroup: VariableGroup = {
@@ -303,7 +303,7 @@ function migrateCharacterAvatarVar(p: Project): Project {
       name: `${prefix}_avatar`,
       varType: 'string',
       defaultValue: char.avatarUrl || '',
-      description: `URL аватарки персонажа «${char.name}» (пусто = скрыта)`,
+      description: `Avatar URL for character "${char.name}" (empty = hidden)`,
     };
 
     // Append to the styles sub-group
@@ -634,7 +634,7 @@ export const useProjectStore = create<ProjectState>()(
         addScene: () => {
           get().saveSnapshot();
           const id = uuid();
-          const name = `Сцена ${get().project.scenes.length + 1}`;
+          const name = `Scene ${get().project.scenes.length + 1}`;
           const scene: Scene = { id, name, tags: [], blocks: [] };
           set(s => ({
             project: { ...s.project, scenes: [...s.project.scenes, scene] },
@@ -684,7 +684,7 @@ export const useProjectStore = create<ProjectState>()(
             const clone: Scene = {
               ...original,
               id: uuid(),
-              name: `${original.name} (копия)`,
+              name: `${original.name} (copy)`,
               blocks: original.blocks.map(deepCloneBlock),
             };
             const idx = s.project.scenes.findIndex(sc => sc.id === sceneId);
@@ -870,7 +870,7 @@ export const useProjectStore = create<ProjectState>()(
             project: updateScene(s.project, sceneId, sc =>
               updateBlockInScene(sc, blockId, b => {
                 if (b.type !== 'choice') return b;
-                const opt: ChoiceOption = { id: uuid(), label: 'Вариант', targetSceneId: '', condition: '' };
+                const opt: ChoiceOption = { id: uuid(), label: 'Option', targetSceneId: '', condition: '' };
                 return { ...b, options: [...b.options, opt] };
               })
             ),
@@ -985,7 +985,7 @@ export const useProjectStore = create<ProjectState>()(
                 variableNodes = updateVarInTree(variableNodes, varIds.nameVarId, {
                   name: `${newPrefix}_name`,
                   defaultValue: patch.name,
-                  description: `Имя персонажа «${patch.name}»`,
+                  description: `Character name "${patch.name}"`,
                 });
                 variableNodes = updateVarInTree(variableNodes, varIds.bgColorVarId,     { name: `${newPrefix}_bgColor` });
                 variableNodes = updateVarInTree(variableNodes, varIds.borderColorVarId, { name: `${newPrefix}_borderColor` });
@@ -993,7 +993,7 @@ export const useProjectStore = create<ProjectState>()(
                 if (varIds.avatarVarId) {
                   variableNodes = updateVarInTree(variableNodes, varIds.avatarVarId,    {
                     name: `${newPrefix}_avatar`,
-                    description: `URL аватарки персонажа «${patch.name}» (пусто = скрыта)`,
+                    description: `Avatar URL for character "${patch.name}" (empty = hidden)`,
                   });
                 }
               }

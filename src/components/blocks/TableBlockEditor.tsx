@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useProjectStore, flattenVariables, flattenAssets, DEFAULT_PANEL_STYLE, redistributeWidths } from '../../store/projectStore';
+import { useT } from '../../i18n';
 import type {
   TableBlock, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
@@ -7,14 +8,6 @@ import type {
 } from '../../types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function cellTypeLabel(type: CellContent['type']): string {
-  const m: Record<CellContent['type'], string> = {
-    text: 'Текст', variable: 'Переменная', progress: 'Прогресс-бар',
-    'image-static': 'Картинка', 'image-bound': 'Картинка (переменная)', raw: 'Twine-код',
-  };
-  return m[type];
-}
 
 function makeDefaultContent(type: CellContent['type']): CellContent {
   switch (type) {
@@ -36,6 +29,7 @@ export function TableBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<TableBlock>) => void;
 }) {
+  const t = useT();
   const { updateBlock, saveSnapshot } = useProjectStore();
   const project = useProjectStore(s => s.project);
   const vars = flattenVariables(project.variableNodes);
@@ -132,25 +126,25 @@ export function TableBlockEditor({
 
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Строки</span>
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.rowsEditor.sectionTitle}</span>
         </div>
 
         {block.rows.length === 0 && (
-          <p className="text-xs text-slate-600 italic">Нет строк. Нажмите «+ Строка».</p>
+          <p className="text-xs text-slate-600 italic">{t.rowsEditor.noRows}</p>
         )}
 
         {block.rows.map((row, rowIdx) => (
           <div key={row.id} className="border border-slate-700 rounded overflow-hidden">
             {/* Row header */}
             <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 border-b border-slate-700 flex-wrap">
-              <span className="text-xs text-slate-500">Строка {rowIdx + 1}</span>
+              <span className="text-xs text-slate-500">{t.rowsEditor.rowLabel(rowIdx + 1)}</span>
               <label className="flex items-center gap-1 ml-auto">
-                <span className="text-xs text-slate-500">Высота:</span>
+                <span className="text-xs text-slate-500">{t.rowsEditor.heightLabel}</span>
                 <TNumInput value={row.height} min={16} max={400}
                   onChange={h => updateRowHeight(row.id, h)} suffix="px" className="w-16" />
               </label>
               <button className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
-                onClick={() => { if (confirm('Удалить строку?')) deleteRow(row.id); }}>✕</button>
+                onClick={() => { if (confirm(t.rowsEditor.confirmDeleteRow)) deleteRow(row.id); }}>✕</button>
             </div>
 
             {/* Cells preview + controls */}
@@ -176,7 +170,7 @@ export function TableBlockEditor({
                   />,
                 ]).filter(Boolean)}
                 {row.cells.length === 0 && (
-                  <span className="text-xs text-slate-600 italic self-center px-2">Нет ячеек</span>
+                  <span className="text-xs text-slate-600 italic self-center px-2">{t.rowsEditor.noCells}</span>
                 )}
               </div>
 
@@ -193,7 +187,7 @@ export function TableBlockEditor({
                 className="text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer self-start"
                 onClick={() => addCell(row.id)}
               >
-                + Ячейка
+                {t.rowsEditor.addCell}
               </button>
             </div>
           </div>
@@ -202,7 +196,7 @@ export function TableBlockEditor({
             className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
             onClick={addRow}
         >
-          + Строка
+          {t.rowsEditor.addRow}
         </button>
       </div>
     </div>
@@ -217,6 +211,7 @@ function TStyleEditor({
   style: PanelStyle;
   onChange: (patch: Partial<PanelStyle>) => void;
 }) {
+  const t = useT();
   const [open, setOpen] = useState(false);
   return (
     <div className="border border-slate-700 rounded overflow-hidden">
@@ -225,31 +220,31 @@ function TStyleEditor({
         onClick={() => setOpen(v => !v)}
       >
         <span className="text-slate-500">{open ? '▼' : '▶'}</span>
-        Стиль таблицы
+        {t.tableStyle.title}
       </button>
       {open && (
         <div className="px-3 py-3 flex flex-col gap-3 bg-slate-900/40">
           <div className="flex items-center gap-4 flex-wrap">
-            <TSField label="Зазор между строками">
+            <TSField label={t.tableStyle.rowGap}>
               <TNumInput value={style.rowGap} min={0} max={40}
                 onChange={v => onChange({ rowGap: v })} suffix="px" />
             </TSField>
           </div>
           <div className="flex flex-col gap-2">
-            <span className="text-xs text-slate-500 font-medium">Линии таблицы</span>
+            <span className="text-xs text-slate-500 font-medium">{t.tableStyle.borders}</span>
             <div className="flex flex-wrap gap-3">
-              <TCheckField label="Внешняя рамка"   checked={style.showOuterBorder} onChange={v => onChange({ showOuterBorder: v })} />
-              <TCheckField label="Между строками"  checked={style.showRowBorders}  onChange={v => onChange({ showRowBorders: v })} />
-              <TCheckField label="Между ячейками"  checked={style.showCellBorders} onChange={v => onChange({ showCellBorders: v })} />
+              <TCheckField label={t.tableStyle.outerBorder}   checked={style.showOuterBorder} onChange={v => onChange({ showOuterBorder: v })} />
+              <TCheckField label={t.tableStyle.betweenRows}   checked={style.showRowBorders}  onChange={v => onChange({ showRowBorders: v })} />
+              <TCheckField label={t.tableStyle.betweenCells}  checked={style.showCellBorders} onChange={v => onChange({ showCellBorders: v })} />
             </div>
           </div>
           {(style.showOuterBorder || style.showRowBorders || style.showCellBorders) && (
             <div className="flex items-center gap-4 flex-wrap">
-              <TSField label="Толщина">
+              <TSField label={t.tableStyle.thickness}>
                 <TNumInput value={style.borderWidth} min={1} max={8}
                   onChange={v => onChange({ borderWidth: v })} suffix="px" />
               </TSField>
-              <TSField label="Цвет линий">
+              <TSField label={t.tableStyle.borderColor}>
                 <div className="flex items-center gap-1.5">
                   <input type="color"
                     className="w-8 h-7 rounded cursor-pointer bg-transparent border border-slate-600"
@@ -326,6 +321,7 @@ function TCellWidthBar({
   onWidthChange: (cellId: string, w: number) => void;
   onEqualize: () => void;
 }) {
+  const t = useT();
   const total = cells.reduce((s, c) => s + c.width, 0);
   const offBy = total - 100;
   return (
@@ -349,8 +345,9 @@ function TCellWidthBar({
         </span>
         <button
           className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer hover:bg-slate-800 rounded px-1.5 py-0.5 transition-colors"
+          title={t.rowsEditor.equalWidthTitle}
           onClick={onEqualize}
-        >= поровну</button>
+        >{t.rowsEditor.equalWidth}</button>
       </div>
     </div>
   );
@@ -367,6 +364,7 @@ function TCellEditor({
   onUpdateContent: (c: CellContent) => void;
   onDelete: () => void;
 }) {
+  const t = useT();
   const [editing, setEditing] = useState(false);
   return (
     <div
@@ -376,12 +374,12 @@ function TCellEditor({
     >
       <TCellPreview cell={cell} vars={vars} />
       <div className="absolute inset-0 bg-slate-900/85 opacity-0 group-hover/cell:opacity-100 transition-opacity flex items-center justify-center gap-1.5 px-1.5">
-        <span className="text-xs text-slate-400 truncate min-w-0">{cellTypeLabel(cell.content.type)}</span>
+        <span className="text-xs text-slate-400 truncate min-w-0">{cellTypeLabelFromT(t, cell.content.type)}</span>
         <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer shrink-0 hover:bg-slate-700 rounded px-1 py-0.5"
-          title="Изменить"
+          title={t.rowsEditor.editTitle}
           onClick={e => { e.stopPropagation(); setEditing(true); }}>✏️</button>
         <button className="text-xs text-red-500 hover:text-red-400 cursor-pointer shrink-0 hover:bg-slate-700 rounded px-1 py-0.5"
-          title="Удалить"
+          title={t.rowsEditor.deleteTitle}
           onClick={e => { e.stopPropagation(); onDelete(); }}>✕</button>
       </div>
       {editing && (
@@ -395,14 +393,29 @@ function TCellEditor({
   );
 }
 
+// ─── Cell type label helper ────────────────────────────────────────────────────
+
+function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type']): string {
+  const m: Record<CellContent['type'], string> = {
+    text:           t.cellModal.typeText,
+    variable:       t.cellModal.typeVariable,
+    progress:       t.cellModal.typeProgress,
+    'image-static': t.cellModal.typeImageStatic,
+    'image-bound':  t.cellModal.typeImageBoundShort,
+    raw:            t.cellModal.typeRaw,
+  };
+  return m[type];
+}
+
 // ─── Cell preview ─────────────────────────────────────────────────────────────
 
 function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
+  const t = useT();
   const c = cell.content;
   const v = 'variableId' in c ? vars.find(x => x.id === c.variableId) : undefined;
   if (c.type === 'text') return (
     <span className="text-xs text-slate-300 p-1 truncate flex-1">
-      {c.value || <em className="text-slate-600">текст</em>}
+      {c.value || <em className="text-slate-600">{t.rowsEditor.cellTextPlaceholder}</em>}
     </span>
   );
   if (c.type === 'variable') return (
@@ -434,22 +447,13 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   );
   if (c.type === 'raw') return (
     <span className="text-xs text-zinc-400 font-mono p-1 truncate flex-1">
-      {c.code || <em className="text-slate-600 not-italic">код</em>}
+      {c.code || <em className="text-slate-600 not-italic">{t.rowsEditor.cellCodePlaceholder}</em>}
     </span>
   );
   return null;
 }
 
 // ─── Cell edit modal ──────────────────────────────────────────────────────────
-
-const CELL_TYPES: { value: CellContent['type']; label: string }[] = [
-  { value: 'text',         label: 'Текст' },
-  { value: 'variable',     label: 'Переменная' },
-  { value: 'progress',     label: 'Прогресс-бар' },
-  { value: 'image-static', label: 'Картинка (статическая)' },
-  { value: 'image-bound',  label: 'Картинка (по переменной)' },
-  { value: 'raw',          label: 'Twine-код' },
-];
 
 function TCellEditModal({
   cell, vars, imgAssets, onUpdateContent, onClose,
@@ -460,7 +464,18 @@ function TCellEditModal({
   onUpdateContent: (c: CellContent) => void;
   onClose: () => void;
 }) {
+  const t = useT();
   const c = cell.content;
+
+  const CELL_TYPES: { value: CellContent['type']; label: string }[] = [
+    { value: 'text',         label: t.cellModal.typeText },
+    { value: 'variable',     label: t.cellModal.typeVariable },
+    { value: 'progress',     label: t.cellModal.typeProgress },
+    { value: 'image-static', label: t.cellModal.typeImageStatic },
+    { value: 'image-bound',  label: t.cellModal.typeImageBound },
+    { value: 'raw',          label: t.cellModal.typeRaw },
+  ];
+
   const changeType = (type: CellContent['type']) => {
     if (type !== c.type) onUpdateContent(makeDefaultContent(type));
   };
@@ -470,22 +485,22 @@ function TCellEditModal({
       <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3"
         onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-white">Настройка ячейки</span>
+          <span className="text-sm font-semibold text-white">{t.cellModal.title}</span>
           <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}>✕</button>
         </div>
 
-        <TMField label="Тип содержимого">
+        <TMField label={t.cellModal.contentType}>
           <select
             className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
             value={c.type}
             onChange={e => changeType(e.target.value as CellContent['type'])}
           >
-            {CELL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            {CELL_TYPES.map(ct => <option key={ct.value} value={ct.value}>{ct.label}</option>)}
           </select>
         </TMField>
 
         {c.type === 'text' && (
-          <TMField label="Текст">
+          <TMField label={t.cellModal.typeText}>
             <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
               value={c.value} onChange={e => onUpdateContent({ ...c, value: e.target.value })} />
           </TMField>
@@ -494,11 +509,11 @@ function TCellEditModal({
         {c.type === 'variable' && (
           <>
             <TVarSelect vars={vars} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
-            <TMField label="Префикс">
+            <TMField label={t.cellModal.prefix}>
               <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
                 value={c.prefix} onChange={e => onUpdateContent({ ...c, prefix: e.target.value })} />
             </TMField>
-            <TMField label="Суффикс">
+            <TMField label={t.cellModal.suffix}>
               <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
                 value={c.suffix} onChange={e => onUpdateContent({ ...c, suffix: e.target.value })} />
             </TMField>
@@ -508,28 +523,28 @@ function TCellEditModal({
         {c.type === 'progress' && (
           <>
             <TVarSelect vars={vars.filter(v => v.varType === 'number')} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
-            <TMField label="Максимум">
+            <TMField label={t.cellModal.maximum}>
               <input type="number" min={1}
                 className="w-24 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono"
                 value={c.maxValue} onChange={e => onUpdateContent({ ...c, maxValue: Number(e.target.value) })} />
             </TMField>
             {/* Colour range toggle */}
-            <TMField label="Диапазон цветов">
+            <TMField label={t.cellModal.colorRange}>
               <input type="checkbox" className="accent-indigo-500 cursor-pointer"
                 checked={!!c.colorRange}
                 onChange={e => onUpdateContent({ ...c, colorRange: e.target.checked ? { from: c.color, to: c.color } : null })} />
-              <span className="text-xs text-slate-500 ml-1">{c.colorRange ? '0% → 100%' : 'выключен'}</span>
+              <span className="text-xs text-slate-500 ml-1">{c.colorRange ? '0% → 100%' : t.cellModal.colorRangeOff}</span>
             </TMField>
             {/* Fill colour(s) */}
             {c.colorRange ? (
               <>
-                <TMField label="Цвет при 0%">
+                <TMField label={t.cellModal.colorAt0}>
                   <input type="color" className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
                     value={c.colorRange.from} onChange={e => onUpdateContent({ ...c, colorRange: { ...c.colorRange!, from: e.target.value } })} />
                   <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono ml-2"
                     value={c.colorRange.from} onChange={e => onUpdateContent({ ...c, colorRange: { ...c.colorRange!, from: e.target.value } })} />
                 </TMField>
-                <TMField label="Цвет при 100%">
+                <TMField label={t.cellModal.colorAt100}>
                   <input type="color" className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
                     value={c.colorRange.to} onChange={e => onUpdateContent({ ...c, colorRange: { ...c.colorRange!, to: e.target.value } })} />
                   <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono ml-2"
@@ -537,7 +552,7 @@ function TCellEditModal({
                 </TMField>
               </>
             ) : (
-              <TMField label="Цвет заполнения">
+              <TMField label={t.cellModal.fillColor}>
                 <input type="color" className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
                   value={c.color} onChange={e => onUpdateContent({ ...c, color: e.target.value })} />
                 <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono ml-2"
@@ -545,14 +560,14 @@ function TCellEditModal({
               </TMField>
             )}
             {/* Empty-portion colour */}
-            <TMField label="Цвет фона бара">
+            <TMField label={t.cellModal.barBgColor}>
               <input type="color" className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
                 value={c.emptyColor ?? '#333333'} onChange={e => onUpdateContent({ ...c, emptyColor: e.target.value })} />
               <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono ml-2"
                 value={c.emptyColor ?? '#333333'} onChange={e => onUpdateContent({ ...c, emptyColor: e.target.value })} />
             </TMField>
             {/* Text colour */}
-            <TMField label="Цвет текста">
+            <TMField label={t.cellModal.textColor}>
               <input type="checkbox" className="accent-indigo-500 cursor-pointer"
                 checked={!!c.textColor}
                 onChange={e => onUpdateContent({ ...c, textColor: e.target.checked ? '#ffffff' : '' })} />
@@ -564,14 +579,14 @@ function TCellEditModal({
                     value={c.textColor} onChange={e => onUpdateContent({ ...c, textColor: e.target.value })} />
                 </>
               ) : (
-                <span className="text-xs text-slate-500 italic ml-1">наследуется</span>
+                <span className="text-xs text-slate-500 italic ml-1">{t.cellModal.inherited}</span>
               )}
             </TMField>
-            <TMField label="Вертикальный">
+            <TMField label={t.cellModal.vertical}>
               <input type="checkbox" className="accent-indigo-500 cursor-pointer"
                 checked={!!c.vertical} onChange={e => onUpdateContent({ ...c, vertical: e.target.checked })} />
             </TMField>
-            <TMField label="Показать числа">
+            <TMField label={t.cellModal.showNumbers}>
               <input type="checkbox" className="accent-indigo-500 cursor-pointer"
                 checked={c.showText} onChange={e => onUpdateContent({ ...c, showText: e.target.checked })} />
             </TMField>
@@ -580,7 +595,7 @@ function TCellEditModal({
 
         {c.type === 'image-static' && (
           <>
-            <TMField label="Картинка">
+            <TMField label={t.cellModal.imageLabel}>
               <TAssetPicker imgAssets={imgAssets} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
             </TMField>
             <TObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
@@ -593,14 +608,14 @@ function TCellEditModal({
             <TObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">Соответствия (значение → файл):</span>
+                <span className="text-xs text-slate-400">{t.cellModal.mappingsLabel}</span>
                 <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
                   onClick={() => onUpdateContent({
                     ...c,
                     mapping: [...c.mapping, {
                       id: crypto.randomUUID(), matchType: 'exact', value: '', rangeMin: '', rangeMax: '', src: '',
                     } satisfies ImageBoundMapping],
-                  })}>+ Добавить</button>
+                  })}>{t.cellModal.addMapping}</button>
               </div>
 
               {c.mapping.map((m, i) => {
@@ -610,41 +625,41 @@ function TCellEditModal({
                 return (
                   <div key={m.id ?? i} className="flex flex-col gap-1.5 border border-slate-700/60 rounded p-1.5">
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-slate-500 shrink-0">Режим:</span>
+                      <span className="text-xs text-slate-500 shrink-0">{t.cellModal.matchMode}</span>
                       <select className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
                         value={mt} onChange={e => patchM({ matchType: e.target.value as 'exact' | 'range' })}>
-                        <option value="exact">Точное значение</option>
-                        <option value="range">Диапазон</option>
+                        <option value="exact">{t.cellModal.matchExact}</option>
+                        <option value="range">{t.cellModal.matchRange}</option>
                       </select>
                       <button className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
                         onClick={() => onUpdateContent({ ...c, mapping: c.mapping.filter((_, j) => j !== i) })}>✕</button>
                     </div>
                     {mt === 'exact' && (
                       <div className="flex gap-1 items-center">
-                        <span className="text-xs text-slate-500 shrink-0 w-10">Знач.:</span>
+                        <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.valueLabel}</span>
                         <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                           placeholder="100" value={m.value} onChange={e => patchM({ value: e.target.value })} />
                       </div>
                     )}
                     {mt === 'range' && (
                       <div className="flex gap-1 items-center">
-                        <span className="text-xs text-slate-500 shrink-0 w-10">От:</span>
+                        <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.fromLabel}</span>
                         <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                           placeholder="0" value={m.rangeMin ?? ''} onChange={e => patchM({ rangeMin: e.target.value })} />
-                        <span className="text-xs text-slate-500 shrink-0">До:</span>
+                        <span className="text-xs text-slate-500 shrink-0">{t.cellModal.toLabel}</span>
                         <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
                           placeholder="20" value={m.rangeMax ?? ''} onChange={e => patchM({ rangeMax: e.target.value })} />
                       </div>
                     )}
                     <div className="flex gap-1 items-start">
-                      <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">Файл:</span>
+                      <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">{t.cellModal.fileLabel}</span>
                       <TAssetPicker imgAssets={imgAssets} value={m.src} onChange={src => patchM({ src })} />
                     </div>
                   </div>
                 );
               })}
 
-              <TMField label="По умолч.">
+              <TMField label={t.cellModal.defaultLabel}>
                 <TAssetPicker imgAssets={imgAssets} value={c.defaultSrc}
                   onChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })} />
               </TMField>
@@ -654,7 +669,7 @@ function TCellEditModal({
 
         {c.type === 'raw' && (
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-slate-400">Twine-код (вставляется как есть):</label>
+            <label className="text-xs text-slate-400">{t.cellModal.rawCodeLabel}</label>
             <textarea
               className="w-full min-h-[100px] bg-slate-800 text-xs text-white font-mono rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-y leading-relaxed"
               placeholder={"<<set $x to 1>>\n..."}
@@ -663,7 +678,7 @@ function TCellEditModal({
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"
-          onClick={onClose}>Готово</button>
+          onClick={onClose}>{t.cellModal.done}</button>
       </div>
     </div>
   );
@@ -723,11 +738,12 @@ function TCheckField({ label, checked, onChange }: {
 function TVarSelect({ vars, value, onChange }: {
   vars: Variable[]; value: string; onChange: (id: string) => void;
 }) {
+  const t = useT();
   return (
-    <TMField label="Переменная">
+    <TMField label={t.cellModal.typeVariable}>
       <select className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
         value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">— выбрать —</option>
+        <option value="">{t.cellModal.selectVariable}</option>
         {vars.map(v => <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>)}
       </select>
     </TMField>
@@ -737,12 +753,13 @@ function TVarSelect({ vars, value, onChange }: {
 function TObjectFitSelect({ value, onChange }: {
   value: 'cover' | 'contain'; onChange: (v: 'cover' | 'contain') => void;
 }) {
+  const t = useT();
   return (
-    <TMField label="Заполнение">
+    <TMField label={t.cellModal.objectFit}>
       <select className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 cursor-pointer"
         value={value} onChange={e => onChange(e.target.value as 'cover' | 'contain')}>
-        <option value="cover">cover (обрезать)</option>
-        <option value="contain">contain (вписать)</option>
+        <option value="cover">{t.cellModal.fitCover}</option>
+        <option value="contain">{t.cellModal.fitContain}</option>
       </select>
     </TMField>
   );
@@ -751,6 +768,7 @@ function TObjectFitSelect({ value, onChange }: {
 function TAssetPicker({ imgAssets, value, onChange }: {
   imgAssets: Asset[]; value: string; onChange: (src: string) => void;
 }) {
+  const t = useT();
   const matched = imgAssets.find(a => a.relativePath === value);
   return (
     <div className="flex-1 flex flex-col gap-1 min-w-0">
@@ -762,7 +780,7 @@ function TAssetPicker({ imgAssets, value, onChange }: {
             if (asset) onChange(asset.relativePath);
             else if (e.target.value === '') onChange('');
           }}>
-          <option value="">— выбрать из ассетов —</option>
+          <option value="">{t.cellModal.selectAsset}</option>
           {imgAssets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
         </select>
       )}

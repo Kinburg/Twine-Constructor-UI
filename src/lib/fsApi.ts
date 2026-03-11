@@ -2,7 +2,7 @@
  * Thin wrapper over window.electronAPI (IPC calls to the main process).
  * Always use this instead of calling window.electronAPI directly.
  */
-const api = () => window.electronAPI;
+const api = () => window.electronAPI!;
 
 export const fsApi = {
   getProjectsDir: ()                              => api().getProjectsDir(),

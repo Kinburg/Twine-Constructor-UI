@@ -212,7 +212,7 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
 
     case 'input-field': {
       const v = vars.find(x => x.id === block.variableId);
-      if (!v) return `${indent}/* переменная не найдена */`;
+      if (!v) return `${indent}/* variable not found */`;
       const vname = `$${v.name}`;
       // numberbox for numeric variables, textbox for everything else
       const macro = v.varType === 'number' ? 'numberbox' : 'textbox';
@@ -776,7 +776,7 @@ export function exportToTwee(project: Project): string {
       .map(b => blockToSC(b, characters, variables))
       .filter(Boolean)
       .join('\n');
-    parts.push(`::${scene.name}${tags}\n${body || '(пустая сцена)'}\n`);
+    parts.push(`::${scene.name}${tags}\n${body || '(empty scene)'}\n`);
   }
 
   return parts.join('\n\n') + '\n';

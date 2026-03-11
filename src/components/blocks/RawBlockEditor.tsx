@@ -1,4 +1,5 @@
 import { useProjectStore } from '../../store/projectStore';
+import { useT } from '../../i18n';
 import type { RawBlock } from '../../types';
 
 export function RawBlockEditor({
@@ -11,6 +12,7 @@ export function RawBlockEditor({
   onUpdate?: (patch: Partial<RawBlock>) => void;
 }) {
   const { updateBlock, saveSnapshot } = useProjectStore();
+  const t = useT();
   const update = onUpdate ?? ((p: Partial<RawBlock>) => updateBlock(sceneId, block.id, p as never));
 
   return (
@@ -23,7 +25,7 @@ export function RawBlockEditor({
         onChange={e => update({ code: e.target.value })}
         spellCheck={false}
       />
-      <span className="text-xs text-slate-600 italic">Вставляется в экспорт как есть, без изменений</span>
+      <span className="text-xs text-slate-600 italic">{t.rawBlock.hint}</span>
     </div>
   );
 }

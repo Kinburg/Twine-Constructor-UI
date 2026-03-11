@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import type { Variable, VariableGroup, VariableTreeNode, VariableType } from '../../types';
+import { useT } from '../../i18n';
 
 const TYPE_DEFAULTS: Record<VariableType, string> = {
   number: '0', string: '', boolean: 'false',
@@ -13,6 +14,7 @@ const TYPE_COLOR: Record<VariableType, string> = {
 // ─── Root component ───────────────────────────────────────────────────────────
 
 export function VariableManager() {
+  const t = useT();
   const { project, addVariableGroup, addVariable } = useProjectStore();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingVarId, setEditingVarId] = useState<string | null>(null);
@@ -56,7 +58,7 @@ export function VariableManager() {
         <input
           ref={rootGroupRef}
           className="text-xs bg-slate-800 text-white rounded px-2 py-1 outline-none border border-indigo-500 font-mono mt-1"
-          placeholder="Название группы"
+          placeholder={t.variables.groupNamePlaceholder}
           value={rootGroupName}
           onChange={e => setRootGroupName(e.target.value)}
           onBlur={confirmRootGroup}
@@ -71,13 +73,13 @@ export function VariableManager() {
             className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
             onClick={handleAddRootVar}
           >
-            + Переменная
+            {t.variables.addVariable}
           </button>
           <button
             className="text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
             onClick={() => setAddingRootGroup(true)}
           >
-            + Группа
+            {t.variables.addGroup}
           </button>
         </div>
       )}
@@ -105,6 +107,7 @@ function TreeLevel({
   onEditVar: (id: string | null) => void;
   parentId: string | null;
 }) {
+  const t = useT();
   const { addVariable, addVariableGroup } = useProjectStore();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName]     = useState('');
@@ -119,7 +122,7 @@ function TreeLevel({
   };
 
   if (nodes.length === 0 && depth === 0) {
-    return <p className="text-xs text-slate-600 italic px-2 py-1">Нет переменных</p>;
+    return <p className="text-xs text-slate-600 italic px-2 py-1">{t.variables.empty}</p>;
   }
 
   return (
@@ -157,7 +160,7 @@ function TreeLevel({
             ref={groupInputRef}
             className="text-xs bg-slate-800 text-white rounded px-2 py-1 outline-none border border-indigo-500 font-mono"
             style={{ marginLeft: depth * 12 + 4 }}
-            placeholder="Название группы"
+            placeholder={t.variables.groupNamePlaceholder}
             value={groupName}
             onChange={e => setGroupName(e.target.value)}
             onBlur={confirmGroup}
@@ -175,13 +178,13 @@ function TreeLevel({
                 addVariable(parentId, { name: `var${allFlat + 1}`, varType: 'number', defaultValue: '0', description: '' });
               }}
             >
-              + Переменная
+              {t.variables.addVariable}
             </button>
             <button
               className="text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
               onClick={() => setAddingGroup(true)}
             >
-              + Группа
+              {t.variables.addGroup}
             </button>
           </div>
         )
@@ -203,6 +206,7 @@ function GroupNode({
   onToggleExpand: (id: string) => void;
   onEditVar: (id: string | null) => void;
 }) {
+  const t = useT();
   const { deleteVariableNode } = useProjectStore();
 
   return (
@@ -218,7 +222,7 @@ function GroupNode({
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/grp:opacity-100 transition-opacity"
           onClick={e => {
             e.stopPropagation();
-            if (confirm(`Удалить группу "${group.name}" и все её переменные?`))
+            if (confirm(t.variables.confirmDeleteGroup(group.name)))
               deleteVariableNode(group.id);
           }}
         >
@@ -252,6 +256,7 @@ function VariableNode({
   expanded: boolean;
   onToggle: () => void;
 }) {
+  const t = useT();
   const { updateVariable, deleteVariableNode } = useProjectStore();
   const upd = (patch: Partial<Variable>) => updateVariable(v.id, patch);
 
@@ -271,7 +276,7 @@ function VariableNode({
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/var:opacity-100 transition-opacity"
           onClick={e => {
             e.stopPropagation();
-            if (confirm(`Удалить переменную "$${v.name}"?`)) deleteVariableNode(v.id);
+            if (confirm(t.variables.confirmDeleteVar(v.name))) deleteVariableNode(v.id);
           }}
         >
           ✕
@@ -282,7 +287,7 @@ function VariableNode({
       {/* Expanded detail */}
       {expanded && (
         <div className="px-3 py-2 flex flex-col gap-2 border-t border-slate-700 bg-slate-800/30">
-          <Field label="Имя">
+          <Field label={t.variables.fieldName}>
             <input
               className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
               value={v.name}
@@ -292,7 +297,7 @@ function VariableNode({
             <span className="text-xs text-slate-500 font-mono ml-1">($)</span>
           </Field>
 
-          <Field label="Тип">
+          <Field label={t.variables.fieldType}>
             <select
               className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={v.varType}
@@ -301,13 +306,13 @@ function VariableNode({
                 upd({ varType, defaultValue: TYPE_DEFAULTS[varType] });
               }}
             >
-              <option value="number">number (число)</option>
-              <option value="string">string (строка)</option>
-              <option value="boolean">boolean (true/false)</option>
+              <option value="number">{t.variables.typeNumber}</option>
+              <option value="string">{t.variables.typeString}</option>
+              <option value="boolean">{t.variables.typeBoolean}</option>
             </select>
           </Field>
 
-          <Field label="По умолч.">
+          <Field label={t.variables.fieldDefault}>
             {v.varType === 'boolean' ? (
               <select
                 className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
@@ -321,17 +326,17 @@ function VariableNode({
               <input
                 className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
                 value={v.defaultValue}
-                placeholder={v.varType === 'number' ? '0' : 'текст'}
+                placeholder={v.varType === 'number' ? t.variables.defaultPlaceholderNumber : t.variables.defaultPlaceholderText}
                 onChange={e => upd({ defaultValue: e.target.value })}
               />
             )}
           </Field>
 
-          <Field label="Описание">
+          <Field label={t.variables.fieldDescription}>
             <input
               className="flex-1 bg-slate-800 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
               value={v.description}
-              placeholder="что хранит..."
+              placeholder={t.variables.descriptionPlaceholder}
               onChange={e => upd({ description: e.target.value })}
             />
           </Field>
