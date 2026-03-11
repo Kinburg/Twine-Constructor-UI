@@ -192,6 +192,14 @@ export interface NoteBlock {
   text: string;
 }
 
+/** Inline HTML table with rows, cells and per-block border/gap style. */
+export interface TableBlock {
+  id: string;
+  type: 'table';
+  rows: SidebarRow[];
+  style: PanelStyle;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -203,7 +211,8 @@ export type Block =
   | ButtonBlock
   | InputFieldBlock
   | RawBlock
-  | NoteBlock;
+  | NoteBlock
+  | TableBlock;
 
 export type BlockType = Block['type'];
 

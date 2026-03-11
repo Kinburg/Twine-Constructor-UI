@@ -18,7 +18,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { useT, blockTypeLabel } from '../../i18n';
 import type {
   ConditionBlock, ConditionBranchType, ConditionOperator, Block,
-  TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock, RawBlock,
+  TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock, RawBlock, TableBlock,
 } from '../../types';
 import { AddBlockMenu } from './AddBlockMenu';
 import { TextBlockEditor } from './TextBlockEditor';
@@ -28,6 +28,7 @@ import { VariableSetBlockEditor } from './VariableSetBlockEditor';
 import { ImageBlockEditor } from './ImageBlockEditor';
 import { VideoBlockEditor } from './VideoBlockEditor';
 import { RawBlockEditor } from './RawBlockEditor';
+import { TableBlockEditor } from './TableBlockEditor';
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: '==', label: '==' },
@@ -72,7 +73,8 @@ function NestedBlockEditor({
     case 'variable-set': return <VariableSetBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VariableSetBlock>) => void} />;
     case 'image':        return <ImageBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<ImageBlock>) => void} />;
     case 'video':        return <VideoBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VideoBlock>) => void} />;
-    case 'raw':          return <RawBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<RawBlock>) => void} />;
+    case 'raw':          return <RawBlockEditor   block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<RawBlock>) => void} />;
+    case 'table':        return <TableBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TableBlock>) => void} />;
     default:             return <span className="text-xs text-slate-500">{t.block.unsupportedNested}</span>;
   }
 }

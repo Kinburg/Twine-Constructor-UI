@@ -15,6 +15,7 @@ import { ButtonBlockEditor } from './ButtonBlockEditor';
 import { InputFieldBlockEditor } from './InputFieldBlockEditor';
 import { RawBlockEditor } from './RawBlockEditor';
 import { NoteBlockEditor } from './NoteBlockEditor';
+import { TableBlockEditor } from './TableBlockEditor';
 
 const BLOCK_COLORS: Record<Block['type'], string> = {
   'text':         'bg-slate-700',
@@ -28,6 +29,7 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'video':        'bg-red-900/40',
   'raw':          'bg-zinc-700/60',
   'note':         'bg-amber-950/60',
+  'table':        'bg-cyan-900/40',
 };
 
 interface Props {
@@ -108,6 +110,7 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'input-field'  && <InputFieldBlockEditor  block={block} sceneId={sceneId} />}
         {block.type === 'raw'          && <RawBlockEditor         block={block} sceneId={sceneId} />}
         {block.type === 'note'         && <NoteBlockEditor        block={block} sceneId={sceneId} />}
+        {block.type === 'table'        && <TableBlockEditor       block={block} sceneId={sceneId} />}
       </div>
     </div>
   );

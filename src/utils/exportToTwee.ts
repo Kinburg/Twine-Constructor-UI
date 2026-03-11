@@ -1,6 +1,6 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch,
-  SidebarPanel, SidebarRow, SidebarCell, PanelStyle,
+  SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
   Scene, ButtonBlock,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
@@ -235,6 +235,9 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
       // Developer note — never exported
       return '';
 
+    case 'table':
+      return tableBlockToSC(block, vars, indent);
+
     case 'button': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
       const actionLines = block.actions
@@ -284,6 +287,95 @@ function branchToSC(
     return `${indent}<<if ${expr}>>\n${innerLines}`;
   }
   return `${indent}<<elseif ${expr}>>\n${innerLines}`;
+}
+
+// ─── Table block → inline HTML (fully self-contained, no class deps) ──────────
+
+function tableCellInnerToSC(cell: SidebarCell, vars: Variable[]): string {
+  const c = cell.content;
+  switch (c.type) {
+    case 'text': return c.value;
+
+    case 'variable': {
+      const v = vars.find(x => x.id === c.variableId);
+      const vname = v ? `$${v.name}` : '$???';
+      return `${c.prefix}<<print ${vname}>>${c.suffix}`;
+    }
+
+    case 'progress': {
+      const v = vars.find(x => x.id === c.variableId);
+      const vname = v ? `$${v.name}` : '$???';
+      const pct = `Math.min(100,Math.max(0,${vname}/${c.maxValue}*100)).toFixed(0)`;
+      const barStyle = `height:100%;background:${c.color};display:flex;align-items:center;justify-content:center;font-size:0.75em;width:<<print ${pct}>>%;`;
+      const text = c.showText ? `<<print ${vname}>>/${c.maxValue}` : '';
+      return `<span style="width:100%;height:8px;background:#333;border-radius:2px;overflow:hidden;display:block;"><span style="${barStyle}">${text}</span></span>`;
+    }
+
+    case 'image-static':
+      return `<img src="${c.src}" style="width:100%;height:100%;display:block;object-fit:${c.objectFit};" />`;
+
+    case 'image-bound': {
+      const v = vars.find(x => x.id === c.variableId);
+      const vname = v ? `$${v.name}` : '$???';
+      const imgTag = (src: string) =>
+        `<img src="${src}" style="width:100%;height:100%;display:block;object-fit:${c.objectFit};" />`;
+      const cases = c.mapping.map((m, i) => {
+        const kw = i === 0 ? '<<if' : '<<elseif';
+        const mt = m.matchType ?? 'exact';
+        let cond: string;
+        if (mt === 'range') {
+          cond = `${vname} >= ${m.rangeMin ?? '0'} && ${vname} <= ${m.rangeMax ?? '0'}`;
+        } else {
+          const val = (v?.varType === 'string') ? `"${m.value}"` : m.value;
+          cond = `${vname} eq ${val}`;
+        }
+        return `${kw} ${cond}>>${imgTag(m.src)}`;
+      });
+      if (c.defaultSrc) cases.push(`<<else>>${imgTag(c.defaultSrc)}`);
+      if (cases.length > 0) cases.push('<</if>>');
+      return cases.join('');
+    }
+
+    case 'raw': return c.code;
+    default: return '';
+  }
+}
+
+function tableBlockToSC(block: TableBlock, vars: Variable[], indent = ''): string {
+  if (block.rows.length === 0) return '';
+  const s = block.style;
+
+  const outerParts = [
+    'display:flex', 'flex-direction:column', `gap:${s.rowGap}px`, 'margin:0', 'padding:0',
+  ];
+  if (s.showOuterBorder) {
+    outerParts.push(`border:${s.borderWidth}px solid ${s.borderColor}`, 'padding:2px');
+  }
+
+  const rowsHTML = block.rows.map(row => {
+    if (row.cells.length === 0) return '';
+    const rowParts = [
+      'display:flex', 'overflow:hidden', 'align-items:stretch', 'margin:0',
+      `height:${row.height}px`,
+    ];
+    if (s.showRowBorders) {
+      rowParts.push(`border:${s.borderWidth}px solid ${s.borderColor}`);
+    }
+    const cellsHTML = row.cells.map((cell, ci) => {
+      const cellParts = [
+        `flex:${cell.width}`, 'display:flex', 'align-items:center', 'overflow:hidden',
+        'font-size:0.85em', 'min-width:0', 'box-sizing:border-box', 'padding:2px 4px',
+      ];
+      if (s.showCellBorders && ci > 0) {
+        cellParts.push(`border-left:${s.borderWidth}px solid ${s.borderColor}`);
+      }
+      return `<span style="${cellParts.join(';')}">${tableCellInnerToSC(cell, vars)}</span>`;
+    }).join('');
+    return `<div style="${rowParts.join(';')}">${cellsHTML}</div>`;
+  }).filter(Boolean).join('');
+
+  if (!rowsHTML) return '';
+  return `${indent}<div style="${outerParts.join(';')}">${rowsHTML}</div>`;
 }
 
 // ─── Panel → StoryCaption markup ──────────────────────────────────────────────

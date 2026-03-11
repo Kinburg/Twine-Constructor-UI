@@ -42,6 +42,7 @@ const ru: Translations = {
     video:       'Видео',
     raw:         'Twine-код',
     note:        'Заметка',
+    table:       'Таблица',
     drag:        'Перетащить',
     copy:        'Скопировать блок в буфер',
     duplicate:   'Дублировать блок',
@@ -64,6 +65,7 @@ const ru: Translations = {
     video:       { label: 'Видео',       desc: 'Вставить видео' },
     raw:         { label: 'Twine-код',   desc: 'Вставить SugarCube/HTML' },
     note:        { label: 'Заметка',     desc: 'Не экспортируется' },
+    table:       { label: 'Таблица',     desc: 'HTML-таблица с ячейками' },
   },
 
   condition: {

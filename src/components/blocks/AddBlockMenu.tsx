@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useProjectStore } from '../../store/projectStore';
+import { useProjectStore, DEFAULT_PANEL_STYLE } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type { Block, BlockType } from '../../types';
 
@@ -15,6 +15,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'video':        '🎥',
   'raw':          '🧩',
   'note':         '🗒️',
+  'table':        '🗂️',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -39,6 +40,7 @@ export function makeBlock(type: BlockType): Block {
     };
     case 'raw':          return { id, type, code: '' };
     case 'note':         return { id, type, text: '' };
+    case 'table':        return { id, type, rows: [], style: { ...DEFAULT_PANEL_STYLE } };
   }
 }
 
@@ -68,6 +70,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     { type: 'video',        icon: BLOCK_ICONS['video'],        label: t.addBlock.video.label,       desc: t.addBlock.video.desc },
     { type: 'raw',          icon: BLOCK_ICONS['raw'],          label: t.addBlock.raw.label,         desc: t.addBlock.raw.desc },
     { type: 'note',         icon: BLOCK_ICONS['note'],         label: t.addBlock.note.label,        desc: t.addBlock.note.desc },
+    { type: 'table',        icon: BLOCK_ICONS['table'],        label: t.addBlock.table.label,       desc: t.addBlock.table.desc },
   ];
 
   const add = (type: BlockType) => {

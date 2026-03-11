@@ -46,6 +46,7 @@ export interface Translations {
     video: string;
     raw: string;
     note: string;
+    table: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -69,6 +70,7 @@ export interface Translations {
     video:       { label: string; desc: string };
     raw:         { label: string; desc: string };
     note:        { label: string; desc: string };
+    table:       { label: string; desc: string };
   };
 
   condition: {

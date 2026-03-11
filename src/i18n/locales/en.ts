@@ -42,6 +42,7 @@ const en: Translations = {
     video:       'Video',
     raw:         'Twine code',
     note:        'Note',
+    table:       'Table',
     drag:        'Drag to reorder',
     copy:        'Copy block to clipboard',
     duplicate:   'Duplicate block',
@@ -64,6 +65,7 @@ const en: Translations = {
     video:       { label: 'Video',      desc: 'Insert a video' },
     raw:         { label: 'Twine code', desc: 'Raw SugarCube / HTML' },
     note:        { label: 'Note',       desc: 'Not exported' },
+    table:       { label: 'Table',      desc: 'HTML table with cells' },
   },
 
   condition: {
