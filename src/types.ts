@@ -351,7 +351,10 @@ export interface CellProgress {
   type: 'progress';
   variableId: string;   // current value
   maxValue: number;     // static maximum
-  color: string;        // CSS color for the bar
+  color: string;        // CSS fill color (used when colorRange is null/unset)
+  emptyColor?: string;  // background of empty portion (default: '#333')
+  textColor?: string;   // text color; '' or undefined = inherit from page
+  colorRange?: { from: string; to: string } | null;  // if set, fill interpolates 0%→from, 100%→to
   showText: boolean;    // show "cur/max" as text
 }
 

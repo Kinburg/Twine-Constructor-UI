@@ -1,7 +1,7 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
-  Scene, ButtonBlock,
+  Scene, ButtonBlock, CellProgress,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables } from './treeUtils';
@@ -289,6 +289,55 @@ function branchToSC(
   return `${indent}<<elseif ${expr}>>\n${innerLines}`;
 }
 
+// ─── Progress bar → SugarCube markup ─────────────────────────────────────────
+//
+// Uses pure TwineScript: <<set _tgP to ...>> stores the percentage, then
+// <<print '...' + _tgP + '...'>> outputs the HTML string inline.
+// TwineScript supports Math.min/max/round, $story vars, _temp vars, and +.
+// It does NOT support `function`, `var`, `return`, or IIFEs.
+// <<script>>output.wiki()<</script>> also fails — `output` is a plain DOM node.
+
+function buildProgressBarSC(c: CellProgress, vars: Variable[], forTable: boolean): string {
+  const v = vars.find(x => x.id === c.variableId);
+  const vname = v ? v.name : '???';
+  const sv = `$${vname}`;  // TwineScript story variable
+  const emptyColor = c.emptyColor ?? '#333';
+  const textColorCSS = c.textColor ? `color:${c.textColor};` : '';
+
+  // Percentage stored in TwineScript temp var _tgP
+  const setPct = `<<set _tgP to Math.min(100,Math.max(0,${sv}/${c.maxValue}*100))>>`;
+
+  // Fill color — either a literal or interpolated into _tgC
+  let setColor = '';
+  let colorRef: string;
+  const cr = c.colorRange;
+  if (cr?.from && cr?.to && /^#[0-9a-fA-F]{6}$/.test(cr.from) && /^#[0-9a-fA-F]{6}$/.test(cr.to)) {
+    const fr = parseInt(cr.from.slice(1, 3), 16), fg = parseInt(cr.from.slice(3, 5), 16), fb = parseInt(cr.from.slice(5, 7), 16);
+    const tr = parseInt(cr.to.slice(1, 3), 16),   tg = parseInt(cr.to.slice(3, 5), 16),   tb = parseInt(cr.to.slice(5, 7), 16);
+    setColor = `<<set _tgC to 'rgb('+Math.round(${fr}+(${tr-fr})*_tgP/100)+','+Math.round(${fg}+(${tg-fg})*_tgP/100)+','+Math.round(${fb}+(${tb-fb})*_tgP/100)+')'>>`;
+    colorRef = '_tgC';
+  } else {
+    colorRef = `'${c.color}'`;
+  }
+
+  // Text label (raw variable value / maxValue)
+  const textRef = c.showText ? `${sv}+'/${c.maxValue}'` : "''";
+
+  if (forTable) {
+    // Table cells use fully inline styles (no CSS class deps)
+    const printExpr =
+      `'<span style="width:100%;height:100%;background:${emptyColor};border-radius:2px;overflow:hidden;display:flex;align-items:center;">'` +
+      `+'<span style="width:'+_tgP+'%;background:'+${colorRef}+';height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75em;${textColorCSS}">'+${textRef}+'</span></span>'`;
+    return `${setPct}${setColor}<<print ${printExpr}>>`;
+  } else {
+    // StoryCaption: use CSS classes (.tg-progress / .tg-bar), override bg via inline style
+    const printExpr =
+      `'<span class="tg-progress" style="background:${emptyColor};">'` +
+      `+'<span class="tg-bar" style="width:'+_tgP+'%;background:'+${colorRef}+';${textColorCSS}">'+${textRef}+'</span></span>'`;
+    return `${setPct}${setColor}<<print ${printExpr}>>`;
+  }
+}
+
 // ─── Table block → inline HTML (fully self-contained, no class deps) ──────────
 
 function tableCellInnerToSC(cell: SidebarCell, vars: Variable[]): string {
@@ -302,14 +351,8 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[]): string {
       return `${c.prefix}<<print ${vname}>>${c.suffix}`;
     }
 
-    case 'progress': {
-      const v = vars.find(x => x.id === c.variableId);
-      const vname = v ? `$${v.name}` : '$???';
-      const pct = `Math.min(100,Math.max(0,${vname}/${c.maxValue}*100)).toFixed(0)`;
-      const barStyle = `height:100%;background:${c.color};display:flex;align-items:center;justify-content:center;font-size:0.75em;width:<<print ${pct}>>%;`;
-      const text = c.showText ? `<<print ${vname}>>/${c.maxValue}` : '';
-      return `<span style="width:100%;height:8px;background:#333;border-radius:2px;overflow:hidden;display:block;"><span style="${barStyle}">${text}</span></span>`;
-    }
+    case 'progress':
+      return buildProgressBarSC(c, vars, true);
 
     case 'image-static':
       return `<img src="${c.src}" style="width:100%;height:100%;display:block;object-fit:${c.objectFit};" />`;
@@ -399,15 +442,9 @@ function cellToSC(cell: SidebarCell, vars: Variable[]): string {
       break;
     }
 
-    case 'progress': {
-      const v = vars.find(x => x.id === c.variableId);
-      const vname = v ? `$${v.name}` : '$???';
-      const pct = `Math.min(100, Math.max(0, ${vname} / ${c.maxValue} * 100)).toFixed(0)`;
-      const barStyle = `width: <<print ${pct}>>%; background: ${c.color};`;
-      const text = c.showText ? `<<print ${vname}>>/${c.maxValue}` : '';
-      inner = `<span class="tg-progress"><span class="tg-bar" style="${barStyle}">${text}</span></span>`;
+    case 'progress':
+      inner = buildProgressBarSC(c, vars, false);
       break;
-    }
 
     case 'image-static':
       inner = `<img class="tg-cell-img tg-lb" src="${c.src}" style="object-fit: ${c.objectFit};" onclick="tgOpenLightbox(this.src)" />`;

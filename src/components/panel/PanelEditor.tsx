@@ -502,13 +502,16 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       {c.prefix}{v ? `$${v.name}` : '?'}{c.suffix}
     </span>
   );
-  if (c.type === 'progress') return (
-    <div className="flex-1 p-1 flex items-center">
-      <div className="w-full h-2 bg-slate-700 rounded overflow-hidden">
-        <div className="h-full rounded" style={{ width: '60%', background: c.color }} />
+  if (c.type === 'progress') {
+    const previewColor = c.colorRange?.from ?? c.color;
+    return (
+      <div className="flex-1 p-1 flex items-center">
+        <div className="w-full h-2 rounded overflow-hidden" style={{ background: c.emptyColor ?? '#333' }}>
+          <div className="h-full rounded" style={{ width: '60%', background: previewColor }} />
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
   if (c.type === 'image-static' || c.type === 'image-bound') return (
     <div className="flex-1 flex items-center justify-center p-1">
       <span className="text-xs text-slate-500">🖼️</span>
@@ -537,7 +540,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
   switch (type) {
     case 'text':         return { type: 'text', value: '' } as CellText;
     case 'variable':     return { type: 'variable', variableId: '', prefix: '', suffix: '' } as CellVariable;
-    case 'progress':     return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', showText: false } as CellProgress;
+    case 'progress':     return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', emptyColor: '#333333', textColor: '', colorRange: null, showText: false } as CellProgress;
     case 'image-static': return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
     case 'image-bound':  return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
     case 'raw':          return { type: 'raw', code: '' } as CellRaw;
@@ -604,17 +607,65 @@ function CellEditModal({
 
         {c.type === 'progress' && (
           <>
-            <VarSelect vars={vars} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
+            <VarSelect vars={vars.filter(v => v.varType === 'number')} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
             <MField label="Максимум">
               <input type="number" min={1}
                 className="w-24 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono"
                 value={c.maxValue} onChange={e => onUpdateContent({ ...c, maxValue: Number(e.target.value) })} />
             </MField>
-            <MField label="Цвет">
+            {/* Colour range toggle */}
+            <MField label="Диапазон цветов">
+              <input type="checkbox" className="accent-indigo-500 cursor-pointer"
+                checked={!!c.colorRange}
+                onChange={e => onUpdateContent({ ...c, colorRange: e.target.checked ? { from: c.color, to: c.color } : null })} />
+              <span className="text-xs text-slate-500 ml-1">{c.colorRange ? '0% → 100%' : 'выключен'}</span>
+            </MField>
+            {/* Fill colour(s) */}
+            {c.colorRange ? (
+              <>
+                <MField label="Цвет при 0%">
+                  <input type="color" className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
+                    value={c.colorRange.from} onChange={e => onUpdateContent({ ...c, colorRange: { ...c.colorRange!, from: e.target.value } })} />
+                  <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono ml-2"
+                    value={c.colorRange.from} onChange={e => onUpdateContent({ ...c, colorRange: { ...c.colorRange!, from: e.target.value } })} />
+                </MField>
+                <MField label="Цвет при 100%">
+                  <input type="color" className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
+                    value={c.colorRange.to} onChange={e => onUpdateContent({ ...c, colorRange: { ...c.colorRange!, to: e.target.value } })} />
+                  <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono ml-2"
+                    value={c.colorRange.to} onChange={e => onUpdateContent({ ...c, colorRange: { ...c.colorRange!, to: e.target.value } })} />
+                </MField>
+              </>
+            ) : (
+              <MField label="Цвет заполнения">
+                <input type="color" className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
+                  value={c.color} onChange={e => onUpdateContent({ ...c, color: e.target.value })} />
+                <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono ml-2"
+                  value={c.color} onChange={e => onUpdateContent({ ...c, color: e.target.value })} />
+              </MField>
+            )}
+            {/* Empty-portion colour */}
+            <MField label="Цвет фона бара">
               <input type="color" className="w-10 h-8 rounded cursor-pointer bg-transparent border border-slate-600"
-                value={c.color} onChange={e => onUpdateContent({ ...c, color: e.target.value })} />
+                value={c.emptyColor ?? '#333333'} onChange={e => onUpdateContent({ ...c, emptyColor: e.target.value })} />
               <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono ml-2"
-                value={c.color} onChange={e => onUpdateContent({ ...c, color: e.target.value })} />
+                value={c.emptyColor ?? '#333333'} onChange={e => onUpdateContent({ ...c, emptyColor: e.target.value })} />
+            </MField>
+            {/* Text colour */}
+            <MField label="Цвет текста">
+              <input type="checkbox" className="accent-indigo-500 cursor-pointer"
+                checked={!!c.textColor}
+                onChange={e => onUpdateContent({ ...c, textColor: e.target.checked ? '#ffffff' : '' })} />
+              {c.textColor ? (
+                <>
+                  <input type="color" className="w-8 h-7 rounded cursor-pointer bg-transparent border border-slate-600 ml-1"
+                    value={c.textColor} onChange={e => onUpdateContent({ ...c, textColor: e.target.value })} />
+                  <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono"
+                    value={c.textColor} onChange={e => onUpdateContent({ ...c, textColor: e.target.value })} />
+                </>
+              ) : (
+                <span className="text-xs text-slate-500 italic ml-1">наследуется</span>
+              )}
             </MField>
             <MField label="Показать числа">
               <input type="checkbox" className="accent-indigo-500 cursor-pointer"
