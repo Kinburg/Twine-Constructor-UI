@@ -107,12 +107,12 @@
 
   <div id="toolbar">
     <span id="toolbar-icon">📄</span>
-    <span id="toolbar-title">Ожидание сцены…</span>
-    <button id="copy-btn">Копировать</button>
+    <span id="toolbar-title">Waiting for the scene…</span>
+    <button id="copy-btn">Copy</button>
   </div>
 
   <div id="code-container">
-    <div id="placeholder">Открой сцену в редакторе — код появится здесь</div>
+    <div id="placeholder">Open the scene in the editor - the code will appear here</div>
     <pre id="code" style="display:none"></pre>
   </div>
 
@@ -221,7 +221,7 @@
       // Extract scene name for window/toolbar title
       const m = code.match(/^::(.+?)(?:\s+\[|$)/m);
       const sceneName = m ? m[1].trim() : '';
-      title.textContent = sceneName || 'Превью кода';
+      title.textContent = sceneName || 'Code Preview';
       document.title    = sceneName
         ? `${sceneName} — TwineConstructor`
         : 'Code Preview — TwineConstructor';
@@ -236,10 +236,10 @@
       if (!rawCode) return;
       navigator.clipboard.writeText(rawCode).then(() => {
         const btn = document.getElementById('copy-btn');
-        btn.textContent = 'Скопировано!';
+        btn.textContent = 'Copied!';
         btn.classList.add('copied');
         setTimeout(() => {
-          btn.textContent = 'Копировать';
+          btn.textContent = 'Copy';
           btn.classList.remove('copied');
         }, 1500);
       }).catch(() => {
