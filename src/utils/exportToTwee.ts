@@ -1,8 +1,9 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch,
-  SidebarPanel, SidebarRow, SidebarCell,
+  SidebarPanel, SidebarRow, SidebarCell, PanelStyle,
   Scene, ButtonBlock,
 } from '../types';
+import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables } from './treeUtils';
 
 // ─── Block → SugarCube markup ─────────────────────────────────────────────
@@ -289,7 +290,9 @@ function branchToSC(
 
 function cellToSC(cell: SidebarCell, vars: Variable[]): string {
   const c = cell.content;
-  const flex = `flex: ${cell.width};`;
+  // Use flex: N (proportional) so CSS gap is respected without overflow.
+  // cell.width is a percentage (e.g. 40), flex: 40 gives the same 40:60 ratio.
+  const flex = `flex: ${cell.width}; min-width: 0; overflow: hidden;`;
   let inner = '';
 
   switch (c.type) {
@@ -352,15 +355,19 @@ function cellToSC(cell: SidebarCell, vars: Variable[]): string {
   return `<span class="tg-cell" style="${flex}">${inner}</span>`;
 }
 
-function rowToSC(row: SidebarRow, vars: Variable[]): string {
+function rowToSC(row: SidebarRow, vars: Variable[], style: PanelStyle): string {
   if (row.cells.length === 0) return '';
   const cells = row.cells.map(c => cellToSC(c, vars)).join('');
-  return `<div class="tg-row" style="height: ${row.height}px;">${cells}</div>`;
+  const borderStyle = style.showCellBorders
+    ? ` border: ${style.borderWidth}px solid ${style.borderColor};`
+    : '';
+  return `<div class="tg-row" style="height: ${row.height}px;${borderStyle}">${cells}</div>`;
 }
 
 export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[]): string {
   if (panel.tabs.length === 0) return '';
 
+  const style: PanelStyle = panel.style ?? DEFAULT_PANEL_STYLE;
   const lines: string[] = [];
   lines.push('<<if ndef $__tgTab>><<set $__tgTab to 0>><</if>>');
 
@@ -372,13 +379,17 @@ export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[]): stri
     lines.push('</div>');
   }
 
+  const outerOpen = style.showOuterBorder
+    ? `<div class="tg-panel" style="border: ${style.borderWidth}px solid ${style.borderColor}; padding: 2px;">`
+    : '<div class="tg-panel">';
+
   panel.tabs.forEach((tab, i) => {
     const kw = i === 0 ? '<<if' : '<<elseif';
     lines.push(`${kw} $__tgTab eq ${i}>>`);
-    for (const row of tab.rows) {
-      const r = rowToSC(row, vars);
-      if (r) lines.push(r);
-    }
+    // Concatenate rows WITHOUT \n between them — SugarCube's wiki parser converts
+    // \n between block-level elements into <p></p> tags (adding 1em vertical space).
+    const rowsHTML = tab.rows.map(r => rowToSC(r, vars, style)).filter(Boolean).join('');
+    lines.push(outerOpen + rowsHTML + '</div>');
   });
 
   if (panel.tabs.length > 0) lines.push('<</if>>');
@@ -388,15 +399,31 @@ export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[]): stri
 
 export function buildPanelCSS(panel: SidebarPanel): string {
   if (panel.tabs.length === 0) return '';
+  const s: PanelStyle = panel.style ?? DEFAULT_PANEL_STYLE;
+  const bw = s.borderWidth;
+  const bc = s.borderColor;
+
+  // Cell borders: left border on every cell except first (acts as column divider)
+  const cellBorder = s.showCellBorders
+    ? `.tg-row .tg-cell + .tg-cell { border-left: ${bw}px solid ${bc}; }`
+    : '';
+  // Row borders: top border on every row except first
+  const rowBorder = s.showRowBorders
+    ? `.tg-panel .tg-row + .tg-row { border-top: ${bw}px solid ${bc}; }`
+    : '';
+
   return [
     '.tg-tabs { display: flex; gap: 2px; margin-bottom: 4px; }',
     '.tg-tabs a { flex: 1; padding: 2px 4px; text-align: center; font-size: 0.8em; border: 1px solid #555; border-radius: 2px; cursor: pointer; text-decoration: none; color: inherit; }',
     '.tg-tabs a:hover { background: rgba(255,255,255,0.15); }',
-    '.tg-row { display: flex; gap: 4px; margin-bottom: 2px; overflow: hidden; align-items: stretch; }',
-    '.tg-cell { display: flex; align-items: center; overflow: hidden; font-size: 0.85em; min-width: 0; }',
+    `.tg-panel { display: flex; flex-direction: column; gap: ${s.rowGap}px; margin: 0; padding: 0; }`,
+    `.tg-row { display: flex; overflow: hidden; align-items: stretch; margin: 0; }`,
+    '.tg-cell { display: flex; align-items: center; overflow: hidden; font-size: 0.85em; min-width: 0; box-sizing: border-box; }',
     '.tg-progress { width: 100%; height: 100%; background: #333; border-radius: 2px; overflow: hidden; display: flex; align-items: center; }',
     '.tg-bar { height: 100%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; font-size: 0.75em; }',
     '.tg-cell-img { width: 100%; height: 100%; display: block; }',
+    cellBorder,
+    rowBorder,
     '/* lightbox */',
     '.tg-lb { cursor: pointer !important; }',
     '#tg-lb-ov { display: none; position: fixed; inset: 0; z-index: 9999; background: rgba(0,0,0,.85); align-items: center; justify-content: center; cursor: zoom-out; }',
@@ -404,7 +431,7 @@ export function buildPanelCSS(panel: SidebarPanel): string {
     '#tg-lb-ov img { max-width: 90vw; max-height: 90vh; object-fit: contain; border-radius: 6px; box-shadow: 0 8px 48px rgba(0,0,0,.8); cursor: default; }',
     '#tg-lb-x { position: absolute; top: 12px; right: 18px; color: #fff; font-size: 2em; line-height: 1; cursor: pointer; opacity: .7; user-select: none; transition: opacity .15s; }',
     '#tg-lb-x:hover { opacity: 1; }',
-  ].join('\n');
+  ].filter(Boolean).join('\n');
 }
 
 // ─── Panel script (lightbox) ──────────────────────────────────────────────────

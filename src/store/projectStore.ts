@@ -5,7 +5,7 @@ import type {
   Variable, VariableGroup, VariableTreeNode,
   Asset, AssetGroup, AssetTreeNode,
   ChoiceOption, ConditionBranch,
-  SidebarPanel, SidebarTab, SidebarRow, SidebarCell, CellContent,
+  SidebarPanel, SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   AvatarConfig, AvatarMode,
 } from '../types';
 import { flattenVariables, flattenAssets } from '../utils/treeUtils';
@@ -19,7 +19,16 @@ function generateIfid(): string { return uuid().toUpperCase(); }
 
 const HISTORY_LIMIT = 100;
 
-const DEFAULT_PANEL: SidebarPanel = { tabs: [], liveUpdate: false };
+export const DEFAULT_PANEL_STYLE: PanelStyle = {
+  rowGap:          2,
+  borderWidth:     1,
+  borderColor:     '#555555',
+  showOuterBorder: false,
+  showRowBorders:  false,
+  showCellBorders: false,
+};
+
+const DEFAULT_PANEL: SidebarPanel = { tabs: [], liveUpdate: false, style: DEFAULT_PANEL_STYLE };
 
 function makeDefaultProject(): Project {
   return {
@@ -355,6 +364,24 @@ function migrateProject(raw: any): Project {
 
   // sidebarPanel
   if (!p.sidebarPanel) p.sidebarPanel = DEFAULT_PANEL;
+  // Ensure panel has style (added later — backward compat)
+  if (!p.sidebarPanel.style) p.sidebarPanel.style = { ...DEFAULT_PANEL_STYLE };
+  // Migrate cell widths: old flex weights (1–12) → percentages (1–100)
+  // Heuristic: if max cell width in a row is ≤ 12, treat as flex weights
+  for (const tab of p.sidebarPanel.tabs ?? []) {
+    for (const row of tab.rows ?? []) {
+      if (!row.cells?.length) continue;
+      const maxW = Math.max(...row.cells.map((c: any) => c.width ?? 1));
+      if (maxW <= 12) {
+        const total = row.cells.reduce((s: number, c: any) => s + (c.width ?? 1), 0);
+        const converted = row.cells.map((c: any) => ({ ...c, width: Math.round((c.width ?? 1) / total * 100) }));
+        // Fix rounding drift so sum == 100
+        const diff = 100 - converted.reduce((s: number, c: any) => s + c.width, 0);
+        if (diff !== 0) converted[0] = { ...converted[0], width: converted[0].width + diff };
+        row.cells = converted;
+      }
+    }
+  }
 
   // Fix Cyrillic variable names created before transliteration was added
   p = migrateCharacterVarNames(p as Project);
@@ -456,6 +483,7 @@ interface ProjectState {
 
   // Sidebar panel
   setPanelLiveUpdate: (v: boolean) => void;
+  updatePanelStyle: (patch: Partial<PanelStyle>) => void;
   addPanelTab: (label: string) => void;
   updatePanelTab: (tabId: string, patch: Partial<Omit<SidebarTab, 'id' | 'rows'>>) => void;
   deletePanelTab: (tabId: string) => void;
@@ -467,6 +495,20 @@ interface ProjectState {
   updatePanelCell: (tabId: string, rowId: string, cellId: string, patch: Partial<Omit<SidebarCell, 'id'>>) => void;
   deletePanelCell: (tabId: string, rowId: string, cellId: string) => void;
   updateCellContent: (tabId: string, rowId: string, cellId: string, content: CellContent) => void;
+}
+
+// ─── Panel helpers ────────────────────────────────────────────────────────────
+
+/**
+ * Distributes 100% width equally among cells, fixing rounding on the first cell.
+ * Preserves the relative proportions of cells that already have non-zero widths.
+ * For new cells (width=0) — just divide equally.
+ */
+export function redistributeWidths(cells: SidebarCell[]): SidebarCell[] {
+  if (cells.length === 0) return cells;
+  const equal = Math.floor(100 / cells.length);
+  const remainder = 100 - equal * cells.length;
+  return cells.map((c, i) => ({ ...c, width: equal + (i === 0 ? remainder : 0) }));
 }
 
 // ─── Inner updaters ───────────────────────────────────────────────────────────
@@ -1095,6 +1137,14 @@ export const useProjectStore = create<ProjectState>()(
             project: { ...s.project, sidebarPanel: { ...s.project.sidebarPanel, liveUpdate: v } },
           })),
 
+        updatePanelStyle: (patch) =>
+          set(s => ({
+            project: updatePanel(s.project, p => ({
+              ...p,
+              style: { ...(p.style ?? DEFAULT_PANEL_STYLE), ...patch },
+            })),
+          })),
+
         addPanelTab: (label) => {
           get().saveSnapshot();
           const tab: SidebarTab = { id: uuid(), label, rows: [] };
@@ -1146,10 +1196,13 @@ export const useProjectStore = create<ProjectState>()(
 
         addPanelCell: (tabId, rowId) => {
           get().saveSnapshot();
-          const cell: SidebarCell = { id: uuid(), width: 1, content: { type: 'text', value: '' } };
           set(s => ({
             project: updatePanel(s.project, p =>
-              updateTab(p, tabId, t => updateRow(t, rowId, r => ({ ...r, cells: [...r.cells, cell] })))
+              updateTab(p, tabId, t => updateRow(t, rowId, r => {
+                const newCell: SidebarCell = { id: uuid(), width: 0, content: { type: 'text', value: '' } };
+                const cells = [...r.cells, newCell];
+                return { ...r, cells: redistributeWidths(cells) };
+              }))
             ),
           }));
         },
@@ -1166,7 +1219,10 @@ export const useProjectStore = create<ProjectState>()(
           set(s => ({
             project: updatePanel(s.project, p =>
               updateTab(p, tabId, t =>
-                updateRow(t, rowId, r => ({ ...r, cells: r.cells.filter(c => c.id !== cellId) }))
+                updateRow(t, rowId, r => {
+                  const cells = r.cells.filter(c => c.id !== cellId);
+                  return { ...r, cells: cells.length > 0 ? redistributeWidths(cells) : cells };
+                })
               )
             ),
           }));

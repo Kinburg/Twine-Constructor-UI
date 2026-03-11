@@ -394,7 +394,8 @@ export type CellContent =
 
 export interface SidebarCell {
   id: string;
-  width: number;   // flex weight (1–12)
+  /** Cell width as a percentage (0–100). All cells in a row should sum to 100. */
+  width: number;
   content: CellContent;
 }
 
@@ -410,9 +411,21 @@ export interface SidebarTab {
   rows: SidebarRow[];
 }
 
+/** Visual style settings for the sidebar panel table. */
+export interface PanelStyle {
+  rowGap:          number;   // px gap between rows
+  borderWidth:     number;   // px, line thickness
+  borderColor:     string;   // CSS color
+  showOuterBorder: boolean;  // outer frame of the whole table
+  showRowBorders:  boolean;  // horizontal dividers between rows
+  showCellBorders: boolean;  // vertical dividers between cells
+}
+
 export interface SidebarPanel {
   tabs: SidebarTab[];
   liveUpdate: boolean;  // wrap StoryCaption in <<live 200>>
+  /** Visual style; undefined = use defaults (backward compat). */
+  style?: PanelStyle;
 }
 
 // ─── Project ─────────────────────────────────────────────────────────────────
