@@ -447,7 +447,7 @@ function CellEditor({
   vars: Variable[];
   imgAssets: Asset[];
 }) {
-  const { updatePanelCell, deletePanelCell, updateCellContent } = useProjectStore();
+  const { deletePanelCell, updateCellContent } = useProjectStore();
   const [editing, setEditing] = useState(false);
 
   const updateContent = (c: CellContent) => updateCellContent(tabId, row.id, cell.id, c);
@@ -473,7 +473,6 @@ function CellEditor({
       {editing && (
         <CellEditModal
           cell={cell} vars={vars} imgAssets={imgAssets}
-          onUpdateCell={patch => updatePanelCell(tabId, row.id, cell.id, patch)}
           onUpdateContent={updateContent}
           onClose={() => setEditing(false)}
         />
@@ -555,12 +554,11 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
 }
 
 function CellEditModal({
-  cell, vars, imgAssets, onUpdateCell, onUpdateContent, onClose,
+  cell, vars, imgAssets, onUpdateContent, onClose,
 }: {
   cell: SidebarCell;
   vars: Variable[];
   imgAssets: Asset[];
-  onUpdateCell: (patch: Partial<Omit<SidebarCell, 'id'>>) => void;
   onUpdateContent: (c: CellContent) => void;
   onClose: () => void;
 }) {

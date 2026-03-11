@@ -345,7 +345,6 @@ function migrateCharacterAvatarConfig(p: Project): Project {
   return { ...p, characters };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function migrateProject(raw: any): Project {
   let p = { ...raw };
 

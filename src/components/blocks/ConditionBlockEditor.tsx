@@ -64,7 +64,7 @@ function NestedBlockEditor({
 }) {
   const { updateNestedBlock } = useProjectStore();
   const t = useT();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const onUpdate = (patch: any) => updateNestedBlock(sceneId, conditionBlockId, branchId, block.id, patch);
   switch (block.type) {
     case 'text':         return <TextBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TextBlock>) => void} />;
