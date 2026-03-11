@@ -1,7 +1,7 @@
 {
   "name": "twine-constructor",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.1",
   "type": "module",
   "main": "dist-electron/main.js",
   "scripts": {
@@ -18,7 +18,17 @@
       "output": "release"
     },
     "win": {
-      "target": [{ "target": "nsis", "arch": ["x64"] }, { "target": "zip" }]
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip"
+        }
+      ]
     },
     "nsis": {
       "oneClick": false,
