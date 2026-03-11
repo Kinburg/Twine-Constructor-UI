@@ -346,7 +346,7 @@ export interface CellVariable {
   suffix: string;   // shown after the value, e.g. " pts"
 }
 
-/** Horizontal progress bar driven by a numeric variable */
+/** Progress bar driven by a numeric variable */
 export interface CellProgress {
   type: 'progress';
   variableId: string;   // current value
@@ -356,6 +356,7 @@ export interface CellProgress {
   textColor?: string;   // text color; '' or undefined = inherit from page
   colorRange?: { from: string; to: string } | null;  // if set, fill interpolates 0%→from, 100%→to
   showText: boolean;    // show "cur/max" as text
+  vertical?: boolean;   // fill grows upward instead of rightward
 }
 
 /** Static image from assets */

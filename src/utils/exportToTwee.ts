@@ -322,18 +322,23 @@ function buildProgressBarSC(c: CellProgress, vars: Variable[], forTable: boolean
 
   // Text label (raw variable value / maxValue)
   const textRef = c.showText ? `${sv}+'/${c.maxValue}'` : "''";
+  const vert = c.vertical ?? false;
 
   if (forTable) {
     // Table cells use fully inline styles (no CSS class deps)
-    const printExpr =
-      `'<span style="width:100%;height:100%;background:${emptyColor};border-radius:2px;overflow:hidden;display:flex;align-items:center;">'` +
-      `+'<span style="width:'+_tgP+'%;background:'+${colorRef}+';height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75em;${textColorCSS}">'+${textRef}+'</span></span>'`;
+    const printExpr = vert
+      ? `'<span style="width:100%;height:100%;background:${emptyColor};border-radius:2px;overflow:hidden;display:flex;flex-direction:column-reverse;align-items:stretch;">'` +
+        `+'<span style="height:'+_tgP+'%;width:100%;background:'+${colorRef}+';display:flex;align-items:center;justify-content:center;font-size:0.75em;${textColorCSS}">'+${textRef}+'</span></span>'`
+      : `'<span style="width:100%;height:100%;background:${emptyColor};border-radius:2px;overflow:hidden;display:flex;align-items:center;">'` +
+        `+'<span style="width:'+_tgP+'%;background:'+${colorRef}+';height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75em;${textColorCSS}">'+${textRef}+'</span></span>'`;
     return `${setPct}${setColor}<<print ${printExpr}>>`;
   } else {
     // StoryCaption: use CSS classes (.tg-progress / .tg-bar), override bg via inline style
-    const printExpr =
-      `'<span class="tg-progress" style="background:${emptyColor};">'` +
-      `+'<span class="tg-bar" style="width:'+_tgP+'%;background:'+${colorRef}+';${textColorCSS}">'+${textRef}+'</span></span>'`;
+    const printExpr = vert
+      ? `'<span class="tg-progress" style="background:${emptyColor};flex-direction:column-reverse;align-items:stretch;">'` +
+        `+'<span class="tg-bar" style="height:'+_tgP+'%;width:100%;background:'+${colorRef}+';${textColorCSS}">'+${textRef}+'</span></span>'`
+      : `'<span class="tg-progress" style="background:${emptyColor};">'` +
+        `+'<span class="tg-bar" style="width:'+_tgP+'%;background:'+${colorRef}+';${textColorCSS}">'+${textRef}+'</span></span>'`;
     return `${setPct}${setColor}<<print ${printExpr}>>`;
   }
 }

@@ -412,6 +412,13 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   );
   if (c.type === 'progress') {
     const previewColor = c.colorRange?.from ?? c.color;
+    if (c.vertical) return (
+      <div className="flex-1 p-1 flex justify-center items-stretch">
+        <div className="flex-1 rounded overflow-hidden flex flex-col-reverse" style={{ background: c.emptyColor ?? '#333' }}>
+          <div className="w-full rounded" style={{ height: '60%', background: previewColor }} />
+        </div>
+      </div>
+    );
     return (
       <div className="flex-1 p-1 flex items-center">
         <div className="w-full h-2 rounded overflow-hidden" style={{ background: c.emptyColor ?? '#333' }}>
@@ -559,6 +566,10 @@ function TCellEditModal({
               ) : (
                 <span className="text-xs text-slate-500 italic ml-1">наследуется</span>
               )}
+            </TMField>
+            <TMField label="Вертикальный">
+              <input type="checkbox" className="accent-indigo-500 cursor-pointer"
+                checked={!!c.vertical} onChange={e => onUpdateContent({ ...c, vertical: e.target.checked })} />
             </TMField>
             <TMField label="Показать числа">
               <input type="checkbox" className="accent-indigo-500 cursor-pointer"
