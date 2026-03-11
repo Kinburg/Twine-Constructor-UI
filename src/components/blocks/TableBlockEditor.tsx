@@ -133,12 +133,6 @@ export function TableBlockEditor({
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Строки</span>
-          <button
-            className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
-            onClick={addRow}
-          >
-            + Строка
-          </button>
         </div>
 
         {block.rows.length === 0 && (
@@ -204,6 +198,12 @@ export function TableBlockEditor({
             </div>
           </div>
         ))}
+        <button
+            className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
+            onClick={addRow}
+        >
+          + Строка
+        </button>
       </div>
     </div>
   );
