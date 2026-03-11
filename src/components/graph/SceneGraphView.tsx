@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, memo } from 'react';
+import type { MouseEvent } from 'react';
 import {
   ReactFlow,
   Background,
@@ -10,7 +11,7 @@ import {
   type Node,
   type Edge,
   type EdgeProps,
-  type NodeDragHandler,
+  type OnNodeDrag,
   type NodeMouseHandler,
   BackgroundVariant,
   BaseEdge,
@@ -141,7 +142,7 @@ function SceneEdge({
   const markerId    = isSelected ? ARROW_SELECTED : ARROW_NORMAL;
 
   // Click on label → select this edge (deselect all others)
-  const handleLabelClick = useCallback((e: React.MouseEvent) => {
+  const handleLabelClick = useCallback((e: MouseEvent) => {
     e.stopPropagation(); // prevent ReactFlow pane from deselecting everything
     setEdges(eds => eds.map(edge => ({ ...edge, selected: edge.id === id })));
   }, [id, setEdges]);
@@ -233,11 +234,11 @@ export function SceneGraphView() {
     api.graphReady?.();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const onNodeDragStart: NodeDragHandler = useCallback(() => {
+  const onNodeDragStart: OnNodeDrag = useCallback(() => {
     isDragging.current = true;
   }, []);
 
-  const onNodeDragStop: NodeDragHandler = useCallback((_evt, node) => {
+  const onNodeDragStop: OnNodeDrag = useCallback((_evt, node) => {
     isDragging.current = false;
     window.electronAPI?.graphMove?.(node.id, node.position.x, node.position.y);
   }, []);
