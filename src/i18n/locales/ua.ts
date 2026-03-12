@@ -125,6 +125,7 @@ const ua: Translations = {
     errorReadFile:          (e) => `Помилка читання файлу: ${e}`,
     errorExportHtml:        (e) => `Помилка експорту HTML: ${e}`,
     dialogSaveHtml:         'Зберегти HTML файл',
+    menuTitle:              'Проєкт та налаштування',
   },
 
   assets: {

@@ -130,6 +130,7 @@ export interface Translations {
     errorReadFile: (e: unknown) => string;
     errorExportHtml: (e: unknown) => string;
     dialogSaveHtml: string;
+    menuTitle: string;
   };
 
   // ─── Asset manager ──────────────────────────────────────────────────────────

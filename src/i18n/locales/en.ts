@@ -125,6 +125,7 @@ const en: Translations = {
     errorReadFile:          (e) => `File read error: ${e}`,
     errorExportHtml:        (e) => `HTML export error: ${e}`,
     dialogSaveHtml:         'Save HTML file',
+    menuTitle:              'Project & Settings',
   },
 
   assets: {

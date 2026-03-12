@@ -14,13 +14,35 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   ? path.join(process.env.APP_ROOT, 'public')
   : RENDERER_DIST;
 
+// Required for correct taskbar grouping and icon on Windows 10/11
+app.setAppUserModelId('com.twineconstructor.app');
+
 // Projects stored in ~/Documents/TwineConstructor/Projects/
 const PROJECTS_DIR = path.join(app.getPath('documents'), 'TwineConstructor', 'Projects');
 
 let win: BrowserWindow | null;
 let previewWin: BrowserWindow | null = null;
 let graphWin: BrowserWindow | null = null;
+let splashWin: BrowserWindow | null = null;
+let splashStart = 0;
 let lastGraphData: unknown = null;
+
+// ─── Splash window ────────────────────────────────────────────────────────────
+
+function createSplashWindow() {
+  splashWin = new BrowserWindow({
+    width: 704,
+    height: 384,
+    frame: false,
+    transparent: true,
+    resizable: false,
+    center: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  splashWin.loadFile(path.join(process.env.VITE_PUBLIC!, 'splash.html'));
+}
 
 // ─── Graph window ─────────────────────────────────────────────────────────────
 
@@ -85,12 +107,16 @@ function createPreviewWindow() {
 // ─── Window ───────────────────────────────────────────────────────────────────
 
 function createWindow() {
+  const iconPath = path.join(process.env.VITE_PUBLIC!, 'Icon.ico');
+
   win = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 900,
     minHeight: 600,
     title: 'TwineConstructor',
+    show: false,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
@@ -103,6 +129,18 @@ function createWindow() {
   } else {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'));
   }
+
+  win.once('ready-to-show', () => {
+    const elapsed = Date.now() - splashStart;
+    const delay = Math.max(0, 2000 - elapsed);
+    setTimeout(() => {
+      if (splashWin && !splashWin.isDestroyed()) {
+        splashWin.close();
+        splashWin = null;
+      }
+      win?.show();
+    }, delay);
+  });
 }
 
 // ─── Custom protocol for local asset display ──────────────────────────────────
@@ -117,6 +155,8 @@ app.whenReady().then(() => {
   // Ensure base projects dir exists
   fs.mkdir(PROJECTS_DIR, { recursive: true }).catch(() => {});
 
+  splashStart = Date.now();
+  createSplashWindow();
   createWindow();
 });
 

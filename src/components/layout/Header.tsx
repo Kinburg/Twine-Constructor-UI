@@ -24,7 +24,7 @@ export function Header() {
   const [scReady, setScReady]               = useState(hasSCTemplate());
   const [scVersion, setScVersion]           = useState(getSCVersion());
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
-  const [saveMenuOpen, setSaveMenuOpen]     = useState(false);
+  const [menuOpen, setMenuOpen]             = useState(false);
   const [busy, setBusy]                     = useState(false);
   const [previewOpen, setPreviewOpen]       = useState(false);
   const [graphOpen, setGraphOpen]           = useState(false);
@@ -85,7 +85,7 @@ export function Header() {
   // ─── Save / Open ──────────────────────────────────────────────────────────
 
   const handleSaveProject = async () => {
-    setSaveMenuOpen(false);
+    setMenuOpen(false);
     setBusy(true);
     try {
       let dir = projectDir;
@@ -103,7 +103,7 @@ export function Header() {
   };
 
   const handleSaveProjectAs = async () => {
-    setSaveMenuOpen(false);
+    setMenuOpen(false);
     const dir = await fsApi.openFolderDialog();
     if (!dir) return;
     setBusy(true);
@@ -358,81 +358,6 @@ export function Header() {
 
         <span className="text-slate-700 select-none hidden sm:inline">|</span>
 
-        {/* Language selector */}
-        {locales.length > 1 && (
-          <select
-            value={locale}
-            onChange={e => setLocale(e.target.value)}
-            title={t.header.language}
-            className="bg-slate-800 text-slate-300 text-xs rounded px-2 py-1.5 border border-slate-600 outline-none cursor-pointer hover:border-slate-500 transition-colors"
-          >
-            {locales.map(l => (
-              <option key={l.code} value={l.code}>{l.name}</option>
-            ))}
-          </select>
-        )}
-
-        <span className="text-slate-700 select-none hidden sm:inline">|</span>
-
-        {/* Open / New */}
-        <Btn variant="ghost" onClick={handleOpenProject} title={t.header.openTitle} disabled={busy}>
-          {t.header.open}
-        </Btn>
-        <Btn variant="ghost" onClick={handleNewProject} disabled={busy}>
-          {t.header.new}
-        </Btn>
-
-        {/* Save — split button */}
-        <div className="relative">
-          <div className="flex">
-            <button
-              className="px-3 py-1.5 rounded-l text-sm font-medium bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50"
-              onClick={handleSaveProject}
-              title={projectDir ? t.header.saveTitle(projectDir) : t.header.saveNoDir}
-              disabled={busy}
-            >
-              {busy ? t.header.saving : t.header.save}
-            </button>
-            <button
-              className="px-2 py-1.5 rounded-r text-sm font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 transition-colors cursor-pointer border-l border-slate-600"
-              onClick={() => setSaveMenuOpen(v => !v)}
-              title={t.header.saveMoreOptions}
-            >
-              ▾
-            </button>
-          </div>
-
-          {saveMenuOpen && (
-            <div className="absolute left-0 top-full mt-1 bg-slate-800 border border-slate-600 rounded shadow-xl z-50 min-w-56">
-              <button
-                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
-                onClick={handleSaveProjectAs}
-              >
-                <div className="font-medium">{t.header.saveAsFolder}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{t.header.saveAsFolderDesc}</div>
-              </button>
-              {projectDir && (
-                <>
-                  <div className="border-t border-slate-700" />
-                  <button
-                    className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
-                    onClick={() => { setSaveMenuOpen(false); handleOpenProjectFolder(); }}
-                  >
-                    <div className="font-medium">{t.header.openFolder}</div>
-                    <div className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{projectDir}</div>
-                  </button>
-                </>
-              )}
-            </div>
-          )}
-
-          {saveMenuOpen && (
-            <div className="fixed inset-0 z-40" onClick={() => setSaveMenuOpen(false)} />
-          )}
-        </div>
-
-        <span className="text-slate-700 select-none hidden sm:inline">|</span>
-
         {/* SugarCube runtime setup */}
         {scReady ? (
           <span
@@ -503,6 +428,98 @@ export function Header() {
             )}
           </div>
         )}
+
+        <span className="text-slate-700 select-none hidden sm:inline">|</span>
+
+        {/* Hamburger menu: project ops + language */}
+        <div className="relative">
+          <button
+            className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
+              menuOpen
+                ? 'bg-slate-600 text-white'
+                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+            }`}
+            onClick={() => setMenuOpen(v => !v)}
+            title={t.header.menuTitle}
+          >
+            ☰
+          </button>
+
+          {menuOpen && (
+            <div className="absolute right-0 top-full mt-1 bg-slate-800 border border-slate-600 rounded shadow-xl z-50 min-w-52">
+              {/* Language */}
+              {locales.length > 1 && (
+                <div className="px-4 py-2.5 flex items-center gap-2">
+                  <span className="text-xs text-slate-400 shrink-0">{t.header.language}:</span>
+                  <select
+                    value={locale}
+                    onChange={e => setLocale(e.target.value)}
+                    className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 outline-none cursor-pointer hover:border-slate-500 transition-colors flex-1"
+                  >
+                    {locales.map(l => (
+                      <option key={l.code} value={l.code}>{l.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="border-t border-slate-700" />
+
+              {/* Save */}
+              <button
+                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                onClick={handleSaveProject}
+                disabled={busy}
+              >
+                <div className="font-medium">💾 {busy ? t.header.saving : t.header.save}</div>
+                <div className="text-xs text-slate-400 mt-0.5">
+                  {projectDir ? t.header.saveTitle(projectDir) : t.header.saveNoDir}
+                </div>
+              </button>
+              <button
+                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                onClick={handleSaveProjectAs}
+                disabled={busy}
+              >
+                <div className="font-medium">{t.header.saveAsFolder}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{t.header.saveAsFolderDesc}</div>
+              </button>
+              {projectDir && (
+                <button
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
+                  onClick={() => { setMenuOpen(false); handleOpenProjectFolder(); }}
+                >
+                  <div className="font-medium">📁 {t.header.openFolder}</div>
+                  <div className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{projectDir}</div>
+                </button>
+              )}
+
+              <div className="border-t border-slate-700" />
+
+              {/* Open / New */}
+              <button
+                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                onClick={() => { setMenuOpen(false); handleOpenProject(); }}
+                disabled={busy}
+              >
+                <div className="font-medium">📂 {t.header.open}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{t.header.openTitle}</div>
+              </button>
+              <button
+                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
+                onClick={() => { setMenuOpen(false); handleNewProject(); }}
+                disabled={busy}
+              >
+                <div className="font-medium">📄 {t.header.new}</div>
+                <div className="text-xs text-slate-400 mt-0.5">{t.header.confirmNew.slice(0, 40)}…</div>
+              </button>
+            </div>
+          )}
+
+          {menuOpen && (
+            <div className="fixed inset-0 z-40" onClick={() => setMenuOpen(false)} />
+          )}
+        </div>
       </div>
     </header>
   );
