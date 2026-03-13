@@ -292,6 +292,9 @@ const ua: Translations = {
     liveUpdateDesc:     'Авто-оновлення <<live>>',
     dynamicAvatarTitle: 'Динамічний аватар (залежить від змінної)',
     linePlaceholder:    'Введіть репліку...',
+    innerBlocksLabel:       'Внутрішні блоки',
+    nameSuffixLabel:        'Суфікс:',
+    nameSuffixPlaceholder:  'напр. кричить',
   },
 
   choiceBlock: {

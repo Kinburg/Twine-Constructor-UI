@@ -1,8 +1,27 @@
 import { useState, useEffect } from 'react';
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
-import type { DialogueBlock } from '../../types';
+import type {
+  DialogueBlock, Block,
+  TextBlock, VariableSetBlock, ImageBlock,
+  VideoBlock, RawBlock, TableBlock, NoteBlock,
+} from '../../types';
+import { AddBlockMenu } from './AddBlockMenu';
+import { TextBlockEditor } from './TextBlockEditor';
+import { VariableSetBlockEditor } from './VariableSetBlockEditor';
+import { ImageBlockEditor } from './ImageBlockEditor';
+import { VideoBlockEditor } from './VideoBlockEditor';
+import { RawBlockEditor } from './RawBlockEditor';
+import { TableBlockEditor } from './TableBlockEditor';
+import { NoteBlockEditor } from './NoteBlockEditor';
 
 /**
  * Converts an avatar src value to a URL the editor renderer can actually load:
@@ -23,6 +42,165 @@ function resolveEditorSrc(src: string, projectDir: string | null): string {
   }
   return ''; // can't resolve local path without projectDir
 }
+
+// ─── Inner block renderer ──────────────────────────────────────────────────────
+
+function InnerBlockEditor({
+  block,
+  sceneId,
+  dialogueBlockId,
+}: {
+  block: Block;
+  sceneId: string;
+  dialogueBlockId: string;
+}) {
+  const { updateDialogueInnerBlock } = useProjectStore();
+  const t = useT();
+  const onUpdate = (patch: Partial<Block>) =>
+    updateDialogueInnerBlock(sceneId, dialogueBlockId, block.id, patch);
+
+  switch (block.type) {
+    case 'text':
+      return <TextBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TextBlock>) => void} />;
+    case 'variable-set':
+      return <VariableSetBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VariableSetBlock>) => void} />;
+    case 'image':
+      return <ImageBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<ImageBlock>) => void} />;
+    case 'video':
+      return <VideoBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VideoBlock>) => void} />;
+    case 'raw':
+      return <RawBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<RawBlock>) => void} />;
+    case 'table':
+      return <TableBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TableBlock>) => void} />;
+    case 'note':
+      return <NoteBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<NoteBlock>) => void} />;
+    default:
+      return <span className="text-xs text-slate-500">{t.block.unsupportedNested}</span>;
+  }
+}
+
+// ─── Sortable inner block item ─────────────────────────────────────────────────
+
+function SortableInnerBlock({
+  block,
+  sceneId,
+  dialogueBlockId,
+  onDelete,
+}: {
+  block: Block;
+  sceneId: string;
+  dialogueBlockId: string;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: block.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex gap-1 items-start group border border-slate-700/60 rounded bg-slate-900/40 p-1.5"
+    >
+      {/* Drag handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="text-slate-600 hover:text-slate-400 text-xs cursor-grab active:cursor-grabbing shrink-0 mt-0.5 px-0.5"
+        title="Drag to reorder"
+      >
+        ⠿
+      </button>
+
+      {/* Block editor */}
+      <div className="flex-1 min-w-0">
+        <InnerBlockEditor block={block} sceneId={sceneId} dialogueBlockId={dialogueBlockId} />
+      </div>
+
+      {/* Delete */}
+      <button
+        className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 mt-0.5"
+        onClick={onDelete}
+        title="Delete"
+      >
+        ✕
+      </button>
+    </div>
+  );
+}
+
+// ─── Inner blocks section ──────────────────────────────────────────────────────
+
+function InnerBlocksList({
+  block,
+  sceneId,
+}: {
+  block: DialogueBlock;
+  sceneId: string;
+}) {
+  const { addDialogueInnerBlock, deleteDialogueInnerBlock, reorderDialogueInnerBlocks } =
+    useProjectStore();
+  const t = useT();
+
+  const innerBlocks = block.innerBlocks ?? [];
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIdx = innerBlocks.findIndex(b => b.id === active.id);
+    const newIdx = innerBlocks.findIndex(b => b.id === over.id);
+    if (oldIdx === -1 || newIdx === -1) return;
+    reorderDialogueInnerBlocks(sceneId, block.id, arrayMove(innerBlocks, oldIdx, newIdx));
+  }
+
+  return (
+    <div className="flex flex-col gap-1 mt-1">
+      {/* Section header */}
+      <div className="flex items-center gap-2 mb-0.5">
+        <span className="text-xs text-slate-500 font-medium uppercase tracking-wide">
+          {t.dialogueBlock.innerBlocksLabel}
+        </span>
+        <div className="flex-1 h-px bg-slate-700/60" />
+      </div>
+
+      {/* Blocks list */}
+      {innerBlocks.length > 0 && (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={innerBlocks.map(b => b.id)} strategy={verticalListSortingStrategy}>
+            <div className="flex flex-col gap-1">
+              {innerBlocks.map(ib => (
+                <SortableInnerBlock
+                  key={ib.id}
+                  block={ib}
+                  sceneId={sceneId}
+                  dialogueBlockId={block.id}
+                  onDelete={() => deleteDialogueInnerBlock(sceneId, block.id, ib.id)}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+
+      {/* Add block menu — exclude types that don't make sense inside a dialogue
+          or would create circular imports (condition, choice, dialogue) */}
+      <AddBlockMenu
+        sceneId={sceneId}
+        excludeTypes={['dialogue', 'condition', 'choice', 'button', 'input-field']}
+        onAdd={newBlock => addDialogueInnerBlock(sceneId, block.id, newBlock)}
+      />
+    </div>
+  );
+}
+
+// ─── Main editor ───────────────────────────────────────────────────────────────
 
 export function DialogueBlockEditor({
   block,
@@ -118,6 +296,18 @@ export function DialogueBlockEditor({
         </div>
       </div>
 
+      {/* Name suffix */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.dialogueBlock.nameSuffixLabel}</label>
+        <input
+          className="flex-1 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none placeholder-slate-600"
+          placeholder={t.dialogueBlock.nameSuffixPlaceholder}
+          value={block.nameSuffix ?? ''}
+          onFocus={saveSnapshot}
+          onChange={e => update({ nameSuffix: e.target.value })}
+        />
+      </div>
+
       {/* Live update toggle */}
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-20 shrink-0">{t.dialogueBlock.liveUpdateLabel}</label>
@@ -161,7 +351,7 @@ export function DialogueBlockEditor({
         <div style={bodyStyle}>
           {selectedChar && (
             <span className="text-xs font-bold block mb-1" style={{ color: selectedChar.nameColor, textAlign: isRight ? 'right' : 'left' }}>
-              {selectedChar.name}
+              {selectedChar.name}{block.nameSuffix ? ` (${block.nameSuffix})` : ''}
             </span>
           )}
           <textarea
@@ -174,6 +364,12 @@ export function DialogueBlockEditor({
           />
         </div>
       </div>
+
+      {/* Inner blocks — only when not used as a nested block inside a condition
+          (onUpdate is set when called from ConditionBlockEditor) */}
+      {!onUpdate && (
+        <InnerBlocksList block={block} sceneId={sceneId} />
+      )}
     </div>
   );
 }

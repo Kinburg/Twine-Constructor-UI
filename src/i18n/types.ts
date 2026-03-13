@@ -305,6 +305,9 @@ export interface Translations {
     liveUpdateDesc: string;
     dynamicAvatarTitle: string;
     linePlaceholder: string;
+    innerBlocksLabel: string;
+    nameSuffixLabel: string;
+    nameSuffixPlaceholder: string;
   };
 
   choiceBlock: {

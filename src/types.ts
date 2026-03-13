@@ -14,6 +14,8 @@ export interface DialogueBlock {
   text: string;
   align?: 'left' | 'right';  // avatar + name position, default 'left'
   live?: boolean;             // wrap in <<live 200>> on export for auto-refresh
+  nameSuffix?: string;        // optional postfix shown as "Name (suffix)", e.g. "кричит"
+  innerBlocks?: Block[];      // blocks rendered inside the dialogue bubble after the text
 }
 
 export interface ChoiceOption {

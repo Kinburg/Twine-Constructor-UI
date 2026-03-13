@@ -34,7 +34,10 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
       // Use runtime $name variable if available, otherwise fall back to static name
       const nameVarId = char?.varIds?.nameVarId;
       const nameVar = nameVarId ? vars.find(v => v.id === nameVarId) : null;
-      const charNameDisplay = nameVar ? `<<print $${nameVar.name}>>` : (char?.name ?? 'Unknown');
+      const baseName = nameVar ? `<<print $${nameVar.name}>>` : (char?.name ?? 'Unknown');
+      const charNameDisplay = block.nameSuffix
+        ? `${baseName} (${block.nameSuffix})`
+        : baseName;
 
       // Avatar HTML — static mode or variable-bound mode
       const avatarVarId = char?.varIds?.avatarVarId;
@@ -72,7 +75,15 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
         avatarHtml = `<<if $${avatarVar.name}>><img class="char-avatar" @src="$${avatarVar.name}"><</if>>`;
       }
 
-      const body = `<div class="char-body"><span class="char-name">${charNameDisplay}</span><span class="char-text">${block.text}</span></div>`;
+      // Inner blocks rendered inside the dialogue bubble after the main text
+      const innerBlocksHtml = (block.innerBlocks ?? [])
+        .map(b => blockToSC(b, chars, vars, ''))
+        .filter(Boolean)
+        .join('');
+
+      // Use inline style for text-align so SugarCube's stylesheet can't override it
+      const nameStyle = block.align === 'right' ? ' style="text-align:right"' : '';
+      const body = `<div class="char-body"><span class="char-name"${nameStyle}>${charNameDisplay}</span><span class="char-text">${block.text}</span>${innerBlocksHtml}</div>`;
       // Avatar always comes first in DOM for BOTH alignments.
       // CSS `.dlg-right { flex-direction: row-reverse }` flips the visual order for right-aligned dialogues,
       // placing the avatar on the right side without changing the DOM order.

@@ -445,13 +445,19 @@ interface ProjectState {
   duplicateBlock: (sceneId: string, blockId: string) => void;
   pasteToScene: (sceneId: string, block: Block) => void;
 
-  // Nested blocks
+  // Nested blocks (condition branches)
   addNestedBlock: (sceneId: string, blockId: string, branchId: string, block: Block) => void;
   updateNestedBlock: (sceneId: string, blockId: string, branchId: string, nestedBlockId: string, patch: Partial<Block>) => void;
   deleteNestedBlock: (sceneId: string, blockId: string, branchId: string, nestedBlockId: string) => void;
   reorderNestedBlocks: (sceneId: string, conditionBlockId: string, branchId: string, blocks: Block[]) => void;
   duplicateNestedBlock: (sceneId: string, conditionBlockId: string, branchId: string, nestedBlockId: string) => void;
   pasteToNested: (sceneId: string, conditionBlockId: string, branchId: string, block: Block) => void;
+
+  // Dialogue inner blocks
+  addDialogueInnerBlock: (sceneId: string, dialogueBlockId: string, block: Block) => void;
+  updateDialogueInnerBlock: (sceneId: string, dialogueBlockId: string, innerBlockId: string, patch: Partial<Block>) => void;
+  deleteDialogueInnerBlock: (sceneId: string, dialogueBlockId: string, innerBlockId: string) => void;
+  reorderDialogueInnerBlocks: (sceneId: string, dialogueBlockId: string, blocks: Block[]) => void;
 
   // Choice options
   addChoiceOption: (sceneId: string, blockId: string) => void;
@@ -857,6 +863,59 @@ export const useProjectStore = create<ProjectState>()(
                       : br
                   ),
                 };
+              })
+            ),
+          }));
+        },
+
+        // ── Dialogue inner blocks ─────────────────────────────────────────────
+
+        addDialogueInnerBlock: (sceneId, dialogueBlockId, block) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, dialogueBlockId, b => {
+                if (b.type !== 'dialogue') return b;
+                return { ...b, innerBlocks: [...(b.innerBlocks ?? []), block] };
+              })
+            ),
+          }));
+        },
+
+        updateDialogueInnerBlock: (sceneId, dialogueBlockId, innerBlockId, patch) =>
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, dialogueBlockId, b => {
+                if (b.type !== 'dialogue') return b;
+                return {
+                  ...b,
+                  innerBlocks: (b.innerBlocks ?? []).map(ib =>
+                    ib.id === innerBlockId ? { ...ib, ...patch } as Block : ib
+                  ),
+                };
+              })
+            ),
+          })),
+
+        deleteDialogueInnerBlock: (sceneId, dialogueBlockId, innerBlockId) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, dialogueBlockId, b => {
+                if (b.type !== 'dialogue') return b;
+                return { ...b, innerBlocks: (b.innerBlocks ?? []).filter(ib => ib.id !== innerBlockId) };
+              })
+            ),
+          }));
+        },
+
+        reorderDialogueInnerBlocks: (sceneId, dialogueBlockId, blocks) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc =>
+              updateBlockInScene(sc, dialogueBlockId, b => {
+                if (b.type !== 'dialogue') return b;
+                return { ...b, innerBlocks: blocks };
               })
             ),
           }));

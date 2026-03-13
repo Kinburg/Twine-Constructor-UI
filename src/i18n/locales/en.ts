@@ -292,6 +292,9 @@ const en: Translations = {
     liveUpdateDesc:     'Auto-refresh <<live>>',
     dynamicAvatarTitle: 'Dynamic avatar (depends on variable)',
     linePlaceholder:    'Enter character line...',
+    innerBlocksLabel:       'Inner blocks',
+    nameSuffixLabel:        'Suffix:',
+    nameSuffixPlaceholder:  'e.g. shouting',
   },
 
   choiceBlock: {
