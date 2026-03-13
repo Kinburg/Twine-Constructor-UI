@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProjectStore, flattenVariables, flattenAssets } from '../../store/projectStore';
+import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+
+function resolveEditorSrc(src: string, projectDir: string | null): string {
+  if (!src) return '';
+  if (/^https?:\/\//i.test(src) || src.startsWith('data:') || src.startsWith('localfile://')) return src;
+  if (projectDir) return toLocalFileUrl(joinPath(projectDir, src));
+  return '';
+}
 import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset } from '../../types';
 import { useT } from '../../i18n';
 
@@ -140,7 +148,7 @@ function CharacterCard({
       {expanded && (
         <div
           className="px-3 py-2 flex flex-col gap-2 border-t border-slate-700"
-          style={{ background: char.bgColor, borderLeft: `3px solid ${char.borderColor}` }}
+          style={{ borderLeft: `3px solid ${char.borderColor}` }}
         >
           <Field label={t.characters.fieldName}>
             <input
@@ -193,20 +201,68 @@ function CharacterCard({
           />
 
           {/* Live preview */}
-          <div
-            className="mt-1 rounded p-2"
-            style={{
-              background: char.bgColor,
-              borderLeft: `4px solid ${char.borderColor}`,
-            }}
-          >
-            <span className="text-xs font-bold block" style={{ color: char.nameColor }}>
-              {char.name || t.characters.fieldName}
-            </span>
-            <p className="text-xs text-slate-300 italic m-0">{t.characters.exampleLine}</p>
-          </div>
+          <CharacterPreview char={char} avatarCfg={avatarCfg} />
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Character preview ──────────────────────────────────────────────────────────
+
+function CharacterPreview({ char, avatarCfg }: { char: Character; avatarCfg: AvatarConfig }) {
+  const t = useT();
+  const { projectDir } = useProjectStore();
+
+  // Collect all srcs for bound mode cycling
+  const boundSrcs = avatarCfg.mode === 'bound'
+    ? [...avatarCfg.mapping.map(m => m.src), avatarCfg.defaultSrc].filter(Boolean)
+    : [];
+
+  const [cycleIdx, setCycleIdx] = useState(0);
+
+  // Reset cycle index when avatar config changes
+  useEffect(() => { setCycleIdx(0); }, [avatarCfg.mode, avatarCfg.variableId]);
+
+  // Cycle through bound images every 2s
+  useEffect(() => {
+    if (avatarCfg.mode !== 'bound' || boundSrcs.length <= 1) return;
+    const id = setInterval(() => setCycleIdx(i => (i + 1) % boundSrcs.length), 2000);
+    return () => clearInterval(id);
+  });  // re-evaluates each render so boundSrcs.length stays fresh
+
+  let rawSrc = '';
+  if (avatarCfg.mode === 'static' && avatarCfg.src) {
+    rawSrc = avatarCfg.src;
+  } else if (avatarCfg.mode === 'bound' && boundSrcs.length > 0) {
+    rawSrc = boundSrcs[cycleIdx % boundSrcs.length];
+  }
+  const avatarSrc = resolveEditorSrc(rawSrc, projectDir);
+
+  const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => { setImgFailed(false); }, [avatarSrc]);
+
+  const showAvatar = Boolean(avatarSrc) && !imgFailed;
+
+  return (
+    <div
+      className="mt-1 rounded p-2 flex gap-2 items-start"
+      style={{ background: char.bgColor, borderLeft: `4px solid ${char.borderColor}` }}
+    >
+      {showAvatar && (
+        <img
+          src={avatarSrc}
+          className="w-10 h-10 object-cover rounded flex-shrink-0"
+          alt=""
+          onError={() => setImgFailed(true)}
+        />
+      )}
+      <div className="flex-1">
+        <span className="text-xs font-bold block" style={{ color: char.nameColor }}>
+          {char.name || t.characters.fieldName}
+        </span>
+        <p className="text-xs text-slate-300 italic m-0">{t.characters.exampleLine}</p>
+      </div>
     </div>
   );
 }

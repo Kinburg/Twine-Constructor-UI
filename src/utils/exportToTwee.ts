@@ -64,9 +64,11 @@ export function blockToSC(block: Block, chars: Character[], vars: Variable[], in
         if (cfg.defaultSrc) cases.push(`<<else>>${imgTag(cfg.defaultSrc)}`);
         if (cases.length > 0) cases.push('<</if>>');
         avatarHtml = cases.join('');
+      } else if (cfg?.mode === 'static' && cfg.src) {
+        // Static mode: fixed image path
+        avatarHtml = `<img class="char-avatar" src="${cfg.src}">`;
       } else if (avatarVar) {
-        // Static mode (or legacy data without avatarConfig): use $prefix_avatar variable.
-        // @src="$var" is SugarCube's attribute directive — evaluates the expression at render time.
+        // Legacy: avatar stored in a $variable
         avatarHtml = `<<if $${avatarVar.name}>><img class="char-avatar" @src="$${avatarVar.name}"><</if>>`;
       }
 
@@ -696,9 +698,10 @@ function buildCharacterCSS(characters: Character[]): string {
   const base = [
     '.dialogue { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0; font-style: italic; }',
     '.dialogue.dlg-right { flex-direction: row-reverse; }',
-    '.char-avatar { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }',
+    '.char-avatar { width: 96px; height: 96px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }',
     '.char-body { flex: 1; padding: 8px 12px; border-radius: 4px; }',
     '.char-name { font-weight: bold; display: block; margin-bottom: 4px; }',
+    '.dialogue.dlg-right .char-name { text-align: right; }',
     '.char-text { display: block; margin: 0 !important; padding: 0; }',
   ].join('\n');
   const perChar = characters.map(c => {

@@ -160,7 +160,7 @@ export function DialogueBlockEditor({
         {/* Name + text area */}
         <div style={bodyStyle}>
           {selectedChar && (
-            <span className="text-xs font-bold block mb-1" style={{ color: selectedChar.nameColor }}>
+            <span className="text-xs font-bold block mb-1" style={{ color: selectedChar.nameColor, textAlign: isRight ? 'right' : 'left' }}>
               {selectedChar.name}
             </span>
           )}

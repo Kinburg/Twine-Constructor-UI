@@ -23,7 +23,7 @@ function buildCharacterCSS(characters: Character[]): string {
   const base = [
     '.dialogue { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0; font-style: italic; }',
     '.dialogue.dlg-right { flex-direction: row-reverse; }',
-    '.char-avatar { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }',
+    '.char-avatar { width: 96px; height: 96px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }',
     '.char-body { flex: 1; padding: 8px 12px; border-radius: 4px; }',
     '.char-name { font-weight: bold; display: block; margin-bottom: 4px; }',
     '.char-text { display: block; margin: 0 !important; padding: 0; }',
