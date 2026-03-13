@@ -47,6 +47,7 @@ export interface Translations {
     raw: string;
     note: string;
     table: string;
+    divider: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -71,6 +72,7 @@ export interface Translations {
     raw:         { label: string; desc: string };
     note:        { label: string; desc: string };
     table:       { label: string; desc: string };
+    divider:     { label: string; desc: string };
   };
 
   condition: {
@@ -79,6 +81,9 @@ export interface Translations {
     noBranches: string;
     varPlaceholder: string;
     valuePlaceholder: string;
+    rangeToggle:         string;  // tooltip for range-mode button
+    rangeMinPlaceholder: string;
+    rangeMaxPlaceholder: string;
   };
 
   header: {
@@ -401,6 +406,14 @@ export interface Translations {
 
   rawBlock: {
     hint: string;
+  };
+
+  dividerBlock: {
+    colorLabel: string;
+    thicknessLabel: string;
+    thicknessSuffix: string;
+    marginLabel: string;
+    marginSuffix: string;
   };
 
   blockEffects: {

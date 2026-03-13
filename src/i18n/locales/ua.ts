@@ -43,6 +43,7 @@ const ua: Translations = {
     raw:              'Twine-код',
     note:             'Нотатка',
     table:            'Таблиця',
+    divider:          'Розділювач',
     drag:             'Перетягнути для сортування',
     copy:             'Копіювати блок у буфер',
     duplicate:        'Дублювати блок',
@@ -66,14 +67,18 @@ const ua: Translations = {
     raw:         { label: 'Twine-код',   desc: 'Сирий SugarCube / HTML' },
     note:        { label: 'Нотатка',     desc: 'Не експортується' },
     table:       { label: 'Таблиця',     desc: 'HTML-таблиця з комірками' },
+    divider:     { label: 'Розділювач',  desc: 'Горизонтальна лінія' },
   },
 
   condition: {
-    addBranch:        '+ Гілка (if/elseif)',
-    addElse:          '+ Гілка (else)',
-    noBranches:       'Додайте гілку (if)',
-    varPlaceholder:   '— $змінна —',
-    valuePlaceholder: 'значення',
+    addBranch:           '+ Гілка (if/elseif)',
+    addElse:             '+ Гілка (else)',
+    noBranches:          'Додайте гілку (if)',
+    varPlaceholder:      '— $змінна —',
+    valuePlaceholder:    'значення',
+    rangeToggle:         'Діапазон (a ≤ x ≤ b)',
+    rangeMinPlaceholder: 'мін',
+    rangeMaxPlaceholder: 'макс',
   },
 
   header: {
@@ -388,6 +393,14 @@ const ua: Translations = {
 
   rawBlock: {
     hint: 'Вставляється в експорт як є, без змін',
+  },
+
+  dividerBlock: {
+    colorLabel:      'Колір:',
+    thicknessLabel:  'Товщина:',
+    thicknessSuffix: 'px',
+    marginLabel:     'Відступ:',
+    marginSuffix:    'px',
   },
 
   blockEffects: {

@@ -43,6 +43,7 @@ const en: Translations = {
     raw:              'Twine code',
     note:             'Note',
     table:            'Table',
+    divider:          'Divider',
     drag:             'Drag to reorder',
     copy:             'Copy block to clipboard',
     duplicate:        'Duplicate block',
@@ -66,14 +67,18 @@ const en: Translations = {
     raw:         { label: 'Twine code', desc: 'Raw SugarCube / HTML' },
     note:        { label: 'Note',       desc: 'Not exported' },
     table:       { label: 'Table',      desc: 'HTML table with cells' },
+    divider:     { label: 'Divider',    desc: 'Horizontal rule' },
   },
 
   condition: {
-    addBranch:        '+ Branch (if/elseif)',
-    addElse:          '+ Branch (else)',
-    noBranches:       'Add a branch (if)',
-    varPlaceholder:   '— $variable —',
-    valuePlaceholder: 'value',
+    addBranch:           '+ Branch (if/elseif)',
+    addElse:             '+ Branch (else)',
+    noBranches:          'Add a branch (if)',
+    varPlaceholder:      '— $variable —',
+    valuePlaceholder:    'value',
+    rangeToggle:         'Range mode (a ≤ x ≤ b)',
+    rangeMinPlaceholder: 'min',
+    rangeMaxPlaceholder: 'max',
   },
 
   header: {
@@ -388,6 +393,14 @@ const en: Translations = {
 
   rawBlock: {
     hint: 'Inserted into export as-is, without changes',
+  },
+
+  dividerBlock: {
+    colorLabel:      'Color:',
+    thicknessLabel:  'Thickness:',
+    thicknessSuffix: 'px',
+    marginLabel:     'Margin:',
+    marginSuffix:    'px',
   },
 
   blockEffects: {

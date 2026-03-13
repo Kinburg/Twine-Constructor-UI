@@ -62,6 +62,11 @@ export interface ConditionBranch {
   variableId: string;    // empty for 'else'
   operator: ConditionOperator;
   value: string;
+  /** Range mode: generates `$var >= rangeMin && $var <= rangeMax` instead of single comparison.
+   *  Only valid for numeric variables. */
+  rangeMode?: boolean;
+  rangeMin?: string;     // lower bound (inclusive)
+  rangeMax?: string;     // upper bound (inclusive)
   blocks: Block[];
 }
 
@@ -231,6 +236,15 @@ export interface TableBlock {
   delay?: BlockDelay;
 }
 
+export interface DividerBlock {
+  id: string;
+  type: 'divider';
+  color?: string;      // line color, default '#555555'
+  thickness?: number;  // px, default 1
+  marginV?: number;    // vertical margin (top + bottom) in px, default 8
+  delay?: BlockDelay;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -243,7 +257,8 @@ export type Block =
   | InputFieldBlock
   | RawBlock
   | NoteBlock
-  | TableBlock;
+  | TableBlock
+  | DividerBlock;
 
 export type BlockType = Block['type'];
 

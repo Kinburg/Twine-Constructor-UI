@@ -18,7 +18,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { useT, blockTypeLabel } from '../../i18n';
 import type {
   ConditionBlock, ConditionBranchType, ConditionOperator, Block,
-  TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock, RawBlock, TableBlock,
+  TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock, RawBlock, TableBlock, DividerBlock,
 } from '../../types';
 import { AddBlockMenu } from './AddBlockMenu';
 import { TextBlockEditor } from './TextBlockEditor';
@@ -29,6 +29,7 @@ import { ImageBlockEditor } from './ImageBlockEditor';
 import { VideoBlockEditor } from './VideoBlockEditor';
 import { RawBlockEditor } from './RawBlockEditor';
 import { TableBlockEditor } from './TableBlockEditor';
+import { DividerBlockEditor } from './DividerBlockEditor';
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: '==', label: '==' },
@@ -74,7 +75,8 @@ function NestedBlockEditor({
     case 'image':        return <ImageBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<ImageBlock>) => void} />;
     case 'video':        return <VideoBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VideoBlock>) => void} />;
     case 'raw':          return <RawBlockEditor   block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<RawBlock>) => void} />;
-    case 'table':        return <TableBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TableBlock>) => void} />;
+    case 'table':        return <TableBlockEditor   block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TableBlock>) => void} />;
+    case 'divider':      return <DividerBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<DividerBlock>) => void} />;
     default:             return <span className="text-xs text-slate-500">{t.block.unsupportedNested}</span>;
   }
 }
@@ -234,6 +236,8 @@ export function ConditionBlockEditor({
             {branch.branchType !== 'else' && (() => {
               const branchVar = variables.find(v => v.id === branch.variableId);
               const availableOps = operatorsForType(branchVar?.varType);
+              const isNumeric = branchVar?.varType === 'number' || branchVar?.varType === undefined;
+              const rangeMode = branch.rangeMode && isNumeric;
               return (
               <>
                 <select
@@ -243,9 +247,12 @@ export function ConditionBlockEditor({
                     const newVar = variables.find(v => v.id === e.target.value);
                     const newOps = operatorsForType(newVar?.varType);
                     const opStillValid = newOps.some(op => op.value === branch.operator);
+                    // disable range mode if new variable is not numeric
+                    const newIsNumeric = newVar?.varType === 'number' || newVar?.varType === undefined;
                     updateConditionBranch(sceneId, block.id, branch.id, {
                       variableId: e.target.value,
                       ...(!opStillValid ? { operator: newOps[0].value } : {}),
+                      ...(!newIsNumeric ? { rangeMode: false } : {}),
                     });
                   }}
                 >
@@ -255,29 +262,72 @@ export function ConditionBlockEditor({
                   ))}
                 </select>
 
-                <select
-                  className="bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer font-mono"
-                  value={branch.operator}
-                  onChange={e =>
-                    updateConditionBranch(sceneId, block.id, branch.id, {
-                      operator: e.target.value as ConditionOperator,
-                    })
-                  }
-                >
-                  {availableOps.map(op => (
-                    <option key={op.value} value={op.value}>{op.label}</option>
-                  ))}
-                </select>
+                {/* Range mode toggle — only for numeric (or unknown) variables */}
+                {isNumeric && (
+                  <button
+                    title={t.condition.rangeToggle}
+                    className={`text-xs rounded px-1.5 py-0.5 border cursor-pointer font-mono shrink-0 transition-colors ${
+                      rangeMode
+                        ? 'bg-amber-800/50 text-amber-300 border-amber-600'
+                        : 'bg-slate-800 text-slate-500 border-slate-600 hover:text-slate-300'
+                    }`}
+                    onClick={() =>
+                      updateConditionBranch(sceneId, block.id, branch.id, { rangeMode: !branch.rangeMode })
+                    }
+                  >
+                    a≤x≤b
+                  </button>
+                )}
 
-                <input
-                  className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
-                  placeholder={t.condition.valuePlaceholder}
-                  value={branch.value}
-                  onFocus={saveSnapshot}
-                  onChange={e =>
-                    updateConditionBranch(sceneId, block.id, branch.id, { value: e.target.value })
-                  }
-                />
+                {rangeMode ? (
+                  <>
+                    <input
+                      className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
+                      placeholder={t.condition.rangeMinPlaceholder}
+                      value={branch.rangeMin ?? ''}
+                      onFocus={saveSnapshot}
+                      onChange={e =>
+                        updateConditionBranch(sceneId, block.id, branch.id, { rangeMin: e.target.value })
+                      }
+                    />
+                    <span className="text-xs text-slate-500 shrink-0">≤ x ≤</span>
+                    <input
+                      className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
+                      placeholder={t.condition.rangeMaxPlaceholder}
+                      value={branch.rangeMax ?? ''}
+                      onFocus={saveSnapshot}
+                      onChange={e =>
+                        updateConditionBranch(sceneId, block.id, branch.id, { rangeMax: e.target.value })
+                      }
+                    />
+                  </>
+                ) : (
+                  <>
+                    <select
+                      className="bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer font-mono"
+                      value={branch.operator}
+                      onChange={e =>
+                        updateConditionBranch(sceneId, block.id, branch.id, {
+                          operator: e.target.value as ConditionOperator,
+                        })
+                      }
+                    >
+                      {availableOps.map(op => (
+                        <option key={op.value} value={op.value}>{op.label}</option>
+                      ))}
+                    </select>
+
+                    <input
+                      className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
+                      placeholder={t.condition.valuePlaceholder}
+                      value={branch.value}
+                      onFocus={saveSnapshot}
+                      onChange={e =>
+                        updateConditionBranch(sceneId, block.id, branch.id, { value: e.target.value })
+                      }
+                    />
+                  </>
+                )}
               </>
               );
             })()}

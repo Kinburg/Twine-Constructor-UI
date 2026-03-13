@@ -307,6 +307,13 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
       if (!block.code) return '';
       return block.code.split('\n').map(line => `${indent}${line}`).join('\n');
 
+    case 'divider': {
+      const color     = block.color     ?? '#555555';
+      const thickness = block.thickness ?? 1;
+      const marginV   = block.marginV   ?? 8;
+      return `${indent}<hr style="border:none;border-top:${thickness}px solid ${color};margin:${marginV}px 0;">`;
+    }
+
     case 'note':
       // Developer note — never exported
       return '';
@@ -355,9 +362,17 @@ function branchToSC(
 
   const v = vars.find(x => x.id === branch.variableId);
   const varName = v ? `$${v.name}` : '$unknown';
-  let val = branch.value;
-  if (v?.varType === 'string') val = `"${val}"`;
-  const expr = `${varName} ${branch.operator} ${val}`;
+
+  let expr: string;
+  if (branch.rangeMode) {
+    const lo = branch.rangeMin ?? '0';
+    const hi = branch.rangeMax ?? '0';
+    expr = `${varName} >= ${lo} && ${varName} <= ${hi}`;
+  } else {
+    let val = branch.value;
+    if (v?.varType === 'string') val = `"${val}"`;
+    expr = `${varName} ${branch.operator} ${val}`;
+  }
 
   if (branch.branchType === 'if' || isFirst) {
     return `${indent}<<if ${expr}>>\n${innerLines}`;
