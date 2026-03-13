@@ -23,7 +23,8 @@ export default defineConfig([
       // scattering eslint-disable comments across unrelated files.
       "react-hooks/set-state-in-effect": "off",
       // Allow exporting constants alongside components (common pattern in Vite projects).
-      "react-refresh/only-export-components": ["warn", { "allowConstantExport": true }]
+      "react-refresh/only-export-components": ["warn", { "allowConstantExport": true }],
+      "@typescript-eslint/no-unused-vars": "warn"
     },
     languageOptions: {
       ecmaVersion: 2020,
