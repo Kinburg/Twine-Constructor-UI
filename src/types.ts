@@ -236,6 +236,25 @@ export interface TableBlock {
   delay?: BlockDelay;
 }
 
+/**
+ * Includes another passage/scene via <<include "PassageName">>.
+ * Optionally wraps the result in a styled <div>.
+ */
+export interface IncludeBlock {
+  id: string;
+  type: 'include';
+  passageName: string;
+  // Optional wrapper div styling — if none are set, no <div> wrapper is generated
+  maxWidth?: number;      // px, 0 or undefined = no constraint
+  bordered?: boolean;     // show border
+  borderColor?: string;   // default '#555555'
+  borderWidth?: number;   // px, default 1
+  borderRadius?: number;  // px, default 0
+  padding?: number;       // inner padding px
+  bgColor?: string;       // background color; undefined = transparent
+  delay?: BlockDelay;
+}
+
 export interface DividerBlock {
   id: string;
   type: 'divider';
@@ -258,6 +277,7 @@ export type Block =
   | RawBlock
   | NoteBlock
   | TableBlock
+  | IncludeBlock
   | DividerBlock;
 
 export type BlockType = Block['type'];

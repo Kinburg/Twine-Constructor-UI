@@ -16,6 +16,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'raw':          '🧩',
   'note':         '🗒️',
   'table':        '🗂️',
+  'include':      '📎',
   'divider':      '─',
 };
 
@@ -42,6 +43,7 @@ export function makeBlock(type: BlockType): Block {
     case 'raw':          return { id, type, code: '' };
     case 'note':         return { id, type, text: '' };
     case 'table':        return { id, type, rows: [], style: { ...DEFAULT_PANEL_STYLE } };
+    case 'include':      return { id, type, passageName: '' };
     case 'divider':      return { id, type };
   }
 }
@@ -73,6 +75,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     { type: 'raw',          icon: BLOCK_ICONS['raw'],          label: t.addBlock.raw.label,         desc: t.addBlock.raw.desc },
     { type: 'note',         icon: BLOCK_ICONS['note'],         label: t.addBlock.note.label,        desc: t.addBlock.note.desc },
     { type: 'table',        icon: BLOCK_ICONS['table'],        label: t.addBlock.table.label,       desc: t.addBlock.table.desc },
+    { type: 'include',      icon: BLOCK_ICONS['include'],      label: t.addBlock.include.label,     desc: t.addBlock.include.desc },
     { type: 'divider',      icon: BLOCK_ICONS['divider'],      label: t.addBlock.divider.label,     desc: t.addBlock.divider.desc },
   ];
 

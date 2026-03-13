@@ -1,7 +1,7 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
-  Scene, ButtonBlock, CellProgress, BlockDelay, BlockTypewriter,
+  Scene, ButtonBlock, CellProgress, BlockDelay, BlockTypewriter, IncludeBlock,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables } from './treeUtils';
@@ -306,6 +306,31 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
     case 'raw':
       if (!block.code) return '';
       return block.code.split('\n').map(line => `${indent}${line}`).join('\n');
+
+    case 'include': {
+      const name = (block as IncludeBlock).passageName.trim();
+      if (!name) return '';
+
+      const include = `<<include "${name}">>`;
+
+      const styles: string[] = [];
+      if (block.maxWidth && block.maxWidth > 0)
+        styles.push(`max-width:${block.maxWidth}px`);
+      if (block.bordered) {
+        const bw = block.borderWidth ?? 1;
+        const bc = block.borderColor ?? '#555555';
+        const br = block.borderRadius ?? 0;
+        styles.push(`border:${bw}px solid ${bc}`);
+        if (br > 0) styles.push(`border-radius:${br}px`);
+      }
+      if (block.padding && block.padding > 0)
+        styles.push(`padding:${block.padding}px`);
+      if (block.bgColor)
+        styles.push(`background-color:${block.bgColor}`);
+
+      if (styles.length === 0) return `${indent}${include}`;
+      return `${indent}<div style="${styles.join(';')}">${include}</div>`;
+    }
 
     case 'divider': {
       const color     = block.color     ?? '#555555';

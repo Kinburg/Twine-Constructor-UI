@@ -17,6 +17,7 @@ import { RawBlockEditor } from './RawBlockEditor';
 import { NoteBlockEditor } from './NoteBlockEditor';
 import { TableBlockEditor } from './TableBlockEditor';
 import { DividerBlockEditor } from './DividerBlockEditor';
+import { IncludeBlockEditor } from './IncludeBlockEditor';
 
 const BLOCK_COLORS: Record<Block['type'], string> = {
   'text':         'bg-slate-700',
@@ -31,6 +32,7 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'raw':          'bg-zinc-700/60',
   'note':         'bg-amber-950/60',
   'table':        'bg-cyan-900/40',
+  'include':      'bg-sky-900/40',
   'divider':      'bg-slate-700/40',
 };
 
@@ -113,6 +115,7 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'raw'          && <RawBlockEditor         block={block} sceneId={sceneId} />}
         {block.type === 'note'         && <NoteBlockEditor        block={block} sceneId={sceneId} />}
         {block.type === 'table'        && <TableBlockEditor       block={block} sceneId={sceneId} />}
+        {block.type === 'include'      && <IncludeBlockEditor     block={block} sceneId={sceneId} />}
         {block.type === 'divider'      && <DividerBlockEditor     block={block} sceneId={sceneId} />}
       </div>
     </div>

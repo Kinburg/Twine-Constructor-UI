@@ -43,6 +43,7 @@ const en: Translations = {
     raw:              'Twine code',
     note:             'Note',
     table:            'Table',
+    include:          'Include',
     divider:          'Divider',
     drag:             'Drag to reorder',
     copy:             'Copy block to clipboard',
@@ -67,6 +68,7 @@ const en: Translations = {
     raw:         { label: 'Twine code', desc: 'Raw SugarCube / HTML' },
     note:        { label: 'Note',       desc: 'Not exported' },
     table:       { label: 'Table',      desc: 'HTML table with cells' },
+    include:     { label: 'Include',    desc: '<<include "...">> passage' },
     divider:     { label: 'Divider',    desc: 'Horizontal rule' },
   },
 
@@ -401,6 +403,20 @@ const en: Translations = {
     thicknessSuffix: 'px',
     marginLabel:     'Margin:',
     marginSuffix:    'px',
+  },
+
+  includeBlock: {
+    passageLabel:       'Passage:',
+    passagePlaceholder: 'scene or passage name',
+    maxWidthLabel:      'Max width:',
+    maxWidthSuffix:     'px (0 = auto)',
+    borderedLabel:      'Border',
+    borderColorLabel:   'Color:',
+    thicknessSuffix:    'px',
+    radiusSuffix:       'px',
+    paddingLabel:       'Padding:',
+    paddingSuffix:      'px',
+    bgColorLabel:       'Background:',
   },
 
   blockEffects: {

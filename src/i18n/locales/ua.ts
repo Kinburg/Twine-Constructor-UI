@@ -43,6 +43,7 @@ const ua: Translations = {
     raw:              'Twine-код',
     note:             'Нотатка',
     table:            'Таблиця',
+    include:          'Вставка',
     divider:          'Розділювач',
     drag:             'Перетягнути для сортування',
     copy:             'Копіювати блок у буфер',
@@ -67,6 +68,7 @@ const ua: Translations = {
     raw:         { label: 'Twine-код',   desc: 'Сирий SugarCube / HTML' },
     note:        { label: 'Нотатка',     desc: 'Не експортується' },
     table:       { label: 'Таблиця',     desc: 'HTML-таблиця з комірками' },
+    include:     { label: 'Вставка',     desc: '<<include "...">> пасаж' },
     divider:     { label: 'Розділювач',  desc: 'Горизонтальна лінія' },
   },
 
@@ -401,6 +403,20 @@ const ua: Translations = {
     thicknessSuffix: 'px',
     marginLabel:     'Відступ:',
     marginSuffix:    'px',
+  },
+
+  includeBlock: {
+    passageLabel:       'Пасаж:',
+    passagePlaceholder: 'назва сцени або пасажу',
+    maxWidthLabel:      'Макс. ширина:',
+    maxWidthSuffix:     'px (0 = авто)',
+    borderedLabel:      'Рамка',
+    borderColorLabel:   'Колір:',
+    thicknessSuffix:    'px',
+    radiusSuffix:       'px',
+    paddingLabel:       'Відступ:',
+    paddingSuffix:      'px',
+    bgColorLabel:       'Фон:',
   },
 
   blockEffects: {

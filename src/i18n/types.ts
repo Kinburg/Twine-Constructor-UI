@@ -47,6 +47,7 @@ export interface Translations {
     raw: string;
     note: string;
     table: string;
+    include: string;
     divider: string;
     /** Action tooltips / labels */
     drag: string;
@@ -72,7 +73,22 @@ export interface Translations {
     raw:         { label: string; desc: string };
     note:        { label: string; desc: string };
     table:       { label: string; desc: string };
+    include:     { label: string; desc: string };
     divider:     { label: string; desc: string };
+  };
+
+  includeBlock: {
+    passageLabel:       string;
+    passagePlaceholder: string;
+    maxWidthLabel:      string;
+    maxWidthSuffix:     string;  // 'px' / '(0 = авто)'
+    borderedLabel:      string;
+    borderColorLabel:   string;
+    thicknessSuffix:    string;  // 'px'
+    radiusSuffix:       string;  // 'px'
+    paddingLabel:       string;
+    paddingSuffix:      string;  // 'px'
+    bgColorLabel:       string;
   };
 
   condition: {

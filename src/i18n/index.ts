@@ -42,6 +42,8 @@ export function blockTypeLabel(t: Translations, type: Block['type']): string {
     'raw':          t.block.raw,
     'note':         t.block.note,
     'table':        t.block.table,
+    'include':      t.block.include,
+    'divider':      t.block.divider,
   };
   return map[type] ?? type;
 }

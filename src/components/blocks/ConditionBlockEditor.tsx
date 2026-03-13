@@ -18,7 +18,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { useT, blockTypeLabel } from '../../i18n';
 import type {
   ConditionBlock, ConditionBranchType, ConditionOperator, Block,
-  TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock, RawBlock, TableBlock, DividerBlock,
+  TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock, RawBlock, TableBlock, IncludeBlock, DividerBlock,
 } from '../../types';
 import { AddBlockMenu } from './AddBlockMenu';
 import { TextBlockEditor } from './TextBlockEditor';
@@ -29,6 +29,7 @@ import { ImageBlockEditor } from './ImageBlockEditor';
 import { VideoBlockEditor } from './VideoBlockEditor';
 import { RawBlockEditor } from './RawBlockEditor';
 import { TableBlockEditor } from './TableBlockEditor';
+import { IncludeBlockEditor } from './IncludeBlockEditor';
 import { DividerBlockEditor } from './DividerBlockEditor';
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
@@ -76,6 +77,7 @@ function NestedBlockEditor({
     case 'video':        return <VideoBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<VideoBlock>) => void} />;
     case 'raw':          return <RawBlockEditor   block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<RawBlock>) => void} />;
     case 'table':        return <TableBlockEditor   block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TableBlock>) => void} />;
+    case 'include':      return <IncludeBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<IncludeBlock>) => void} />;
     case 'divider':      return <DividerBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<DividerBlock>) => void} />;
     default:             return <span className="text-xs text-slate-500">{t.block.unsupportedNested}</span>;
   }
