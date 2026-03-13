@@ -1,10 +1,29 @@
+// ─── Block appearance effects ────────────────────────────────────────────────
+
+/** Delayed appearance: wraps block in <<timed Xs>>...<</timed>> on export */
+export interface BlockDelay {
+  delay: number;          // seconds, supports decimals (0.5)
+  animation?: boolean;    // enable entrance animation
+  animDuration?: number;  // animation duration in seconds, default 0.4
+  animFade?: boolean;     // fade in (opacity 0→1); default true when animation is enabled
+  animOffsetX?: number;   // horizontal start offset px (negative = from left, positive = from right)
+  animOffsetY?: number;   // vertical start offset px (negative = from above, positive = from below)
+}
+
+/** Typewriter effect: wraps content in <<type Nms per char>>...<</type>> on export */
+export interface BlockTypewriter {
+  speed: number;  // ms per character (e.g. 40)
+}
+
 // ─── Block types ────────────────────────────────────────────────────────────
 
 export interface TextBlock {
   id: string;
   type: 'text';
   content: string;
-  live?: boolean;  // wrap in <<live 200>> on export for auto-refresh
+  live?: boolean;          // wrap in <<live 200>> on export for auto-refresh
+  delay?: BlockDelay;
+  typewriter?: BlockTypewriter;
 }
 
 export interface DialogueBlock {
@@ -16,6 +35,8 @@ export interface DialogueBlock {
   live?: boolean;             // wrap in <<live 200>> on export for auto-refresh
   nameSuffix?: string;        // optional postfix shown as "Name (suffix)", e.g. "кричит"
   innerBlocks?: Block[];      // blocks rendered inside the dialogue bubble after the text
+  delay?: BlockDelay;
+  typewriter?: BlockTypewriter;
 }
 
 export interface ChoiceOption {
@@ -29,6 +50,7 @@ export interface ChoiceBlock {
   id: string;
   type: 'choice';
   options: ChoiceOption[];
+  delay?: BlockDelay;
 }
 
 export type ConditionOperator = '==' | '!=' | '>' | '<' | '>=' | '<=';
@@ -85,6 +107,7 @@ export interface StringBoundEntry {
 export interface VariableSetBlock {
   id: string;
   type: 'variable-set';
+  delay?: BlockDelay;
   variableId: string;
   operator: VarOperator;
   value: string;
@@ -107,6 +130,7 @@ export type ImageMode = 'static' | 'bound';
 export interface ImageBlock {
   id: string;
   type: 'image';
+  delay?: BlockDelay;
   /** Display mode. Defaults to 'static' for backward compat. */
   mode?: ImageMode;
   // ── Static mode ───────────────────────────────────────────────────────
@@ -127,6 +151,7 @@ export interface VideoBlock {
   loop: boolean;
   controls: boolean;
   width: number;
+  delay?: BlockDelay;
 }
 
 // ── Button block ──────────────────────────────────────────────────────────────
@@ -155,6 +180,7 @@ export interface ButtonAction {
 export interface ButtonBlock {
   id: string;
   type: 'button';
+  delay?: BlockDelay;
   label: string;
   style: ButtonStyle;
   actions: ButtonAction[];
@@ -169,6 +195,7 @@ export interface ButtonBlock {
 export interface InputFieldBlock {
   id: string;
   type: 'input-field';
+  delay?: BlockDelay;
   label: string;        // prompt text shown above the input
   variableId: string;   // which variable to update
   placeholder: string;  // default value pre-filled in the field
@@ -182,6 +209,7 @@ export interface RawBlock {
   id: string;
   type: 'raw';
   code: string;
+  delay?: BlockDelay;
 }
 
 /**
@@ -200,6 +228,7 @@ export interface TableBlock {
   type: 'table';
   rows: SidebarRow[];
   style: PanelStyle;
+  delay?: BlockDelay;
 }
 
 export type Block =

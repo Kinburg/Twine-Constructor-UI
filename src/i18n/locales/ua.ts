@@ -390,6 +390,23 @@ const ua: Translations = {
     hint: 'Вставляється в експорт як є, без змін',
   },
 
+  blockEffects: {
+    delayLabel:            'Затримка появи',
+    delaySeconds:          'Затримка:',
+    delaySuffix:           'с',
+    animationLabel:        'Анімація появи',
+    animDuration:          'Тривалість:',
+    animDurationSuffix:    'с',
+    animFadeLabel:         'Плавна поява (fade)',
+    animOffsetX:           'Δ X:',
+    animOffsetY:           'Δ Y:',
+    animOffsetSuffix:      'px',
+    animOffsetHint:        "0 = без зміщення · від'ємне = зліва/зверху · додатнє = справа/знизу",
+    typewriterLabel:       'Друкарська машинка',
+    typewriterSpeed:       'Швидкість:',
+    typewriterSpeedSuffix: 'мс/символ',
+  },
+
   variableSetBlock: {
     opAssign:             '= (присвоїти)',
     opAdd:                '+= (додати)',

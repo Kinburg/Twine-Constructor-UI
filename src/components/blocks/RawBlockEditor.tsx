@@ -1,6 +1,7 @@
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type { RawBlock } from '../../types';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 export function RawBlockEditor({
   block,
@@ -26,6 +27,10 @@ export function RawBlockEditor({
         spellCheck={false}
       />
       <span className="text-xs text-slate-600 italic">{t.rawBlock.hint}</span>
+      <BlockEffectsPanel
+        delay={block.delay}
+        onDelayChange={v => update({ delay: v })}
+      />
     </div>
   );
 }

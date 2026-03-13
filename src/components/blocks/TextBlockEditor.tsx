@@ -1,6 +1,7 @@
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type { TextBlock } from '../../types';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 export function TextBlockEditor({
   block,
@@ -33,6 +34,12 @@ export function TextBlockEditor({
         />
         <span className="text-xs text-slate-400">{t.textBlock.liveUpdateLabel} <span className="font-mono text-slate-500">&lt;&lt;live&gt;&gt;</span></span>
       </label>
+      <BlockEffectsPanel
+        delay={block.delay}
+        typewriter={block.typewriter}
+        onDelayChange={v => update({ delay: v })}
+        onTypewriterChange={v => update({ typewriter: v })}
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
-  Scene, ButtonBlock, CellProgress,
+  Scene, ButtonBlock, CellProgress, BlockDelay, BlockTypewriter,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables } from './treeUtils';
@@ -17,7 +17,70 @@ function htmlAttr(s: string): string {
     .replace(/>/g, '&gt;');
 }
 
+/** Wrap block output with <<timed>> delay and/or <<type>> typewriter effect. */
+function wrapBlockEffects(
+  content: string,
+  delay: BlockDelay | undefined,
+  typewriter: BlockTypewriter | undefined,
+  indent: string,
+  blockId?: string,
+): string {
+  if (!content) return content;
+  let result = content;
+
+  // Typewriter (inner wrapper — applied first, closest to content)
+  if (typewriter?.speed && typewriter.speed > 0) {
+    result = `<<type ${typewriter.speed}ms>>${result}<</type>>`;
+  }
+
+  // Delay + optional entrance animation (outer wrapper)
+  if (delay?.delay && delay.delay > 0) {
+    if (delay.animation && blockId) {
+      const dur          = delay.animDuration ?? 0.4;
+      const ox           = delay.animOffsetX ?? 0;
+      const oy           = delay.animOffsetY ?? 0;
+      const useFade      = delay.animFade !== false; // default true
+      const hasTransform = ox !== 0 || oy !== 0;
+
+      // Skip wrapping if nothing would actually animate
+      if (useFade || hasTransform) {
+        // CSS transitions + setTimeout(16ms): insert element in initial state, then one frame
+        // later JS sets the final state so the transition fires.  CSS @keyframe animations on
+        // DOM-inserted elements are unreliable inside SugarCube's <<timed>> macro.
+        const uid = `tg${blockId.replace(/-/g, '').substring(0, 10)}`;
+        const txParts = [ox !== 0 ? `translateX(${ox}px)` : '', oy !== 0 ? `translateY(${oy}px)` : ''].filter(Boolean);
+        const initTransform = txParts.join(' ');
+        const transitionParts = [
+          useFade      ? `opacity ${dur}s ease-out`   : '',
+          hasTransform ? `transform ${dur}s ease-out` : '',
+        ].filter(Boolean);
+        const initStyle = [
+          useFade      ? 'opacity:0'                      : '',
+          hasTransform ? `transform:${initTransform}`     : '',
+          `transition:${transitionParts.join(',')}`,
+        ].filter(Boolean).join(';') + ';';
+        const finalParts = [
+          useFade      ? `e.style.opacity='1'`      : '',
+          hasTransform ? `e.style.transform='none'` : '',
+        ].filter(Boolean).join(';');
+        const script = `<<script>>setTimeout(function(){var e=document.getElementById('${uid}');if(e){${finalParts};}},16);<</script>>`;
+        result = `<div id="${uid}" style="${initStyle}">${result}</div>${script}`;
+      }
+    }
+    result = `${indent}<<timed ${delay.delay}s>>${result}<</timed>>`;
+  }
+
+  return result;
+}
+
 export function blockToSC(block: Block, chars: Character[], vars: Variable[], indent = ''): string {
+  const raw = blockToSCInner(block, chars, vars, indent);
+  if (!raw || block.type === 'condition' || block.type === 'note') return raw;
+  const b = block as { delay?: BlockDelay; typewriter?: BlockTypewriter };
+  return wrapBlockEffects(raw, b.delay, b.typewriter, indent, block.id);
+}
+
+function blockToSCInner(block: Block, chars: Character[], vars: Variable[], indent = ''): string {
   switch (block.type) {
     case 'text':
       if (block.live) {
@@ -659,6 +722,14 @@ export function buildInputScript(scenes: Scene[]): string {
   ].join('\n');
 }
 
+// ─── Animation CSS ────────────────────────────────────────────────────────────
+// Animations use CSS transitions triggered via inline JS (setTimeout 16ms) rather than
+// CSS @keyframes, which are unreliable on elements inserted by SugarCube's <<timed>> macro.
+
+export function buildAnimationCSS(_scenes: Scene[]): string {
+  return '';
+}
+
 // ─── Button CSS ───────────────────────────────────────────────────────────────
 
 function collectButtons(blocks: Block[]): ButtonBlock[] {
@@ -771,7 +842,8 @@ export function exportToTwee(project: Project): string {
   const charCSS    = buildCharacterCSS(characters);
   const panelCSS   = buildPanelCSS(sidebarPanel);
   const buttonCSS  = buildButtonsCSS(scenes);
-  const allCSS     = [charCSS, panelCSS, buttonCSS].filter(Boolean).join('\n\n');
+  const animCSS    = buildAnimationCSS(scenes);
+  const allCSS     = [charCSS, panelCSS, buttonCSS, animCSS].filter(Boolean).join('\n\n');
   if (allCSS) parts.push(`::StoryStylesheet [stylesheet]\n${allCSS}\n`);
 
   // StoryScript (lightbox + input debounce) — single passage, sections joined

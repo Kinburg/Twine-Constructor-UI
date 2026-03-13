@@ -390,6 +390,23 @@ const en: Translations = {
     hint: 'Inserted into export as-is, without changes',
   },
 
+  blockEffects: {
+    delayLabel:            'Delay appearance',
+    delaySeconds:          'Delay:',
+    delaySuffix:           's',
+    animationLabel:        'Entrance animation',
+    animDuration:          'Duration:',
+    animDurationSuffix:    's',
+    animFadeLabel:         'Fade in (opacity)',
+    animOffsetX:           'Δ X:',
+    animOffsetY:           'Δ Y:',
+    animOffsetSuffix:      'px',
+    animOffsetHint:        '0 = no offset · negative = from left/above · positive = from right/below',
+    typewriterLabel:       'Typewriter effect',
+    typewriterSpeed:       'Speed:',
+    typewriterSpeedSuffix: 'ms/char',
+  },
+
   variableSetBlock: {
     opAssign:             '= (assign)',
     opAdd:                '+= (add)',

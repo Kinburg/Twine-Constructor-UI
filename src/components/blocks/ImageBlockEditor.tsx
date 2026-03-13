@@ -2,6 +2,7 @@ import { useProjectStore, flattenAssets, flattenVariables } from '../../store/pr
 import type { ImageBlock, ImageBoundMapping, Asset } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { useT } from '../../i18n';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 // ─── Asset image picker ───────────────────────────────────────────────────────
 // Dropdown from registered assets + manual path/URL input.
@@ -318,6 +319,10 @@ export function ImageBlockEditor({
           onChange={e => update({ width: parseInt(e.target.value) || 0 })}
         />
       </div>
+      <BlockEffectsPanel
+        delay={block.delay}
+        onDelayChange={v => update({ delay: v })}
+      />
     </div>
   );
 }

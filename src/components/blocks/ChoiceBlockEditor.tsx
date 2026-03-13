@@ -1,6 +1,7 @@
 import { useProjectStore } from '../../store/projectStore';
 import type { ChoiceBlock, ChoiceOption } from '../../types';
 import { useT } from '../../i18n';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 export function ChoiceBlockEditor({
   block,
@@ -11,7 +12,7 @@ export function ChoiceBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<ChoiceBlock>) => void;
 }) {
-  const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption, saveSnapshot } = useProjectStore();
+  const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption, saveSnapshot, updateBlock } = useProjectStore();
   const { scenes } = project;
   const t = useT();
 
@@ -91,6 +92,10 @@ export function ChoiceBlockEditor({
       >
         {t.choiceBlock.addOption}
       </button>
+      <BlockEffectsPanel
+        delay={block.delay}
+        onDelayChange={v => onUpdate ? onUpdate({ delay: v }) : updateBlock(sceneId, block.id, { delay: v } as never)}
+      />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import type { VideoBlock } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { useT } from '../../i18n';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 export function VideoBlockEditor({
   block,
@@ -106,6 +107,10 @@ export function VideoBlockEditor({
           onError={e => { (e.target as HTMLVideoElement).style.display = 'none'; }}
         />
       )}
+      <BlockEffectsPanel
+        delay={block.delay}
+        onDelayChange={v => update({ delay: v })}
+      />
     </div>
   );
 }

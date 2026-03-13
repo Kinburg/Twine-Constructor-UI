@@ -1,6 +1,7 @@
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { ButtonBlock, ButtonAction, ButtonStyle, VarOperator } from '../../types';
 import { useT } from '../../i18n';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -319,6 +320,10 @@ export function ButtonBlockEditor({
           {t.buttonBlock.refreshScene} <span className="font-mono text-slate-500">(Engine.show)</span>
         </span>
       </label>
+      <BlockEffectsPanel
+        delay={block.delay}
+        onDelayChange={v => updateBlock(sceneId, block.id, { delay: v })}
+      />
     </div>
   );
 }

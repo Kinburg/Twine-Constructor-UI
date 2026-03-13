@@ -403,6 +403,23 @@ export interface Translations {
     hint: string;
   };
 
+  blockEffects: {
+    delayLabel: string;
+    delaySeconds: string;
+    delaySuffix: string;
+    animationLabel: string;
+    animDuration: string;
+    animDurationSuffix: string;
+    animFadeLabel: string;
+    animOffsetX: string;
+    animOffsetY: string;
+    animOffsetSuffix: string;
+    animOffsetHint: string;
+    typewriterLabel: string;
+    typewriterSpeed: string;
+    typewriterSpeedSuffix: string;
+  };
+
   variableSetBlock: {
     opAssign: string;
     opAdd: string;

@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { VariableSetBlock, VarOperator, RandomConfig, VarValueMode, StringBoundEntry } from '../../types';
 import { useT } from '../../i18n';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 /** Default RandomConfig strictly matching the variable type */
 function defaultRandomConfig(varType: string): RandomConfig {
@@ -468,6 +469,10 @@ export function VariableSetBlockEditor({
           {preview}
         </div>
       )}
+      <BlockEffectsPanel
+        delay={block.delay}
+        onDelayChange={v => update({ delay: v })}
+      />
     </div>
   );
 }

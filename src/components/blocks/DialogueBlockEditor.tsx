@@ -22,6 +22,7 @@ import { VideoBlockEditor } from './VideoBlockEditor';
 import { RawBlockEditor } from './RawBlockEditor';
 import { TableBlockEditor } from './TableBlockEditor';
 import { NoteBlockEditor } from './NoteBlockEditor';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 /**
  * Converts an avatar src value to a URL the editor renderer can actually load:
@@ -370,6 +371,13 @@ export function DialogueBlockEditor({
       {!onUpdate && (
         <InnerBlocksList block={block} sceneId={sceneId} />
       )}
+
+      <BlockEffectsPanel
+        delay={block.delay}
+        typewriter={block.typewriter}
+        onDelayChange={v => update({ delay: v })}
+        onTypewriterChange={v => update({ typewriter: v })}
+      />
     </div>
   );
 }

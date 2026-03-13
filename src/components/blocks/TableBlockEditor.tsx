@@ -6,6 +6,7 @@ import type {
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
   ImageBoundMapping, Variable, Asset,
 } from '../../types';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -199,6 +200,10 @@ export function TableBlockEditor({
           {t.rowsEditor.addRow}
         </button>
       </div>
+      <BlockEffectsPanel
+        delay={block.delay}
+        onDelayChange={v => update({ delay: v })}
+      />
     </div>
   );
 }

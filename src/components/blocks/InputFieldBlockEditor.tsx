@@ -1,6 +1,7 @@
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { InputFieldBlock } from '../../types';
 import { useT } from '../../i18n';
+import { BlockEffectsPanel } from './BlockEffectsPanel';
 
 // Badge showing the variable type and which SugarCube macro will be used
 function MacroBadge({ varType }: { varType: string | undefined }) {
@@ -108,7 +109,10 @@ export function InputFieldBlockEditor({
           </span>
         </div>
       )}
-
+      <BlockEffectsPanel
+        delay={block.delay}
+        onDelayChange={v => updateBlock(sceneId, block.id, { delay: v })}
+      />
     </div>
   );
 }
