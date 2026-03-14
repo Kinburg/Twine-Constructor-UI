@@ -53,7 +53,26 @@ export interface ChoiceBlock {
   delay?: BlockDelay;
 }
 
-export type ConditionOperator = '==' | '!=' | '>' | '<' | '>=' | '<=';
+export type ConditionOperator =
+  | '==' | '!=' | '>' | '<' | '>=' | '<='
+  | 'contains' | '!contains'   // whole array: $arr.includes("x")
+  | 'empty' | '!empty';        // whole array: $arr.length === 0
+
+// ─── Array accessor ──────────────────────────────────────────────────────────
+
+/** How the index is specified when accessing an array element */
+export type ArrayIndexSource =
+  | { kind: 'literal';  index: number }      // $arr[0]
+  | { kind: 'variable'; variableId: string } // $arr[$i]
+
+/**
+ * Describes which part of an array variable is being accessed.
+ * Used in conditions, variable-set, button actions, and input fields.
+ */
+export type ArrayAccessor =
+  | { kind: 'whole' }                              // $arr (default when omitted)
+  | { kind: 'index'; source: ArrayIndexSource }    // $arr[0] or $arr[$i]
+  | { kind: 'length' };                            // $arr.length (read-only)
 export type ConditionBranchType = 'if' | 'elseif' | 'else';
 
 export interface ConditionBranch {
@@ -67,6 +86,8 @@ export interface ConditionBranch {
   rangeMode?: boolean;
   rangeMin?: string;     // lower bound (inclusive)
   rangeMax?: string;     // upper bound (inclusive)
+  /** Array accessor — only relevant when variableId points to an array variable. */
+  accessor?: ArrayAccessor;
   blocks: Block[];
 }
 
@@ -76,7 +97,10 @@ export interface ConditionBlock {
   branches: ConditionBranch[];
 }
 
-export type VarOperator = '=' | '+=' | '-=' | '*=' | '/=';
+export type VarOperator = '=' | '+=' | '-=' | '*=' | '/='
+  | 'push'    // $arr.push("value")
+  | 'remove'  // $arr.deleteWith(v => v === "value")
+  | 'clear';  // $arr = []
 
 /**
  * How the value is determined in a VariableSetBlock.
@@ -116,6 +140,8 @@ export interface VariableSetBlock {
   variableId: string;
   operator: VarOperator;
   value: string;
+  /** Array accessor — only relevant when variableId points to an array variable. */
+  accessor?: ArrayAccessor;
   /** How the value is set. Defaults to 'manual'. */
   valueMode?: VarValueMode;
   /** Kept for backward compatibility with saves that used the old randomize checkbox. */
@@ -180,6 +206,8 @@ export interface ButtonAction {
   variableId: string;
   operator: VarOperator;
   value: string;
+  /** Array accessor — only relevant when variableId points to an array variable. */
+  accessor?: ArrayAccessor;
 }
 
 export interface ButtonBlock {
@@ -222,6 +250,8 @@ export interface InputFieldBlock {
   label: string;        // prompt text shown above the input
   variableId: string;   // which variable to update
   placeholder: string;  // default value pre-filled in the field
+  /** Array accessor — only kind: 'index' is valid here. */
+  accessor?: ArrayAccessor;
 }
 
 /**
@@ -282,6 +312,53 @@ export interface DividerBlock {
   delay?: BlockDelay;
 }
 
+// ─── Checkbox block ──────────────────────────────────────────────────────────
+
+export interface CheckboxOption {
+  id: string;
+  label: string;
+  /** flags mode: the boolean variable toggled by this checkbox */
+  variableId?: string;
+  /** array mode: the string value pushed into / removed from the array variable */
+  value?: string;
+}
+
+/**
+ * Renders a group of checkboxes.
+ * - mode 'flags': each option is bound to its own boolean variable
+ * - mode 'array': all options toggle membership in a single array variable
+ */
+export interface CheckboxBlock {
+  id: string;
+  type: 'checkbox';
+  label?: string;            // optional group label shown above the checkboxes
+  mode: 'flags' | 'array';
+  options: CheckboxOption[];
+  variableId?: string;       // array mode only: the target array variable
+  delay?: BlockDelay;
+}
+
+// ─── Radio block ─────────────────────────────────────────────────────────────
+
+export interface RadioOption {
+  id: string;
+  label: string;   // display text next to the radio button
+  value: string;   // value written to the variable when selected
+}
+
+/**
+ * Renders a group of radio buttons that set a single string variable.
+ * Exports as SugarCube <<radiobutton>> macros.
+ */
+export interface RadioBlock {
+  id: string;
+  type: 'radio';
+  label?: string;          // optional group label
+  options: RadioOption[];
+  variableId: string;      // the string variable to set
+  delay?: BlockDelay;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -297,7 +374,9 @@ export type Block =
   | NoteBlock
   | TableBlock
   | IncludeBlock
-  | DividerBlock;
+  | DividerBlock
+  | CheckboxBlock
+  | RadioBlock;
 
 export type BlockType = Block['type'];
 
@@ -363,7 +442,7 @@ export interface Character {
 
 // ─── Variable ───────────────────────────────────────────────────────────────
 
-export type VariableType = 'number' | 'string' | 'boolean';
+export type VariableType = 'number' | 'string' | 'boolean' | 'array';
 
 export interface Variable {
   kind: 'variable';
@@ -482,6 +561,16 @@ export interface CellRaw {
   code: string;
 }
 
+/** Displays the contents of an array variable as a joined string */
+export interface CellList {
+  type: 'list';
+  variableId: string;  // must be an array variable
+  separator: string;   // join separator, default ', '
+  emptyText: string;   // shown when the array is empty
+  prefix: string;      // prepended before the joined string
+  suffix: string;      // appended after the joined string
+}
+
 /** Navigation target for a sidebar button cell */
 export type CellButtonNavigate =
   | { type: 'scene'; sceneId: string }
@@ -506,7 +595,8 @@ export type CellContent =
   | CellImageStatic
   | CellImageBound
   | CellRaw
-  | CellButton;
+  | CellButton
+  | CellList;
 
 export interface SidebarCell {
   id: string;

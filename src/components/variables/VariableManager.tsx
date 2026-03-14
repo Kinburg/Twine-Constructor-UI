@@ -4,11 +4,11 @@ import type { Variable, VariableGroup, VariableTreeNode, VariableType } from '..
 import { useT } from '../../i18n';
 
 const TYPE_DEFAULTS: Record<VariableType, string> = {
-  number: '0', string: '', boolean: 'false',
+  number: '0', string: '', boolean: 'false', array: '[]',
 };
 
 const TYPE_COLOR: Record<VariableType, string> = {
-  number: 'text-sky-400', string: 'text-emerald-400', boolean: 'text-amber-400',
+  number: 'text-sky-400', string: 'text-emerald-400', boolean: 'text-amber-400', array: 'text-violet-400',
 };
 
 // ─── Root component ───────────────────────────────────────────────────────────
@@ -309,6 +309,7 @@ function VariableNode({
               <option value="number">{t.variables.typeNumber}</option>
               <option value="string">{t.variables.typeString}</option>
               <option value="boolean">{t.variables.typeBoolean}</option>
+              <option value="array">{t.variables.typeArray}</option>
             </select>
           </Field>
 
@@ -326,7 +327,7 @@ function VariableNode({
               <input
                 className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
                 value={v.defaultValue}
-                placeholder={v.varType === 'number' ? t.variables.defaultPlaceholderNumber : t.variables.defaultPlaceholderText}
+                placeholder={v.varType === 'number' ? t.variables.defaultPlaceholderNumber : v.varType === 'array' ? '[]' : t.variables.defaultPlaceholderText}
                 onChange={e => upd({ defaultValue: e.target.value })}
               />
             )}
@@ -342,7 +343,7 @@ function VariableNode({
           </Field>
 
           <div className="text-xs text-slate-500 font-mono bg-slate-800/60 px-2 py-1 rounded">
-            {'<<set $' + v.name + ' to ' + (v.varType === 'string' ? `"${v.defaultValue}"` : v.defaultValue) + '>>'}
+            {'<<set $' + v.name + ' to ' + (v.varType === 'string' ? `"${v.defaultValue}"` : v.defaultValue || (v.varType === 'array' ? '[]' : v.defaultValue)) + '>>'}
           </div>
         </div>
       )}

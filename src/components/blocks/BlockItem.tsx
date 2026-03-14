@@ -19,6 +19,8 @@ import { NoteBlockEditor } from './NoteBlockEditor';
 import { TableBlockEditor } from './TableBlockEditor';
 import { DividerBlockEditor } from './DividerBlockEditor';
 import { IncludeBlockEditor } from './IncludeBlockEditor';
+import { CheckboxBlockEditor } from './CheckboxBlockEditor';
+import { RadioBlockEditor } from './RadioBlockEditor';
 
 const BLOCK_COLORS: Record<Block['type'], string> = {
   'text':         'bg-slate-700',
@@ -36,6 +38,8 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'table':        'bg-cyan-900/40',
   'include':      'bg-sky-900/40',
   'divider':      'bg-slate-700/40',
+  'checkbox':     'bg-violet-900/40',
+  'radio':        'bg-fuchsia-900/40',
 };
 
 interface Props {
@@ -120,6 +124,8 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'table'        && <TableBlockEditor       block={block} sceneId={sceneId} />}
         {block.type === 'include'      && <IncludeBlockEditor     block={block} sceneId={sceneId} />}
         {block.type === 'divider'      && <DividerBlockEditor     block={block} sceneId={sceneId} />}
+        {block.type === 'checkbox'     && <CheckboxBlockEditor    block={block} sceneId={sceneId} />}
+        {block.type === 'radio'        && <RadioBlockEditor       block={block} sceneId={sceneId} />}
       </div>
     </div>
   );

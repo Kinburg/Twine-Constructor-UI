@@ -19,6 +19,8 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'table':        '🗂️',
   'include':      '📎',
   'divider':      '─',
+  'checkbox':     '☑',
+  'radio':        '🔵',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -55,6 +57,8 @@ export function makeBlock(type: BlockType): Block {
     case 'table':        return { id, type, rows: [], style: { ...DEFAULT_PANEL_STYLE } };
     case 'include':      return { id, type, passageName: '' };
     case 'divider':      return { id, type };
+    case 'checkbox':     return { id, type, mode: 'flags' as const, options: [] };
+    case 'radio':        return { id, type, variableId: '', options: [] };
   }
 }
 
@@ -88,6 +92,8 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     { type: 'table',        icon: BLOCK_ICONS['table'],        label: t.addBlock.table.label,       desc: t.addBlock.table.desc },
     { type: 'include',      icon: BLOCK_ICONS['include'],      label: t.addBlock.include.label,     desc: t.addBlock.include.desc },
     { type: 'divider',      icon: BLOCK_ICONS['divider'],      label: t.addBlock.divider.label,     desc: t.addBlock.divider.desc },
+    { type: 'checkbox',     icon: BLOCK_ICONS['checkbox'],     label: t.addBlock.checkbox.label,    desc: t.addBlock.checkbox.desc },
+    { type: 'radio',        icon: BLOCK_ICONS['radio'],        label: t.addBlock.radio.label,       desc: t.addBlock.radio.desc },
   ];
 
   const add = (type: BlockType) => {

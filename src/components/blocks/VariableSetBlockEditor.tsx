@@ -3,6 +3,7 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { VariableSetBlock, VarOperator, RandomConfig, VarValueMode, StringBoundEntry } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { ArrayAccessorInput } from './ArrayAccessorInput';
 
 /** Default RandomConfig strictly matching the variable type */
 function defaultRandomConfig(varType: string): RandomConfig {
@@ -53,33 +54,51 @@ export function VariableSetBlockEditor({
     { value: '/=', label: t.variableSetBlock.opDivide },
   ];
 
+  const ARRAY_OPS_WHOLE: { value: VarOperator; label: string }[] = [
+    { value: '=',      label: t.variableSetBlock.opAssign },
+    { value: 'push',   label: t.variableSetBlock.opPush },
+    { value: 'remove', label: t.variableSetBlock.opRemove },
+    { value: 'clear',  label: t.variableSetBlock.opClear },
+  ];
+
+  const ARRAY_OPS_INDEX: { value: VarOperator; label: string }[] = [
+    { value: '=', label: t.variableSetBlock.opAssign },
+  ];
+
   // Backward compat: old saves used randomize boolean
   const rawMode: VarValueMode = block.valueMode ?? (block.randomize ? 'random' : 'manual');
   const isNumber  = selectedVar?.varType === 'number';
   const isString  = selectedVar?.varType === 'string';
-  // isBoolean = everything else (including undefined)
+  const isArray   = selectedVar?.varType === 'array';
+  const accessorKind = block.accessor?.kind ?? 'whole';
 
   // Normalize: if the stored mode is incompatible with the current variable type, display as 'manual'.
-  // This fixes the UI not updating when the user switches to a different variable type.
   const effectiveMode: VarValueMode =
     (rawMode === 'expression' && !isNumber) ? 'manual' :
     (rawMode === 'dynamic'    && !isString) ? 'manual' :
+    isArray ? 'manual' :   // array always manual
     rawMode;
 
   // Always enforce the correct random config kind for the current variable type.
-  // Prevents stale config (e.g., string-length UI showing for a boolean variable).
   const expectedKind = isNumber ? 'number' : selectedVar?.varType === 'boolean' ? 'boolean' : 'string';
-  const cfg: RandomConfig | undefined = selectedVar
+  const cfg: RandomConfig | undefined = selectedVar && !isArray
     ? (block.randomConfig?.kind === expectedKind ? block.randomConfig : defaultRandomConfig(selectedVar.varType))
     : undefined;
 
   // ── Mode options per variable type ─────────────────────────────────────────
-  const modeOptions: [VarValueMode, string][] = isNumber
+  const modeOptions: [VarValueMode, string][] = isArray
+    ? [] // array type: no mode selector (always manual)
+    : isNumber
     ? [['manual', t.variableSetBlock.modeManual], ['random', t.variableSetBlock.modeRandom], ['expression', t.variableSetBlock.modeExpression]]
     : isString
     ? [['manual', t.variableSetBlock.modeManual], ['random', t.variableSetBlock.modeRandom], ['dynamic', t.variableSetBlock.modeDynamic]]
     : /* boolean */
       [['manual', t.variableSetBlock.modeManual], ['random', t.variableSetBlock.modeRandom]];
+
+  // ── Available operators based on type + accessor ────────────────────────────
+  const availableOperators = isArray
+    ? (accessorKind === 'index' ? ARRAY_OPS_INDEX : ARRAY_OPS_WHOLE)
+    : (isNumber ? OPERATORS : OPERATORS.filter(op => op.value === '='));
 
   // ── Mode switch ─────────────────────────────────────────────────────────────
   const setMode = (mode: VarValueMode) => {
@@ -169,9 +188,6 @@ export function VariableSetBlockEditor({
 
   const numberVars = variables.filter(v => v.varType === 'number');
 
-  // number → all operators; string / boolean → only '='
-  const availableOperators = isNumber ? OPERATORS : OPERATORS.filter(op => op.value === '=');
-
   return (
     <div className="flex flex-col gap-2">
 
@@ -184,17 +200,22 @@ export function VariableSetBlockEditor({
           onChange={e => {
             const newVarId = e.target.value;
             const newVar   = variables.find(v => v.id === newVarId);
-            // Reset mode when switching to an incompatible variable type:
-            // 'expression' only works for numbers, 'dynamic' only for strings.
+            const switchingToArray   = newVar?.varType === 'array';
+            const switchingFromArray = selectedVar?.varType === 'array';
+            // Reset mode when switching to an incompatible variable type
             const needsReset =
               (rawMode === 'expression' && newVar?.varType !== 'number') ||
-              (rawMode === 'dynamic'    && newVar?.varType !== 'string');
-            // Reset operator to '=' when switching to string/boolean (no arithmetic operators).
-            const needsOperatorReset = newVar?.varType !== 'number' && block.operator !== '=';
+              (rawMode === 'dynamic'    && newVar?.varType !== 'string') ||
+              switchingToArray || switchingFromArray;
+            // Reset operator: for non-number non-array, only '=' is valid
+            const needsOperatorReset = newVar?.varType !== 'number' && newVar?.varType !== 'array' && block.operator !== '=';
+            // Reset array-only operators when leaving array type
+            const arrayOpOnNonArray = switchingFromArray && !switchingToArray && (block.operator === 'push' || block.operator === 'remove' || block.operator === 'clear');
             update({
               variableId: newVarId,
               ...(needsReset ? { valueMode: 'manual', randomize: false } : {}),
-              ...(needsOperatorReset ? { operator: '=' as VarOperator } : {}),
+              ...((needsOperatorReset || arrayOpOnNonArray) ? { operator: '=' as VarOperator } : {}),
+              ...(switchingFromArray ? { accessor: undefined } : {}),
             });
           }}
         >
@@ -207,6 +228,24 @@ export function VariableSetBlockEditor({
           <span className="text-xs text-slate-500 italic">{t.variableSetBlock.noVariables}</span>
         )}
       </div>
+
+      {/* ── Array accessor ────────────────────────────────────────────────── */}
+      {isArray && (
+        <ArrayAccessorInput
+          accessor={block.accessor}
+          onChange={acc => {
+            // Reset operator if current op is not valid for new accessor kind
+            const newOps = acc.kind === 'index' ? ARRAY_OPS_INDEX : ARRAY_OPS_WHOLE;
+            const opStillValid = newOps.some(op => op.value === block.operator);
+            update({
+              accessor: acc,
+              ...(!opStillValid ? { operator: newOps[0].value as VarOperator } : {}),
+            });
+          }}
+          vars={variables}
+          allowLength={false}
+        />
+      )}
 
       {/* ── Operator — hidden for dynamic mode (always =) ─────────────────── */}
       {selectedVar && effectiveMode !== 'dynamic' && (effectiveMode !== 'random' || cfg?.kind === 'number') && (
@@ -246,13 +285,14 @@ export function VariableSetBlockEditor({
         </div>
       )}
 
-      {/* ── Manual value input ────────────────────────────────────────────── */}
-      {effectiveMode === 'manual' && (
+      {/* ── Manual value input — hidden when operator is 'clear' ─────────── */}
+      {effectiveMode === 'manual' && block.operator !== 'clear' && (
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-20 shrink-0" />
           <input
             className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
             placeholder={
+              isArray                            ? t.variableSetBlock.textPlaceholder :
               selectedVar?.varType === 'string'  ? t.variableSetBlock.textPlaceholder :
               selectedVar?.varType === 'boolean' ? 'true / false' : '0'
             }

@@ -4,7 +4,7 @@ import { useT } from '../../i18n';
 import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
-  CellButton, ButtonAction, ButtonStyle, VarOperator,
+  CellButton, CellList, ButtonAction, ButtonStyle, VarOperator,
   ImageBoundMapping,
   Variable, Asset,
 } from '../../types';
@@ -499,6 +499,7 @@ function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type'
     'image-bound':  t.cellModal.typeImageBoundShort,
     raw:            t.cellModal.typeRaw,
     button:         t.cellModal.typeButton,
+    list:           t.cellModal.typeList,
   };
   return m[type];
 }
@@ -569,6 +570,11 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       </span>
     </div>
   );
+  if (c.type === 'list') return (
+    <span className="text-xs text-violet-300 p-1 font-mono truncate flex-1">
+      [{v ? `$${v.name}` : '?'}]
+    </span>
+  );
   return null;
 }
 
@@ -589,6 +595,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'image-bound':  return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
     case 'raw':          return { type: 'raw', code: '' } as CellRaw;
     case 'button':       return { type: 'button', label: '', style: { ...DEFAULT_BUTTON_STYLE }, actions: [] } as CellButton;
+    case 'list':         return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
   }
 }
 
@@ -612,6 +619,7 @@ function CellEditModal({
     { value: 'image-bound',  label: t.cellModal.typeImageBound },
     { value: 'raw',          label: t.cellModal.typeRaw },
     { value: 'button',       label: t.cellModal.typeButton },
+    { value: 'list',         label: t.cellModal.typeList },
   ];
 
   const handleTypeChange = (type: CellContent['type']) => {
@@ -819,6 +827,51 @@ function CellEditModal({
 
         {c.type === 'button' && (
           <CellButtonEditor c={c} vars={vars} onUpdateContent={onUpdateContent} />
+        )}
+
+        {c.type === 'list' && (
+          <>
+            <MField label={t.cellModal.listVariableLabel}>
+              <select
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                value={c.variableId}
+                onChange={e => onUpdateContent({ ...c, variableId: e.target.value })}
+              >
+                <option value="">— select —</option>
+                {vars.filter(v => v.varType === 'array').map(v => (
+                  <option key={v.id} value={v.id}>${v.name}</option>
+                ))}
+              </select>
+            </MField>
+            <MField label={t.cellModal.listSeparatorLabel}>
+              <input
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono"
+                value={c.separator}
+                onChange={e => onUpdateContent({ ...c, separator: e.target.value })}
+              />
+            </MField>
+            <MField label={t.cellModal.listEmptyTextLabel}>
+              <input
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
+                value={c.emptyText}
+                onChange={e => onUpdateContent({ ...c, emptyText: e.target.value })}
+              />
+            </MField>
+            <MField label={t.cellModal.listPrefixLabel}>
+              <input
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
+                value={c.prefix}
+                onChange={e => onUpdateContent({ ...c, prefix: e.target.value })}
+              />
+            </MField>
+            <MField label={t.cellModal.listSuffixLabel}>
+              <input
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
+                value={c.suffix}
+                onChange={e => onUpdateContent({ ...c, suffix: e.target.value })}
+              />
+            </MField>
+          </>
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"

@@ -50,6 +50,8 @@ export interface Translations {
     table: string;
     include: string;
     divider: string;
+    checkbox: string;
+    radio: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -77,6 +79,8 @@ export interface Translations {
     table:       { label: string; desc: string };
     include:     { label: string; desc: string };
     divider:     { label: string; desc: string };
+    checkbox:    { label: string; desc: string };
+    radio:       { label: string; desc: string };
   };
 
   includeBlock: {
@@ -102,6 +106,10 @@ export interface Translations {
     rangeToggle:         string;  // tooltip for range-mode button
     rangeMinPlaceholder: string;
     rangeMaxPlaceholder: string;
+    opContains:    string;  // 'contains'
+    opNotContains: string;  // '!contains'
+    opEmpty:       string;  // 'empty'
+    opNotEmpty:    string;  // '!empty'
   };
 
   header: {
@@ -218,6 +226,7 @@ export interface Translations {
     typeNumber: string;
     typeString: string;
     typeBoolean: string;
+    typeArray: string;
     defaultPlaceholderNumber: string;
     defaultPlaceholderText: string;
     descriptionPlaceholder: string;
@@ -280,6 +289,13 @@ export interface Translations {
     buttonTargetBack: string;
     buttonSceneLabel: string;
     buttonNoScene: string;
+    // ── List cell fields ──
+    typeList: string;
+    listVariableLabel: string;
+    listSeparatorLabel: string;
+    listEmptyTextLabel: string;
+    listPrefixLabel: string;
+    listSuffixLabel: string;
   };
 
   // ─── Shared: rows/cells editor UI (Panel + Table) ──────────────────────────
@@ -489,6 +505,9 @@ export interface Translations {
     opSubtract: string;
     opMultiply: string;
     opDivide: string;
+    opPush: string;
+    opRemove: string;
+    opClear: string;
     modeManual: string;
     modeRandom: string;
     modeExpression: string;
@@ -517,5 +536,46 @@ export interface Translations {
     randomRange: string;
     randomLength: string;
     randomLengthSuffix: string;
+  };
+
+  // ─── Array accessor UI ──────────────────────────────────────────────────────
+  arrayAccessor: {
+    label: string;
+    whole: string;
+    index: string;
+    length: string;
+    indexLiteral: string;
+    indexVariable: string;
+    indexPlaceholder: string;
+    selectIndexVar: string;
+  };
+
+  // ─── Checkbox block ──────────────────────────────────────────────────────────
+  checkboxBlock: {
+    labelField: string;
+    labelPlaceholder: string;
+    modeFlags: string;
+    modeArray: string;
+    variableLabel: string;
+    selectVariable: string;
+    noOptions: string;
+    addOption: string;
+    deleteOption: string;
+    optionLabelPlaceholder: string;
+    optionValuePlaceholder: string;
+    optionVarPlaceholder: string;
+  };
+
+  // ─── Radio block ─────────────────────────────────────────────────────────────
+  radioBlock: {
+    labelField: string;
+    labelPlaceholder: string;
+    variableLabel: string;
+    selectVariable: string;
+    noOptions: string;
+    addOption: string;
+    deleteOption: string;
+    optionLabelPlaceholder: string;
+    optionValuePlaceholder: string;
   };
 }

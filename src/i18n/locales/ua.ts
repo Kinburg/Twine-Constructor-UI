@@ -46,6 +46,8 @@ const ua: Translations = {
     table:            'Таблиця',
     include:          'Вставка',
     divider:          'Розділювач',
+    checkbox:         'Прапорці',
+    radio:            'Перемикачі',
     drag:             'Перетягнути для сортування',
     copy:             'Копіювати блок у буфер',
     duplicate:        'Дублювати блок',
@@ -72,6 +74,8 @@ const ua: Translations = {
     table:       { label: 'Таблиця',     desc: 'HTML-таблиця з комірками' },
     include:     { label: 'Вставка',     desc: '<<include "...">> пасаж' },
     divider:     { label: 'Розділювач',  desc: 'Горизонтальна лінія' },
+    checkbox:    { label: 'Прапорці',    desc: 'Множинний вибір' },
+    radio:       { label: 'Перемикачі', desc: 'Одиночний вибір' },
   },
 
   condition: {
@@ -83,6 +87,10 @@ const ua: Translations = {
     rangeToggle:         'Діапазон (a ≤ x ≤ b)',
     rangeMinPlaceholder: 'мін',
     rangeMaxPlaceholder: 'макс',
+    opContains:          'містить',
+    opNotContains:       'не містить',
+    opEmpty:             'порожній',
+    opNotEmpty:          'не порожній',
   },
 
   header: {
@@ -196,6 +204,7 @@ const ua: Translations = {
     typeNumber:               'number',
     typeString:               'string',
     typeBoolean:              'boolean',
+    typeArray:                'array',
     defaultPlaceholderNumber: '0',
     defaultPlaceholderText:   'текст',
     descriptionPlaceholder:   'що зберігає...',
@@ -256,6 +265,13 @@ const ua: Translations = {
     buttonTargetBack:         'Назад',
     buttonSceneLabel:         'Сцена:',
     buttonNoScene:            '— оберіть сцену —',
+    // ── List cell fields ──
+    typeList:                 'Список (масив)',
+    listVariableLabel:        'Змінна:',
+    listSeparatorLabel:       'Роздільник:',
+    listEmptyTextLabel:       'Порожній текст:',
+    listPrefixLabel:          'Префікс:',
+    listSuffixLabel:          'Суфікс:',
   },
 
   rowsEditor: {
@@ -475,6 +491,9 @@ const ua: Translations = {
     opSubtract:           '-= (відняти)',
     opMultiply:           '*= (помножити)',
     opDivide:             '/= (розділити)',
+    opPush:               'push (додати в масив)',
+    opRemove:             'remove (видалити з масиву)',
+    opClear:              'clear (очистити масив)',
     modeManual:           'Вручну',
     modeRandom:           '🎲 Випадково',
     modeExpression:       '⚙️ Вираз',
@@ -503,6 +522,44 @@ const ua: Translations = {
     randomRange:          'Діапазон:',
     randomLength:         'Довжина:',
     randomLengthSuffix:   'символів [a-z0-9]',
+  },
+
+  arrayAccessor: {
+    label:            'Доступ:',
+    whole:            'весь масив',
+    index:            'елемент за індексом',
+    length:           '.length',
+    indexLiteral:     'число',
+    indexVariable:    'змінна',
+    indexPlaceholder: '0',
+    selectIndexVar:   '— вибрати —',
+  },
+
+  checkboxBlock: {
+    labelField:             'Заголовок групи:',
+    labelPlaceholder:       'необов\'язковий заголовок над прапорцями',
+    modeFlags:              '⚑ Прапорці (boolean на кожен)',
+    modeArray:              '☑ Масив (одна array-змінна)',
+    variableLabel:          'Array-змінна:',
+    selectVariable:         '— вибрати —',
+    noOptions:              'Немає пунктів. Натисніть + Додати.',
+    addOption:              '+ Додати пункт',
+    deleteOption:           'Видалити пункт',
+    optionLabelPlaceholder: 'Підпис прапорця',
+    optionValuePlaceholder: 'значення в масиві',
+    optionVarPlaceholder:   '— boolean-змінна —',
+  },
+
+  radioBlock: {
+    labelField:             'Заголовок групи:',
+    labelPlaceholder:       'необов\'язковий заголовок над перемикачами',
+    variableLabel:          'Змінна:',
+    selectVariable:         '— вибрати —',
+    noOptions:              'Немає пунктів. Натисніть + Додати.',
+    addOption:              '+ Додати пункт',
+    deleteOption:           'Видалити пункт',
+    optionLabelPlaceholder: 'Підпис перемикача',
+    optionValuePlaceholder: 'значення',
   },
 };
 

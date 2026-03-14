@@ -46,6 +46,8 @@ const en: Translations = {
     table:            'Table',
     include:          'Include',
     divider:          'Divider',
+    checkbox:         'Checkbox',
+    radio:            'Radio',
     drag:             'Drag to reorder',
     copy:             'Copy block to clipboard',
     duplicate:        'Duplicate block',
@@ -72,6 +74,8 @@ const en: Translations = {
     table:       { label: 'Table',      desc: 'HTML table with cells' },
     include:     { label: 'Include',    desc: '<<include "...">> passage' },
     divider:     { label: 'Divider',    desc: 'Horizontal rule' },
+    checkbox:    { label: 'Checkbox',   desc: 'Multiple selection' },
+    radio:       { label: 'Radio',      desc: 'Single selection' },
   },
 
   condition: {
@@ -83,6 +87,10 @@ const en: Translations = {
     rangeToggle:         'Range mode (a ≤ x ≤ b)',
     rangeMinPlaceholder: 'min',
     rangeMaxPlaceholder: 'max',
+    opContains:          'contains',
+    opNotContains:       '!contains',
+    opEmpty:             'is empty',
+    opNotEmpty:          'is not empty',
   },
 
   header: {
@@ -196,6 +204,7 @@ const en: Translations = {
     typeNumber:               'number',
     typeString:               'string',
     typeBoolean:              'boolean',
+    typeArray:                'array',
     defaultPlaceholderNumber: '0',
     defaultPlaceholderText:   'text',
     descriptionPlaceholder:   'what it stores...',
@@ -256,6 +265,13 @@ const en: Translations = {
     buttonTargetBack:         'Go back',
     buttonSceneLabel:         'Scene:',
     buttonNoScene:            '— select scene —',
+    // ── List cell fields ──
+    typeList:                 'List (array)',
+    listVariableLabel:        'Variable:',
+    listSeparatorLabel:       'Separator:',
+    listEmptyTextLabel:       'Empty text:',
+    listPrefixLabel:          'Prefix:',
+    listSuffixLabel:          'Suffix:',
   },
 
   rowsEditor: {
@@ -475,6 +491,9 @@ const en: Translations = {
     opSubtract:           '-= (subtract)',
     opMultiply:           '*= (multiply)',
     opDivide:             '/= (divide)',
+    opPush:               'push (add to array)',
+    opRemove:             'remove (from array)',
+    opClear:              'clear (empty array)',
     modeManual:           'Manual',
     modeRandom:           '🎲 Random',
     modeExpression:       '⚙️ Expression',
@@ -503,6 +522,44 @@ const en: Translations = {
     randomRange:          'Range:',
     randomLength:         'Length:',
     randomLengthSuffix:   'chars [a-z0-9]',
+  },
+
+  arrayAccessor: {
+    label:            'Access:',
+    whole:            'whole array',
+    index:            'element at index',
+    length:           '.length',
+    indexLiteral:     'number',
+    indexVariable:    'variable',
+    indexPlaceholder: '0',
+    selectIndexVar:   '— select —',
+  },
+
+  checkboxBlock: {
+    labelField:             'Group label:',
+    labelPlaceholder:       'optional label above checkboxes',
+    modeFlags:              '⚑ Flags (boolean per option)',
+    modeArray:              '☑ Array (one array variable)',
+    variableLabel:          'Array variable:',
+    selectVariable:         '— select —',
+    noOptions:              'No options. Click + Add.',
+    addOption:              '+ Add option',
+    deleteOption:           'Delete option',
+    optionLabelPlaceholder: 'Checkbox label',
+    optionValuePlaceholder: 'value in array',
+    optionVarPlaceholder:   '— boolean variable —',
+  },
+
+  radioBlock: {
+    labelField:             'Group label:',
+    labelPlaceholder:       'optional label above radio buttons',
+    variableLabel:          'Variable:',
+    selectVariable:         '— select —',
+    noOptions:              'No options. Click + Add.',
+    addOption:              '+ Add option',
+    deleteOption:           'Delete option',
+    optionLabelPlaceholder: 'Radio label',
+    optionValuePlaceholder: 'value',
   },
 };
 

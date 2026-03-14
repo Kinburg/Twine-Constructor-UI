@@ -4,7 +4,7 @@ import { useT } from '../../i18n';
 import type {
   TableBlock, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
-  CellButton, ButtonAction, ButtonStyle, VarOperator,
+  CellButton, CellList, ButtonAction, ButtonStyle, VarOperator,
   ImageBoundMapping, Variable, Asset,
 } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
@@ -20,6 +20,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'image-bound':  return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
     case 'raw':          return { type: 'raw', code: '' } as CellRaw;
     case 'button':       return { type: 'button', label: '', style: { bgColor: '#3b82f6', textColor: '#ffffff', borderColor: '#2563eb', borderRadius: 4, paddingV: 4, paddingH: 10, fontSize: 9, bold: false, fullWidth: false }, actions: [] };
+    case 'list':         return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' };
   }
 }
 
@@ -411,6 +412,7 @@ function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type'
     'image-bound':  t.cellModal.typeImageBoundShort,
     raw:            t.cellModal.typeRaw,
     button:         t.cellModal.typeButton,
+    list:           t.cellModal.typeList,
   };
   return m[type];
 }
@@ -474,6 +476,14 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       </span>
     </div>
   );
+  if (c.type === 'list') {
+    const v = vars.find(x => x.id === c.variableId);
+    return (
+      <span className="text-xs text-violet-300 p-1 font-mono truncate flex-1">
+        [{v ? `$${v.name}` : '?'}]
+      </span>
+    );
+  }
   return null;
 }
 
@@ -499,6 +509,7 @@ function TCellEditModal({
     { value: 'image-bound',  label: t.cellModal.typeImageBound },
     { value: 'raw',          label: t.cellModal.typeRaw },
     { value: 'button',       label: t.cellModal.typeButton },
+    { value: 'list',         label: t.cellModal.typeList },
   ];
 
   const changeType = (type: CellContent['type']) => {
@@ -704,6 +715,51 @@ function TCellEditModal({
 
         {c.type === 'button' && (
           <TCellButtonEditor c={c} vars={vars} onUpdateContent={onUpdateContent} />
+        )}
+
+        {c.type === 'list' && (
+          <>
+            <TMField label={t.cellModal.listVariableLabel}>
+              <select
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                value={c.variableId}
+                onChange={e => onUpdateContent({ ...(c as CellList), variableId: e.target.value })}
+              >
+                <option value="">— select —</option>
+                {vars.filter(v => v.varType === 'array').map(v => (
+                  <option key={v.id} value={v.id}>${v.name}</option>
+                ))}
+              </select>
+            </TMField>
+            <TMField label={t.cellModal.listSeparatorLabel}>
+              <input
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono"
+                value={(c as CellList).separator}
+                onChange={e => onUpdateContent({ ...(c as CellList), separator: e.target.value })}
+              />
+            </TMField>
+            <TMField label={t.cellModal.listEmptyTextLabel}>
+              <input
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
+                value={(c as CellList).emptyText}
+                onChange={e => onUpdateContent({ ...(c as CellList), emptyText: e.target.value })}
+              />
+            </TMField>
+            <TMField label={t.cellModal.listPrefixLabel}>
+              <input
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
+                value={(c as CellList).prefix}
+                onChange={e => onUpdateContent({ ...(c as CellList), prefix: e.target.value })}
+              />
+            </TMField>
+            <TMField label={t.cellModal.listSuffixLabel}>
+              <input
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
+                value={(c as CellList).suffix}
+                onChange={e => onUpdateContent({ ...(c as CellList), suffix: e.target.value })}
+              />
+            </TMField>
+          </>
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"

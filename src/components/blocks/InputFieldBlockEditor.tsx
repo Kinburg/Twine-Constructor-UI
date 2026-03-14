@@ -2,6 +2,7 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { InputFieldBlock } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { ArrayAccessorInput } from './ArrayAccessorInput';
 
 // Badge showing the variable type and which SugarCube macro will be used
 function MacroBadge({ varType }: { varType: string | undefined }) {
@@ -31,6 +32,7 @@ export function InputFieldBlockEditor({
 
   const isNumber  = selectedVar?.varType === 'number';
   const isBoolean = selectedVar?.varType === 'boolean';
+  const isArray   = selectedVar?.varType === 'array';
 
   return (
     <div className="flex flex-col gap-2">
@@ -55,9 +57,11 @@ export function InputFieldBlockEditor({
           value={block.variableId}
           onChange={e => {
             const v = variables.find(x => x.id === e.target.value);
+            const leavingArray = isArray && v?.varType !== 'array';
             updateBlock(sceneId, block.id, {
               variableId: e.target.value,
               placeholder: v?.defaultValue ?? '',
+              ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
         >
@@ -71,8 +75,18 @@ export function InputFieldBlockEditor({
         )}
       </div>
 
+      {/* Array accessor */}
+      {isArray && (
+        <ArrayAccessorInput
+          accessor={block.accessor}
+          onChange={acc => updateBlock(sceneId, block.id, { accessor: acc })}
+          vars={variables}
+          allowLength={false}
+        />
+      )}
+
       {/* Placeholder / default value */}
-      {selectedVar && !isBoolean && (
+      {selectedVar && !isBoolean && !isArray && (
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-24 shrink-0">
             {isNumber ? t.inputFieldBlock.defaultNumber : t.inputFieldBlock.defaultText}
@@ -96,7 +110,7 @@ export function InputFieldBlockEditor({
       )}
 
       {/* Macro preview line */}
-      {selectedVar && !isBoolean && (
+      {selectedVar && !isBoolean && !isArray && (
         <div className="mt-1 flex items-center gap-2 flex-wrap">
           <span className="text-xs text-slate-500">{t.inputFieldBlock.generated}</span>
           <MacroBadge varType={selectedVar.varType} />

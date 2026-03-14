@@ -2,6 +2,7 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { LinkBlock, ButtonAction, ButtonStyle, VarOperator, LinkTarget } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { ArrayAccessorInput } from './ArrayAccessorInput';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -155,45 +156,87 @@ function ActionRow({
 }) {
   const t = useT();
   const selVar = variables.find(v => v.id === action.variableId);
+  const isArray = selVar?.varType === 'array';
+  const accessorKind = action.accessor?.kind ?? 'whole';
+
+  const availableOps: { value: VarOperator; label: string }[] = isArray
+    ? (accessorKind === 'index'
+        ? [{ value: '=',      label: '=' }]
+        : [{ value: '=',      label: '=' },
+           { value: 'push',   label: 'push' },
+           { value: 'remove', label: 'remove' },
+           { value: 'clear',  label: 'clear' }])
+    : (selVar?.varType === 'number' ? OPERATORS : OPERATORS.filter(op => op.value === '='));
 
   return (
-    <div className="flex items-center gap-1.5 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
-      <select
-        className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
-        value={action.variableId}
-        onChange={e => onChange({ variableId: e.target.value })}
-      >
-        <option value="">{t.linkBlock.selectVariable}</option>
-        {variables.map(v => (
-          <option key={v.id} value={v.id}>${v.name}</option>
-        ))}
-      </select>
+    <div className="flex flex-col gap-1 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
+      <div className="flex items-center gap-1.5">
+        <select
+          className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+          value={action.variableId}
+          onChange={e => {
+            const newVar = variables.find(v => v.id === e.target.value);
+            const leavingArray = isArray && newVar?.varType !== 'array';
+            const arrayOpOnNonArray = leavingArray && (action.operator === 'push' || action.operator === 'remove' || action.operator === 'clear');
+            onChange({
+              variableId: e.target.value,
+              ...(arrayOpOnNonArray ? { operator: '=' as VarOperator } : {}),
+              ...(leavingArray ? { accessor: undefined } : {}),
+            });
+          }}
+        >
+          <option value="">{t.linkBlock.selectVariable}</option>
+          {variables.map(v => (
+            <option key={v.id} value={v.id}>${v.name}</option>
+          ))}
+        </select>
 
-      <select
-        className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer font-mono"
-        value={action.operator}
-        onChange={e => onChange({ operator: e.target.value as VarOperator })}
-      >
-        {OPERATORS.map(op => (
-          <option key={op.value} value={op.value}>{op.label}</option>
-        ))}
-      </select>
+        <select
+          className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer font-mono"
+          value={action.operator}
+          onChange={e => onChange({ operator: e.target.value as VarOperator })}
+        >
+          {availableOps.map(op => (
+            <option key={op.value} value={op.value}>{op.label}</option>
+          ))}
+        </select>
 
-      <input
-        className="w-20 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none font-mono"
-        placeholder={selVar?.varType === 'string' ? t.linkBlock.textPlaceholder : selVar?.varType === 'boolean' ? 'true' : '1'}
-        value={action.value}
-        onFocus={onFocusValue}
-        onChange={e => onChange({ value: e.target.value })}
-      />
+        {action.operator !== 'clear' && (
+          <input
+            className="w-20 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none font-mono"
+            placeholder={selVar?.varType === 'string' || isArray ? t.linkBlock.textPlaceholder : selVar?.varType === 'boolean' ? 'true' : '1'}
+            value={action.value}
+            onFocus={onFocusValue}
+            onChange={e => onChange({ value: e.target.value })}
+          />
+        )}
 
-      <button
-        className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
-        title={t.linkBlock.deleteAction}
-        onClick={onDelete}
-      >
-        ✕
-      </button>
+        <button
+          className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
+          title={t.linkBlock.deleteAction}
+          onClick={onDelete}
+        >
+          ✕
+        </button>
+      </div>
+
+      {isArray && (
+        <ArrayAccessorInput
+          accessor={action.accessor}
+          onChange={acc => {
+            const newOps = acc.kind === 'index'
+              ? [{ value: '=' as VarOperator, label: '=' }]
+              : [{ value: '=' as VarOperator, label: '=' }, { value: 'push' as VarOperator, label: 'push' }, { value: 'remove' as VarOperator, label: 'remove' }, { value: 'clear' as VarOperator, label: 'clear' }];
+            const opStillValid = newOps.some(op => op.value === action.operator);
+            onChange({
+              accessor: acc,
+              ...(!opStillValid ? { operator: '=' as VarOperator } : {}),
+            });
+          }}
+          vars={variables}
+          allowLength={false}
+        />
+      )}
     </div>
   );
 }

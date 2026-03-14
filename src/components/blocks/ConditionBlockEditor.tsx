@@ -17,7 +17,7 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
 import { useT, blockTypeLabel } from '../../i18n';
 import type {
-  ConditionBlock, ConditionBranchType, ConditionOperator, Block,
+  ConditionBlock, ConditionBranchType, ConditionOperator, Block, ArrayAccessor,
   TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock, RawBlock, TableBlock, IncludeBlock, DividerBlock,
 } from '../../types';
 import { AddBlockMenu } from './AddBlockMenu';
@@ -31,6 +31,7 @@ import { RawBlockEditor } from './RawBlockEditor';
 import { TableBlockEditor } from './TableBlockEditor';
 import { IncludeBlockEditor } from './IncludeBlockEditor';
 import { DividerBlockEditor } from './DividerBlockEditor';
+import { ArrayAccessorInput } from './ArrayAccessorInput';
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: '==', label: '==' },
@@ -41,15 +42,31 @@ const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: '<=', label: '<=' },
 ];
 
-/** Returns only the operators valid for the given variable type.
- *  boolean / string → == and != only (no arithmetic comparison)
- *  number / unknown → all operators
- */
-function operatorsForType(varType: string | undefined): typeof OPERATORS {
+/** Returns only the operators valid for the given variable type and array accessor. */
+function operatorsForType(
+  varType: string | undefined,
+  accessorKind: ArrayAccessor['kind'] = 'whole',
+): { value: ConditionOperator; label: string }[] {
+  if (varType === 'array') {
+    if (accessorKind === 'index')  return OPERATORS.filter(op => op.value === '==' || op.value === '!=');
+    if (accessorKind === 'length') return OPERATORS;  // numeric context
+    // whole array: membership / emptiness checks
+    return [
+      { value: 'contains',  label: 'contains' },
+      { value: '!contains', label: '!contains' },
+      { value: 'empty',     label: 'is empty' },
+      { value: '!empty',    label: 'is not empty' },
+    ];
+  }
   if (varType === 'boolean' || varType === 'string') {
     return OPERATORS.filter(op => op.value === '==' || op.value === '!=');
   }
   return OPERATORS;
+}
+
+/** Whether the given operator requires a value input */
+function operatorNeedsValue(op: ConditionOperator): boolean {
+  return op !== 'empty' && op !== '!empty';
 }
 
 /** Simplified block renderer for nested blocks (no further nesting) */
@@ -237,24 +254,30 @@ export function ConditionBlockEditor({
 
             {branch.branchType !== 'else' && (() => {
               const branchVar = variables.find(v => v.id === branch.variableId);
-              const availableOps = operatorsForType(branchVar?.varType);
-              const isNumeric = branchVar?.varType === 'number' || branchVar?.varType === undefined;
-              const rangeMode = branch.rangeMode && isNumeric;
+              const isArray   = branchVar?.varType === 'array';
+              const accessorKind = branch.accessor?.kind ?? 'whole';
+              const availableOps = operatorsForType(branchVar?.varType, accessorKind);
+              // Range mode only for: plain numeric vars, or array.length accessor
+              const isNumericContext = (!isArray && (branchVar?.varType === 'number' || branchVar?.varType === undefined))
+                || (isArray && accessorKind === 'length');
+              const rangeMode = branch.rangeMode && isNumericContext;
+              const showValue = !rangeMode && operatorNeedsValue(branch.operator);
               return (
               <>
+                {/* Variable selector */}
                 <select
                   className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
                   value={branch.variableId}
                   onChange={e => {
                     const newVar = variables.find(v => v.id === e.target.value);
-                    const newOps = operatorsForType(newVar?.varType);
+                    const newAccessorKind = newVar?.varType === 'array' ? (branch.accessor?.kind ?? 'whole') : 'whole';
+                    const newOps = operatorsForType(newVar?.varType, newAccessorKind);
                     const opStillValid = newOps.some(op => op.value === branch.operator);
-                    // disable range mode if new variable is not numeric
                     const newIsNumeric = newVar?.varType === 'number' || newVar?.varType === undefined;
                     updateConditionBranch(sceneId, block.id, branch.id, {
                       variableId: e.target.value,
                       ...(!opStillValid ? { operator: newOps[0].value } : {}),
-                      ...(!newIsNumeric ? { rangeMode: false } : {}),
+                      ...(!newIsNumeric && newVar?.varType !== 'array' ? { rangeMode: false, accessor: undefined } : {}),
                     });
                   }}
                 >
@@ -264,8 +287,27 @@ export function ConditionBlockEditor({
                   ))}
                 </select>
 
-                {/* Range mode toggle — only for numeric (or unknown) variables */}
-                {isNumeric && (
+                {/* Array accessor — shown as a full-width second row when var is array */}
+                {isArray && (
+                  <div className="w-full">
+                    <ArrayAccessorInput
+                      accessor={branch.accessor}
+                      onChange={acc => {
+                        const newOps = operatorsForType('array', acc.kind);
+                        const opStillValid = newOps.some(op => op.value === branch.operator);
+                        updateConditionBranch(sceneId, block.id, branch.id, {
+                          accessor: acc,
+                          ...(!opStillValid ? { operator: newOps[0].value, rangeMode: false } : {}),
+                        });
+                      }}
+                      vars={variables}
+                      allowLength
+                    />
+                  </div>
+                )}
+
+                {/* Range mode toggle — only for numeric context */}
+                {isNumericContext && (
                   <button
                     title={t.condition.rangeToggle}
                     className={`text-xs rounded px-1.5 py-0.5 border cursor-pointer font-mono shrink-0 transition-colors ${
@@ -305,6 +347,7 @@ export function ConditionBlockEditor({
                   </>
                 ) : (
                   <>
+                    {/* Operator selector */}
                     <select
                       className="bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer font-mono"
                       value={branch.operator}
@@ -319,15 +362,18 @@ export function ConditionBlockEditor({
                       ))}
                     </select>
 
-                    <input
-                      className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
-                      placeholder={t.condition.valuePlaceholder}
-                      value={branch.value}
-                      onFocus={saveSnapshot}
-                      onChange={e =>
-                        updateConditionBranch(sceneId, block.id, branch.id, { value: e.target.value })
-                      }
-                    />
+                    {/* Value input — hidden for empty/!empty */}
+                    {showValue && (
+                      <input
+                        className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
+                        placeholder={t.condition.valuePlaceholder}
+                        value={branch.value}
+                        onFocus={saveSnapshot}
+                        onChange={e =>
+                          updateConditionBranch(sceneId, block.id, branch.id, { value: e.target.value })
+                        }
+                      />
+                    )}
                   </>
                 )}
               </>

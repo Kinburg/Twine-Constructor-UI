@@ -1,7 +1,8 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
-  Scene, ButtonBlock, LinkBlock, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
+  Scene, ButtonBlock, LinkBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
+  ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables } from './treeUtils';
@@ -15,6 +16,44 @@ function htmlAttr(s: string): string {
     .replace(/"/g, '&quot;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;');
+}
+
+/** Build the SugarCube variable reference string including array accessor. */
+function varRefWithAccessor(varName: string, accessor: ArrayAccessor | undefined, vars: Variable[]): string {
+  if (!accessor || accessor.kind === 'whole') return `$${varName}`;
+  if (accessor.kind === 'length') return `$${varName}.length`;
+  if (accessor.kind === 'index') {
+    const src = accessor.source;
+    if (src.kind === 'literal') return `$${varName}[${src.index}]`;
+    const idxVar = vars.find(v => v.id === src.variableId);
+    return `$${varName}[${idxVar ? `$${idxVar.name}` : '0'}]`;
+  }
+  return `$${varName}`;
+}
+
+/** Convert a single ButtonAction to SugarCube macro, handling array operators. */
+function actionToSC(a: ButtonAction, vars: Variable[], lineIndent: string): string {
+  const v = vars.find(x => x.id === a.variableId);
+  if (!v) return '';
+
+  if (v.varType === 'array') {
+    const accessorKind = a.accessor?.kind ?? 'whole';
+    if (accessorKind === 'index') {
+      const ref = varRefWithAccessor(v.name, a.accessor, vars);
+      return `${lineIndent}<<set ${ref} to "${a.value}">>`;
+    }
+    switch (a.operator) {
+      case 'push':   return `${lineIndent}<<run $${v.name}.push("${a.value}")>>`;
+      case 'remove': return `${lineIndent}<<run $${v.name}.deleteWith(function(x){return x==="${a.value}";})>>`;
+      case 'clear':  return `${lineIndent}<<set $${v.name} to []>>`;
+      default:       return `${lineIndent}<<set $${v.name} to ${a.value}>>`;
+    }
+  }
+
+  let val = a.value;
+  if (v.varType === 'string') val = `"${val}"`;
+  if (a.operator === '=') return `${lineIndent}<<set $${v.name} to ${val}>>`;
+  return `${lineIndent}<<set $${v.name} ${a.operator} ${val}>>`;
 }
 
 /** Wrap block output with <<timed>> delay and/or <<type>> typewriter effect. */
@@ -181,6 +220,22 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
     case 'variable-set': {
       const v = vars.find(x => x.id === block.variableId);
       if (!v) return `${indent}/* variable not found */`;
+
+      // ── Array type — special operators ──────────────────────────────────────
+      if (v.varType === 'array') {
+        const accessorKind = block.accessor?.kind ?? 'whole';
+        if (accessorKind === 'index') {
+          const ref = varRefWithAccessor(v.name, block.accessor, vars);
+          return `${indent}<<set ${ref} to "${block.value}">>`;
+        }
+        switch (block.operator) {
+          case 'push':   return `${indent}<<run $${v.name}.push("${block.value}")>>`;
+          case 'remove': return `${indent}<<run $${v.name}.deleteWith(function(x){return x==="${block.value}";})>>`;
+          case 'clear':  return `${indent}<<set $${v.name} to []>>`;
+          case '=':      return `${indent}<<set $${v.name} to ${block.value}>>`;
+          default:       return `${indent}<<set $${v.name} to ${block.value}>>`;
+        }
+      }
 
       // Effective mode — backward compat with old randomize boolean
       const mode = block.valueMode ?? (block.randomize ? 'random' : 'manual');
@@ -349,14 +404,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
     case 'button': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
       const actionLines = block.actions
-        .map(a => {
-          const v = vars.find(x => x.id === a.variableId);
-          if (!v) return '';
-          let val = a.value;
-          if (v.varType === 'string') val = `"${val}"`;
-          if (a.operator === '=') return `${indent}  <<set $${v.name} to ${val}>>`;
-          return `${indent}  <<set $${v.name} ${a.operator} ${val}>>`;
-        })
+        .map(a => actionToSC(a, vars, `${indent}  `))
         .filter(Boolean);
       if (block.refreshScene) actionLines.push(`${indent}  <<run Engine.show()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
@@ -371,14 +419,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
     case 'link': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
       const actionLines = block.actions
-        .map(a => {
-          const v = vars.find(x => x.id === a.variableId);
-          if (!v) return '';
-          let val = a.value;
-          if (v.varType === 'string') val = `"${val}"`;
-          if (a.operator === '=') return `${indent}  <<set $${v.name} to ${val}>>`;
-          return `${indent}  <<set $${v.name} ${a.operator} ${val}>>`;
-        })
+        .map(a => actionToSC(a, vars, `${indent}  `))
         .filter(Boolean);
       // targetSceneId stores the scene NAME (same convention as ChoiceOption.targetSceneId)
       if (block.target === 'back') {
@@ -392,6 +433,59 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
         actionLines.join('\n') + '\n' +
         `${indent}<</link>></span>`
       );
+    }
+
+    case 'checkbox': {
+      const cb = block as CheckboxBlock;
+      if (cb.options.length === 0) return '';
+      const lines: string[] = [];
+      if (cb.label) lines.push(`${indent}${cb.label}`);
+
+      if (cb.mode === 'flags') {
+        // Each option toggles its own boolean variable
+        for (const opt of cb.options) {
+          const v = vars.find(x => x.id === opt.variableId);
+          const vname = v ? `$${v.name}` : '$???';
+          lines.push(`${indent}<<checkbox "${vname}" false true autocheck>> ${opt.label}`);
+        }
+      } else {
+        // Array mode: plain HTML checkboxes + script sets initial state and attaches handlers
+        const arrVar = vars.find(x => x.id === cb.variableId);
+        const arrName = arrVar ? arrVar.name : '???';
+        const uid = `tgcb_${cb.id.replace(/-/g, '').substring(0, 10)}`;
+        const inputLines = cb.options.map((opt, i) => {
+          const optId = `${uid}_${i}`;
+          return `<input id="${optId}" type="checkbox"> <label for="${optId}">${opt.label}</label>`;
+        });
+        lines.push(`${indent}<span id="${uid}">${inputLines.join('<br>')}</span>`);
+        const handlers = cb.options.map((opt, i) => {
+          const optId = `${uid}_${i}`;
+          const val = (opt.value ?? '').replace(/"/g, '\\"');
+          return (
+            `var e${i}=document.getElementById('${optId}');` +
+            `if(e${i}){` +
+            `e${i}.checked=State.variables.${arrName}.includes("${val}");` +
+            `e${i}.addEventListener('change',function(){` +
+            `if(this.checked){State.variables.${arrName}.push("${val}");}` +
+            `else{State.variables.${arrName}.deleteWith(function(x){return x==="${val}";});}});}`
+          );
+        }).join('');
+        lines.push(`${indent}<<script>>setTimeout(function(){${handlers}},0);<</script>>`);
+      }
+      return lines.join('\n');
+    }
+
+    case 'radio': {
+      const rb = block as RadioBlock;
+      if (rb.options.length === 0) return '';
+      const v = vars.find(x => x.id === rb.variableId);
+      const vname = v ? `$${v.name}` : '$???';
+      const lines: string[] = [];
+      if (rb.label) lines.push(`${indent}${rb.label}`);
+      for (const opt of rb.options) {
+        lines.push(`${indent}<<radiobutton "${vname}" "${opt.value}" autocheck>> ${opt.label}`);
+      }
+      return lines.join('\n');
     }
   }
 }
@@ -413,12 +507,31 @@ function branchToSC(
 
   const v = vars.find(x => x.id === branch.variableId);
   const varName = v ? `$${v.name}` : '$unknown';
+  const acc = branch.accessor;
+  const accessorKind = acc?.kind ?? 'whole';
 
   let expr: string;
   if (branch.rangeMode) {
+    const ref = (v?.varType === 'array' && accessorKind === 'length') ? `${varName}.length` : varName;
     const lo = branch.rangeMin ?? '0';
     const hi = branch.rangeMax ?? '0';
-    expr = `${varName} >= ${lo} && ${varName} <= ${hi}`;
+    expr = `${ref} >= ${lo} && ${ref} <= ${hi}`;
+  } else if (v?.varType === 'array' && accessorKind === 'whole') {
+    switch (branch.operator) {
+      case 'contains':  expr = `${varName}.includes("${branch.value}")`; break;
+      case '!contains': expr = `!${varName}.includes("${branch.value}")`; break;
+      case 'empty':     expr = `${varName}.length === 0`; break;
+      case '!empty':    expr = `${varName}.length > 0`; break;
+      default: {
+        let val = branch.value;
+        expr = `${varName} ${branch.operator} ${val}`;
+      }
+    }
+  } else if (v?.varType === 'array' && accessorKind === 'index') {
+    const ref = varRefWithAccessor(v.name, acc, vars);
+    expr = `${ref} ${branch.operator} "${branch.value}"`;
+  } else if (v?.varType === 'array' && accessorKind === 'length') {
+    expr = `${varName}.length ${branch.operator} ${branch.value}`;
   } else {
     let val = branch.value;
     if (v?.varType === 'string') val = `"${val}"`;
@@ -516,14 +629,7 @@ function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[]): str
   const styleStr = buildCellBtnStyleStr(c.style);
 
   const macros: string[] = c.actions
-    .map(a => {
-      const v = vars.find(x => x.id === a.variableId);
-      if (!v) return '';
-      let val = a.value;
-      if (v.varType === 'string') val = `"${val}"`;
-      if (a.operator === '=') return `<<set $${v.name} to ${val}>>`;
-      return `<<set $${v.name} ${a.operator} ${val}>>`;
-    })
+    .map(a => actionToSC(a, vars, ''))
     .filter(Boolean);
 
   if (c.navigate?.type === 'back') {
@@ -548,6 +654,19 @@ function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[]): str
     `<span id="${domId}"><<link "${label}">>${macros.join('')}<</link>></span>` +
     script
   );
+}
+
+// ─── Cell list (array) ────────────────────────────────────────────────────────
+
+function buildCellListSC(c: CellList, vars: Variable[]): string {
+  const v = vars.find(x => x.id === c.variableId);
+  const vname = v ? `$${v.name}` : '$???';
+  const sep = (c.separator || ', ').replace(/"/g, '\\"');
+  const inner = `${c.prefix}<<print ${vname}.join("${sep}")>>${c.suffix}`;
+  if (c.emptyText) {
+    return `<<if ${vname}.length gt 0>>${inner}<<else>>${c.emptyText}<</if>>`;
+  }
+  return inner;
 }
 
 // ─── Table block → inline HTML (fully self-contained, no class deps) ──────────
@@ -595,6 +714,9 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[]): string {
 
     case 'button':
       return buildCellButtonSC(c, cell.id, vars);
+
+    case 'list':
+      return buildCellListSC(c as CellList, vars);
 
     default: return '';
   }
@@ -702,6 +824,10 @@ function cellToSC(cell: SidebarCell, vars: Variable[]): string {
         : flex;
       return `<span class="tg-cell" style="${wrapFlex}">${buildCellButtonSC(c, cell.id, vars)}</span>`;
     }
+
+    case 'list':
+      inner = buildCellListSC(c as CellList, vars);
+      break;
   }
 
   return `<span class="tg-cell" style="${flex}">${inner}</span>`;
