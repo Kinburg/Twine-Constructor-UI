@@ -10,6 +10,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'condition':    '❓',
   'variable-set': '📊',
   'button':       '🔘',
+  'link':         '🔗',
   'input-field':  '✏️',
   'image':        '🖼️',
   'video':        '🎥',
@@ -35,6 +36,15 @@ export function makeBlock(type: BlockType): Block {
       id, type, label: '',
       style: {
         bgColor: '#3b82f6', textColor: '#ffffff', borderColor: '#2563eb',
+        borderRadius: 4, paddingV: 6, paddingH: 14,
+        fontSize: 10, bold: false, fullWidth: false,
+      },
+      actions: [],
+    };
+    case 'link':         return {
+      id, type, label: '', target: 'scene' as const,
+      style: {
+        bgColor: '#059669', textColor: '#ffffff', borderColor: '#047857',
         borderRadius: 4, paddingV: 6, paddingH: 14,
         fontSize: 10, bold: false, fullWidth: false,
       },
@@ -69,6 +79,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     { type: 'condition',    icon: BLOCK_ICONS['condition'],    label: t.addBlock.condition.label,   desc: t.addBlock.condition.desc },
     { type: 'variable-set', icon: BLOCK_ICONS['variable-set'], label: t.addBlock.variableSet.label, desc: t.addBlock.variableSet.desc },
     { type: 'button',       icon: BLOCK_ICONS['button'],       label: t.addBlock.button.label,      desc: t.addBlock.button.desc },
+    { type: 'link',         icon: BLOCK_ICONS['link'],         label: t.addBlock.link.label,        desc: t.addBlock.link.desc },
     { type: 'input-field',  icon: BLOCK_ICONS['input-field'],  label: t.addBlock.inputField.label,  desc: t.addBlock.inputField.desc },
     { type: 'image',        icon: BLOCK_ICONS['image'],        label: t.addBlock.image.label,       desc: t.addBlock.image.desc },
     { type: 'video',        icon: BLOCK_ICONS['video'],        label: t.addBlock.video.label,       desc: t.addBlock.video.desc },

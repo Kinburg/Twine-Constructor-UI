@@ -192,6 +192,24 @@ export interface ButtonBlock {
   refreshScene?: boolean;  // add <<run Engine.show()>> on export to re-render passage
 }
 
+/** Navigation target for LinkBlock */
+export type LinkTarget = 'scene' | 'back';
+
+/**
+ * A styled button that navigates to another scene (or goes back) and
+ * optionally mutates variables before navigating.
+ */
+export interface LinkBlock {
+  id: string;
+  type: 'link';
+  delay?: BlockDelay;
+  label: string;
+  target: LinkTarget;
+  targetSceneId?: string;  // used when target === 'scene'
+  actions: ButtonAction[];
+  style: ButtonStyle;
+}
+
 /**
  * Player-facing input field that updates a story variable.
  * Exports as <<textbox>> for string/boolean variables,
@@ -273,6 +291,7 @@ export type Block =
   | ImageBlock
   | VideoBlock
   | ButtonBlock
+  | LinkBlock
   | InputFieldBlock
   | RawBlock
   | NoteBlock
@@ -463,13 +482,31 @@ export interface CellRaw {
   code: string;
 }
 
+/** Navigation target for a sidebar button cell */
+export type CellButtonNavigate =
+  | { type: 'scene'; sceneId: string }
+  | { type: 'back' };
+
+/**
+ * A styled button inside a sidebar panel cell.
+ * Can change variables and/or navigate to a scene / go back.
+ */
+export interface CellButton {
+  type: 'button';
+  label: string;
+  style: ButtonStyle;
+  actions: ButtonAction[];
+  navigate?: CellButtonNavigate;
+}
+
 export type CellContent =
   | CellText
   | CellVariable
   | CellProgress
   | CellImageStatic
   | CellImageBound
-  | CellRaw;
+  | CellRaw
+  | CellButton;
 
 export interface SidebarCell {
   id: string;

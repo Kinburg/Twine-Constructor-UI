@@ -1,7 +1,7 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
-  Scene, ButtonBlock, CellProgress, BlockDelay, BlockTypewriter, IncludeBlock,
+  Scene, ButtonBlock, LinkBlock, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables } from './treeUtils';
@@ -367,6 +367,32 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
         `${indent}<</link>></span>`
       );
     }
+
+    case 'link': {
+      const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
+      const actionLines = block.actions
+        .map(a => {
+          const v = vars.find(x => x.id === a.variableId);
+          if (!v) return '';
+          let val = a.value;
+          if (v.varType === 'string') val = `"${val}"`;
+          if (a.operator === '=') return `${indent}  <<set $${v.name} to ${val}>>`;
+          return `${indent}  <<set $${v.name} ${a.operator} ${val}>>`;
+        })
+        .filter(Boolean);
+      // targetSceneId stores the scene NAME (same convention as ChoiceOption.targetSceneId)
+      if (block.target === 'back') {
+        actionLines.push(`${indent}  <<run Engine.backward()>>`);
+      } else {
+        actionLines.push(`${indent}  <<goto "${block.targetSceneId ?? ''}">>`);
+      }
+      actionLines.push(`${indent}  <<run UIBar.update()>>`);
+      return (
+        `${indent}<span class="tg-btn ${cls}"><<link "${block.label}">>\n` +
+        actionLines.join('\n') + '\n' +
+        `${indent}<</link>></span>`
+      );
+    }
   }
 }
 
@@ -459,6 +485,71 @@ function buildProgressBarSC(c: CellProgress, vars: Variable[], forTable: boolean
   }
 }
 
+// ─── Cell button: <<link>> (behavior) + inline <<script>> (styles on <a>) ─────
+
+/** Builds an inline style string for a CellButton. */
+function buildCellBtnStyleStr(s: ButtonStyle): string {
+  return [
+    `background:${s.bgColor}`,
+    `color:${s.textColor}`,
+    `border:1px solid ${s.borderColor}`,
+    `border-radius:${s.borderRadius}px`,
+    `padding:${s.paddingV}px ${s.paddingH}px`,
+    `font-size:${(s.fontSize / 10).toFixed(1)}em`,
+    `text-decoration:none`,
+    s.bold ? 'font-weight:bold' : '',
+    s.fullWidth
+      ? 'display:block;width:100%;text-align:center;box-sizing:border-box'
+      : 'display:inline-block',
+    'cursor:pointer',
+    'transition:filter 0.15s',
+  ].filter(Boolean).join(';');
+}
+
+/**
+ * Generates <<link>> for a CellButton.
+ * Behavior via SugarCube macros; inline styles applied immediately via <<script>>+setTimeout
+ * so they override any SugarCube CSS regardless of specificity.
+ */
+function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[]): string {
+  const domId = `tgcb${cellId.replace(/-/g, '').substring(0, 12)}`;
+  const styleStr = buildCellBtnStyleStr(c.style);
+
+  const macros: string[] = c.actions
+    .map(a => {
+      const v = vars.find(x => x.id === a.variableId);
+      if (!v) return '';
+      let val = a.value;
+      if (v.varType === 'string') val = `"${val}"`;
+      if (a.operator === '=') return `<<set $${v.name} to ${val}>>`;
+      return `<<set $${v.name} ${a.operator} ${val}>>`;
+    })
+    .filter(Boolean);
+
+  if (c.navigate?.type === 'back') {
+    macros.push('<<run Engine.backward()>>');
+  } else if (c.navigate?.type === 'scene' && c.navigate.sceneId) {
+    macros.push(`<<goto "${c.navigate.sceneId}">>`);
+  }
+
+  const label = c.label || '';
+  const esc = styleStr.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  // <<script>> runs during passage render; setTimeout(fn,0) defers until <a> is in DOM
+  const script =
+    `<<script>>setTimeout(function(){` +
+    `var e=document.getElementById('${domId}');` +
+    `if(e){var a=e.querySelector('a');` +
+    `if(a){a.style.cssText='${esc}';` +
+    `a.onmouseenter=function(){a.style.filter='brightness(1.2)';};` +
+    `a.onmouseleave=function(){a.style.filter='';};}}` +
+    `},0);<</script>>`;
+
+  return (
+    `<span id="${domId}"><<link "${label}">>${macros.join('')}<</link>></span>` +
+    script
+  );
+}
+
 // ─── Table block → inline HTML (fully self-contained, no class deps) ──────────
 
 function tableCellInnerToSC(cell: SidebarCell, vars: Variable[]): string {
@@ -501,6 +592,10 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[]): string {
     }
 
     case 'raw': return c.code;
+
+    case 'button':
+      return buildCellButtonSC(c, cell.id, vars);
+
     default: return '';
   }
 }
@@ -599,6 +694,13 @@ function cellToSC(cell: SidebarCell, vars: Variable[]): string {
       if (cases.length > 0) cases.push('<</if>>');
       inner = cases.join('');
       break;
+    }
+
+    case 'button': {
+      const wrapFlex = c.style.fullWidth
+        ? `${flex};display:flex;align-items:center`
+        : flex;
+      return `<span class="tg-cell" style="${wrapFlex}">${buildCellButtonSC(c, cell.id, vars)}</span>`;
     }
   }
 
@@ -772,10 +874,10 @@ export function buildAnimationCSS(_scenes: Scene[]): string {
 
 // ─── Button CSS ───────────────────────────────────────────────────────────────
 
-function collectButtons(blocks: Block[]): ButtonBlock[] {
-  const result: ButtonBlock[] = [];
+function collectButtons(blocks: Block[]): (ButtonBlock | LinkBlock)[] {
+  const result: (ButtonBlock | LinkBlock)[] = [];
   for (const b of blocks) {
-    if (b.type === 'button') result.push(b);
+    if (b.type === 'button' || b.type === 'link') result.push(b);
     if (b.type === 'condition') {
       for (const br of b.branches) result.push(...collectButtons(br.blocks));
     }
@@ -783,6 +885,7 @@ function collectButtons(blocks: Block[]): ButtonBlock[] {
   return result;
 }
 
+/** Generate per-block CSS for styled tg-btn-XXXX classes (ButtonBlock + LinkBlock). */
 export function buildButtonsCSS(scenes: Scene[]): string {
   const buttons = scenes.flatMap(s => collectButtons(s.blocks));
   if (buttons.length === 0) return '';
@@ -879,16 +982,18 @@ export function exportToTwee(project: Project): string {
   }
 
   // StoryStylesheet
-  const charCSS    = buildCharacterCSS(characters);
-  const panelCSS   = buildPanelCSS(sidebarPanel);
-  const buttonCSS  = buildButtonsCSS(scenes);
-  const animCSS    = buildAnimationCSS(scenes);
-  const allCSS     = [charCSS, panelCSS, buttonCSS, animCSS].filter(Boolean).join('\n\n');
+  const charCSS   = buildCharacterCSS(characters);
+  const panelCSS  = buildPanelCSS(sidebarPanel);
+  const buttonCSS = buildButtonsCSS(scenes);
+  const animCSS   = buildAnimationCSS(scenes);
+  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS].filter(Boolean).join('\n\n');
   if (allCSS) parts.push(`::StoryStylesheet [stylesheet]\n${allCSS}\n`);
 
-  // StoryScript (lightbox + input debounce) — single passage, sections joined
-  const storyScript = [buildPanelScript(sidebarPanel), buildInputScript(scenes)]
-    .filter(Boolean).join('\n\n');
+  // StoryScript (lightbox + input debounce) — single passage
+  const storyScript = [
+    buildPanelScript(sidebarPanel),
+    buildInputScript(scenes),
+  ].filter(Boolean).join('\n\n');
   if (storyScript) parts.push(`::StoryScript [script]\n${storyScript}\n`);
 
   // StoryCaption

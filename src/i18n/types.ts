@@ -41,6 +41,7 @@ export interface Translations {
     condition: string;
     variableSet: string;
     button: string;
+    link: string;
     inputField: string;
     image: string;
     video: string;
@@ -67,6 +68,7 @@ export interface Translations {
     condition:   { label: string; desc: string };
     variableSet: { label: string; desc: string };
     button:      { label: string; desc: string };
+    link:        { label: string; desc: string };
     inputField:  { label: string; desc: string };
     image:       { label: string; desc: string };
     video:       { label: string; desc: string };
@@ -263,6 +265,21 @@ export interface Translations {
     typeImageBound: string;
     typeImageBoundShort: string;
     typeRaw: string;
+    typeButton: string;
+    // ── Button cell fields ──
+    buttonLabelField: string;
+    buttonActionsTitle: string;
+    buttonAddAction: string;
+    buttonNoActions: string;
+    buttonDeleteAction: string;
+    buttonSelectVariable: string;
+    buttonTextPlaceholder: string;
+    buttonNavigateTitle: string;
+    buttonTargetNone: string;
+    buttonTargetScene: string;
+    buttonTargetBack: string;
+    buttonSceneLabel: string;
+    buttonNoScene: string;
   };
 
   // ─── Shared: rows/cells editor UI (Panel + Table) ──────────────────────────
@@ -381,6 +398,23 @@ export interface Translations {
     controls: string;
     autoplay: string;
     loop: string;
+  };
+
+  linkBlock: {
+    labelField: string;
+    labelPlaceholder: string;
+    targetLabel: string;
+    targetScene: string;
+    targetBack: string;
+    sceneLabel: string;
+    noScene: string;
+    actionsTitle: string;
+    addAction: string;
+    noActions: string;
+    deleteAction: string;
+    selectVariable: string;
+    textPlaceholder: string;
+    navigateTitle: string;
   };
 
   buttonBlock: {

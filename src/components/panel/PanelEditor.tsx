@@ -4,6 +4,7 @@ import { useT } from '../../i18n';
 import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
+  CellButton, ButtonAction, ButtonStyle, VarOperator,
   ImageBoundMapping,
   Variable, Asset,
 } from '../../types';
@@ -497,6 +498,7 @@ function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type'
     'image-static': t.cellModal.typeImageStatic,
     'image-bound':  t.cellModal.typeImageBoundShort,
     raw:            t.cellModal.typeRaw,
+    button:         t.cellModal.typeButton,
   };
   return m[type];
 }
@@ -545,10 +547,38 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       {c.code || <em className="text-slate-600 not-italic">{t.rowsEditor.cellCodePlaceholder}</em>}
     </span>
   );
+  if (c.type === 'button') return (
+    <div className="flex-1 flex items-center justify-center p-1">
+      <span
+        style={{
+          background: c.style.bgColor,
+          color: c.style.textColor,
+          border: `1px solid ${c.style.borderColor}`,
+          borderRadius: `${c.style.borderRadius}px`,
+          padding: `${Math.min(c.style.paddingV, 4)}px ${Math.min(c.style.paddingH, 8)}px`,
+          fontSize: '0.7em',
+          fontWeight: c.style.bold ? 'bold' : 'normal',
+          userSelect: 'none',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          maxWidth: '100%',
+        }}
+      >
+        {c.label || '…'}
+      </span>
+    </div>
+  );
   return null;
 }
 
 // ─── Cell edit modal ──────────────────────────────────────────────────────────
+
+const DEFAULT_BUTTON_STYLE: ButtonStyle = {
+  bgColor: '#3b82f6', textColor: '#ffffff', borderColor: '#2563eb',
+  borderRadius: 4, paddingV: 4, paddingH: 10,
+  fontSize: 9, bold: false, fullWidth: false,
+};
 
 function makeDefaultContent(type: CellContent['type']): CellContent {
   switch (type) {
@@ -558,6 +588,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'image-static': return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
     case 'image-bound':  return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
     case 'raw':          return { type: 'raw', code: '' } as CellRaw;
+    case 'button':       return { type: 'button', label: '', style: { ...DEFAULT_BUTTON_STYLE }, actions: [] } as CellButton;
   }
 }
 
@@ -580,6 +611,7 @@ function CellEditModal({
     { value: 'image-static', label: t.cellModal.typeImageStatic },
     { value: 'image-bound',  label: t.cellModal.typeImageBound },
     { value: 'raw',          label: t.cellModal.typeRaw },
+    { value: 'button',       label: t.cellModal.typeButton },
   ];
 
   const handleTypeChange = (type: CellContent['type']) => {
@@ -785,6 +817,10 @@ function CellEditModal({
           </div>
         )}
 
+        {c.type === 'button' && (
+          <CellButtonEditor c={c} vars={vars} onUpdateContent={onUpdateContent} />
+        )}
+
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"
           onClick={onClose}>{t.cellModal.done}</button>
       </div>
@@ -904,5 +940,191 @@ function AssetImagePicker({
       <input className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
         placeholder="assets/img.png" value={value} onChange={e => onChange(e.target.value)} />
     </div>
+  );
+}
+
+// ─── Cell button editor ────────────────────────────────────────────────────────
+
+const CELL_BTN_OPERATORS: { value: VarOperator; label: string }[] = [
+  { value: '=',  label: '=' },
+  { value: '+=', label: '+=' },
+  { value: '-=', label: '-=' },
+  { value: '*=', label: '*=' },
+  { value: '/=', label: '/=' },
+];
+
+function CellButtonEditor({
+  c, vars, onUpdateContent,
+}: {
+  c: CellButton;
+  vars: Variable[];
+  onUpdateContent: (content: CellContent) => void;
+}) {
+  const t = useT();
+  const { project } = useProjectStore();
+  const scenes = project.scenes;
+
+  const patchStyle = (patch: Partial<ButtonStyle>) =>
+    onUpdateContent({ ...c, style: { ...c.style, ...patch } });
+
+  const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
+    onUpdateContent({
+      ...c,
+      actions: c.actions.map(a => a.id === actionId ? { ...a, ...patch } : a),
+    });
+
+  const addAction = () =>
+    onUpdateContent({
+      ...c,
+      actions: [...c.actions, { id: crypto.randomUUID(), variableId: '', operator: '=' as VarOperator, value: '' }],
+    });
+
+  const removeAction = (id: string) =>
+    onUpdateContent({ ...c, actions: c.actions.filter(a => a.id !== id) });
+
+  // Current navigate type for the select: 'none' | 'scene' | 'back'
+  const navType = c.navigate?.type ?? 'none';
+
+  const handleNavTypeChange = (type: string) => {
+    if (type === 'none') {
+      onUpdateContent({ ...c, navigate: undefined });
+    } else if (type === 'back') {
+      onUpdateContent({ ...c, navigate: { type: 'back' } });
+    } else {
+      onUpdateContent({ ...c, navigate: { type: 'scene', sceneId: '' } });
+    }
+  };
+
+  return (
+    <>
+      {/* Label */}
+      <MField label={t.cellModal.buttonLabelField}>
+        <input
+          className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+          value={c.label}
+          onChange={e => onUpdateContent({ ...c, label: e.target.value })}
+        />
+      </MField>
+
+      {/* Style inline section */}
+      <div className="flex flex-col gap-2 border border-slate-700 rounded p-2">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.buttonBlock.styleTitle}</span>
+
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* bg */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-slate-500">{t.buttonBlock.bgLabel}</span>
+            <input type="color" value={c.style.bgColor} onChange={e => patchStyle({ bgColor: e.target.value })}
+              className="w-7 h-7 rounded cursor-pointer border border-slate-600 bg-transparent p-0.5" />
+            <input type="text" value={c.style.bgColor} onChange={e => patchStyle({ bgColor: e.target.value })}
+              className="w-20 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none font-mono" />
+          </div>
+          {/* text color */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-slate-500">{t.buttonBlock.textColorLabel}</span>
+            <input type="color" value={c.style.textColor} onChange={e => patchStyle({ textColor: e.target.value })}
+              className="w-7 h-7 rounded cursor-pointer border border-slate-600 bg-transparent p-0.5" />
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* radius */}
+          <div className="flex items-center gap-1">
+            <span className="text-xs text-slate-500">{t.buttonBlock.radiusLabel}</span>
+            <input type="number" min={0} max={50} value={c.style.borderRadius}
+              onChange={e => patchStyle({ borderRadius: Number(e.target.value) })}
+              className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none text-right" />
+            <span className="text-xs text-slate-500">px</span>
+          </div>
+          {/* bold */}
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" checked={c.style.bold} onChange={e => patchStyle({ bold: e.target.checked })}
+              className="accent-indigo-500" />
+            <span className="text-xs text-slate-300">{t.buttonBlock.bold}</span>
+          </label>
+          {/* full width */}
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input type="checkbox" checked={c.style.fullWidth} onChange={e => patchStyle({ fullWidth: e.target.checked })}
+              className="accent-indigo-500" />
+            <span className="text-xs text-slate-300">{t.buttonBlock.fullWidth}</span>
+          </label>
+        </div>
+      </div>
+
+      {/* Navigation */}
+      <div className="flex flex-col gap-2 border border-slate-700 rounded p-2">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.cellModal.buttonNavigateTitle}</span>
+        <select
+          className="w-full bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+          value={navType}
+          onChange={e => handleNavTypeChange(e.target.value)}
+        >
+          <option value="none">{t.cellModal.buttonTargetNone}</option>
+          <option value="scene">{t.cellModal.buttonTargetScene}</option>
+          <option value="back">{t.cellModal.buttonTargetBack}</option>
+        </select>
+
+        {navType === 'scene' && (
+          <MField label={t.cellModal.buttonSceneLabel}>
+            <select
+              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+              value={(c.navigate as { type: 'scene'; sceneId: string } | undefined)?.sceneId ?? ''}
+              onChange={e => onUpdateContent({ ...c, navigate: { type: 'scene', sceneId: e.target.value } })}
+            >
+              <option value="">{t.cellModal.buttonNoScene}</option>
+              {scenes.map(s => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+          </MField>
+        )}
+      </div>
+
+      {/* Variable actions */}
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.cellModal.buttonActionsTitle}</span>
+          <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer" onClick={addAction}>
+            {t.cellModal.buttonAddAction}
+          </button>
+        </div>
+
+        {c.actions.length === 0 && (
+          <div className="text-xs text-slate-500 italic px-1">{t.cellModal.buttonNoActions}</div>
+        )}
+
+        {c.actions.map(a => {
+          const selVar = vars.find(v => v.id === a.variableId);
+          return (
+            <div key={a.id} className="flex items-center gap-1.5 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
+              <select
+                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+                value={a.variableId}
+                onChange={e => patchAction(a.id, { variableId: e.target.value })}
+              >
+                <option value="">{t.cellModal.buttonSelectVariable}</option>
+                {vars.map(v => <option key={v.id} value={v.id}>${v.name}</option>)}
+              </select>
+              <select
+                className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none cursor-pointer font-mono"
+                value={a.operator}
+                onChange={e => patchAction(a.id, { operator: e.target.value as VarOperator })}
+              >
+                {CELL_BTN_OPERATORS.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
+              </select>
+              <input
+                className="w-20 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none font-mono"
+                placeholder={selVar?.varType === 'string' ? t.cellModal.buttonTextPlaceholder : '1'}
+                value={a.value}
+                onChange={e => patchAction(a.id, { value: e.target.value })}
+              />
+              <button className="text-slate-600 hover:text-red-400 text-sm cursor-pointer shrink-0"
+                title={t.cellModal.buttonDeleteAction}
+                onClick={() => removeAction(a.id)}>✕</button>
+            </div>
+          );
+        })}
+      </div>
+    </>
   );
 }

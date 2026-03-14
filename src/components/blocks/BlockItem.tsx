@@ -12,6 +12,7 @@ import { VariableSetBlockEditor } from './VariableSetBlockEditor';
 import { ImageBlockEditor } from './ImageBlockEditor';
 import { VideoBlockEditor } from './VideoBlockEditor';
 import { ButtonBlockEditor } from './ButtonBlockEditor';
+import { LinkBlockEditor } from './LinkBlockEditor';
 import { InputFieldBlockEditor } from './InputFieldBlockEditor';
 import { RawBlockEditor } from './RawBlockEditor';
 import { NoteBlockEditor } from './NoteBlockEditor';
@@ -26,6 +27,7 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'condition':    'bg-amber-900/40',
   'variable-set': 'bg-purple-900/40',
   'button':       'bg-blue-900/40',
+  'link':         'bg-emerald-900/40',
   'input-field':  'bg-teal-900/40',
   'image':        'bg-pink-900/40',
   'video':        'bg-red-900/40',
@@ -111,6 +113,7 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'image'        && <ImageBlockEditor       block={block} sceneId={sceneId} />}
         {block.type === 'video'        && <VideoBlockEditor       block={block} sceneId={sceneId} />}
         {block.type === 'button'       && <ButtonBlockEditor      block={block} sceneId={sceneId} />}
+        {block.type === 'link'         && <LinkBlockEditor        block={block} sceneId={sceneId} />}
         {block.type === 'input-field'  && <InputFieldBlockEditor  block={block} sceneId={sceneId} />}
         {block.type === 'raw'          && <RawBlockEditor         block={block} sceneId={sceneId} />}
         {block.type === 'note'         && <NoteBlockEditor        block={block} sceneId={sceneId} />}

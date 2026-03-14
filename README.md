@@ -60,7 +60,8 @@ npm run dist
 
 ```bash
 npm version patch   # 1.0.0 → 1.0.1  (or minor / major)
-git push && git push --tags
+git push
+git push --tags
 ```
 
 GitHub Actions will automatically build the installer and create a Release with artifacts.
