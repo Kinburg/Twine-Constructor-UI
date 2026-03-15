@@ -144,6 +144,8 @@ const en: Translations = {
     errorReadFile:          (e) => `File read error: ${e}`,
     errorExportHtml:        (e) => `HTML export error: ${e}`,
     dialogSaveHtml:         'Save HTML file',
+    errorExportTwee:        (e) => `Twee export error: ${e}`,
+    dialogSaveTwee:         'Save .twee file',
     menuTitle:              'Project & Settings',
   },
 

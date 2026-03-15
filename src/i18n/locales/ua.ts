@@ -144,6 +144,8 @@ const ua: Translations = {
     errorReadFile:          (e) => `Помилка читання файлу: ${e}`,
     errorExportHtml:        (e) => `Помилка експорту HTML: ${e}`,
     dialogSaveHtml:         'Зберегти HTML файл',
+    errorExportTwee:        (e) => `Помилка експорту .twee: ${e}`,
+    dialogSaveTwee:         'Зберегти .twee файл',
     menuTitle:              'Проєкт та налаштування',
   },
 

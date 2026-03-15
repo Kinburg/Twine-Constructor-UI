@@ -3,6 +3,7 @@ import { useProjectStore } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
 import { generateStandaloneHtml } from '../../utils/exportToHtml';
+import { exportToTwee } from '../../utils/exportToTwee';
 import {
   hasSCTemplate, getSCTemplate, getSCVersion,
   parseSCFormatJs, storeSCTemplate, clearSCTemplate,
@@ -236,6 +237,27 @@ export function Header() {
     }
   };
 
+  const handleExportTwee = async () => {
+    setExportMenuOpen(false);
+    const defaultName = `${safeName(project.title)}.twee`;
+    const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
+    const filePath = await fsApi.saveFileDialog({
+      title: t.header.dialogSaveTwee,
+      defaultPath,
+      filters: [{ name: 'Twee File', extensions: ['twee'] }],
+    });
+    if (!filePath) return;
+    setBusy(true);
+    try {
+      const twee = exportToTwee(project);
+      await fsApi.writeFile(filePath, twee);
+    } catch (e) {
+      alert(t.header.errorExportTwee(String(e)));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const locales = getLocales();
@@ -411,6 +433,16 @@ export function Header() {
                 >
                   <div className="font-medium">{t.header.exportSaveAs}</div>
                   <div className="text-xs text-slate-400 mt-0.5">{t.header.exportSaveAsDesc}</div>
+                </button>
+                <div className="border-t border-slate-700" />
+                <button
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
+                  onClick={handleExportTwee}
+                  title={t.header.exportTweeTitle}
+                  disabled={busy}
+                >
+                  <div className="font-medium">{t.header.exportTwee}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{t.header.exportTweeTitle}</div>
                 </button>
                 <div className="border-t border-slate-700" />
                 <button

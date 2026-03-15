@@ -1148,6 +1148,37 @@ function buildCharacterCSS(characters: Character[]): string {
   return `${base}\n\n${perChar}`;
 }
 
+// ─── Twine graph hint helpers ─────────────────────────────────────────────────
+
+/**
+ * Recursively collect all target scene names reachable from a block list.
+ * Used to emit <<if false>>[[Target]]<</if>> hints so the Twine editor can
+ * draw passage connections in its graph view (it scans for [[...]] by regex,
+ * while SugarCube never executes the content under `<<if false>>`).
+ */
+function collectSceneTargets(blocks: Block[]): string[] {
+  const targets: string[] = [];
+  for (const b of blocks) {
+    if (b.type === 'choice') {
+      for (const opt of b.options) {
+        if (opt.targetSceneId) targets.push(opt.targetSceneId);
+      }
+    } else if (b.type === 'link') {
+      if (b.target === 'scene' && b.targetSceneId) targets.push(b.targetSceneId);
+    } else if (b.type === 'function') {
+      if (b.targetSceneId) targets.push(b.targetSceneId);
+    } else if (b.type === 'condition') {
+      for (const branch of b.branches) {
+        targets.push(...collectSceneTargets(branch.blocks));
+      }
+    } else if (b.type === 'dialogue' && b.innerBlocks?.length) {
+      targets.push(...collectSceneTargets(b.innerBlocks));
+    }
+  }
+  // deduplicate
+  return [...new Set(targets)];
+}
+
 // ─── Main export ─────────────────────────────────────────────────────────────
 
 export function exportToTwee(project: Project): string {
@@ -1178,7 +1209,10 @@ export function exportToTwee(project: Project): string {
   });
   if (sidebarPanel.tabs.length > 0) inits.push('<<set $__tgTab to 0>>');
   if (inits.length > 0) {
-    parts.push(`::StoryInit [script]\n${inits.join('\n')}\n`);
+    // NOTE: StoryInit must NOT have [script] tag — its content is SugarCube
+    // markup (<<set>>), not raw JavaScript. The [script] tag would cause Twine
+    // to interpret the macros as JS and throw "Unexpected token '<<'".
+    parts.push(`::StoryInit\n${inits.join('\n')}\n`);
   }
 
   // StoryStylesheet
@@ -1208,7 +1242,16 @@ export function exportToTwee(project: Project): string {
       .map(b => blockToSC(b, characters, variables))
       .filter(Boolean)
       .join('\n');
-    parts.push(`::${scene.name}${tags}\n${body || '(empty scene)'}\n`);
+
+    // Graph hint: <<if false>>[[Target1]][[Target2]]<</if>>
+    // Twine's editor finds [[...]] by regex to draw connections.
+    // SugarCube never executes content inside a false <<if>> condition.
+    const navTargets = collectSceneTargets(scene.blocks);
+    const graphHint = navTargets.length > 0
+      ? `\n<<if false>>${navTargets.map(t => `[[${t}]]`).join('')}<</if>>`
+      : '';
+
+    parts.push(`::${scene.name}${tags}\n${body || '(empty scene)'}${graphHint}\n`);
   }
 
   return parts.join('\n\n') + '\n';
