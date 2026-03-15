@@ -21,6 +21,7 @@ import { DividerBlockEditor } from './DividerBlockEditor';
 import { IncludeBlockEditor } from './IncludeBlockEditor';
 import { CheckboxBlockEditor } from './CheckboxBlockEditor';
 import { RadioBlockEditor } from './RadioBlockEditor';
+import { FunctionBlockEditor } from './FunctionBlockEditor';
 
 const BLOCK_COLORS: Record<Block['type'], string> = {
   'text':         'bg-slate-700',
@@ -40,6 +41,7 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'divider':      'bg-slate-700/40',
   'checkbox':     'bg-violet-900/40',
   'radio':        'bg-fuchsia-900/40',
+  'function':     'bg-purple-900/40',
 };
 
 interface Props {
@@ -126,6 +128,7 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'divider'      && <DividerBlockEditor     block={block} sceneId={sceneId} />}
         {block.type === 'checkbox'     && <CheckboxBlockEditor    block={block} sceneId={sceneId} />}
         {block.type === 'radio'        && <RadioBlockEditor       block={block} sceneId={sceneId} />}
+        {block.type === 'function'     && <FunctionBlockEditor    block={block} sceneId={sceneId} />}
       </div>
     </div>
   );

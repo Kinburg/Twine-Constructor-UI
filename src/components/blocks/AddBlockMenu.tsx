@@ -21,6 +21,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'divider':      '─',
   'checkbox':     '☑',
   'radio':        '🔵',
+  'function':     'ƒ',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -59,6 +60,15 @@ export function makeBlock(type: BlockType): Block {
     case 'divider':      return { id, type };
     case 'checkbox':     return { id, type, mode: 'flags' as const, options: [] };
     case 'radio':        return { id, type, variableId: '', options: [] };
+    case 'function':     return {
+      id, type, label: '', targetSceneId: '',
+      style: {
+        bgColor: '#7c3aed', textColor: '#ffffff', borderColor: '#6d28d9',
+        borderRadius: 4, paddingV: 6, paddingH: 14,
+        fontSize: 10, bold: false, fullWidth: false,
+      },
+      actions: [],
+    };
   }
 }
 
@@ -94,6 +104,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     { type: 'divider',      icon: BLOCK_ICONS['divider'],      label: t.addBlock.divider.label,     desc: t.addBlock.divider.desc },
     { type: 'checkbox',     icon: BLOCK_ICONS['checkbox'],     label: t.addBlock.checkbox.label,    desc: t.addBlock.checkbox.desc },
     { type: 'radio',        icon: BLOCK_ICONS['radio'],        label: t.addBlock.radio.label,       desc: t.addBlock.radio.desc },
+    { type: 'function',     icon: BLOCK_ICONS['function'],     label: t.addBlock.function.label,    desc: t.addBlock.function.desc },
   ];
 
   const add = (type: BlockType) => {

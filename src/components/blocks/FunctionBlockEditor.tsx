@@ -1,6 +1,5 @@
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
-import type { LinkBlock, ButtonAction, ButtonStyle, VarOperator, LinkTarget } from '../../types';
-import { SYSTEM_TAGS } from '../../types';
+import type { FunctionBlock, ButtonAction, ButtonStyle, VarOperator } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
@@ -13,7 +12,7 @@ const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '/=', label: '/=' },
 ];
 
-// ─── Shared style sub-components (mirrors ButtonBlockEditor) ──────────────────
+// ─── Shared style sub-components (mirrors LinkBlockEditor) ────────────────────
 
 function StyleField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -186,7 +185,7 @@ function ActionRow({
             });
           }}
         >
-          <option value="">{t.linkBlock.selectVariable}</option>
+          <option value="">{t.functionBlock.selectVariable}</option>
           {variables.map(v => (
             <option key={v.id} value={v.id}>${v.name}</option>
           ))}
@@ -205,7 +204,7 @@ function ActionRow({
         {action.operator !== 'clear' && (
           <input
             className="w-20 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none font-mono"
-            placeholder={selVar?.varType === 'string' || isArray ? t.linkBlock.textPlaceholder : selVar?.varType === 'boolean' ? 'true' : '1'}
+            placeholder={selVar?.varType === 'string' || isArray ? t.functionBlock.textPlaceholder : selVar?.varType === 'boolean' ? 'true' : '1'}
             value={action.value}
             onFocus={onFocusValue}
             onChange={e => onChange({ value: e.target.value })}
@@ -214,7 +213,7 @@ function ActionRow({
 
         <button
           className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
-          title={t.linkBlock.deleteAction}
+          title={t.functionBlock.deleteAction}
           onClick={onDelete}
         >
           ✕
@@ -244,17 +243,21 @@ function ActionRow({
 
 // ─── Main editor ──────────────────────────────────────────────────────────────
 
-export function LinkBlockEditor({
+export function FunctionBlockEditor({
   block,
   sceneId,
 }: {
-  block: LinkBlock;
+  block: FunctionBlock;
   sceneId: string;
 }) {
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
   const variables = flattenVariables(project.variableNodes);
-  const scenes = project.scenes.filter(s => s.id !== sceneId && !s.tags.some(tag => (SYSTEM_TAGS as readonly string[]).includes(tag)));
+
+  // Only func-tagged scenes (exclude current scene)
+  const funcScenes = project.scenes.filter(
+    s => s.id !== sceneId && s.tags.includes('func'),
+  );
 
   const patchStyle = (patch: Partial<ButtonStyle>) =>
     updateBlock(sceneId, block.id, { style: { ...block.style, ...patch } });
@@ -281,56 +284,36 @@ export function LinkBlockEditor({
     <div className="flex flex-col gap-3">
       {/* Label */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-24 shrink-0">{t.linkBlock.labelField}</label>
+        <label className="text-xs text-slate-400 w-24 shrink-0">{t.functionBlock.labelField}</label>
         <input
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none"
-          placeholder={t.linkBlock.labelPlaceholder}
+          placeholder={t.functionBlock.labelPlaceholder}
           value={block.label}
           onFocus={saveSnapshot}
           onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
         />
       </div>
 
-      {/* Navigation target */}
+      {/* Function scene */}
       <div className="flex flex-col gap-2 bg-slate-800/50 border border-slate-700 rounded p-3">
-        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.linkBlock.navigateTitle}</div>
-
-        {/* Target type */}
+        <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.functionBlock.functionTitle}</div>
         <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 w-24 shrink-0">{t.linkBlock.targetLabel}</label>
-          <div className="flex gap-1">
-            {(['scene', 'back'] as LinkTarget[]).map(tgt => (
-              <button
-                key={tgt}
-                onClick={() => updateBlock(sceneId, block.id, { target: tgt })}
-                className={`text-xs px-3 py-1 rounded border cursor-pointer transition-colors ${
-                  block.target === tgt
-                    ? 'bg-indigo-600 border-indigo-500 text-white'
-                    : 'bg-slate-800 border-slate-600 text-slate-400 hover:border-slate-500'
-                }`}
-              >
-                {tgt === 'scene' ? t.linkBlock.targetScene : t.linkBlock.targetBack}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Scene selector — only when target is 'scene' */}
-        {block.target === 'scene' && (
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-24 shrink-0">{t.linkBlock.sceneLabel}</label>
+          <label className="text-xs text-slate-400 w-24 shrink-0">{t.functionBlock.sceneLabel}</label>
+          {funcScenes.length === 0 ? (
+            <span className="text-xs text-slate-500 italic">{t.functionBlock.noFuncScenes}</span>
+          ) : (
             <select
               className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
-              value={block.targetSceneId ?? ''}
+              value={block.targetSceneId}
               onChange={e => updateBlock(sceneId, block.id, { targetSceneId: e.target.value })}
             >
-              <option value="">{t.linkBlock.noScene}</option>
-              {scenes.map(s => (
+              <option value="">— select —</option>
+              {funcScenes.map(s => (
                 <option key={s.id} value={s.name}>{s.name}</option>
               ))}
             </select>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Style */}
@@ -340,19 +323,19 @@ export function LinkBlockEditor({
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            {t.linkBlock.actionsTitle}
+            {t.functionBlock.actionsTitle}
           </span>
           <button
             className="text-xs text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer"
             onClick={addAction}
           >
-            {t.linkBlock.addAction}
+            {t.functionBlock.addAction}
           </button>
         </div>
 
         {block.actions.length === 0 && (
           <div className="text-xs text-slate-500 italic px-1">
-            {t.linkBlock.noActions}
+            {t.functionBlock.noActions}
           </div>
         )}
 

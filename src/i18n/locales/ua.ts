@@ -48,6 +48,7 @@ const ua: Translations = {
     divider:          'Розділювач',
     checkbox:         'Прапорці',
     radio:            'Перемикачі',
+    function:         'Функція',
     drag:             'Перетягнути для сортування',
     copy:             'Копіювати блок у буфер',
     duplicate:        'Дублювати блок',
@@ -76,6 +77,7 @@ const ua: Translations = {
     divider:     { label: 'Розділювач',  desc: 'Горизонтальна лінія' },
     checkbox:    { label: 'Прапорці',    desc: 'Множинний вибір' },
     radio:       { label: 'Перемикачі', desc: 'Одиночний вибір' },
+    function:    { label: 'Функція',    desc: 'Виклик функціональної сцени' },
   },
 
   condition: {
@@ -560,6 +562,27 @@ const ua: Translations = {
     deleteOption:           'Видалити пункт',
     optionLabelPlaceholder: 'Підпис перемикача',
     optionValuePlaceholder: 'значення',
+  },
+
+  functionBlock: {
+    labelField:      'Підпис:',
+    labelPlaceholder: 'Текст кнопки',
+    functionTitle:   'Функціональна сцена',
+    sceneLabel:      'Сцена:',
+    noFuncScenes:    'Немає сцен з тегом "func"',
+    actionsTitle:    'Змінні',
+    addAction:       '+ Дія',
+    noActions:       'Немає дій',
+    deleteAction:    'Видалити дію',
+    selectVariable:  '— змінна —',
+    textPlaceholder: 'текст',
+  },
+
+  sceneSettings: {
+    title:            'Налаштування сцени',
+    tagsLabel:        'Теги',
+    addTagPlaceholder: 'новий тег...',
+    done:             'Готово',
   },
 };
 

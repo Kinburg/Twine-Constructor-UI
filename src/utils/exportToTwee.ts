@@ -1,7 +1,7 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
-  Scene, ButtonBlock, LinkBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
+  Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
   ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
@@ -183,9 +183,26 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
         .filter(Boolean)
         .join('');
 
-      // Use inline style for text-align so SugarCube's stylesheet can't override it
-      const nameStyle = block.align === 'right' ? ' style="text-align:right"' : '';
-      const body = `<div class="char-body"><span class="char-name"${nameStyle}>${charNameDisplay}</span><span class="char-text">${block.text}</span>${innerBlocksHtml}</div>`;
+      // ── Color variables: use runtime $vars so color changes reflect immediately ─
+      // Inline @style overrides static CSS and is re-evaluated on every render.
+      const bgColorVar     = char?.varIds?.bgColorVarId
+        ? vars.find(v => v.id === char!.varIds!.bgColorVarId)    : null;
+      const borderColorVar = char?.varIds?.borderColorVarId
+        ? vars.find(v => v.id === char!.varIds!.borderColorVarId) : null;
+      const nameColorVar   = char?.varIds?.nameColorVarId
+        ? vars.find(v => v.id === char!.varIds!.nameColorVarId)   : null;
+      // Fallback to static value (quoted string literal) when variable not found
+      const bgExpr     = bgColorVar     ? `$${bgColorVar.name}`     : `'${char?.bgColor    ?? '#23262e'}'`;
+      const borderExpr = borderColorVar ? `$${borderColorVar.name}` : `'${char?.borderColor ?? '#4a90d9'}'`;
+      const nameExpr   = nameColorVar   ? `$${nameColorVar.name}`   : `'${char?.nameColor   ?? '#e0e0e0'}'`;
+      // Border side switches with alignment; explicitly reset the opposite side
+      const borderDir     = block.align === 'right' ? 'right' : 'left';
+      const borderAntiDir = block.align === 'right' ? 'left'  : 'right';
+      const bodyStyleExpr = `'background:'+${bgExpr}+';border-${borderDir}:4px solid '+${borderExpr}+';border-${borderAntiDir}:none'`;
+      const nameStyleExpr = block.align === 'right'
+        ? `'text-align:right;color:'+${nameExpr}`
+        : `'color:'+${nameExpr}`;
+      const body = `<div class="char-body" @style="${bodyStyleExpr}"><span class="char-name" @style="${nameStyleExpr}">${charNameDisplay}</span><span class="char-text">${block.text}</span>${innerBlocksHtml}</div>`;
       // Avatar always comes first in DOM for BOTH alignments.
       // CSS `.dlg-right { flex-direction: row-reverse }` flips the visual order for right-aligned dialogues,
       // placing the avatar on the right side without changing the DOM order.
@@ -435,6 +452,21 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
       );
     }
 
+    case 'function': {
+      const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
+      const actionLines = block.actions
+        .map(a => actionToSC(a, vars, `${indent}  `))
+        .filter(Boolean);
+      const sceneName = block.targetSceneId || '???';
+      actionLines.push(`${indent}  <<include "${sceneName}">>`);
+      actionLines.push(`${indent}  <<run UIBar.update()>>`);
+      return (
+        `${indent}<span class="tg-btn ${cls}"><<link "${block.label}">>\n` +
+        actionLines.join('\n') + '\n' +
+        `${indent}<</link>></span>`
+      );
+    }
+
     case 'checkbox': {
       const cb = block as CheckboxBlock;
       if (cb.options.length === 0) return '';
@@ -523,7 +555,7 @@ function branchToSC(
       case 'empty':     expr = `${varName}.length === 0`; break;
       case '!empty':    expr = `${varName}.length > 0`; break;
       default: {
-        let val = branch.value;
+        const val = branch.value;
         expr = `${varName} ${branch.operator} ${val}`;
       }
     }
@@ -950,6 +982,43 @@ export function buildPanelScript(panel: SidebarPanel): string {
 
 // ─── Input-field script (sidebar auto-refresh) ───────────────────────────────
 
+// ─── Live-block helpers ───────────────────────────────────────────────────────
+
+function hasLiveBlocks(blocks: Block[]): boolean {
+  return blocks.some(b => {
+    if ('live' in b && (b as { live?: boolean }).live) return true;
+    if (b.type === 'condition') return b.branches.some(br => hasLiveBlocks(br.blocks));
+    if (b.type === 'dialogue' && b.innerBlocks) return hasLiveBlocks(b.innerBlocks);
+    return false;
+  });
+}
+
+/**
+ * Generates a :passagedisplay/:passagehide pair that polls .tg-live[data-wiki]
+ * spans every 200ms and re-wikifies them so live blocks stay in sync with
+ * variable changes from buttons, function scenes, etc.
+ * Only included when the project has at least one block with live: true.
+ */
+export function buildLiveScript(scenes: Scene[]): string {
+  if (!scenes.some(s => hasLiveBlocks(s.blocks))) return '';
+  return [
+    '/* TG: periodic re-render of live blocks every 200ms */',
+    '$(document).on(":passagedisplay", function() {',
+    '  clearInterval(window._tgLiveTimer);',
+    '  if ($(".tg-live[data-wiki]").length) {',
+    '    window._tgLiveTimer = setInterval(function() {',
+    '      $(".tg-live[data-wiki]").each(function() {',
+    '        $(this).empty().wiki($(this).attr("data-wiki"));',
+    '      });',
+    '    }, 200);',
+    '  }',
+    '});',
+    '$(document).on(":passagehide", function() {',
+    '  clearInterval(window._tgLiveTimer);',
+    '});',
+  ].join('\n');
+}
+
 /**
  * Generates a debounced jQuery listener that calls UIBar.update() whenever
  * any <<textbox>> or <<numberbox>> in the passage changes.
@@ -1000,10 +1069,10 @@ export function buildAnimationCSS(_scenes: Scene[]): string {
 
 // ─── Button CSS ───────────────────────────────────────────────────────────────
 
-function collectButtons(blocks: Block[]): (ButtonBlock | LinkBlock)[] {
-  const result: (ButtonBlock | LinkBlock)[] = [];
+function collectButtons(blocks: Block[]): (ButtonBlock | LinkBlock | FunctionBlock)[] {
+  const result: (ButtonBlock | LinkBlock | FunctionBlock)[] = [];
   for (const b of blocks) {
-    if (b.type === 'button' || b.type === 'link') result.push(b);
+    if (b.type === 'button' || b.type === 'link' || b.type === 'function') result.push(b);
     if (b.type === 'condition') {
       for (const br of b.branches) result.push(...collectButtons(br.blocks));
     }
@@ -1119,6 +1188,7 @@ export function exportToTwee(project: Project): string {
   const storyScript = [
     buildPanelScript(sidebarPanel),
     buildInputScript(scenes),
+    buildLiveScript(scenes),
   ].filter(Boolean).join('\n\n');
   if (storyScript) parts.push(`::StoryScript [script]\n${storyScript}\n`);
 

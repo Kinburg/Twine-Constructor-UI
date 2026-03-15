@@ -1,4 +1,5 @@
 import type { Project, Block } from '../types';
+import { SYSTEM_TAGS } from '../types';
 
 // ─── Shared types (used by both main app and graph window) ───────────────────
 
@@ -12,6 +13,7 @@ export interface GraphEdge {
 export interface GraphScene {
   id:            string;
   name:          string;
+  tags:          string[];
   graphPosition?: { x: number; y: number };
   isStart:       boolean;
 }
@@ -67,13 +69,20 @@ export function buildGraphData(project: Project, activeSceneId: string | null): 
   const scenes: GraphScene[] = project.scenes.map((s, i) => ({
     id:            s.id,
     name:          s.name,
+    tags:          s.tags,
     graphPosition: s.graphPosition,
     isStart:       i === 0,
   }));
 
+  // System-tagged scenes are isolated — no navigation arrows to/from them
+  const isSystemTagged = (sceneId: string) => {
+    const s = scenes.find(sc => sc.id === sceneId);
+    return s?.tags.some(t => (SYSTEM_TAGS as readonly string[]).includes(t)) ?? false;
+  };
+
   const edges: GraphEdge[] = project.scenes
     .flatMap(s => collectEdges(s.id, s.blocks, nameToId))
-    .filter(e => sceneSet.has(e.targetId));
+    .filter(e => sceneSet.has(e.targetId) && !isSystemTagged(e.sourceId) && !isSystemTagged(e.targetId));
 
   return { scenes, edges, activeSceneId };
 }

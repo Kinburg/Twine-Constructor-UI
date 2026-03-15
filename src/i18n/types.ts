@@ -52,6 +52,7 @@ export interface Translations {
     divider: string;
     checkbox: string;
     radio: string;
+    function: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -81,6 +82,7 @@ export interface Translations {
     divider:     { label: string; desc: string };
     checkbox:    { label: string; desc: string };
     radio:       { label: string; desc: string };
+    function:    { label: string; desc: string };
   };
 
   includeBlock: {
@@ -577,5 +579,28 @@ export interface Translations {
     deleteOption: string;
     optionLabelPlaceholder: string;
     optionValuePlaceholder: string;
+  };
+
+  // ─── Function block ───────────────────────────────────────────────────────────
+  functionBlock: {
+    labelField: string;
+    labelPlaceholder: string;
+    functionTitle: string;
+    sceneLabel: string;
+    noFuncScenes: string;
+    actionsTitle: string;
+    addAction: string;
+    noActions: string;
+    deleteAction: string;
+    selectVariable: string;
+    textPlaceholder: string;
+  };
+
+  // ─── Scene settings modal ────────────────────────────────────────────────────
+  sceneSettings: {
+    title: string;
+    tagsLabel: string;
+    addTagPlaceholder: string;
+    done: string;
   };
 }

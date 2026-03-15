@@ -23,6 +23,8 @@ import {
 import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
 import type { GraphData, GraphScene, GraphEdge } from '../../utils/buildGraphData';
+import { SYSTEM_TAG_COLORS } from '../../types';
+import type { SystemTag } from '../../types';
 
 // ─── Layout constants ─────────────────────────────────────────────────────────
 
@@ -55,19 +57,35 @@ function runDagre(scenes: GraphScene[], edges: GraphEdge[]): Map<string, { x: nu
 // ─── Custom scene node ────────────────────────────────────────────────────────
 
 type SceneNodeData = {
-  label:    string;
-  isStart:  boolean;
-  isActive: boolean;
+  label:      string;
+  isStart:    boolean;
+  isActive:   boolean;
+  systemTag?: SystemTag;
+};
+
+const SYSTEM_ICONS: Record<SystemTag, string> = {
+  func:  'ƒ',
+  popup: '⬝',
 };
 
 const SceneNode = memo(({ data }: { data: SceneNodeData }) => {
+  const sysColor = data.systemTag ? SYSTEM_TAG_COLORS[data.systemTag] : null;
+
   const border = data.isActive
     ? '2px solid #cba6f7'
+    : sysColor
+    ? `2px solid ${sysColor}`
     : data.isStart
     ? '2px solid #a6e3a1'
     : '1px solid #585b70';
 
-  const bg = data.isActive ? '#3b3552' : '#313244';
+  const bg = data.isActive
+    ? '#3b3552'
+    : sysColor
+    ? `${sysColor}22`
+    : '#313244';
+
+  const labelColor = sysColor ?? '#cdd6f4';
 
   return (
     <>
@@ -79,10 +97,10 @@ const SceneNode = memo(({ data }: { data: SceneNodeData }) => {
           borderRadius: 8,
           padding:      '10px 14px',
           width:        NODE_W,
-          color:        '#cdd6f4',
+          color:        labelColor,
           fontSize:     13,
           fontFamily:   'system-ui, -apple-system, sans-serif',
-          fontWeight:   data.isStart || data.isActive ? 600 : 400,
+          fontWeight:   data.isStart || data.isActive || !!data.systemTag ? 600 : 400,
           overflow:     'hidden',
           textOverflow: 'ellipsis',
           whiteSpace:   'nowrap',
@@ -92,7 +110,12 @@ const SceneNode = memo(({ data }: { data: SceneNodeData }) => {
         }}
         title={data.label}
       >
-        {data.isStart && (
+        {data.systemTag && (
+          <span style={{ color: sysColor!, marginRight: 6, fontSize: 12 }}>
+            {SYSTEM_ICONS[data.systemTag]}
+          </span>
+        )}
+        {!data.systemTag && data.isStart && (
           <span style={{ color: '#a6e3a1', marginRight: 6, fontSize: 11 }}>▶</span>
         )}
         {data.label}
@@ -191,16 +214,20 @@ const edgeTypes = { scene: SceneEdge };
 
 function toFlowNodes(data: GraphData): Node[] {
   const dagrePos = runDagre(data.scenes, data.edges);
-  return data.scenes.map(s => ({
-    id:       s.id,
-    type:     'scene',
-    position: s.graphPosition ?? dagrePos.get(s.id) ?? { x: 0, y: 0 },
-    data: {
-      label:    s.name,
-      isStart:  s.isStart,
-      isActive: s.id === data.activeSceneId,
-    } satisfies SceneNodeData,
-  }));
+  return data.scenes.map(s => {
+    const systemTag = s.tags.find(t => t in SYSTEM_TAG_COLORS) as SystemTag | undefined;
+    return {
+      id:       s.id,
+      type:     'scene',
+      position: s.graphPosition ?? dagrePos.get(s.id) ?? { x: 0, y: 0 },
+      data: {
+        label:    s.name,
+        isStart:  s.isStart,
+        isActive: s.id === data.activeSceneId,
+        systemTag,
+      } satisfies SceneNodeData,
+    };
+  });
 }
 
 function toFlowEdges(data: GraphData): Edge[] {
@@ -307,10 +334,13 @@ export function SceneGraphView() {
           }}
         />
         <MiniMap
-          nodeColor={n =>
-            (n.data as SceneNodeData)?.isActive  ? '#cba6f7' :
-            (n.data as SceneNodeData)?.isStart   ? '#a6e3a1' : '#45475a'
-          }
+          nodeColor={n => {
+            const d = n.data as SceneNodeData;
+            if (d?.isActive)   return '#cba6f7';
+            if (d?.systemTag)  return SYSTEM_TAG_COLORS[d.systemTag];
+            if (d?.isStart)    return '#a6e3a1';
+            return '#45475a';
+          }}
           style={{
             background: '#181825',
             border: '1px solid #313244',

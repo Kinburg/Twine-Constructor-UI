@@ -359,6 +359,33 @@ export interface RadioBlock {
   delay?: BlockDelay;
 }
 
+// ─── System tags ──────────────────────────────────────────────────────────────
+
+/** Predefined tags with special editor behavior (filtered from navigation dropdowns, distinct visual in graph). */
+export const SYSTEM_TAGS = ['func', 'popup'] as const;
+export type SystemTag = typeof SYSTEM_TAGS[number];
+
+/** Accent colors for system tag chips and graph nodes. */
+export const SYSTEM_TAG_COLORS: Record<SystemTag, string> = {
+  func:  '#a855f7',  // violet
+  popup: '#3b82f6',  // blue
+};
+
+/**
+ * A styled button that executes a "function" scene (tagged func) on click,
+ * running its passage macros silently without navigating.
+ * Optionally mutates variables before executing the function.
+ */
+export interface FunctionBlock {
+  id: string;
+  type: 'function';
+  label: string;
+  targetSceneId: string;   // scene NAME — must be a func-tagged scene
+  actions: ButtonAction[];
+  style: ButtonStyle;
+  delay?: BlockDelay;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -376,7 +403,8 @@ export type Block =
   | IncludeBlock
   | DividerBlock
   | CheckboxBlock
-  | RadioBlock;
+  | RadioBlock
+  | FunctionBlock;
 
 export type BlockType = Block['type'];
 

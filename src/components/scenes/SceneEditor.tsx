@@ -17,14 +17,15 @@ import { useEditorStore } from '../../store/editorStore';
 import { useT, blockTypeLabel } from '../../i18n';
 import { BlockItem } from '../blocks/BlockItem';
 import { AddBlockMenu } from '../blocks/AddBlockMenu';
-import type { Block } from '../../types';
+import { SceneSettingsModal } from './SceneSettingsModal';
+import { SYSTEM_TAGS, SYSTEM_TAG_COLORS } from '../../types';
+import type { Block, SystemTag } from '../../types';
 
 export function SceneEditor() {
-  const { project, activeSceneId, reorderBlocks, updateSceneTags, pasteToScene } = useProjectStore();
+  const { project, activeSceneId, reorderBlocks, pasteToScene } = useProjectStore();
   const { clipboardBlock } = useEditorStore();
   const t = useT();
-  const [editTags, setEditTags] = useState(false);
-  const [tagsDraft, setTagsDraft] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const scene = project.scenes.find(s => s.id === activeSceneId);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -47,54 +48,48 @@ export function SceneEditor() {
     }
   };
 
-  const startEditTags = () => {
-    setTagsDraft(scene.tags.join(' '));
-    setEditTags(true);
-  };
-
-  const commitTags = () => {
-    const tags = tagsDraft.trim().split(/\s+/).filter(Boolean);
-    updateSceneTags(scene.id, tags);
-    setEditTags(false);
-  };
-
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+      {settingsOpen && (
+        <SceneSettingsModal scene={scene} onClose={() => setSettingsOpen(false)} />
+      )}
+
       {/* Scene header */}
       <div className="px-4 py-2 bg-slate-800/50 border-b border-slate-700 flex items-center gap-3 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">{t.scene.label}</span>
           <span className="text-sm font-semibold text-white">{scene.name}</span>
         </div>
-        <div className="flex items-center gap-1">
-          <span className="text-xs text-slate-400">{t.scene.tags}</span>
-          {editTags ? (
-            <input
-              autoFocus
-              className="bg-slate-700 text-white px-2 py-0.5 rounded text-xs border border-indigo-500 outline-none w-40"
-              value={tagsDraft}
-              onChange={e => setTagsDraft(e.target.value)}
-              onBlur={commitTags}
-              onKeyDown={e => { if (e.key === 'Enter') commitTags(); if (e.key === 'Escape') setEditTags(false); }}
-              placeholder={t.scene.tagsPlaceholder}
-            />
-          ) : (
-            <button
-              className="text-xs text-slate-400 hover:text-indigo-300 px-1 cursor-pointer"
-              onClick={startEditTags}
-              title={t.scene.editTagsTitle}
-            >
-              {scene.tags.length > 0
-                ? scene.tags.map(tag => (
-                    <span key={tag} className="inline-block bg-slate-700 text-slate-300 rounded px-1.5 py-0.5 mr-1 text-xs">
+        <div className="flex items-center gap-1.5 flex-1 min-w-0">
+          <span className="text-xs text-slate-400 shrink-0">{t.scene.tags}</span>
+          <div className="flex flex-wrap gap-1 min-w-0">
+            {scene.tags.length > 0
+              ? scene.tags.map(tag => {
+                  const isSystem = (SYSTEM_TAGS as readonly string[]).includes(tag);
+                  const color = isSystem ? SYSTEM_TAG_COLORS[tag as SystemTag] : undefined;
+                  return (
+                    <span
+                      key={tag}
+                      className="inline-block rounded px-1.5 py-0.5 text-xs"
+                      style={isSystem
+                        ? { background: color + '33', border: `1px solid ${color}`, color: color }
+                        : { background: 'rgb(51 65 85)', color: 'rgb(203 213 225)' }
+                      }
+                    >
                       {tag}
                     </span>
-                  ))
-                : <span className="text-slate-600 italic">{t.scene.noTags}</span>
-              }
-              <span className="ml-1 text-slate-500">✏️</span>
-            </button>
-          )}
+                  );
+                })
+              : <span className="text-slate-600 italic text-xs">{t.scene.noTags}</span>
+            }
+          </div>
+          <button
+            className="text-slate-500 hover:text-indigo-300 transition-colors cursor-pointer text-sm shrink-0 ml-1"
+            title={t.scene.editTagsTitle}
+            onClick={() => setSettingsOpen(true)}
+          >
+            ⚙
+          </button>
         </div>
       </div>
 

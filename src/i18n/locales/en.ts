@@ -48,6 +48,7 @@ const en: Translations = {
     divider:          'Divider',
     checkbox:         'Checkbox',
     radio:            'Radio',
+    function:         'Function',
     drag:             'Drag to reorder',
     copy:             'Copy block to clipboard',
     duplicate:        'Duplicate block',
@@ -76,6 +77,7 @@ const en: Translations = {
     divider:     { label: 'Divider',    desc: 'Horizontal rule' },
     checkbox:    { label: 'Checkbox',   desc: 'Multiple selection' },
     radio:       { label: 'Radio',      desc: 'Single selection' },
+    function:    { label: 'Function',   desc: 'Call a function scene' },
   },
 
   condition: {
@@ -560,6 +562,27 @@ const en: Translations = {
     deleteOption:           'Delete option',
     optionLabelPlaceholder: 'Radio label',
     optionValuePlaceholder: 'value',
+  },
+
+  functionBlock: {
+    labelField:     'Label:',
+    labelPlaceholder: 'Button text',
+    functionTitle:  'Function scene',
+    sceneLabel:     'Scene:',
+    noFuncScenes:   'No scenes tagged "func"',
+    actionsTitle:   'Variables',
+    addAction:      '+ Action',
+    noActions:      'No actions',
+    deleteAction:   'Delete action',
+    selectVariable: '— variable —',
+    textPlaceholder: 'text',
+  },
+
+  sceneSettings: {
+    title:            'Scene settings',
+    tagsLabel:        'Tags',
+    addTagPlaceholder: 'new tag...',
+    done:             'Done',
   },
 };
 

@@ -1,5 +1,6 @@
 import { useProjectStore } from '../../store/projectStore';
 import type { ChoiceBlock, ChoiceOption } from '../../types';
+import { SYSTEM_TAGS } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 
@@ -13,7 +14,7 @@ export function ChoiceBlockEditor({
   onUpdate?: (patch: Partial<ChoiceBlock>) => void;
 }) {
   const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption, saveSnapshot, updateBlock } = useProjectStore();
-  const { scenes } = project;
+  const scenes = project.scenes.filter(s => !s.tags.some(tag => (SYSTEM_TAGS as readonly string[]).includes(tag)));
   const t = useT();
 
   const handleAddOption = onUpdate

@@ -47,6 +47,7 @@ export function blockTypeLabel(t: Translations, type: Block['type']): string {
     'divider':      t.block.divider,
     'checkbox':     t.block.checkbox,
     'radio':        t.block.radio,
+    'function':     t.block.function,
   };
   return map[type] ?? type;
 }
