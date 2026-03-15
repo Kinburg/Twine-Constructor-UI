@@ -423,7 +423,11 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
       const actionLines = block.actions
         .map(a => actionToSC(a, vars, `${indent}  `))
         .filter(Boolean);
-      if (block.refreshScene) actionLines.push(`${indent}  <<run Engine.show()>>`);
+      if (block.refreshScene) {
+        actionLines.push(`${indent}  <<run Engine.show()>>`);
+      } else {
+        actionLines.push(`${indent}  <<run $('.tg-live[data-wiki]').each(function(){$(this).empty().wiki($(this).attr('data-wiki'));})>>`);
+      }
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
         `${indent}<span class="tg-btn ${cls}">` +
@@ -459,6 +463,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
         .filter(Boolean);
       const sceneName = block.targetSceneId || '???';
       actionLines.push(`${indent}  <<include "${sceneName}">>`);
+      actionLines.push(`${indent}  <<run $('.tg-live[data-wiki]').each(function(){$(this).empty().wiki($(this).attr('data-wiki'));})>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
         `${indent}<span class="tg-btn ${cls}"><<link "${block.label}">>\n` +
