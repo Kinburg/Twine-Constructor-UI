@@ -146,7 +146,7 @@ export function generateStandaloneHtml(project: Project, scTemplate: string): st
 
   const storyDataElement =
     `<tw-storydata name="${escAttr(project.title)}" startnode="${startPid}" ` +
-    `creator="TwineConstructor" creator-version="1.0.0" ` +
+    `creator="Purl" creator-version="1.0.0"` +
     `format="SugarCube" format-version="2.36.1" ` +
     `ifid="${escAttr(project.ifid)}" zoom="1" options="" hidden>\n` +
     `${innerContent}\n` +
@@ -158,7 +158,7 @@ export function generateStandaloneHtml(project: Project, scTemplate: string): st
   html = html.replace(/\{\{STORY_NAME\}\}/g,           escAttr(project.title));
   html = html.replace(/\{\{STORY_START\}\}/g,          String(startPid));
   html = html.replace(/\{\{STORY_IFID\}\}/g,           project.ifid);
-  html = html.replace(/\{\{CREATOR_NAME\}\}/g,         'TwineConstructor');
+  html = html.replace(/\{\{CREATOR_NAME\}\}/g,         'Purl');
   html = html.replace(/\{\{CREATOR_VERSION\}\}/g,      '1.0.0');
   html = html.replace(/\{\{STORY_FORMAT\}\}/g,         'SugarCube');
   html = html.replace(/\{\{STORY_FORMAT_VERSION\}\}/g, '2.36.1');

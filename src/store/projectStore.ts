@@ -1295,7 +1295,7 @@ export const useProjectStore = create<ProjectState>()(
       };
     },
     {
-      name: 'twine-constructor-project',
+      name: 'purl-project',
       partialize: (state) => ({
         project: state.project,
         activeSceneId: state.activeSceneId,

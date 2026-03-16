@@ -1,11 +1,11 @@
-# Twine Constructor
+# Purl
 
 A visual desktop editor designed to simplify building interactive stories with [SugarCube 2](https://www.motoslave.net/sugarcube/2/). It allows you to create complex narratives without writing code, exporting directly to a playable HTML file or standard `.twee` source code.
 
 ## Features
 
 ### Scene Editor
-The core of Twine Constructor is its intuitive scene editor, where you build your story using a variety of content blocks.
+The core of Purl is its intuitive scene editor, where you build your story using a variety of content blocks.
 - **Content blocks**:
     - **Text**: Standard story text with formatting options.
     - **Character Dialogue**: Assign dialogue to characters, with support for dynamic avatar changes based on character states (e.g., emotions).
@@ -45,8 +45,8 @@ The core of Twine Constructor is its intuitive scene editor, where you build you
 
 Download the latest release from the [Releases](../../releases) page:
 
-- `TwineConstructor-Setup-x.x.x.exe` — installer with custom install directory
-- `TwineConstructor-x.x.x-win.zip` — portable version
+- `Purl-Setup-x.x.x.exe` — installer with custom install directory
+- `Purl-x.x.x-win.zip` — portable version
 
 ## Setup for Exporting
 
@@ -55,7 +55,7 @@ To enable exporting to `.html` and `.twee`, you must first provide the SugarCube
 1.  **Download SugarCube 2**: Go to the official [SugarCube 2 website](https://www.motoslave.net/sugarcube/2/) and download the latest version.
 2.  **Extract the Archive**: Unzip the downloaded file to a location on your computer.
 3.  **Import the Runtime**:
-    - In Twine Constructor, locate and click the **"+SC Runtime"** button in the application header.
+    - In Purl, locate and click the **"+SC Runtime"** button in the application header.
     - In the file dialog that opens, navigate to the folder where you extracted SugarCube and select the `format.js` file.
 
 Once imported, the export functionality will be fully enabled.

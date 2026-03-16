@@ -65,7 +65,7 @@ export const useLocaleStore = create<LocaleState>()(
       locale: 'en',
       setLocale: (locale) => set({ locale }),
     }),
-    { name: 'twine-constructor-locale' },
+    { name: 'purl-locale' },
   ),
 );
 

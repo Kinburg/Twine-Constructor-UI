@@ -15,10 +15,10 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
   : RENDERER_DIST;
 
 // Required for correct taskbar grouping and icon on Windows 10/11
-app.setAppUserModelId('com.twineconstructor.app');
+app.setAppUserModelId('com.purlapp.app');
 
-// Projects stored in ~/Documents/TwineConstructor/Projects/
-const PROJECTS_DIR = path.join(app.getPath('documents'), 'TwineConstructor', 'Projects');
+// Projects stored in ~/Documents/Purl/Projects/
+const PROJECTS_DIR = path.join(app.getPath('documents'), 'Purl', 'Projects');
 
 let win: BrowserWindow | null;
 let previewWin: BrowserWindow | null = null;
@@ -52,7 +52,7 @@ function createGraphWindow() {
     height: 720,
     minWidth: 500,
     minHeight: 400,
-    title: 'Scene Graph — TwineConstructor',
+    title: 'Scene Graph — Purl',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
@@ -82,7 +82,7 @@ function createPreviewWindow() {
     height: 640,
     minWidth: 400,
     minHeight: 300,
-    title: 'Code Preview — TwineConstructor',
+    title: 'Code Preview — Purl',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
@@ -114,7 +114,7 @@ function createWindow() {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    title: 'TwineConstructor',
+    title: 'Purl',
     show: false,
     icon: iconPath,
     webPreferences: {

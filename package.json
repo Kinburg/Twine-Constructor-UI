@@ -1,7 +1,7 @@
 {
-  "name": "twine-constructor",
+  "name": "purl",
   "author": "Dmytro Hrubnyk",
-  "description": "No-code APP for creating Twine SugarCube 2 stories",
+  "description": "No-code APP for creating SugarCube 2 stories",
   "private": true,
   "version": "1.2.1",
   "type": "module",
@@ -14,8 +14,8 @@
     "lint:fix": "eslint . --fix"
   },
   "build": {
-    "appId": "com.twineconstructor.app",
-    "productName": "TwineConstructor",
+    "appId": "com.purlapp.app",
+    "productName": "Purl",
     "directories": {
       "output": "release"
     },
