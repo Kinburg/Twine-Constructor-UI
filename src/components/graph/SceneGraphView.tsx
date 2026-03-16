@@ -13,10 +13,9 @@ import {
   type NodeMouseHandler,
   BackgroundVariant,
   BaseEdge,
-  getSmoothStepPath,
   EdgeLabelRenderer,
   Handle,
-  Position,
+  Position, getBezierPath
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import dagre from '@dagrejs/dagre';
@@ -219,14 +218,13 @@ function SceneEdge({
 }: EdgeProps) {
   const { edgeId: activeEdgeId, nodeId: activeNodeId } = useContext(ActiveCtx);
 
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
     targetX,
     targetY,
     targetPosition,
-    borderRadius: 8,
   });
 
   // Active: this edge is selected, OR it leaves the selected node
