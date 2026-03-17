@@ -222,24 +222,45 @@
     .feature-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
     .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
-    /* ── Block chips ────────────────────────────────────── */
-    .blocks-list { display: flex; flex-wrap: wrap; gap: 8px; }
-    .block-chip {
+    /* ── Block cards ────────────────────────────────────── */
+    .blocks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 10px;
+    }
+    .block-card {
       background: var(--surface);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 6px 14px;
-      font-size: 13px;
-      color: var(--text);
+      border-radius: 10px;
+      padding: 14px 16px;
+      transition: border-color .2s, background .2s;
+    }
+    .block-card:hover {
+      border-color: rgba(124,106,247,.35);
+      background: var(--surface2);
+    }
+    .block-card-header {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
+      margin-bottom: 5px;
     }
-    .block-chip .dot {
-      width: 6px; height: 6px;
-      background: var(--accent);
-      border-radius: 50%;
+    .block-card-icon {
+      width: 32px;
+      height: 32px;
       flex-shrink: 0;
+      opacity: .9;
+    }
+    .block-card-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .block-card-desc {
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.55;
+      margin: 0;
     }
 
     /* ── Platform ───────────────────────────────────────── */
@@ -450,6 +471,13 @@
       <p lang-content="en">Generates a ready .twee file for Tweego or import into Twine 2.</p>
     </div>
     <div class="feature-card">
+      <span class="feature-icon">📦</span>
+      <h3 lang-content="uk">Експорт у HTML + assets</h3>
+      <h3 lang-content="en">Export to HTML + assets</h3>
+      <p lang-content="uk">Генерує самодостатній HTML-файл разом із папкою assets. Готово до публікації — відкривається у браузері без жодних додаткових інструментів.</p>
+      <p lang-content="en">Generates a standalone HTML file together with an assets folder. Ready to publish — opens in any browser with no extra tools needed.</p>
+    </div>
+    <div class="feature-card">
       <span class="feature-icon">↩️</span>
       <h3>Undo / Redo</h3>
       <p lang-content="uk">Повна історія дій до 100 кроків. Ctrl+Z / Ctrl+Shift+Z або кнопки в панелі інструментів.</p>
@@ -469,31 +497,316 @@
 <div class="section">
   <span class="section-label" lang-content="uk">Типи блоків</span>
   <span class="section-label" lang-content="en">Block types</span>
-  <h2 class="section-title" lang-content="uk">16 типів блоків</h2>
-  <h2 class="section-title" lang-content="en">16 block types</h2>
+  <h2 class="section-title" lang-content="uk">18 типів блоків</h2>
+  <h2 class="section-title" lang-content="en">18 block types</h2>
   <p class="section-desc" lang-content="uk">Кожен блок — готовий елемент сцени. Комбінуйте їх для будь-якого жанру.</p>
   <p class="section-desc" lang-content="en">Each block is a ready-to-use scene element. Combine them for any genre.</p>
-  <div class="blocks-list">
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Текст</span><span lang-content="en">Text</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Діалог</span><span lang-content="en">Dialogue</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Вибір</span><span lang-content="en">Choice</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Умова (IF)</span><span lang-content="en">Condition (IF)</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Встановити змінну</span><span lang-content="en">Set variable</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Зображення</span><span lang-content="en">Image</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Відео</span><span lang-content="en">Video</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Кнопка</span><span lang-content="en">Button</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Посилання</span><span lang-content="en">Link</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Поле вводу</span><span lang-content="en">Input field</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Прапорці</span><span lang-content="en">Checkbox</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Перемикачі</span><span lang-content="en">Radio</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Роздільник</span><span lang-content="en">Divider</span></div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Включення сцени</span><span lang-content="en">Include</span></div>
-    <div class="block-chip"><span class="dot"></span>Raw Code</div>
-    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Нотатка</span><span lang-content="en">Note</span></div>
-    <div class="block-chip" style="border-color:rgba(74,222,128,.3);color:var(--green);">
-      <span style="width:6px;height:6px;background:var(--green);border-radius:50%;flex-shrink:0;"></span>
-      <span lang-content="uk">Більше в розробці…</span><span lang-content="en">More coming…</span>
+  <div class="blocks-grid">
+
+    <!-- Text -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="7" width="26" height="2.5" rx="1.25" fill="var(--accent)"/>
+          <rect x="3" y="13" width="20" height="2.5" rx="1.25" fill="var(--accent)" opacity=".7"/>
+          <rect x="3" y="19" width="24" height="2.5" rx="1.25" fill="var(--accent)" opacity=".7"/>
+          <rect x="3" y="25" width="14" height="2.5" rx="1.25" fill="var(--accent)" opacity=".45"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Текст</span>
+        <span class="block-card-name" lang-content="en">Text</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Абзац тексту з підтримкою розмітки SugarCube. Live-режим для автоматичного оновлення при зміні змінних. Є ефект друкарської машинки.</p>
+      <p class="block-card-desc" lang-content="en">Text paragraph with SugarCube markup support. Live mode for auto-refresh when variables change. Typewriter effect available.</p>
     </div>
+
+    <!-- Dialogue -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 6 Q2 3 5 3 H27 Q30 3 30 6 V17 Q30 20 27 20 H15 L8 27 L9 20 H5 Q2 20 2 17 Z" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".12"/>
+          <rect x="8" y="9" width="12" height="2" rx="1" fill="var(--accent)" opacity=".85"/>
+          <rect x="8" y="13.5" width="8" height="2" rx="1" fill="var(--accent)" opacity=".55"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Діалог</span>
+        <span class="block-card-name" lang-content="en">Dialogue</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Репліка персонажа з аватаром, ім'ям та кольоровим оформленням. Підтримує вирівнювання, вкладені блоки та ефект друкарської машинки.</p>
+      <p class="block-card-desc" lang-content="en">Character speech bubble with avatar, name and color styling. Supports alignment, nested blocks and typewriter effect.</p>
+    </div>
+
+    <!-- Choice -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="5" cy="10" r="2.2" fill="var(--accent)"/>
+          <rect x="10" y="8.5" width="17" height="2.5" rx="1.25" fill="var(--accent)" opacity=".8"/>
+          <circle cx="5" cy="18" r="2.2" fill="var(--accent)" opacity=".55"/>
+          <rect x="10" y="16.5" width="13" height="2.5" rx="1.25" fill="var(--accent)" opacity=".55"/>
+          <circle cx="5" cy="26" r="2.2" fill="var(--accent)" opacity=".3"/>
+          <rect x="10" y="24.5" width="15" height="2.5" rx="1.25" fill="var(--accent)" opacity=".3"/>
+          <path d="M26 9 L29 10 L26 11" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Вибір</span>
+        <span class="block-card-name" lang-content="en">Choice</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Меню варіантів для переходу між сценами. Кожен варіант може мати умову відображення.</p>
+      <p class="block-card-desc" lang-content="en">Branching menu that lets the player pick a destination scene. Each option can have a visibility condition.</p>
+    </div>
+
+    <!-- Condition IF -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M16 2 L30 16 L16 30 L2 16 Z" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".12"/>
+          <path d="M16 30 L10 34" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+          <path d="M16 30 L22 34" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+          <rect x="11" y="13.5" width="4" height="2" rx="1" fill="var(--accent)" opacity=".9"/>
+          <rect x="11" y="17.5" width="4" height="2" rx="1" fill="var(--accent)" opacity=".6"/>
+          <rect x="17" y="13.5" width="5" height="2" rx="1" fill="var(--accent)" opacity=".4"/>
+          <rect x="17" y="17.5" width="5" height="2" rx="1" fill="var(--accent)" opacity=".25"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Умова (IF)</span>
+        <span class="block-card-name" lang-content="en">Condition (IF)</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Гілки if / else-if / else з підтримкою вкладених блоків будь-якого типу. Підтримує числові діапазони та операції з масивами.</p>
+      <p class="block-card-desc" lang-content="en">if / else-if / else branches with nested block support. Handles numeric range checks and array operations.</p>
+    </div>
+
+    <!-- Set Variable -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="8" width="11" height="11" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".12"/>
+          <path d="M7.5 11.5 C6 11.5 6 14 7.5 14 C9 14 9 16.5 7.5 16.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M7.5 10.5 L7.5 11.5 M7.5 16.5 L7.5 17.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round"/>
+          <path d="M15 13.5 L19 13.5 M17.5 11.5 L20 13.5 L17.5 15.5" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="21" y="8" width="9" height="11" rx="2.5" fill="var(--accent)" fill-opacity=".22" stroke="var(--accent)" stroke-width="1.7"/>
+          <rect x="23.5" y="12" width="4" height="1.5" rx=".75" fill="var(--accent)"/>
+          <rect x="23.5" y="15" width="4" height="1.5" rx=".75" fill="var(--accent)" opacity=".6"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Встановити змінну</span>
+        <span class="block-card-name" lang-content="en">Set variable</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Задає значення змінній: вручну, випадково, через вираз або за значенням іншої змінної. Підтримує операції з масивами (push, remove, clear).</p>
+      <p class="block-card-desc" lang-content="en">Assigns a value to a variable: manually, randomly, via expression, or by mapping another variable. Supports array operations (push, remove, clear).</p>
+    </div>
+
+    <!-- Image -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="5" width="28" height="22" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".08"/>
+          <circle cx="10" cy="12" r="2.5" fill="var(--accent)" opacity=".55"/>
+          <path d="M2 23 L9 15 L15 21 L20 16 L30 23" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="var(--accent)" fill-opacity=".18"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Зображення</span>
+        <span class="block-card-name" lang-content="en">Image</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Статичне зображення за URL або шляхом до ресурсу. У режимі прив'язки зображення змінюється залежно від значення змінної.</p>
+      <p class="block-card-desc" lang-content="en">Static image by URL or asset path. In bound mode the image switches based on a variable's value.</p>
+    </div>
+
+    <!-- Video -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="6" width="28" height="20" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".08"/>
+          <path d="M13 11 L23 16 L13 21 Z" fill="var(--accent)" opacity=".75"/>
+          <rect x="2" y="6" width="28" height="4" rx="3" fill="var(--accent)" fill-opacity=".15"/>
+          <circle cx="7" cy="8" r="1" fill="var(--accent)" opacity=".6"/>
+          <circle cx="11" cy="8" r="1" fill="var(--accent)" opacity=".4"/>
+          <circle cx="15" cy="8" r="1" fill="var(--accent)" opacity=".25"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Відео</span>
+        <span class="block-card-name" lang-content="en">Video</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Вбудоване відео з налаштуваннями автовідтворення, повтору та відображення елементів керування.</p>
+      <p class="block-card-desc" lang-content="en">Embedded video with configurable autoplay, loop and player controls.</p>
+    </div>
+
+    <!-- Button -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="10" width="26" height="12" rx="6" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.8"/>
+          <rect x="9" y="14.5" width="14" height="2.5" rx="1.25" fill="var(--accent)" opacity=".75"/>
+          <path d="M5 22 Q3 28 8 30" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" opacity=".3"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Кнопка</span>
+        <span class="block-card-name" lang-content="en">Button</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Стилізована кнопка, що змінює змінні без переходу між сценами. Може оновити поточну сцену після натискання.</p>
+      <p class="block-card-desc" lang-content="en">Styled button that mutates variables without navigating. Can trigger a full scene refresh after the click.</p>
+    </div>
+
+    <!-- Link -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="10" width="20" height="12" rx="6" fill="var(--accent)" fill-opacity=".15" stroke="var(--accent)" stroke-width="1.8"/>
+          <rect x="7" y="14.5" width="9" height="2.5" rx="1.25" fill="var(--accent)" opacity=".7"/>
+          <path d="M24 16 H31" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+          <path d="M27.5 12.5 L31.5 16 L27.5 19.5" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Посилання</span>
+        <span class="block-card-name" lang-content="en">Link</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Стилізована кнопка для переходу в іншу сцену або повернення назад. Може змінювати змінні перед переходом.</p>
+      <p class="block-card-desc" lang-content="en">Styled navigation button that goes to another scene or back. Can mutate variables before navigating.</p>
+    </div>
+
+    <!-- Input Field -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="9" width="28" height="14" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".07"/>
+          <rect x="7" y="14" width="11" height="2" rx="1" fill="var(--accent)" opacity=".55"/>
+          <rect x="18" y="12.5" width="1.8" height="5" rx=".9" fill="var(--accent)" opacity=".9"/>
+          <path d="M5 9 L5 6" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".45"/>
+          <path d="M27 9 L27 6" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".45"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Поле вводу</span>
+        <span class="block-card-name" lang-content="en">Input field</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Текстове або числове поле, що зберігає введене гравцем значення у змінну. Підтримує запис в елемент масиву.</p>
+      <p class="block-card-desc" lang-content="en">Text or number input that saves the player's entry to a variable. Supports writing to an array element by index.</p>
+    </div>
+
+    <!-- Checkbox -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="5" width="11" height="11" rx="2" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".15"/>
+          <path d="M6 10.5 L8.5 13 L14 7.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="3" y="20" width="11" height="11" rx="2" stroke="var(--accent)" stroke-width="1.8" fill="none" opacity=".45"/>
+          <rect x="18" y="8" width="11" height="2.5" rx="1.25" fill="var(--accent)" opacity=".7"/>
+          <rect x="18" y="23" width="9" height="2.5" rx="1.25" fill="var(--accent)" opacity=".35"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Прапорці</span>
+        <span class="block-card-name" lang-content="en">Checkbox</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Група прапорців у двох режимах: кожен прапорець керує окремою булевою змінною, або всі разом — одним масивом.</p>
+      <p class="block-card-desc" lang-content="en">Checkbox group in two modes: each checkbox controls its own boolean variable, or all together manage a single array.</p>
+    </div>
+
+    <!-- Radio -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="9" cy="10" r="5.5" stroke="var(--accent)" stroke-width="1.8"/>
+          <circle cx="9" cy="10" r="2.5" fill="var(--accent)"/>
+          <circle cx="9" cy="24" r="5.5" stroke="var(--accent)" stroke-width="1.8" opacity=".4"/>
+          <rect x="18" y="7.5" width="11" height="2.5" rx="1.25" fill="var(--accent)" opacity=".75"/>
+          <rect x="18" y="21.5" width="9" height="2.5" rx="1.25" fill="var(--accent)" opacity=".35"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Перемикачі</span>
+        <span class="block-card-name" lang-content="en">Radio</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Група перемикачів, що задає рядкову змінну значенням обраного варіанту. Рівно один варіант завжди обраний.</p>
+      <p class="block-card-desc" lang-content="en">Radio button group that sets a string variable to the selected option's value. Exactly one option is always chosen.</p>
+    </div>
+
+    <!-- Table -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="3" width="28" height="26" rx="2.5" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".07"/>
+          <rect x="2" y="3" width="28" height="7" rx="2.5" fill="var(--accent)" fill-opacity=".2"/>
+          <path d="M2 17 H30" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
+          <path d="M2 24 H30" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
+          <path d="M12 10 V29" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
+          <path d="M22 10 V29" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Таблиця</span>
+        <span class="block-card-name" lang-content="en">Table</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Сітка клітинок з текстом, змінними, прогрес-барами, зображеннями та кнопками. Ідеальна для панелей статистики чи інвентарю.</p>
+      <p class="block-card-desc" lang-content="en">Grid of cells containing text, variables, progress bars, images and buttons. Ideal for stats panels or inventory displays.</p>
+    </div>
+
+    <!-- Divider -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="7" width="20" height="2" rx="1" fill="var(--accent)" opacity=".3"/>
+          <rect x="3" y="11.5" width="14" height="2" rx="1" fill="var(--accent)" opacity=".2"/>
+          <rect x="2" y="17" width="28" height="2.5" rx="1.25" fill="var(--accent)"/>
+          <rect x="3" y="22.5" width="18" height="2" rx="1" fill="var(--accent)" opacity=".3"/>
+          <rect x="3" y="27" width="12" height="2" rx="1" fill="var(--accent)" opacity=".2"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Роздільник</span>
+        <span class="block-card-name" lang-content="en">Divider</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Горизонтальна лінія з налаштуванням кольору, товщини та вертикальних відступів.</p>
+      <p class="block-card-desc" lang-content="en">Horizontal rule with configurable color, thickness and vertical margin.</p>
+    </div>
+
+    <!-- Include -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="2" y="4" width="28" height="24" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".07"/>
+          <rect x="7" y="9" width="18" height="14" rx="2" stroke="var(--accent)" stroke-width="1.5" fill="var(--accent)" fill-opacity=".14"/>
+          <rect x="10" y="13" width="8" height="1.8" rx=".9" fill="var(--accent)" opacity=".65"/>
+          <rect x="10" y="17" width="6" height="1.8" rx=".9" fill="var(--accent)" opacity=".4"/>
+          <path d="M2 4 L7 9" stroke="var(--accent)" stroke-width="1.3" opacity=".35"/>
+          <path d="M30 4 L25 9" stroke="var(--accent)" stroke-width="1.3" opacity=".35"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Включення сцени</span>
+        <span class="block-card-name" lang-content="en">Include</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Вставляє вміст іншої сцени через &lt;&lt;include&gt;&gt;. Підтримує обгортку з налаштуванням розміру, рамки та фону.</p>
+      <p class="block-card-desc" lang-content="en">Inserts another scene's content via &lt;&lt;include&gt;&gt;. Supports a styled wrapper with size, border and background options.</p>
+    </div>
+
+    <!-- Function -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".1"/>
+          <path d="M19 7 C15 7 13 10 13 13 V26" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M9 16.5 H18" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Виклик функції</span>
+        <span class="block-card-name" lang-content="en">Function</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Виконує сцену-функцію без переходу — змінні оновлюються, але гравець залишається на місці. Зручно для повторюваної логіки.</p>
+      <p class="block-card-desc" lang-content="en">Executes a function-tagged scene without navigating — variables update, player stays in place. Great for reusable logic.</p>
+    </div>
+
+    <!-- Raw Code -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 9 L3 16 L10 23" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M22 9 L29 16 L22 23" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M19 6.5 L13 25.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity=".65"/>
+        </svg>
+        <span class="block-card-name">Raw Code</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Вставляє довільні макроси SugarCube або HTML безпосередньо в експортований пасаж, без жодних перетворень.</p>
+      <p class="block-card-desc" lang-content="en">Inserts arbitrary SugarCube macros or HTML verbatim into the exported passage, without any transformation.</p>
+    </div>
+
+    <!-- Note -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 4 H22 L28 10 V30 H4 Z" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".08"/>
+          <path d="M22 4 L22 10 H28" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <rect x="8" y="15" width="13" height="2" rx="1" fill="var(--accent)" opacity=".6"/>
+          <rect x="8" y="20" width="10" height="2" rx="1" fill="var(--accent)" opacity=".45"/>
+          <rect x="8" y="25" width="12" height="2" rx="1" fill="var(--accent)" opacity=".3"/>
+          <circle cx="10" cy="9" r="2" fill="var(--accent)" opacity=".4"/>
+          <path d="M9 8.5 L11 9 L10.5 11" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" opacity=".0"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Нотатка</span>
+        <span class="block-card-name" lang-content="en">Note</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Коментар розробника, видимий лише в редакторі, не потрапляє в експорт. Зручний для позначок та пояснень логіки.</p>
+      <p class="block-card-desc" lang-content="en">Developer comment visible only in the editor, never exported. Useful for inline annotations and logic notes.</p>
+    </div>
+
   </div>
 </div>
 
