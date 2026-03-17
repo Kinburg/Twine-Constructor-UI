@@ -116,7 +116,7 @@ nav a:hover { color: var(--accent2); }
 }
 
 /* ── Language content visibility ─────────────────────────────── */
-[lang-content="en"] { display: none; }
+body [lang-content="en"] { display: none; }
 body.lang-en [lang-content="uk"] { display: none; }
 body.lang-en [lang-content="en"] { display: revert; }
 
