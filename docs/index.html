@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Purl — No-code SugarCube 2 Story Builder</title>
+  <meta name="description" content="Purl — безкоштовний no-code редактор для створення інтерактивних історій на SugarCube 2. Free no-code editor for building interactive fiction with SugarCube 2." />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0f0f13;
+      --surface: #18181f;
+      --surface2:#1e1e28;
+      --border:  #2a2a38;
+      --accent:  #7c6af7;
+      --accent2: #a78bfa;
+      --green:   #4ade80;
+      --text:    #e2e0f0;
+      --muted:   #7a789a;
+      --radius:  12px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      min-height: 100vh;
+    }
+
+    /* ── Header ─────────────────────────────────────────── */
+    header {
+      background: rgba(15,15,19,.85);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(12px);
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .logo img {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+    }
+    .logo-text {
+      font-size: 22px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.5px;
+    }
+    nav {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+    }
+    nav a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      transition: color .2s;
+    }
+    nav a:hover { color: var(--accent2); }
+
+    .lang-toggle {
+      display: flex;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-left: 8px;
+    }
+    .lang-toggle button {
+      background: none;
+      border: none;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      letter-spacing: .5px;
+    }
+    .lang-toggle button.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* ── Hero ───────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 90px 24px 70px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 700px 400px at 50% -60px, rgba(124,106,247,.18), transparent),
+        radial-gradient(ellipse 400px 300px at 80% 100%, rgba(167,139,250,.08), transparent);
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(124,106,247,.15);
+      border: 1px solid rgba(124,106,247,.3);
+      border-radius: 100px;
+      padding: 4px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent2);
+      letter-spacing: .5px;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+    }
+    .hero h1 {
+      font-size: clamp(40px, 8vw, 72px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.1;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #fff 40%, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero-tagline {
+      font-size: clamp(16px, 3vw, 22px);
+      color: var(--muted);
+      margin-bottom: 36px;
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .hero-actions {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 13px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background .2s, transform .15s, box-shadow .2s;
+      box-shadow: 0 4px 20px rgba(124,106,247,.35);
+    }
+    .btn-primary:hover {
+      background: var(--accent2);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 28px rgba(124,106,247,.5);
+    }
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 13px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: border-color .2s, background .2s, transform .15s;
+    }
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      background: rgba(124,106,247,.08);
+      transform: translateY(-1px);
+    }
+    .free-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(74,222,128,.1);
+      border: 1px solid rgba(74,222,128,.25);
+      color: var(--green);
+      border-radius: 100px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: .5px;
+      margin-top: 20px;
+    }
+
+    /* ── Preview ────────────────────────────────────────── */
+    .preview-wrap {
+      max-width: 1000px;
+      margin: 0 auto 80px;
+      padding: 0 24px;
+    }
+    .preview-frame {
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      background: var(--surface);
+      box-shadow: 0 24px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(124,106,247,.1);
+    }
+    .preview-bar {
+      background: var(--surface2);
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .preview-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .preview-dot:nth-child(1) { background: #ff5f57; }
+    .preview-dot:nth-child(2) { background: #febc2e; }
+    .preview-dot:nth-child(3) { background: #28c840; }
+    .preview-title { margin-left: 8px; font-size: 12px; color: var(--muted); }
+    .preview-frame img {
+      width: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    /* ── Section ────────────────────────────────────────── */
+    .section {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 24px 80px;
+    }
+    .section-label {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 12px;
+    }
+    .section-title {
+      font-size: clamp(24px, 4vw, 36px);
+      font-weight: 700;
+      letter-spacing: -0.5px;
+      margin-bottom: 12px;
+    }
+    .section-desc {
+      color: var(--muted);
+      max-width: 600px;
+      margin-bottom: 40px;
+    }
+
+    /* ── Features ───────────────────────────────────────── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 16px;
+    }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      transition: border-color .2s, background .2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(124,106,247,.4);
+      background: var(--surface2);
+    }
+    .feature-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+    .feature-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+    /* ── Block chips ────────────────────────────────────── */
+    .blocks-list { display: flex; flex-wrap: wrap; gap: 8px; }
+    .block-chip {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 13px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .block-chip .dot {
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Platform ───────────────────────────────────────── */
+    .platform-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+    .platform-icon { font-size: 48px; flex-shrink: 0; }
+    .platform-info h3 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .platform-info p { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
+
+    /* ── Donate ─────────────────────────────────────────── */
+    .donate-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 48px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .donate-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 600px 300px at 50% 0%, rgba(124,106,247,.08), transparent);
+      pointer-events: none;
+    }
+    .donate-section h2 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
+    .donate-section p { color: var(--muted); margin-bottom: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
+    .donate-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      border: none;
+      border-radius: var(--radius);
+      padding: 14px 32px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      text-decoration: none;
+      transition: opacity .2s, transform .15s;
+      box-shadow: 0 4px 20px rgba(124,106,247,.4);
+    }
+    .donate-btn:hover { opacity: .9; transform: translateY(-1px); }
+
+    /* ── Footer ─────────────────────────────────────────── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 28px 40px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .footer-logo {
+      font-size: 16px;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .footer-copy { font-size: 12px; color: var(--muted); }
+    .footer-links { margin-left: auto; display: flex; gap: 20px; }
+    .footer-links a { color: var(--muted); text-decoration: none; font-size: 13px; transition: color .2s; }
+    .footer-links a:hover { color: var(--accent2); }
+
+    .divider { border: none; border-top: 1px solid var(--border); margin: 0 auto 80px; max-width: 1000px; }
+
+    /* ── Lang ───────────────────────────────────────────── */
+    [lang-content="en"] { display: none; }
+    body.lang-en [lang-content="uk"] { display: none; }
+    body.lang-en [lang-content="en"] { display: revert; }
+
+    @media (max-width: 600px) {
+      header { padding: 12px 16px; }
+      nav { gap: 12px; }
+      .section { padding-bottom: 48px; }
+      .platform-card { flex-direction: column; gap: 16px; }
+      .donate-section { padding: 32px 20px; }
+      footer { flex-direction: column; align-items: flex-start; }
+      .footer-links { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────── -->
+<header>
+  <a href="/" class="logo">
+    <img src="Logo.png" alt="Purl" />
+    <span class="logo-text">Purl</span>
+  </a>
+  <nav>
+    <a href="#features" lang-content="uk">Можливості</a>
+    <a href="#features" lang-content="en">Features</a>
+    <a href="#download" lang-content="uk">Завантажити</a>
+    <a href="#download" lang-content="en">Download</a>
+    <a href="legal.html" lang-content="uk">Правова інформація</a>
+    <a href="legal.html" lang-content="en">Legal</a>
+  </nav>
+  <div class="lang-toggle">
+    <button id="btn-uk" class="active" onclick="setLang('uk')">UA</button>
+    <button id="btn-en" onclick="setLang('en')">EN</button>
+  </div>
+</header>
+
+<!-- ── Hero ─────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-badge">✦ <span lang-content="uk">Безкоштовний інструмент</span><span lang-content="en">Free tool</span></div>
+  <h1>Purl</h1>
+  <p class="hero-tagline" lang-content="uk">No-code редактор для створення інтерактивних історій на SugarCube&nbsp;2</p>
+  <p class="hero-tagline" lang-content="en">No-code editor for building interactive fiction with SugarCube&nbsp;2</p>
+  <div class="hero-actions">
+    <a href="#download" class="btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      <span lang-content="uk">Завантажити</span>
+      <span lang-content="en">Download</span>
+    </a>
+    <a href="https://github.com/Kinburg/purl" target="_blank" class="btn-secondary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.745 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+      GitHub
+    </a>
+  </div>
+  <div><span class="free-badge">✓ <span lang-content="uk">Повністю безкоштовно</span><span lang-content="en">Completely free</span></span></div>
+</section>
+
+<!-- ── App preview ───────────────────────────────────────────── -->
+<div class="preview-wrap">
+  <div class="preview-frame">
+    <div class="preview-bar">
+      <div class="preview-dot"></div>
+      <div class="preview-dot"></div>
+      <div class="preview-dot"></div>
+      <span class="preview-title">Purl — Story Editor</span>
+    </div>
+    <img src="screenshot.png" alt="Purl — Story Editor interface" loading="lazy" />
+  </div>
+</div>
+
+<!-- ── About ────────────────────────────────────────────────── -->
+<div class="section">
+  <span class="section-label" lang-content="uk">Про застосунок</span>
+  <span class="section-label" lang-content="en">About</span>
+  <h2 class="section-title" lang-content="uk">Що таке Purl?</h2>
+  <h2 class="section-title" lang-content="en">What is Purl?</h2>
+  <p class="section-desc" lang-content="uk">
+    Purl — це десктопний застосунок для Windows, який дозволяє створювати інтерактивні текстові ігри та візуальні новели у форматі SugarCube 2 без написання коду. Ви будуєте історію з візуальних блоків, а Purl генерує готовий .twee файл для Tweego або Twine.
+  </p>
+  <p class="section-desc" lang-content="en">
+    Purl is a Windows desktop app that lets you create interactive fiction and visual novels in SugarCube 2 format without writing code. Build your story from visual blocks, and Purl generates a ready-to-use .twee file for Tweego or Twine.
+  </p>
+</div>
+
+<hr class="divider" />
+
+<!-- ── Features ─────────────────────────────────────────────── -->
+<div class="section" id="features">
+  <span class="section-label" lang-content="uk">Можливості</span>
+  <span class="section-label" lang-content="en">Features</span>
+  <h2 class="section-title" lang-content="uk">Все що потрібно для інтерактивної прози</h2>
+  <h2 class="section-title" lang-content="en">Everything you need for interactive fiction</h2>
+
+  <div class="features-grid">
+    <div class="feature-card">
+      <span class="feature-icon">🧱</span>
+      <h3 lang-content="uk">Блоковий редактор</h3>
+      <h3 lang-content="en">Block editor</h3>
+      <p lang-content="uk">Додавайте та впорядковуйте блоки перетягуванням. Кожна сцена — окремий список блоків.</p>
+      <p lang-content="en">Add and reorder blocks by drag & drop. Each scene is a separate list of blocks.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">💬</span>
+      <h3 lang-content="uk">Діалоги та тексти</h3>
+      <h3 lang-content="en">Dialogue & text</h3>
+      <p lang-content="uk">Блоки діалогів з персонажами, кольорами та аватарами. Ефекти друкарської машинки та затримки.</p>
+      <p lang-content="en">Dialogue blocks with characters, colors and avatars. Typewriter and delay effects.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔀</span>
+      <h3 lang-content="uk">Вибори та умови</h3>
+      <h3 lang-content="en">Choices & conditions</h3>
+      <p lang-content="uk">Блоки вибору, кнопки, посилання та умовні гілки з підтримкою вкладених блоків.</p>
+      <p lang-content="en">Choice blocks, buttons, links and conditional branches with nested block support.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📊</span>
+      <h3 lang-content="uk">Змінні та логіка</h3>
+      <h3 lang-content="en">Variables & logic</h3>
+      <p lang-content="uk">Числа, рядки, булеві, масиви. Вирази, маппінг, режими random та dynamic.</p>
+      <p lang-content="en">Numbers, strings, booleans, arrays. Expressions, mapping, random and dynamic modes.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🖼️</span>
+      <h3 lang-content="uk">Медіа</h3>
+      <h3 lang-content="en">Media</h3>
+      <p lang-content="uk">Блоки зображень і відео. Статичний або динамічний режим прив'язки до змінної.</p>
+      <p lang-content="en">Image and video blocks. Static or dynamic mode bound to a variable.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">📤</span>
+      <h3 lang-content="uk">Експорт у .twee</h3>
+      <h3 lang-content="en">Export to .twee</h3>
+      <p lang-content="uk">Генерація готового .twee файлу для Tweego або імпорту в Twine 2. Граф сцен відображається коректно.</p>
+      <p lang-content="en">Generates a ready .twee file for Tweego or import into Twine 2. Scene graph renders correctly.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">↩️</span>
+      <h3>Undo / Redo</h3>
+      <p lang-content="uk">Повна історія дій до 100 кроків. Ctrl+Z / Ctrl+Shift+Z або кнопки в панелі інструментів.</p>
+      <p lang-content="en">Full action history up to 100 steps. Ctrl+Z / Ctrl+Shift+Z or toolbar buttons.</p>
+    </div>
+    <div class="feature-card">
+      <span class="feature-icon">🔍</span>
+      <h3 lang-content="uk">Пошук по проєкту</h3>
+      <h3 lang-content="en">Project search</h3>
+      <p lang-content="uk">Пошук по тексту сцен, блоків та по використанню змінних. Перехід до результату одним кліком.</p>
+      <p lang-content="en">Search by scene text, blocks and variable usage. Click to navigate to any result.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Block types ────────────────────────────────────────────── -->
+<div class="section">
+  <span class="section-label" lang-content="uk">Типи блоків</span>
+  <span class="section-label" lang-content="en">Block types</span>
+  <h2 class="section-title" lang-content="uk">16 типів блоків</h2>
+  <h2 class="section-title" lang-content="en">16 block types</h2>
+  <p class="section-desc" lang-content="uk">Кожен блок — готовий елемент сцени. Комбінуйте їх для будь-якого жанру.</p>
+  <p class="section-desc" lang-content="en">Each block is a ready-to-use scene element. Combine them for any genre.</p>
+  <div class="blocks-list">
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Текст</span><span lang-content="en">Text</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Діалог</span><span lang-content="en">Dialogue</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Вибір</span><span lang-content="en">Choice</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Умова (IF)</span><span lang-content="en">Condition (IF)</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Встановити змінну</span><span lang-content="en">Set variable</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Зображення</span><span lang-content="en">Image</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Відео</span><span lang-content="en">Video</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Кнопка</span><span lang-content="en">Button</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Посилання</span><span lang-content="en">Link</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Поле вводу</span><span lang-content="en">Input field</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Прапорці</span><span lang-content="en">Checkbox</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Перемикачі</span><span lang-content="en">Radio</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Роздільник</span><span lang-content="en">Divider</span></div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Включення сцени</span><span lang-content="en">Include</span></div>
+    <div class="block-chip"><span class="dot"></span>Raw HTML</div>
+    <div class="block-chip"><span class="dot"></span><span lang-content="uk">Нотатка</span><span lang-content="en">Note</span></div>
+  </div>
+</div>
+
+<hr class="divider" />
+
+<!-- ── Download ──────────────────────────────────────────────── -->
+<div class="section" id="download">
+  <span class="section-label" lang-content="uk">Завантаження</span>
+  <span class="section-label" lang-content="en">Download</span>
+  <h2 class="section-title" lang-content="uk">Завантажити Purl</h2>
+  <h2 class="section-title" lang-content="en">Download Purl</h2>
+  <div class="platform-card">
+    <div class="platform-icon">🪟</div>
+    <div class="platform-info">
+      <h3 lang-content="uk">Windows 10 / 11 (64-bit)</h3>
+      <h3 lang-content="en">Windows 10 / 11 (64-bit)</h3>
+      <p lang-content="uk">Встановлювач .exe · безкоштовно · відкритий вихідний код</p>
+      <p lang-content="en">.exe installer · free · open source</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a href="https://github.com/Kinburg/purl/releases/latest" target="_blank" class="btn-primary">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span lang-content="uk">Завантажити</span>
+          <span lang-content="en">Download</span>
+        </a>
+        <a href="https://github.com/Kinburg/purl/releases" target="_blank" class="btn-secondary">
+          <span lang-content="uk">Всі версії</span>
+          <span lang-content="en">All releases</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider" />
+
+<!-- ── Donate ────────────────────────────────────────────────── -->
+<div class="section">
+  <div class="donate-section">
+    <div style="font-size:36px;">💜</div>
+    <h2 style="margin-top:12px;" lang-content="uk">Підтримати розробника</h2>
+    <h2 style="margin-top:12px;" lang-content="en">Support the developer</h2>
+    <p lang-content="uk">Purl безкоштовний і залишатиметься таким. Якщо застосунок виявився корисним — ви можете підтримати його розвиток добровільним донатом.</p>
+    <p lang-content="en">Purl is free and will stay free. If it has been useful to you, consider supporting its development with a voluntary donation.</p>
+    <a href="legal.html#donate" class="donate-btn">
+      ♥ <span lang-content="uk">Задонатити</span><span lang-content="en">Donate</span>
+    </a>
+  </div>
+</div>
+
+<!-- ── Footer ────────────────────────────────────────────────── -->
+<footer>
+  <span class="footer-logo">Purl</span>
+  <span class="footer-copy" lang-content="uk">© 2024–2025 Dmytro Hrubnyk. Безкоштовне програмне забезпечення.</span>
+  <span class="footer-copy" lang-content="en">© 2024–2025 Dmytro Hrubnyk. Free software.</span>
+  <div class="footer-links">
+    <a href="https://github.com/Kinburg/purl" target="_blank">GitHub</a>
+    <a href="legal.html" lang-content="uk">Правова інформація</a>
+    <a href="legal.html" lang-content="en">Legal</a>
+  </div>
+</footer>
+
+<script>
+  function setLang(lang) {
+    document.body.className = lang === 'en' ? 'lang-en' : '';
+    document.getElementById('btn-uk').classList.toggle('active', lang === 'uk');
+    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
+    localStorage.setItem('purl-lang', lang);
+  }
+  const saved = localStorage.getItem('purl-lang');
+  if (saved === 'en') setLang('en');
+</script>
+</body>
+</html>
