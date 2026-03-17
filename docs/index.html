@@ -5,104 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Purl — No-code SugarCube 2 Story Builder</title>
   <meta name="description" content="Purl — безкоштовний no-code редактор для створення інтерактивних історій на SugarCube 2. Free no-code editor for building interactive fiction with SugarCube 2." />
+  <link rel="stylesheet" href="style.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      --bg:      #0f0f13;
-      --surface: #18181f;
-      --surface2:#1e1e28;
-      --border:  #2a2a38;
-      --accent:  #7c6af7;
-      --accent2: #a78bfa;
-      --green:   #4ade80;
-      --text:    #e2e0f0;
-      --muted:   #7a789a;
-      --radius:  12px;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      font-size: 15px;
-      line-height: 1.7;
-      min-height: 100vh;
-    }
-
-    /* ── Header ─────────────────────────────────────────── */
-    header {
-      background: rgba(15,15,19,.85);
-      border-bottom: 1px solid var(--border);
-      padding: 14px 40px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
-      backdrop-filter: blur(12px);
-    }
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      text-decoration: none;
-    }
-    .logo img {
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-    }
-    .logo-text {
-      font-size: 22px;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: -0.5px;
-    }
-    nav {
-      margin-left: auto;
-      display: flex;
-      align-items: center;
-      gap: 24px;
-    }
-    nav a {
-      color: var(--muted);
-      text-decoration: none;
-      font-size: 13px;
-      transition: color .2s;
-    }
-    nav a:hover { color: var(--accent2); }
-
-    .lang-toggle {
-      display: flex;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      margin-left: 8px;
-    }
-    .lang-toggle button {
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 600;
-      padding: 5px 12px;
-      cursor: pointer;
-      transition: background .15s, color .15s;
-      letter-spacing: .5px;
-    }
-    .lang-toggle button.active {
-      background: var(--accent);
-      color: #fff;
-    }
-
     /* ── Hero ───────────────────────────────────────────── */
     .hero {
       text-align: center;
@@ -241,11 +145,7 @@
     .preview-dot:nth-child(2) { background: #febc2e; }
     .preview-dot:nth-child(3) { background: #28c840; }
     .preview-title { margin-left: 8px; font-size: 12px; color: var(--muted); }
-    .preview-frame img {
-      width: 100%;
-      display: block;
-      object-fit: cover;
-    }
+    .preview-frame img { width: 100%; display: block; object-fit: cover; }
 
     /* ── Section ────────────────────────────────────────── */
     .section {
@@ -391,14 +291,8 @@
 
     .divider { border: none; border-top: 1px solid var(--border); margin: 0 auto 80px; max-width: 1000px; }
 
-    /* ── Lang ───────────────────────────────────────────── */
-    [lang-content="en"] { display: none; }
-    body.lang-en [lang-content="uk"] { display: none; }
-    body.lang-en [lang-content="en"] { display: revert; }
-
-    @media (max-width: 600px) {
-      header { padding: 12px 16px; }
-      nav { gap: 12px; }
+    /* ── Mobile ─────────────────────────────────────────── */
+    @media (max-width: 640px) {
       .section { padding-bottom: 48px; }
       .platform-card { flex-direction: column; gap: 16px; }
       .donate-section { padding: 32px 20px; }
@@ -409,25 +303,8 @@
 </head>
 <body>
 
-<!-- ── Header ───────────────────────────────────────────────── -->
-<header>
-  <a href="/" class="logo">
-    <img src="Logo.png" alt="Purl" />
-    <span class="logo-text">Purl</span>
-  </a>
-  <nav>
-    <a href="#features" lang-content="uk">Можливості</a>
-    <a href="#features" lang-content="en">Features</a>
-    <a href="#download" lang-content="uk">Завантажити</a>
-    <a href="#download" lang-content="en">Download</a>
-    <a href="legal.html" lang-content="uk">Правова інформація</a>
-    <a href="legal.html" lang-content="en">Legal</a>
-  </nav>
-  <div class="lang-toggle">
-    <button id="btn-uk" class="active" onclick="setLang('uk')">UA</button>
-    <button id="btn-en" onclick="setLang('en')">EN</button>
-  </div>
-</header>
+<!-- ── Header (injected by common.js) ───────────────────────── -->
+<header></header>
 
 <!-- ── Hero ─────────────────────────────────────────────────── -->
 <section class="hero">
@@ -630,15 +507,6 @@
   </div>
 </footer>
 
-<script>
-  function setLang(lang) {
-    document.body.className = lang === 'en' ? 'lang-en' : '';
-    document.getElementById('btn-uk').classList.toggle('active', lang === 'uk');
-    document.getElementById('btn-en').classList.toggle('active', lang === 'en');
-    localStorage.setItem('purl-lang', lang);
-  }
-  const saved = localStorage.getItem('purl-lang');
-  if (saved === 'en') setLang('en');
-</script>
+<script src="common.js"></script>
 </body>
 </html>
