@@ -1,0 +1,5 @@
+[
+  { "file": "screenshot.png",   "uk": "Головний редактор",      "en": "Main editor" },
+  { "file": "all_windows.png",  "uk": "Панелі та вікна",        "en": "Panels and windows" },
+  { "file": "graph.png",        "uk": "Граф сцен",              "en": "Scene graph" }
+]

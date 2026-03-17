@@ -20,6 +20,7 @@ function setLang(lang) {
   document.getElementById('btn-uk')?.classList.toggle('active', lang === 'uk');
   document.getElementById('btn-en')?.classList.toggle('active', lang === 'en');
   localStorage.setItem('purl-lang', lang);
+  document.dispatchEvent(new Event('langchange'));
 }
 
 // ── Header injection + lang restore ──────────────────────────

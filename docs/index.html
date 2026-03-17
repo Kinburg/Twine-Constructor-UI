@@ -144,8 +144,34 @@
     .preview-dot:nth-child(1) { background: #ff5f57; }
     .preview-dot:nth-child(2) { background: #febc2e; }
     .preview-dot:nth-child(3) { background: #28c840; }
-    .preview-title { margin-left: 8px; font-size: 12px; color: var(--muted); }
-    .preview-frame img { width: 100%; display: block; object-fit: cover; }
+    .preview-title { margin-left: 8px; font-size: 12px; color: var(--muted); flex: 1; }
+    /* ── Carousel ───────────────────────────────────────── */
+    .carousel { position: relative; overflow: hidden; }
+    .carousel-track { display: flex; transition: transform .4s cubic-bezier(.4,0,.2,1); }
+    .carousel-track img { width: 100%; flex-shrink: 0; display: block; object-fit: cover; }
+    .carousel-btn {
+      position: absolute; top: 50%; transform: translateY(-50%);
+      background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.12);
+      color: #fff; width: 36px; height: 36px; border-radius: 50%;
+      cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;
+      transition: background .2s; z-index: 2; padding: 0;
+    }
+    .carousel-btn:hover { background: rgba(124,106,247,.7); }
+    .carousel-btn.prev { left: 12px; }
+    .carousel-btn.next { right: 12px; }
+    .carousel-dots {
+      display: flex; justify-content: center; gap: 6px; padding: 10px 0 4px;
+      background: var(--surface);
+    }
+    .carousel-dot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: var(--border); cursor: pointer; transition: background .2s, transform .2s;
+    }
+    .carousel-dot.active { background: var(--accent); transform: scale(1.3); }
+    .carousel-caption {
+      text-align: center; font-size: 12px; color: var(--muted);
+      padding: 6px 16px 12px; background: var(--surface);
+    }
 
     /* ── Section ────────────────────────────────────────── */
     .section {
@@ -336,9 +362,15 @@
       <div class="preview-dot"></div>
       <div class="preview-dot"></div>
       <div class="preview-dot"></div>
-      <span class="preview-title">Purl — Story Editor</span>
+      <span class="preview-title" id="carousel-title">Purl — Story Editor</span>
     </div>
-    <img src="screenshot.png" alt="Purl — Story Editor interface" loading="lazy" />
+    <div class="carousel" id="carousel">
+      <div class="carousel-track" id="carousel-track"></div>
+      <button class="carousel-btn prev" id="carousel-prev" aria-label="Previous">&#8249;</button>
+      <button class="carousel-btn next" id="carousel-next" aria-label="Next">&#8250;</button>
+    </div>
+    <div class="carousel-dots" id="carousel-dots"></div>
+    <div class="carousel-caption" id="carousel-caption"></div>
   </div>
 </div>
 
@@ -523,5 +555,80 @@
 </footer>
 
 <script src="common.js"></script>
+<script>
+(function () {
+  const MANIFEST = 'screenshots/manifest.json';
+  const track    = document.getElementById('carousel-track');
+  const dotsWrap = document.getElementById('carousel-dots');
+  const caption  = document.getElementById('carousel-caption');
+  const btnPrev  = document.getElementById('carousel-prev');
+  const btnNext  = document.getElementById('carousel-next');
+  let slides = [], current = 0, autoTimer;
+
+  function getLang() {
+    return document.documentElement.lang === 'en' ? 'en' : 'uk';
+  }
+
+  function goTo(idx) {
+    current = (idx + slides.length) % slides.length;
+    track.style.transform = `translateX(-${current * 100}%)`;
+    dotsWrap.querySelectorAll('.carousel-dot').forEach((d, i) =>
+      d.classList.toggle('active', i === current));
+    const s = slides[current];
+    caption.textContent = s[getLang()] || s.en;
+  }
+
+  function resetTimer() {
+    clearInterval(autoTimer);
+    autoTimer = setInterval(() => goTo(current + 1), 4000);
+  }
+
+  function build(data) {
+    slides = data;
+    track.innerHTML = '';
+    dotsWrap.innerHTML = '';
+
+    data.forEach((s, i) => {
+      const img = document.createElement('img');
+      img.src = 'screenshots/' + s.file;
+      img.alt = s.en;
+      img.loading = i === 0 ? 'eager' : 'lazy';
+      track.appendChild(img);
+
+      const dot = document.createElement('div');
+      dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
+      dot.addEventListener('click', () => { goTo(i); resetTimer(); });
+      dotsWrap.appendChild(dot);
+    });
+
+    goTo(0);
+    resetTimer();
+  }
+
+  btnPrev.addEventListener('click', () => { goTo(current - 1); resetTimer(); });
+  btnNext.addEventListener('click', () => { goTo(current + 1); resetTimer(); });
+
+  /* свайп на тачскрінах */
+  let touchX = 0;
+  track.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
+  track.addEventListener('touchend',   e => {
+    const dx = e.changedTouches[0].clientX - touchX;
+    if (Math.abs(dx) > 40) { goTo(current + (dx < 0 ? 1 : -1)); resetTimer(); }
+  });
+
+  /* оновити підпис при зміні мови */
+  document.addEventListener('langchange', () => {
+    if (slides.length) caption.textContent = slides[current][getLang()] || slides[current].en;
+  });
+
+  fetch(MANIFEST)
+    .then(r => r.json())
+    .then(build)
+    .catch(() => {
+      /* fallback: показати будь-який img якщо manifest недоступний */
+      track.innerHTML = '<img src="screenshots/screenshot.png" alt="Purl">';
+    });
+})();
+</script>
 </body>
 </html>
