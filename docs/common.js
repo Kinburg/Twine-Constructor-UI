@@ -49,7 +49,7 @@ function setLang(lang) {
 
   document.querySelector('header').innerHTML =
     '<a href="/" class="logo">' +
-      '<img src="Logo.png" alt="Purl" class="logo-img" />' +
+      '<img src="Icon.PNG" alt="Purl" class="logo-img" />' +
       '<span class="logo-text">Purl</span>' +
     '</a>' +
     sub +
