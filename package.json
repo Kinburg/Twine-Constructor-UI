@@ -11,7 +11,10 @@
     "build": "tsc -b && vite build",
     "dist": "npm run build && electron-builder",
     "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "lint:fix": "eslint . --fix",
+    "release:patch": "npm version patch -m \"%s\" && git push && git push --tags",
+    "release:minor": "npm version minor -m \"%s\" && git push && git push --tags",
+    "release:major": "npm version major -m \"%s\" && git push && git push --tags"
   },
   "build": {
     "appId": "com.purlapp.app",

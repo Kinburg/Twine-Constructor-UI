@@ -1,0 +1,52 @@
+name: Auto Version
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Determine version bump
+        id: bump
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          if [[ "$COMMIT_MSG" =~ ^fix(\(.+\))?!?: ]]; then
+            echo "bump=patch" >> $GITHUB_OUTPUT
+          elif [[ "$COMMIT_MSG" =~ ^feat(\(.+\))?!?: ]]; then
+            echo "bump=minor" >> $GITHUB_OUTPUT
+          elif [[ "$COMMIT_MSG" =~ ^release(\(.+\))?!?: ]]; then
+            echo "bump=major" >> $GITHUB_OUTPUT
+          else
+            echo "bump=none" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Node
+        if: steps.bump.outputs.bump != 'none'
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Configure git
+        if: steps.bump.outputs.bump != 'none'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump version and push tag
+        if: steps.bump.outputs.bump != 'none'
+        run: |
+          npm version ${{ steps.bump.outputs.bump }} -m "%s"
+          git push
+          git push --tags
