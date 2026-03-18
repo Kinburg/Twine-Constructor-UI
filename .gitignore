@@ -25,4 +25,5 @@ release
 *.sln
 *.sw?
 /.claude/
-/memory/MEMORY.md
+/memory/
+/CLAUDE.md
