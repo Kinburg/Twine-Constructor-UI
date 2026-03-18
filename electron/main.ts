@@ -17,6 +17,20 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 // Required for correct taskbar grouping and icon on Windows 10/11
 app.setAppUserModelId('com.purlapp.app');
 
+// On some machines (old/buggy GPU drivers) the GPU process crashes on startup
+// with 0xc000041d. If we were relaunched with --disable-gpu, apply it now.
+// Otherwise, detect the crash and relaunch with the flag automatically.
+if (process.argv.includes('--disable-gpu')) {
+  app.disableHardwareAcceleration();
+}
+
+app.on('child-process-gone', (_event, details) => {
+  if (details.type === 'GPU' && details.reason !== 'clean-exit') {
+    app.relaunch({ args: process.argv.slice(1).concat(['--disable-gpu']) });
+    app.quit();
+  }
+});
+
 // Projects stored in ~/Documents/Purl/Projects/
 const PROJECTS_DIR = path.join(app.getPath('documents'), 'Purl', 'Projects');
 
@@ -34,7 +48,7 @@ function createSplashWindow() {
     width: 704,
     height: 384,
     frame: false,
-    transparent: true,
+    backgroundColor: '#0f172a',
     resizable: false,
     center: true,
     alwaysOnTop: true,
