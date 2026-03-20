@@ -1,9 +1,11 @@
+import { useRef } from 'react';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { LinkBlock, ButtonAction, ButtonStyle, VarOperator, LinkTarget } from '../../types';
 import { SYSTEM_TAGS } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
+import { VarInsertButton } from '../shared/VarInsertButton';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -254,6 +256,7 @@ export function LinkBlockEditor({
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
   const variables = flattenVariables(project.variableNodes);
+  const labelRef = useRef<HTMLInputElement>(null);
   const scenes = project.scenes.filter(s => s.id !== sceneId && !s.tags.some(tag => (SYSTEM_TAGS as readonly string[]).includes(tag)));
 
   const patchStyle = (patch: Partial<ButtonStyle>) =>
@@ -283,11 +286,18 @@ export function LinkBlockEditor({
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-24 shrink-0">{t.linkBlock.labelField}</label>
         <input
+          ref={labelRef}
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none"
           placeholder={t.linkBlock.labelPlaceholder}
           value={block.label}
           onFocus={saveSnapshot}
           onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
+        />
+        <VarInsertButton
+          targetRef={labelRef}
+          value={block.label}
+          onChange={label => updateBlock(sceneId, block.id, { label })}
+          vars={variables}
         />
       </div>
 

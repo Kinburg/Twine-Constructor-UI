@@ -1,7 +1,10 @@
+import { useRef } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type { TextBlock } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { VarInsertButton } from '../shared/VarInsertButton';
+import { flattenVariables } from '../../utils/treeUtils';
 
 export function TextBlockEditor({
   block,
@@ -12,19 +15,32 @@ export function TextBlockEditor({
   sceneId: string;
   onUpdate?: (patch: Partial<TextBlock>) => void;
 }) {
-  const { updateBlock, saveSnapshot } = useProjectStore();
+  const { updateBlock, saveSnapshot, project } = useProjectStore();
   const t = useT();
   const update = onUpdate ?? ((p: Partial<TextBlock>) => updateBlock(sceneId, block.id, p as never));
+  const vars = flattenVariables(project.variableNodes);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
     <div className="flex flex-col gap-1.5">
-      <textarea
-        className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
-        placeholder={t.textBlock.placeholder}
-        value={block.content}
-        onFocus={saveSnapshot}
-        onChange={e => update({ content: e.target.value })}
-      />
+      <div className="relative">
+        <div className="absolute top-1 right-1 z-10">
+          <VarInsertButton
+            targetRef={textareaRef}
+            value={block.content}
+            onChange={content => update({ content })}
+            vars={vars}
+          />
+        </div>
+        <textarea
+          ref={textareaRef}
+          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-8 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
+          placeholder={t.textBlock.placeholder}
+          value={block.content}
+          onFocus={saveSnapshot}
+          onChange={e => update({ content: e.target.value })}
+        />
+      </div>
       <label className="flex items-center gap-2 cursor-pointer select-none mt-0.5">
         <input
           type="checkbox"
