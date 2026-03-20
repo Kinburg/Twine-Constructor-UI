@@ -210,6 +210,22 @@ export interface ButtonAction {
   accessor?: ArrayAccessor;
 }
 
+export interface WatcherCondition {
+  variableId: string;
+  operator: ConditionOperator;
+  value: string;
+  accessor?: ArrayAccessor;
+}
+
+export interface Watcher {
+  id: string;
+  label: string;
+  enabled: boolean;
+  condition: WatcherCondition;
+  actions: ButtonAction[];
+  navigate?: { type: 'back' } | { type: 'scene'; sceneId: string };
+}
+
 export interface ButtonBlock {
   id: string;
   type: 'button';
@@ -673,4 +689,5 @@ export interface Project {
   variableNodes: VariableTreeNode[];
   assetNodes: AssetTreeNode[];
   sidebarPanel: SidebarPanel;
+  watchers: Watcher[];
 }

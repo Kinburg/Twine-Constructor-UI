@@ -7,6 +7,7 @@ import type {
   ChoiceOption, ConditionBranch,
   SidebarPanel, SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   AvatarConfig, AvatarMode,
+  Watcher,
 } from '../types';
 import { flattenVariables, flattenAssets } from '../utils/treeUtils';
 
@@ -40,6 +41,7 @@ function makeDefaultProject(): Project {
     variableNodes: [],
     assetNodes: [],
     sidebarPanel: DEFAULT_PANEL,
+    watchers: [],
   };
 }
 
@@ -389,6 +391,8 @@ function migrateProject(raw: any): Project {
   // Add avatarConfig to characters that predate this feature
   p = migrateCharacterAvatarConfig(p as Project);
 
+  if (!p.watchers) p.watchers = [];
+
   return p as Project;
 }
 
@@ -402,12 +406,13 @@ function findAssetNodeById(nodes: AssetTreeNode[], id: string): AssetTreeNode | 
 
 // ─── Store shape ──────────────────────────────────────────────────────────────
 
-type SidebarTabId = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel';
+type SidebarTabId = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers';
 
 interface ProjectState {
   project: Project;
   activeSceneId: string | null;
   activeSidebarTab: SidebarTabId;
+  sidebarWidth: number;
   projectDir: string | null;
 
   setProjectDir: (dir: string | null) => void;
@@ -415,6 +420,7 @@ interface ProjectState {
   loadProject: (project: Project, dir?: string) => void;
   resetProject: () => void;
   setSidebarTab: (tab: SidebarTabId) => void;
+  setSidebarWidth: (width: number) => void;
   fixVariableNames: () => void;
 
   // History / undo / redo
@@ -473,6 +479,11 @@ interface ProjectState {
   addCharacter: (char: Omit<Character, 'id'>) => void;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
   deleteCharacter: (id: string) => void;
+
+  // Watchers
+  addWatcher: () => void;
+  updateWatcher: (id: string, patch: Partial<Watcher>) => void;
+  deleteWatcher: (id: string) => void;
 
   // Variable tree
   addVariableGroup: (parentId: string | null, name: string) => void;
@@ -552,6 +563,7 @@ export const useProjectStore = create<ProjectState>()(
         project: defaultProject,
         activeSceneId: defaultProject.scenes[0].id,
         activeSidebarTab: 'scenes',
+        sidebarWidth: 288,
         projectDir: null,
         _history: [],
         _future: [],
@@ -581,6 +593,7 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         setSidebarTab: (tab) => set({ activeSidebarTab: tab }),
+        setSidebarWidth: (width) => set({ sidebarWidth: Math.max(220, Math.min(600, width)) }),
 
         // Run migration via set() so it's reactive + persisted.
         // Called once on app mount to handle HMR / warm-reload scenarios
@@ -1100,6 +1113,40 @@ export const useProjectStore = create<ProjectState>()(
           });
         },
 
+        // ── Watchers ───────────────────────────────────────────────────────────
+
+        addWatcher: () => {
+          get().saveSnapshot();
+          const w: Watcher = {
+            id: uuid(),
+            label: '',
+            enabled: true,
+            condition: { variableId: '', operator: '==', value: '' },
+            actions: [],
+          };
+          set(s => ({ project: { ...s.project, watchers: [...(s.project.watchers ?? []), w] } }));
+        },
+
+        updateWatcher: (id, patch) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: {
+              ...s.project,
+              watchers: (s.project.watchers ?? []).map(w => w.id === id ? { ...w, ...patch } : w),
+            },
+          }));
+        },
+
+        deleteWatcher: (id) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: {
+              ...s.project,
+              watchers: (s.project.watchers ?? []).filter(w => w.id !== id),
+            },
+          }));
+        },
+
         // ── Variable tree ──────────────────────────────────────────────────────
 
         addVariableGroup: (parentId, name) => {
@@ -1300,6 +1347,7 @@ export const useProjectStore = create<ProjectState>()(
         project: state.project,
         activeSceneId: state.activeSceneId,
         activeSidebarTab: state.activeSidebarTab,
+        sidebarWidth: state.sidebarWidth,
         projectDir: state.projectDir,
       }),
       onRehydrateStorage: () => (state) => {

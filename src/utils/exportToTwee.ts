@@ -3,6 +3,7 @@ import type {
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
   Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
   ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList,
+  Watcher, WatcherCondition,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables } from './treeUtils';
@@ -428,6 +429,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
       } else {
         actionLines.push(`${indent}  <<run $('.tg-live[data-wiki]').each(function(){$(this).empty().wiki($(this).attr('data-wiki'));})>>`);
       }
+      actionLines.push(`${indent}  <<run window._tgCheckWatchers && window._tgCheckWatchers()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
         `${indent}<span class="tg-btn ${cls}">` +
@@ -464,6 +466,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], inde
       const sceneName = block.targetSceneId || '???';
       actionLines.push(`${indent}  <<include "${sceneName}">>`);
       actionLines.push(`${indent}  <<run $('.tg-live[data-wiki]').each(function(){$(this).empty().wiki($(this).attr('data-wiki'));})>>`);
+      actionLines.push(`${indent}  <<run window._tgCheckWatchers && window._tgCheckWatchers()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
         `${indent}<span class="tg-btn ${cls}"><<link "${block.label}">>\n` +
@@ -668,6 +671,8 @@ function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[]): str
   const macros: string[] = c.actions
     .map(a => actionToSC(a, vars, ''))
     .filter(Boolean);
+
+  macros.push('<<run window._tgCheckWatchers && window._tgCheckWatchers()>>');
 
   if (c.navigate?.type === 'back') {
     macros.push('<<run Engine.backward()>>');
@@ -998,6 +1003,166 @@ function hasLiveBlocks(blocks: Block[]): boolean {
   });
 }
 
+// ─── Watcher export ───────────────────────────────────────────────────────────
+
+/** Convert a stored condition/action value string to a JS literal or State reference. */
+function valueToJS(val: string, varType: string, vars: Variable[]): string {
+  if (val.startsWith('$')) {
+    const refName = val.slice(1);
+    const refVar = vars.find(v => v.name === refName);
+    return `State.variables[${JSON.stringify(refVar?.name ?? refName)}]`;
+  }
+  if (varType === 'number') return val || '0';
+  if (varType === 'boolean') return val === 'true' ? 'true' : 'false';
+  return JSON.stringify(val);
+}
+
+/** Convert a WatcherCondition to a JS boolean expression. */
+function conditionToJS(cond: WatcherCondition, vars: Variable[]): string {
+  const v = vars.find(x => x.id === cond.variableId);
+  if (!v) return 'false';
+
+  let ref = `State.variables[${JSON.stringify(v.name)}]`;
+  const accessorKind = cond.accessor?.kind ?? 'whole';
+  if (cond.accessor?.kind === 'length') {
+    ref += '.length';
+  } else if (cond.accessor?.kind === 'index') {
+    const src = cond.accessor.source;
+    if (src.kind === 'literal') ref += `[${src.index}]`;
+    else {
+      const idxVar = vars.find(x => x.id === src.variableId);
+      ref += `[${idxVar ? `State.variables[${JSON.stringify(idxVar.name)}]` : '0'}]`;
+    }
+  }
+
+  if (v.varType === 'array' && accessorKind === 'whole') {
+    switch (cond.operator) {
+      case 'contains':  return `Array.isArray(${ref}) && ${ref}.indexOf(${JSON.stringify(cond.value)}) !== -1`;
+      case '!contains': return `(!Array.isArray(${ref}) || ${ref}.indexOf(${JSON.stringify(cond.value)}) === -1)`;
+      case 'empty':     return `Array.isArray(${ref}) && ${ref}.length === 0`;
+      case '!empty':    return `Array.isArray(${ref}) && ${ref}.length > 0`;
+    }
+  }
+
+  const valueType = (v.varType === 'array' && accessorKind === 'index') ? 'string' : v.varType;
+  const valJS = valueToJS(cond.value, valueType, vars);
+  switch (cond.operator) {
+    case '==': return `${ref} == ${valJS}`;
+    case '!=': return `${ref} != ${valJS}`;
+    case '>':  return `${ref} > ${valJS}`;
+    case '<':  return `${ref} < ${valJS}`;
+    case '>=': return `${ref} >= ${valJS}`;
+    case '<=': return `${ref} <= ${valJS}`;
+    default:   return 'false';
+  }
+}
+
+/** Convert a single ButtonAction to a JS statement for use in the watcher script. */
+function actionToJS(a: ButtonAction, vars: Variable[]): string {
+  const v = vars.find(x => x.id === a.variableId);
+  if (!v) return '';
+
+  const ref = `State.variables[${JSON.stringify(v.name)}]`;
+
+  if (v.varType === 'array') {
+    const accessorKind = a.accessor?.kind ?? 'whole';
+    if (accessorKind === 'index') {
+      let arrRef = ref;
+      if (a.accessor?.kind === 'index') {
+        const src = a.accessor.source;
+        if (src.kind === 'literal') arrRef += `[${src.index}]`;
+        else {
+          const idxVar = vars.find(x => x.id === src.variableId);
+          arrRef += `[${idxVar ? `State.variables[${JSON.stringify(idxVar.name)}]` : '0'}]`;
+        }
+      }
+      return `${arrRef} = ${JSON.stringify(a.value)};`;
+    }
+    switch (a.operator) {
+      case 'push':   return `if (Array.isArray(${ref})) ${ref}.push(${JSON.stringify(a.value)});`;
+      case 'remove': return `if (Array.isArray(${ref})) { var _i = ${ref}.indexOf(${JSON.stringify(a.value)}); if (_i !== -1) ${ref}.splice(_i, 1); }`;
+      case 'clear':  return `if (Array.isArray(${ref})) ${ref}.length = 0;`;
+      default:       return `${ref} = ${JSON.stringify(a.value)};`;
+    }
+  }
+
+  const valJS = valueToJS(a.value, v.varType, vars);
+  switch (a.operator) {
+    case '=':  return `${ref} = ${valJS};`;
+    case '+=': return `${ref} += ${valJS};`;
+    case '-=': return `${ref} -= ${valJS};`;
+    case '*=': return `${ref} *= ${valJS};`;
+    case '/=': return `${ref} /= ${valJS};`;
+    default:   return '';
+  }
+}
+
+/**
+ * Generates a global _tgCheckWatchers function and a :passagedisplay hook.
+ * The function uses rising-edge semantics (fires only when condition
+ * transitions false → true).  It is also callable from button actions
+ * so watchers react to variable changes even without Engine.show().
+ * Only included when the project has at least one enabled watcher.
+ */
+export function buildWatcherScript(watchers: Watcher[], vars: Variable[]): string {
+  const active = watchers.filter(w => w.enabled);
+  if (active.length === 0) return '';
+
+  const lines: string[] = [];
+  lines.push('/* TG: watchers — global check function + :passagedisplay hook */');
+  lines.push('window._tgCheckWatchers = function() {');
+  lines.push('  window._tgWPrev = window._tgWPrev || {};');
+  lines.push('  if (!State || !State.variables) return;');
+
+  for (const w of active) {
+    const label = w.label ? ` // ${w.label}` : '';
+    const actionLines = w.actions.map(a => actionToJS(a, vars)).filter(Boolean);
+
+    let navLine = '';
+    if (w.navigate?.type === 'scene' && w.navigate.sceneId) {
+      navLine = `    Engine.play(${JSON.stringify(w.navigate.sceneId)});`;
+    } else if (w.navigate?.type === 'back') {
+      navLine = '    Engine.backward();';
+    }
+
+    if (actionLines.length === 0 && !navLine) continue;
+
+    if (!w.condition.variableId) {
+      // Unconditional: run on every check
+      lines.push(`  (function() {${label}`);
+      for (const al of actionLines) lines.push(`    ${al}`);
+      if (navLine) { lines.push(navLine); lines.push('    return;'); }
+      lines.push('  })();');
+    } else {
+      // Conditional: rising-edge (fires only when condition transitions false → true)
+      const condExpr = conditionToJS(w.condition, vars);
+      if (condExpr === 'false') continue;
+
+      const idJS = JSON.stringify(w.id);
+      lines.push(`  (function() {${label}`);
+      lines.push(`    var _cond = !!(${condExpr});`);
+      lines.push(`    var _prev = window._tgWPrev[${idJS}];`);
+      lines.push(`    window._tgWPrev[${idJS}] = _cond;`);
+      lines.push(`    if (!_cond || _prev) return;`);
+      for (const al of actionLines) lines.push(`    ${al}`);
+      if (navLine) {
+        lines.push(navLine);
+        lines.push('    return;');
+      }
+      lines.push('  })();');
+    }
+  }
+
+  lines.push('};');
+  lines.push('$(document).on(":passagedisplay", window._tgCheckWatchers);');
+  return lines.join('\n');
+}
+
+/** Returns true when the project has active watchers (used to inject check calls into buttons). */
+export function hasActiveWatchers(watchers: Watcher[]): boolean {
+  return (watchers ?? []).some(w => w.enabled);
+}
+
 /**
  * Generates a :passagedisplay/:passagehide pair that polls .tg-live[data-wiki]
  * spans every 200ms and re-wikifies them so live blocks stay in sync with
@@ -1228,6 +1393,7 @@ export function exportToTwee(project: Project): string {
     buildPanelScript(sidebarPanel),
     buildInputScript(scenes),
     buildLiveScript(scenes),
+    buildWatcherScript(project.watchers ?? [], variables),
   ].filter(Boolean).join('\n\n');
   if (storyScript) parts.push(`::StoryScript [script]\n${storyScript}\n`);
 

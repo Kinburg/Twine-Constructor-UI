@@ -9,6 +9,7 @@ const ua: Translations = {
     variables:  'Змінні',
     assets:     'Ресурси',
     panel:      'Панель',
+    watchers:   'Спостерігачі',
   },
 
   scene: {
@@ -585,6 +586,25 @@ const ua: Translations = {
     tagsLabel:        'Теги',
     addTagPlaceholder: 'новий тег...',
     done:             'Готово',
+  },
+
+  watchers: {
+    add:              '+ Додати спостерігач',
+    empty:            'Немає спостерігачів',
+    confirmDelete:    (label) => `Видалити спостерігач "${label || 'Без назви'}"?`,
+    defaultLabel:     '',
+    labelPlaceholder: 'Назва (необов\'язково)',
+    enabledLabel:     'Увімкнено',
+    conditionSection: 'Умова',
+    actionsSection:   'Дії',
+    navigateSection:  'Перехід',
+    navigateNone:     'Немає',
+    navigateBack:     'Назад',
+    navigateScene:    'До сцени',
+    noVariable:         '— оберіть змінну —',
+    addAction:          '+ Додати дію',
+    unconditionalLabel: 'Кожен перехід',
+    unconditionalHint:  'Без умови — виконується при кожному переході',
   },
 };
 

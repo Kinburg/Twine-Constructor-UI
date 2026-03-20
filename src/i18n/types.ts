@@ -12,6 +12,7 @@ export interface Translations {
     variables: string;
     assets: string;
     panel: string;
+    watchers: string;
   };
 
   scene: {
@@ -604,5 +605,25 @@ export interface Translations {
     tagsLabel: string;
     addTagPlaceholder: string;
     done: string;
+  };
+
+  // ─── Watchers ────────────────────────────────────────────────────────────────
+  watchers: {
+    add: string;
+    empty: string;
+    confirmDelete: (label: string) => string;
+    defaultLabel: string;
+    labelPlaceholder: string;
+    enabledLabel: string;
+    conditionSection: string;
+    actionsSection: string;
+    navigateSection: string;
+    navigateNone: string;
+    navigateBack: string;
+    navigateScene: string;
+    noVariable: string;
+    addAction: string;
+    unconditionalLabel: string;
+    unconditionalHint: string;
   };
 }

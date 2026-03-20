@@ -409,23 +409,27 @@ export function VariableSetBlockEditor({
 
                   {/* Range */}
                   {mt === 'range' && (
-                    <div className="flex gap-1 items-center">
-                      <span className="text-xs text-slate-500 shrink-0 w-12">{t.variableSetBlock.fromLabel}</span>
-                      <input
-                        className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                        placeholder="0"
-                        value={m.rangeMin ?? ''}
-                        onFocus={saveSnapshot}
-                        onChange={e => patchDynEntry(i, { rangeMin: e.target.value })}
-                      />
-                      <span className="text-xs text-slate-500 shrink-0">{t.variableSetBlock.toLabel}</span>
-                      <input
-                        className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                        placeholder="100"
-                        value={m.rangeMax ?? ''}
-                        onFocus={saveSnapshot}
-                        onChange={e => patchDynEntry(i, { rangeMax: e.target.value })}
-                      />
+                    <div className="grid grid-cols-2 gap-1">
+                      <div className="flex gap-1 items-center">
+                        <span className="text-xs text-slate-500 shrink-0 w-12">{t.variableSetBlock.fromLabel}</span>
+                        <input
+                          className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                          placeholder="0"
+                          value={m.rangeMin ?? ''}
+                          onFocus={saveSnapshot}
+                          onChange={e => patchDynEntry(i, { rangeMin: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex gap-1 items-center">
+                        <span className="text-xs text-slate-500 shrink-0">{t.variableSetBlock.toLabel}</span>
+                        <input
+                          className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                          placeholder="100"
+                          value={m.rangeMax ?? ''}
+                          onFocus={saveSnapshot}
+                          onChange={e => patchDynEntry(i, { rangeMax: e.target.value })}
+                        />
+                      </div>
                     </div>
                   )}
 

@@ -790,13 +790,17 @@ function CellEditModal({
                       </div>
                     )}
                     {mt === 'range' && (
-                      <div className="flex gap-1 items-center">
-                        <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.fromLabel}</span>
-                        <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                          placeholder="0" value={m.rangeMin ?? ''} onChange={e => patchM({ rangeMin: e.target.value })} />
-                        <span className="text-xs text-slate-500 shrink-0">{t.cellModal.toLabel}</span>
-                        <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                          placeholder="20" value={m.rangeMax ?? ''} onChange={e => patchM({ rangeMax: e.target.value })} />
+                      <div className="grid grid-cols-2 gap-1">
+                        <div className="flex gap-1 items-center">
+                          <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.fromLabel}</span>
+                          <input className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                            placeholder="0" value={m.rangeMin ?? ''} onChange={e => patchM({ rangeMin: e.target.value })} />
+                        </div>
+                        <div className="flex gap-1 items-center">
+                          <span className="text-xs text-slate-500 shrink-0">{t.cellModal.toLabel}</span>
+                          <input className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                            placeholder="20" value={m.rangeMax ?? ''} onChange={e => patchM({ rangeMax: e.target.value })} />
+                        </div>
                       </div>
                     )}
                     <div className="flex gap-1 items-start">

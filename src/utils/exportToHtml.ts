@@ -1,6 +1,6 @@
 import type { Project, Character } from '../types';
 import { flattenVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildPanelScript, buildInputScript } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript } from './exportToTwee';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -124,8 +124,12 @@ export function buildPassages(project: Project): {
   const buttonCSS = buildButtonsCSS(scenes);
   const combinedCSS = [charCSS, panelCSS, buttonCSS].filter(Boolean).join('\n\n');
 
-  const scriptContent = [buildPanelScript(sidebarPanel), buildInputScript(scenes)]
-    .filter(Boolean).join('\n\n');
+  const scriptContent = [
+    buildPanelScript(sidebarPanel),
+    buildInputScript(scenes),
+    buildLiveScript(scenes),
+    buildWatcherScript(project.watchers ?? [], variables),
+  ].filter(Boolean).join('\n\n');
 
   return { passages, startPid, combinedCSS, scriptContent };
 }

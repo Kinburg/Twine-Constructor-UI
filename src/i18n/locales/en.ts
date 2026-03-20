@@ -9,6 +9,7 @@ const en: Translations = {
     variables:  'Variables',
     assets:     'Assets',
     panel:      'Panel',
+    watchers:   'Watchers',
   },
 
   scene: {
@@ -585,6 +586,25 @@ const en: Translations = {
     tagsLabel:        'Tags',
     addTagPlaceholder: 'new tag...',
     done:             'Done',
+  },
+
+  watchers: {
+    add:              '+ Add watcher',
+    empty:            'No watchers yet',
+    confirmDelete:    (label) => `Delete watcher "${label || 'Unnamed'}"?`,
+    defaultLabel:     '',
+    labelPlaceholder: 'Watcher name (optional)',
+    enabledLabel:     'Enabled',
+    conditionSection: 'Condition',
+    actionsSection:   'Actions',
+    navigateSection:  'Navigate',
+    navigateNone:     'None',
+    navigateBack:     'Go back',
+    navigateScene:    'Go to scene',
+    noVariable:         '— select variable —',
+    addAction:          '+ Add action',
+    unconditionalLabel: 'Every transition',
+    unconditionalHint:  'No condition — runs on every scene transition',
   },
 };
 

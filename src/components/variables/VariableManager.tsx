@@ -289,7 +289,7 @@ function VariableNode({
         <div className="px-3 py-2 flex flex-col gap-2 border-t border-slate-700 bg-slate-800/30">
           <Field label={t.variables.fieldName}>
             <input
-              className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
+              className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
               value={v.name}
               onChange={e => upd({ name: e.target.value.replace(/[^a-zA-Zа-яёА-ЯЁ0-9_]/g, '') })}
               placeholder="varName"
@@ -299,7 +299,7 @@ function VariableNode({
 
           <Field label={t.variables.fieldType}>
             <select
-              className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+              className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={v.varType}
               onChange={e => {
                 const varType = e.target.value as VariableType;
@@ -316,7 +316,7 @@ function VariableNode({
           <Field label={t.variables.fieldDefault}>
             {v.varType === 'boolean' ? (
               <select
-                className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
                 value={v.defaultValue}
                 onChange={e => upd({ defaultValue: e.target.value })}
               >
@@ -325,7 +325,7 @@ function VariableNode({
               </select>
             ) : (
               <input
-                className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
+                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
                 value={v.defaultValue}
                 placeholder={v.varType === 'number' ? t.variables.defaultPlaceholderNumber : v.varType === 'array' ? '[]' : t.variables.defaultPlaceholderText}
                 onChange={e => upd({ defaultValue: e.target.value })}
@@ -335,14 +335,14 @@ function VariableNode({
 
           <Field label={t.variables.fieldDescription}>
             <input
-              className="flex-1 bg-slate-800 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+              className="flex-1 min-w-0 bg-slate-800 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
               value={v.description}
               placeholder={t.variables.descriptionPlaceholder}
               onChange={e => upd({ description: e.target.value })}
             />
           </Field>
 
-          <div className="text-xs text-slate-500 font-mono bg-slate-800/60 px-2 py-1 rounded">
+          <div className="text-xs text-slate-500 font-mono bg-slate-800/60 px-2 py-1 rounded break-all">
             {'<<set $' + v.name + ' to ' + (v.varType === 'string' ? `"${v.defaultValue}"` : v.defaultValue || (v.varType === 'array' ? '[]' : v.defaultValue)) + '>>'}
           </div>
         </div>
@@ -355,7 +355,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return (
     <div className="flex items-center gap-2">
       <label className="text-xs text-slate-400 w-20 shrink-0">{label}:</label>
-      <div className="flex-1 flex items-center gap-1">{children}</div>
+      <div className="flex-1 min-w-0 flex items-center gap-1">{children}</div>
     </div>
   );
 }
