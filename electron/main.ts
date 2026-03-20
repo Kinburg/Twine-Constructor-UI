@@ -17,15 +17,23 @@ process.env.VITE_PUBLIC = VITE_DEV_SERVER_URL
 // Required for correct taskbar grouping and icon on Windows 10/11
 app.setAppUserModelId('com.purlapp.app');
 
-// On some machines (old/buggy GPU drivers) the GPU process crashes on startup
-// with 0xc000041d. If we were relaunched with --disable-gpu, apply it now.
-// Otherwise, detect the crash and relaunch with the flag automatically.
+// Prevent GPU compositor crashes (STATUS_FATAL_APP_EXIT / 0xC000041D) on Windows.
+// Some GPU drivers fail during DirectComposition overlay detection, crashing the
+// GPU subprocess and taking the main process down with it.
+app.commandLine.appendSwitch('disable-gpu-sandbox');
+app.commandLine.appendSwitch('disable-gpu-process-crash-limit');
+
 if (process.argv.includes('--disable-gpu')) {
   app.disableHardwareAcceleration();
 }
 
+// Fallback: if GPU crashes while the app is running, relaunch with full GPU disabled.
+// Guard prevents relaunch when GPU process is killed during normal shutdown.
+let isQuitting = false;
+app.on('before-quit', () => { isQuitting = true; });
+
 app.on('child-process-gone', (_event, details) => {
-  if (details.type === 'GPU' && details.reason !== 'clean-exit') {
+  if (!isQuitting && details.type === 'GPU' && details.reason !== 'clean-exit') {
     app.relaunch({ args: process.argv.slice(1).concat(['--disable-gpu']) });
     app.quit();
   }
@@ -148,11 +156,18 @@ function createWindow() {
     const elapsed = Date.now() - splashStart;
     const delay = Math.max(0, 2000 - elapsed);
     setTimeout(() => {
-      if (splashWin && !splashWin.isDestroyed()) {
-        splashWin.close();
-        splashWin = null;
-      }
       win?.show();
+      // Hide splash first, then destroy after delay to avoid GPU compositor crash
+      // (BrowserWindow.close() triggers GPU resource cleanup that can cause 0xC000041D)
+      if (splashWin && !splashWin.isDestroyed()) {
+        splashWin.hide();
+        setTimeout(() => {
+          if (splashWin && !splashWin.isDestroyed()) {
+            splashWin.destroy();
+            splashWin = null;
+          }
+        }, 1000);
+      }
     }, delay);
   });
 }
