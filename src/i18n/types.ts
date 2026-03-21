@@ -626,4 +626,23 @@ export interface Translations {
     unconditionalLabel: string;
     unconditionalHint: string;
   };
+
+  insertToolbar: {
+    varTitle: string;
+    tooltipTitle: string;
+    exprTitle: string;
+    condTitle: string;
+    tooltipText: string;
+    tooltipContent: string;
+    tooltipImage: string;
+    tooltipNoImage: string;
+    exprLabel: string;
+    exprPlaceholder: string;
+    condVariable: string;
+    condValue: string;
+    condIfTrue: string;
+    condElse: string;
+    condElseOptional: string;
+    insert: string;
+  };
 }

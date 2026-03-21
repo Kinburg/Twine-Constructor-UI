@@ -1237,6 +1237,18 @@ export function buildAnimationCSS(_scenes: Scene[]): string {
   return '';
 }
 
+// ─── Tooltip CSS ──────────────────────────────────────────────────────────────
+
+export function buildTooltipCSS(): string {
+  return [
+    '.tg-tip { position: relative; border-bottom: 1px dotted currentColor; cursor: help; }',
+    '.tg-tip .tg-tip-text { display: none; position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%); background: #1a1a2e; color: #e2e8f0; padding: 6px 8px; border-radius: 4px; font-size: 0.85em; z-index: 100; pointer-events: none; box-shadow: 0 2px 8px rgba(0,0,0,.4); max-width: 240px; text-align: center; }',
+    '.tg-tip:hover .tg-tip-text { display: block; }',
+    '.tg-tip-img { display: block; max-width: 100%; height: auto; border-radius: 3px; margin-bottom: 4px; }',
+    '.tg-tip-text .tg-tip-img:last-child { margin-bottom: 0; }',
+  ].join('\n');
+}
+
 // ─── Button CSS ───────────────────────────────────────────────────────────────
 
 function collectButtons(blocks: Block[]): (ButtonBlock | LinkBlock | FunctionBlock)[] {
@@ -1385,7 +1397,8 @@ export function exportToTwee(project: Project): string {
   const panelCSS  = buildPanelCSS(sidebarPanel);
   const buttonCSS = buildButtonsCSS(scenes);
   const animCSS   = buildAnimationCSS(scenes);
-  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS].filter(Boolean).join('\n\n');
+  const tipCSS    = buildTooltipCSS();
+  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS, tipCSS].filter(Boolean).join('\n\n');
   if (allCSS) parts.push(`::StoryStylesheet [stylesheet]\n${allCSS}\n`);
 
   // StoryScript (lightbox + input debounce) — single passage

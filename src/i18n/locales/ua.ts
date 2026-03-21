@@ -606,6 +606,25 @@ const ua: Translations = {
     unconditionalLabel: 'Кожен перехід',
     unconditionalHint:  'Без умови — виконується при кожному переході',
   },
+
+  insertToolbar: {
+    varTitle:          'Вставити змінну',
+    tooltipTitle:      'Вставити тултіп',
+    exprTitle:         'Вставити вираз',
+    condTitle:         'Вставити умову',
+    tooltipText:       'Видимий текст',
+    tooltipContent:    'Текст тултіпу',
+    tooltipImage:      'Зображення',
+    tooltipNoImage:    'без зображення',
+    exprLabel:         'Вираз',
+    exprPlaceholder:   'напр. $gold * 2',
+    condVariable:      'змінна',
+    condValue:         'значення',
+    condIfTrue:        'Якщо так',
+    condElse:          'Інакше',
+    condElseOptional:  'необов\'язково',
+    insert:            'Вставити',
+  },
 };
 
 export default ua;

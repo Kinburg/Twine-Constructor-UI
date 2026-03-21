@@ -606,6 +606,25 @@ const en: Translations = {
     unconditionalLabel: 'Every transition',
     unconditionalHint:  'No condition — runs on every scene transition',
   },
+
+  insertToolbar: {
+    varTitle:          'Insert variable',
+    tooltipTitle:      'Insert tooltip',
+    exprTitle:         'Insert expression',
+    condTitle:         'Insert condition',
+    tooltipText:       'Visible text',
+    tooltipContent:    'Tooltip content',
+    tooltipImage:      'Image',
+    tooltipNoImage:    'no image',
+    exprLabel:         'Expression',
+    exprPlaceholder:   'e.g. $gold * 2',
+    condVariable:      'variable',
+    condValue:         'value',
+    condIfTrue:        'If true',
+    condElse:          'Else',
+    condElseOptional:  'optional',
+    insert:            'Insert',
+  },
 };
 
 export default en;

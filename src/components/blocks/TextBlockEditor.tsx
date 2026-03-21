@@ -3,8 +3,8 @@ import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type { TextBlock } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
-import { VarInsertButton } from '../shared/VarInsertButton';
-import { flattenVariables } from '../../utils/treeUtils';
+import { TextInsertToolbar } from '../shared/TextInsertToolbar';
+import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
 
 export function TextBlockEditor({
   block,
@@ -19,22 +19,24 @@ export function TextBlockEditor({
   const t = useT();
   const update = onUpdate ?? ((p: Partial<TextBlock>) => updateBlock(sceneId, block.id, p as never));
   const vars = flattenVariables(project.variableNodes);
+  const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="relative">
         <div className="absolute top-1 right-1 z-10">
-          <VarInsertButton
+          <TextInsertToolbar
             targetRef={textareaRef}
             value={block.content}
             onChange={content => update({ content })}
             vars={vars}
+            imageAssets={imgAssets}
           />
         </div>
         <textarea
           ref={textareaRef}
-          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-8 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
+          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-24 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
           placeholder={t.textBlock.placeholder}
           value={block.content}
           onFocus={saveSnapshot}

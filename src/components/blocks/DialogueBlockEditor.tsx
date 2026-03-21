@@ -23,8 +23,8 @@ import { RawBlockEditor } from './RawBlockEditor';
 import { TableBlockEditor } from './TableBlockEditor';
 import { NoteBlockEditor } from './NoteBlockEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
-import { VarInsertButton } from '../shared/VarInsertButton';
-import { flattenVariables } from '../../utils/treeUtils';
+import { TextInsertToolbar } from '../shared/TextInsertToolbar';
+import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
 
 /**
  * Converts an avatar src value to a URL the editor renderer can actually load:
@@ -219,6 +219,7 @@ export function DialogueBlockEditor({
   const update = onUpdate ?? ((p: Partial<DialogueBlock>) => updateBlock(sceneId, block.id, p as never));
   const { characters } = project;
   const vars = flattenVariables(project.variableNodes);
+  const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
   const dialogueRef = useRef<HTMLTextAreaElement>(null);
 
   const selectedChar = characters.find(c => c.id === block.characterId);
@@ -360,16 +361,17 @@ export function DialogueBlockEditor({
             </span>
           )}
           <div className={`absolute top-0.5 z-10 ${isRight ? 'left-0.5' : 'right-0.5'}`}>
-            <VarInsertButton
+            <TextInsertToolbar
               targetRef={dialogueRef}
               value={block.text}
               onChange={text => update({ text })}
               vars={vars}
+              imageAssets={imgAssets}
             />
           </div>
           <textarea
             ref={dialogueRef}
-            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-7' : 'pr-7'}`}
+            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-24' : 'pr-24'}`}
             style={{ color: selectedChar ? '#e2e8f0' : undefined }}
             placeholder={t.dialogueBlock.linePlaceholder}
             value={block.text}
