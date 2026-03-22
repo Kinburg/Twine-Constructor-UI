@@ -26,7 +26,7 @@ export function usePreviewSync(): void {
     const vars = flattenVariables(project.variableNodes);
     const tags = scene.tags.length > 0 ? ` [${scene.tags.join(' ')}]` : '';
     const body = scene.blocks
-      .map(b => blockToSC(b, project.characters, vars))
+      .map(b => blockToSC(b, project.characters, vars, project.variableNodes))
       .filter(Boolean)
       .join('\n');
 

@@ -629,9 +629,11 @@ export interface Translations {
 
   insertToolbar: {
     varTitle: string;
+    codeTitle: string;
     tooltipTitle: string;
     exprTitle: string;
     condTitle: string;
+    linkTitle: string;
     tooltipText: string;
     tooltipContent: string;
     tooltipImage: string;
@@ -643,6 +645,9 @@ export interface Translations {
     condIfTrue: string;
     condElse: string;
     condElseOptional: string;
+    linkLabel: string;
+    linkTarget: string;
+    linkTargetPlaceholder: string;
     insert: string;
   };
 }

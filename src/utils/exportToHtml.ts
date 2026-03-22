@@ -1,6 +1,6 @@
-import type { Project, Character } from '../types';
-import { flattenVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript } from './exportToTwee';
+import type { Project, Character, VariableGroup } from '../types';
+import { flattenVariables, hasLeafVariables } from './treeUtils';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, defaultValueLiteral, buildObjectLiteral } from './exportToTwee';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -76,13 +76,17 @@ export function buildPassages(project: Project): {
     content: project.title, x: colW, y: 100,
   });
 
+  const variableNodes = project.variableNodes;
+
   // StoryInit — variable initialization + $__tgTab
-  const inits = variables.map(v => {
-    let val = v.defaultValue;
-    if (v.varType === 'string')  val = `"${val}"`;
-    if (v.varType === 'boolean') val = val === 'true' ? 'true' : 'false';
-    return `<<set $${v.name} to ${val}>>`;
-  });
+  const inits: string[] = [];
+  for (const n of variableNodes) {
+    if (n.kind === 'variable') {
+      inits.push(`<<set $${n.name} to ${defaultValueLiteral(n)}>>`);
+    } else if (n.kind === 'group' && hasLeafVariables(n)) {
+      inits.push(`<<set $${n.name} = ${buildObjectLiteral(n, variableNodes)}>>`);
+    }
+  }
   if (sidebarPanel.tabs.length > 0) inits.push('<<set $__tgTab to 0>>');
   if (inits.length > 0) {
     passages.push({
@@ -92,7 +96,7 @@ export function buildPassages(project: Project): {
   }
 
   // StoryCaption (sidebar panel)
-  const captionSC = buildStoryCaptionSC(sidebarPanel, variables);
+  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes);
   if (captionSC) {
     passages.push({
       pid: pid++, name: 'StoryCaption', tags: '',
@@ -106,7 +110,7 @@ export function buildPassages(project: Project): {
   // Scene passages
   scenes.forEach((scene, idx) => {
     const body = scene.blocks
-      .map(b => blockToSC(b, characters, variables))
+      .map(b => blockToSC(b, characters, variables, variableNodes))
       .filter(Boolean)
       .join('\n');
     passages.push({
@@ -129,7 +133,7 @@ export function buildPassages(project: Project): {
     buildPanelScript(sidebarPanel),
     buildInputScript(scenes),
     buildLiveScript(scenes),
-    buildWatcherScript(project.watchers ?? [], variables),
+    buildWatcherScript(project.watchers ?? [], variables, variableNodes),
   ].filter(Boolean).join('\n\n');
 
   return { passages, startPid, combinedCSS, scriptContent };

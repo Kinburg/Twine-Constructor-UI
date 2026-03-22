@@ -4,6 +4,7 @@ import type { VariableSetBlock, VarOperator, RandomConfig, VarValueMode, StringB
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
+import { VariablePicker } from '../shared/VariablePicker';
 
 /** Default RandomConfig strictly matching the variable type */
 function defaultRandomConfig(varType: string): RandomConfig {
@@ -194,11 +195,9 @@ export function VariableSetBlockEditor({
       {/* ── Variable selector ─────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.variableLabel}</label>
-        <select
-          className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+        <VariablePicker
           value={block.variableId}
-          onChange={e => {
-            const newVarId = e.target.value;
+          onChange={newVarId => {
             const newVar   = variables.find(v => v.id === newVarId);
             const switchingToArray   = newVar?.varType === 'array';
             const switchingFromArray = selectedVar?.varType === 'array';
@@ -218,12 +217,9 @@ export function VariableSetBlockEditor({
               ...(switchingFromArray ? { accessor: undefined } : {}),
             });
           }}
-        >
-          <option value="">{t.variableSetBlock.selectVariable}</option>
-          {variables.map(v => (
-            <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
-          ))}
-        </select>
+          nodes={project.variableNodes}
+          placeholder={t.variableSetBlock.selectVariable}
+        />
         {variables.length === 0 && (
           <span className="text-xs text-slate-500 italic">{t.variableSetBlock.noVariables}</span>
         )}
@@ -341,16 +337,12 @@ export function VariableSetBlockEditor({
           {/* Controlling variable */}
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-400 w-20 shrink-0">{t.variableSetBlock.controlVariable}</label>
-            <select
-              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+            <VariablePicker
               value={block.dynamicVariableId ?? ''}
-              onChange={e => update({ dynamicVariableId: e.target.value })}
-            >
-              <option value="">{t.variableSetBlock.selectControlVariable}</option>
-              {variables.map(v => (
-                <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
-              ))}
-            </select>
+              onChange={id => update({ dynamicVariableId: id })}
+              nodes={project.variableNodes}
+              placeholder={t.variableSetBlock.selectControlVariable}
+            />
           </div>
 
           {/* Mapping list */}

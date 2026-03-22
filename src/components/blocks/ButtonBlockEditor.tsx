@@ -5,6 +5,7 @@ import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VarInsertButton } from '../shared/VarInsertButton';
+import { VariablePicker } from '../shared/VariablePicker';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -180,6 +181,7 @@ interface ActionRowProps {
 
 function ActionRow({ action, variables, onChange, onDelete, onFocusValue }: ActionRowProps) {
   const t = useT();
+  const { project } = useProjectStore();
   const selVar = variables.find(v => v.id === action.variableId);
   const isArray = selVar?.varType === 'array';
   const accessorKind = action.accessor?.kind ?? 'whole';
@@ -197,25 +199,22 @@ function ActionRow({ action, variables, onChange, onDelete, onFocusValue }: Acti
     <div className="flex flex-col gap-1 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
       <div className="flex items-center gap-1.5">
         {/* Variable select */}
-        <select
-          className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+        <VariablePicker
           value={action.variableId}
-          onChange={e => {
-            const newVar = variables.find(v => v.id === e.target.value);
+          onChange={id => {
+            const newVar = variables.find(v => v.id === id);
             const leavingArray = isArray && newVar?.varType !== 'array';
             const arrayOpOnNonArray = leavingArray && (action.operator === 'push' || action.operator === 'remove' || action.operator === 'clear');
             onChange({
-              variableId: e.target.value,
+              variableId: id,
               ...(arrayOpOnNonArray ? { operator: '=' as VarOperator } : {}),
               ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
-        >
-          <option value="">{t.buttonBlock.selectVariable}</option>
-          {variables.map(v => (
-            <option key={v.id} value={v.id}>${v.name}</option>
-          ))}
-        </select>
+          nodes={project.variableNodes}
+          placeholder={t.buttonBlock.selectVariable}
+          className="flex-1 min-w-0"
+        />
 
         {/* Operator */}
         <select
@@ -324,6 +323,7 @@ export function ButtonBlockEditor({
           value={block.label}
           onChange={label => updateBlock(sceneId, block.id, { label })}
           vars={variables}
+          variableNodes={project.variableNodes}
         />
       </div>
 

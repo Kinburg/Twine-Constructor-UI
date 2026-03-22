@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProjectStore, flattenVariables, flattenAssets } from '../../store/projectStore';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { VariablePicker } from '../shared/VariablePicker';
 
 function resolveEditorSrc(src: string, projectDir: string | null): string {
   if (!src) return '';
@@ -85,7 +86,14 @@ export function CharacterManager() {
 
       <button
         className="mt-1 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 text-left transition-colors cursor-pointer"
-        onClick={() => addCharacter(newChar(t.characters.defaultName))}
+        onClick={() => {
+          const baseName = t.characters.defaultName;
+          const existing = characters.map(c => c.name);
+          let name = baseName;
+          let i = 2;
+          while (existing.includes(name)) { name = `${baseName}${i}`; i++; }
+          addCharacter(newChar(name));
+        }}
       >
         {t.characters.add}
       </button>
@@ -281,6 +289,7 @@ function AvatarEditor({
   onChange: (c: AvatarConfig) => void;
 }) {
   const t = useT();
+  const { project } = useProjectStore();
   return (
     <div className="flex flex-col gap-2">
       {/* Mode toggle */}
@@ -326,16 +335,12 @@ function AvatarEditor({
         <div className="flex flex-col gap-1.5">
           {/* Variable selector */}
           <Field label={t.characters.fieldVariable}>
-            <select
-              className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+            <VariablePicker
               value={cfg.variableId}
-              onChange={e => onChange({ ...cfg, variableId: e.target.value })}
-            >
-              <option value="">{t.characters.selectVariable}</option>
-              {vars.map(v => (
-                <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
-              ))}
-            </select>
+              onChange={id => onChange({ ...cfg, variableId: id })}
+              nodes={project.variableNodes}
+              placeholder={t.characters.selectVariable}
+            />
           </Field>
 
           {/* Mappings */}

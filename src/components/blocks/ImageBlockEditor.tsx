@@ -3,6 +3,7 @@ import type { ImageBlock, ImageBoundMapping, Asset } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { VariablePicker } from '../shared/VariablePicker';
 
 // ─── Asset image picker ───────────────────────────────────────────────────────
 // Dropdown from registered assets + manual path/URL input.
@@ -183,16 +184,12 @@ export function ImageBlockEditor({
           {/* Variable selector */}
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.variableLabel}</label>
-            <select
-              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+            <VariablePicker
               value={block.variableId ?? ''}
-              onChange={e => update({ variableId: e.target.value })}
-            >
-              <option value="">{t.imageBlock.selectVariable}</option>
-              {variables.map(v => (
-                <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
-              ))}
-            </select>
+              onChange={id => update({ variableId: id })}
+              nodes={project.variableNodes}
+              placeholder={t.imageBlock.selectVariable}
+            />
           </div>
 
           {/* Mapping list */}

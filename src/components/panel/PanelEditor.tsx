@@ -8,6 +8,7 @@ import type {
   ImageBoundMapping,
   Variable, Asset,
 } from '../../types';
+import { VariablePicker } from '../shared/VariablePicker';
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -609,6 +610,7 @@ function CellEditModal({
   onClose: () => void;
 }) {
   const t = useT();
+  const { project } = useProjectStore();
   const c = cell.content;
 
   const CELL_TYPES: { value: CellContent['type']; label: string }[] = [
@@ -656,7 +658,7 @@ function CellEditModal({
 
         {c.type === 'variable' && (
           <>
-            <VarSelect vars={vars} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
+            <VarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
             <MField label={t.cellModal.prefix}>
               <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
                 value={c.prefix} onChange={e => onUpdateContent({ ...c, prefix: e.target.value })} />
@@ -670,7 +672,7 @@ function CellEditModal({
 
         {c.type === 'progress' && (
           <>
-            <VarSelect vars={vars.filter(v => v.varType === 'number')} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
+            <VarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} filterType="number" />
             <MField label={t.cellModal.maximum}>
               <input type="number" min={1}
                 className="w-24 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono"
@@ -752,7 +754,7 @@ function CellEditModal({
 
         {c.type === 'image-bound' && (
           <>
-            <VarSelect vars={vars} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
+            <VarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
             <ObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
@@ -836,16 +838,13 @@ function CellEditModal({
         {c.type === 'list' && (
           <>
             <MField label={t.cellModal.listVariableLabel}>
-              <select
-                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+              <VariablePicker
                 value={c.variableId}
-                onChange={e => onUpdateContent({ ...c, variableId: e.target.value })}
-              >
-                <option value="">— select —</option>
-                {vars.filter(v => v.varType === 'array').map(v => (
-                  <option key={v.id} value={v.id}>${v.name}</option>
-                ))}
-              </select>
+                onChange={id => onUpdateContent({ ...c, variableId: id })}
+                nodes={project.variableNodes}
+                filterType="array"
+                placeholder="— select —"
+              />
             </MField>
             <MField label={t.cellModal.listSeparatorLabel}>
               <input
@@ -945,15 +944,18 @@ function CheckField({
   );
 }
 
-function VarSelect({ vars, value, onChange }: { vars: Variable[]; value: string; onChange: (id: string) => void }) {
+function VarSelect({ value, onChange, filterType }: { value: string; onChange: (id: string) => void; filterType?: import('../../types').VariableType }) {
   const t = useT();
+  const { project } = useProjectStore();
   return (
     <MField label={t.cellModal.typeVariable}>
-      <select className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-        value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">{t.cellModal.selectVariable}</option>
-        {vars.map(v => <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>)}
-      </select>
+      <VariablePicker
+        value={value}
+        onChange={onChange}
+        nodes={project.variableNodes}
+        placeholder={t.cellModal.selectVariable}
+        filterType={filterType}
+      />
     </MField>
   );
 }
@@ -1154,14 +1156,13 @@ function CellButtonEditor({
           const selVar = vars.find(v => v.id === a.variableId);
           return (
             <div key={a.id} className="flex items-center gap-1.5 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
-              <select
-                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+              <VariablePicker
                 value={a.variableId}
-                onChange={e => patchAction(a.id, { variableId: e.target.value })}
-              >
-                <option value="">{t.cellModal.buttonSelectVariable}</option>
-                {vars.map(v => <option key={v.id} value={v.id}>${v.name}</option>)}
-              </select>
+                onChange={id => patchAction(a.id, { variableId: id })}
+                nodes={project.variableNodes}
+                placeholder={t.cellModal.buttonSelectVariable}
+                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer text-left truncate"
+              />
               <select
                 className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none cursor-pointer font-mono"
                 value={a.operator}

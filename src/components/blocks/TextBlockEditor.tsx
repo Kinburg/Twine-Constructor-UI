@@ -32,6 +32,8 @@ export function TextBlockEditor({
             onChange={content => update({ content })}
             vars={vars}
             imageAssets={imgAssets}
+            variableNodes={project.variableNodes}
+            scenes={project.scenes}
           />
         </div>
         <textarea

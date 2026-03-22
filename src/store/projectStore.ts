@@ -9,7 +9,7 @@ import type {
   AvatarConfig, AvatarMode,
   Watcher,
 } from '../types';
-import { flattenVariables, flattenAssets } from '../utils/treeUtils';
+import { flattenVariables, flattenAssets, hasSiblingNameConflict } from '../utils/treeUtils';
 
 export { flattenVariables, flattenAssets };
 
@@ -53,6 +53,27 @@ function removeNode<T extends AnyNode>(nodes: T[], id: string): T[] {
   return nodes
     .filter(n => n.id !== id)
     .map(n => n.children ? { ...n, children: removeNode(n.children as T[], id) } : n) as T[];
+}
+
+/** Get the children of a parent group (or root nodes if parentId is null) */
+function getSiblings(nodes: VariableTreeNode[], parentId: string | null): VariableTreeNode[] {
+  if (parentId === null) return nodes;
+  for (const n of nodes) {
+    if (n.kind === 'group') {
+      if (n.id === parentId) return n.children;
+      const found = getSiblings(n.children, parentId);
+      if (found) return found;
+    }
+  }
+  return [];
+}
+
+/** Ensure a unique name among siblings by appending a numeric suffix */
+function ensureUniqueName(name: string, siblings: VariableTreeNode[]): string {
+  if (!hasSiblingNameConflict(name, siblings)) return name;
+  let i = 2;
+  while (hasSiblingNameConflict(`${name}${i}`, siblings)) i++;
+  return `${name}${i}`;
 }
 
 function addNode<T extends AnyNode>(nodes: T[], parentId: string | null, node: T): T[] {
@@ -153,7 +174,7 @@ function buildCharVarNodes(
 
   const nameVar: Variable = {
     kind: 'variable', id: nameVarId,
-    name: `${prefix}_name`,
+    name: 'name',
     varType: 'string',
     defaultValue: charName,
     description: `Character name "${charName}"`,
@@ -161,7 +182,7 @@ function buildCharVarNodes(
 
   const bgColorVar: Variable = {
     kind: 'variable', id: bgColorVarId,
-    name: `${prefix}_bgColor`,
+    name: 'bgColor',
     varType: 'string',
     defaultValue: colors.bgColor,
     description: 'Dialogue background color',
@@ -169,7 +190,7 @@ function buildCharVarNodes(
 
   const borderColorVar: Variable = {
     kind: 'variable', id: borderColorVarId,
-    name: `${prefix}_borderColor`,
+    name: 'borderColor',
     varType: 'string',
     defaultValue: colors.borderColor,
     description: 'Dialogue border color',
@@ -177,7 +198,7 @@ function buildCharVarNodes(
 
   const nameColorVar: Variable = {
     kind: 'variable', id: nameColorVarId,
-    name: `${prefix}_nameColor`,
+    name: 'nameColor',
     varType: 'string',
     defaultValue: colors.nameColor,
     description: 'Character name color',
@@ -185,7 +206,7 @@ function buildCharVarNodes(
 
   const avatarVar: Variable = {
     kind: 'variable', id: avatarVarId,
-    name: `${prefix}_avatar`,
+    name: 'avatar',
     varType: 'string',
     defaultValue: colors.avatarConfig?.mode === 'static' ? (colors.avatarConfig.src ?? '') : '',
     description: `Avatar URL for character "${charName}" (empty = hidden)`,
@@ -1048,23 +1069,15 @@ export const useProjectStore = create<ProjectState>()(
             if (oldChar.varIds) {
               const { varIds } = oldChar;
 
-              // Name changed → rename group, rename variable identifiers, update defaultValue
+              // Name changed → rename group + update name var's defaultValue
               if (patch.name !== undefined && patch.name !== oldChar.name) {
-                const newPrefix = charToVarPrefix(patch.name);
-                // Rename the top-level group to the new character name
-                variableNodes = updateGroupNameInTree(variableNodes, varIds.groupId, patch.name);
-                // Rename all four variable identifiers AND update the name var's defaultValue
+                variableNodes = updateGroupNameInTree(variableNodes, varIds.groupId, charToVarPrefix(patch.name));
                 variableNodes = updateVarInTree(variableNodes, varIds.nameVarId, {
-                  name: `${newPrefix}_name`,
                   defaultValue: patch.name,
                   description: `Character name "${patch.name}"`,
                 });
-                variableNodes = updateVarInTree(variableNodes, varIds.bgColorVarId,     { name: `${newPrefix}_bgColor` });
-                variableNodes = updateVarInTree(variableNodes, varIds.borderColorVarId, { name: `${newPrefix}_borderColor` });
-                variableNodes = updateVarInTree(variableNodes, varIds.nameColorVarId,   { name: `${newPrefix}_nameColor` });
                 if (varIds.avatarVarId) {
-                  variableNodes = updateVarInTree(variableNodes, varIds.avatarVarId,    {
-                    name: `${newPrefix}_avatar`,
+                  variableNodes = updateVarInTree(variableNodes, varIds.avatarVarId, {
                     description: `Avatar URL for character "${patch.name}" (empty = hidden)`,
                   });
                 }
@@ -1151,7 +1164,9 @@ export const useProjectStore = create<ProjectState>()(
 
         addVariableGroup: (parentId, name) => {
           get().saveSnapshot();
-          const group: VariableGroup = { kind: 'group', id: uuid(), name, children: [] };
+          const siblings = getSiblings(get().project.variableNodes, parentId);
+          const safeName = ensureUniqueName(name, siblings);
+          const group: VariableGroup = { kind: 'group', id: uuid(), name: safeName, children: [] };
           set(s => ({
             project: {
               ...s.project,
@@ -1162,7 +1177,9 @@ export const useProjectStore = create<ProjectState>()(
 
         addVariable: (parentId, v) => {
           get().saveSnapshot();
-          const variable: Variable = { kind: 'variable', id: uuid(), ...v };
+          const siblings = getSiblings(get().project.variableNodes, parentId);
+          const safeName = ensureUniqueName(v.name, siblings);
+          const variable: Variable = { kind: 'variable', id: uuid(), ...v, name: safeName };
           set(s => ({
             project: {
               ...s.project,

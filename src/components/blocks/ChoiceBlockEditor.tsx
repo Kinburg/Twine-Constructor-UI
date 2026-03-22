@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 import { useProjectStore } from '../../store/projectStore';
-import type { ChoiceBlock, ChoiceOption, Variable } from '../../types';
+import type { ChoiceBlock, ChoiceOption, Variable, VariableTreeNode } from '../../types';
 import { SYSTEM_TAGS } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
@@ -12,12 +12,14 @@ function OptionLabelInput({
   value,
   placeholder,
   vars,
+  variableNodes,
   onFocus,
   onChange,
 }: {
   value: string;
   placeholder: string;
   vars: Variable[];
+  variableNodes?: VariableTreeNode[];
   onFocus: () => void;
   onChange: (label: string) => void;
 }) {
@@ -37,6 +39,7 @@ function OptionLabelInput({
         value={value}
         onChange={onChange}
         vars={vars}
+        variableNodes={variableNodes}
       />
     </>
   );
@@ -87,6 +90,7 @@ export function ChoiceBlockEditor({
               value={opt.label}
               placeholder={t.choiceBlock.optionPlaceholder}
               vars={vars}
+              variableNodes={project.variableNodes}
               onFocus={saveSnapshot}
               onChange={label => handleUpdateOption(opt.id, { label })}
             />

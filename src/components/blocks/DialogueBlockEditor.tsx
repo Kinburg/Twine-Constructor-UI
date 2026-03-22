@@ -367,6 +367,8 @@ export function DialogueBlockEditor({
               onChange={text => update({ text })}
               vars={vars}
               imageAssets={imgAssets}
+              variableNodes={project.variableNodes}
+              scenes={project.scenes}
             />
           </div>
           <textarea

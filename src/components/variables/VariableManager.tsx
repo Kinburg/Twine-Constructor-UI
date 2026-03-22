@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import type { Variable, VariableGroup, VariableTreeNode, VariableType } from '../../types';
+import { getVariablePath } from '../../utils/treeUtils';
 import { useT } from '../../i18n';
 
 const TYPE_DEFAULTS: Record<VariableType, string> = {
@@ -51,6 +52,8 @@ export function VariableManager() {
         onToggleExpand={toggleExpand}
         onEditVar={setEditingVarId}
         parentId={null}
+        allNodes={project.variableNodes}
+        pathPrefix=""
       />
 
       {/* Root-level "add group" inline input */}
@@ -60,7 +63,7 @@ export function VariableManager() {
           className="text-xs bg-slate-800 text-white rounded px-2 py-1 outline-none border border-indigo-500 font-mono mt-1"
           placeholder={t.variables.groupNamePlaceholder}
           value={rootGroupName}
-          onChange={e => setRootGroupName(e.target.value)}
+          onChange={e => setRootGroupName(e.target.value.replace(/[^a-zA-Zа-яёА-ЯЁ0-9_]/g, ''))}
           onBlur={confirmRootGroup}
           onKeyDown={e => {
             if (e.key === 'Enter') confirmRootGroup();
@@ -97,7 +100,7 @@ function countVars(nodes: VariableTreeNode[]): number {
 // ─── Tree level ───────────────────────────────────────────────────────────────
 
 function TreeLevel({
-  nodes, depth, expandedIds, editingVarId, onToggleExpand, onEditVar, parentId,
+  nodes, depth, expandedIds, editingVarId, onToggleExpand, onEditVar, parentId, allNodes, pathPrefix,
 }: {
   nodes: VariableTreeNode[];
   depth: number;
@@ -106,6 +109,8 @@ function TreeLevel({
   onToggleExpand: (id: string) => void;
   onEditVar: (id: string | null) => void;
   parentId: string | null;
+  allNodes: VariableTreeNode[];
+  pathPrefix: string;
 }) {
   const t = useT();
   const { addVariable, addVariableGroup } = useProjectStore();
@@ -129,6 +134,7 @@ function TreeLevel({
     <>
       {nodes.map(node => {
         if (node.kind === 'group') {
+          const gPath = pathPrefix ? `${pathPrefix}.${node.name}` : node.name;
           return (
             <GroupNode
               key={node.id}
@@ -139,6 +145,8 @@ function TreeLevel({
               editingVarId={editingVarId}
               onToggleExpand={onToggleExpand}
               onEditVar={onEditVar}
+              groupPath={gPath}
+              allNodes={allNodes}
             />
           );
         }
@@ -149,6 +157,7 @@ function TreeLevel({
             depth={depth}
             expanded={editingVarId === node.id}
             onToggle={() => onEditVar(editingVarId === node.id ? null : node.id)}
+            allNodes={allNodes}
           />
         );
       })}
@@ -162,7 +171,7 @@ function TreeLevel({
             style={{ marginLeft: depth * 12 + 4 }}
             placeholder={t.variables.groupNamePlaceholder}
             value={groupName}
-            onChange={e => setGroupName(e.target.value)}
+            onChange={e => setGroupName(e.target.value.replace(/[^a-zA-Zа-яёА-ЯЁ0-9_]/g, ''))}
             onBlur={confirmGroup}
             onKeyDown={e => {
               if (e.key === 'Enter') confirmGroup();
@@ -196,7 +205,7 @@ function TreeLevel({
 // ─── Group node ───────────────────────────────────────────────────────────────
 
 function GroupNode({
-  group, depth, expanded, expandedIds, editingVarId, onToggleExpand, onEditVar,
+  group, depth, expanded, expandedIds, editingVarId, onToggleExpand, onEditVar, groupPath, allNodes,
 }: {
   group: VariableGroup;
   depth: number;
@@ -205,6 +214,8 @@ function GroupNode({
   editingVarId: string | null;
   onToggleExpand: (id: string) => void;
   onEditVar: (id: string | null) => void;
+  groupPath: string;
+  allNodes: VariableTreeNode[];
 }) {
   const t = useT();
   const { deleteVariableNode } = useProjectStore();
@@ -217,7 +228,9 @@ function GroupNode({
         onClick={() => onToggleExpand(group.id)}
       >
         <span className="text-slate-500 text-xs w-3 shrink-0">{expanded ? '▾' : '▸'}</span>
+        <span className="text-orange-400/60 text-xs font-mono shrink-0">{'{}'}</span>
         <span className="text-xs text-slate-300 font-medium flex-1 truncate">{group.name}</span>
+        <span className="text-xs text-slate-600 font-mono truncate opacity-0 group-hover/grp:opacity-100 transition-opacity">${groupPath}</span>
         <button
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/grp:opacity-100 transition-opacity"
           onClick={e => {
@@ -239,6 +252,8 @@ function GroupNode({
             onToggleExpand={onToggleExpand}
             onEditVar={onEditVar}
             parentId={group.id}
+            allNodes={allNodes}
+            pathPrefix={groupPath}
           />
         </div>
       )}
@@ -249,12 +264,13 @@ function GroupNode({
 // ─── Variable node ────────────────────────────────────────────────────────────
 
 function VariableNode({
-  variable: v, depth, expanded, onToggle,
+  variable: v, depth, expanded, onToggle, allNodes,
 }: {
   variable: Variable;
   depth: number;
   expanded: boolean;
   onToggle: () => void;
+  allNodes: VariableTreeNode[];
 }) {
   const t = useT();
   const { updateVariable, deleteVariableNode } = useProjectStore();
@@ -270,7 +286,7 @@ function VariableNode({
         <span className={`text-xs font-mono font-bold ${TYPE_COLOR[v.varType]} w-3 shrink-0`}>
           {v.varType[0].toUpperCase()}
         </span>
-        <span className="flex-1 text-xs text-white font-mono truncate">${v.name}</span>
+        <span className="flex-1 text-xs text-white font-mono truncate">${getVariablePath(v.id, allNodes) || v.name}</span>
         <span className="text-xs text-slate-500 font-mono truncate max-w-[50px]">{v.defaultValue || '…'}</span>
         <button
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/var:opacity-100 transition-opacity"
@@ -343,7 +359,7 @@ function VariableNode({
           </Field>
 
           <div className="text-xs text-slate-500 font-mono bg-slate-800/60 px-2 py-1 rounded break-all">
-            {'<<set $' + v.name + ' to ' + (v.varType === 'string' ? `"${v.defaultValue}"` : v.defaultValue || (v.varType === 'array' ? '[]' : v.defaultValue)) + '>>'}
+            {'<<set $' + (getVariablePath(v.id, allNodes) || v.name) + ' to ' + (v.varType === 'string' ? `"${v.defaultValue}"` : v.defaultValue || (v.varType === 'array' ? '[]' : v.defaultValue)) + '>>'}
           </div>
         </div>
       )}

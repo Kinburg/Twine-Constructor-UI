@@ -8,6 +8,7 @@ import type {
   ImageBoundMapping, Variable, Asset,
 } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { VariablePicker } from '../shared/VariablePicker';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -824,13 +825,16 @@ function TVarSelect({ vars, value, onChange }: {
   vars: Variable[]; value: string; onChange: (id: string) => void;
 }) {
   const t = useT();
+  const { project } = useProjectStore();
   return (
     <TMField label={t.cellModal.typeVariable}>
-      <select className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-        value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">{t.cellModal.selectVariable}</option>
-        {vars.map(v => <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>)}
-      </select>
+      <VariablePicker
+        value={value}
+        onChange={onChange}
+        nodes={project.variableNodes}
+        placeholder={t.cellModal.selectVariable}
+        className="flex-1"
+      />
     </TMField>
   );
 }
@@ -979,14 +983,13 @@ function TCellButtonEditor({
           const selVar = vars.find(v => v.id === a.variableId);
           return (
             <div key={a.id} className="flex items-center gap-1.5 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
-              <select
-                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+              <VariablePicker
                 value={a.variableId}
-                onChange={e => patchAction(a.id, { variableId: e.target.value })}
-              >
-                <option value="">{t.buttonBlock.selectVariable}</option>
-                {vars.map(v => <option key={v.id} value={v.id}>${v.name}</option>)}
-              </select>
+                onChange={id => patchAction(a.id, { variableId: id })}
+                nodes={project.variableNodes}
+                placeholder={t.buttonBlock.selectVariable}
+                className="flex-1 min-w-0"
+              />
               <select
                 className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer font-mono"
                 value={a.operator}

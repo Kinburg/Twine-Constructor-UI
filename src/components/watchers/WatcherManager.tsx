@@ -3,6 +3,7 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import { ArrayAccessorInput } from '../blocks/ArrayAccessorInput';
 import { VarValueInput } from '../blocks/VarValueInput';
+import { VariablePicker } from '../shared/VariablePicker';
 import type {
   Watcher, WatcherCondition, ButtonAction,
   ConditionOperator, VarOperator, ArrayAccessor, Variable,
@@ -80,28 +81,27 @@ function ActionRow({
   const accessorKind = action.accessor?.kind ?? 'whole';
   const availableOps = actionOpsForVar(selVar?.varType, accessorKind);
 
+  const { project } = useProjectStore();
+
   return (
     <div className="flex flex-col gap-1 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
       <div className="flex items-center gap-1.5">
-        <select
-          className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+        <VariablePicker
           value={action.variableId}
-          onChange={e => {
-            const newVar = vars.find(v => v.id === e.target.value);
+          onChange={id => {
+            const newVar = vars.find(v => v.id === id);
             const leavingArray = isArray && newVar?.varType !== 'array';
             const arrayOpOnNonArray = leavingArray && (action.operator === 'push' || action.operator === 'remove' || action.operator === 'clear');
             onChange({
-              variableId: e.target.value,
+              variableId: id,
               ...(arrayOpOnNonArray ? { operator: '=' as VarOperator } : {}),
               ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
-        >
-          <option value="">{t.buttonBlock.selectVariable}</option>
-          {vars.map(v => (
-            <option key={v.id} value={v.id}>${v.name}</option>
-          ))}
-        </select>
+          nodes={project.variableNodes}
+          placeholder={t.buttonBlock.selectVariable}
+          className="flex-1 min-w-0"
+        />
 
         <select
           className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer font-mono"
@@ -120,6 +120,7 @@ function ActionRow({
             value={action.value}
             onChange={v => onChange({ value: v })}
             vars={vars}
+            variableNodes={project.variableNodes}
           />
         )}
 
@@ -167,6 +168,7 @@ function WatcherCard({
   onDelete: () => void;
 }) {
   const t = useT();
+  const { project } = useProjectStore();
 
   const patchCondition = (patch: Partial<WatcherCondition>) =>
     onUpdate({ condition: { ...watcher.condition, ...patch } });
@@ -265,26 +267,23 @@ function WatcherCard({
 
             <div className="flex items-center gap-1.5">
               {/* Variable */}
-              <select
-                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+              <VariablePicker
                 value={watcher.condition.variableId}
-                onChange={e => {
-                  const newVar = vars.find(v => v.id === e.target.value);
+                onChange={id => {
+                  const newVar = vars.find(v => v.id === id);
                   const leavingArray = condVar?.varType === 'array' && newVar?.varType !== 'array';
                   const newOps = condOperatorsForType(newVar?.varType);
                   const opStillValid = newOps.some(op => op.value === watcher.condition.operator);
                   patchCondition({
-                    variableId: e.target.value,
+                    variableId: id,
                     ...(leavingArray ? { accessor: undefined } : {}),
                     ...(!opStillValid ? { operator: newOps[0].value } : {}),
                   });
                 }}
-              >
-                <option value="">{t.watchers.noVariable}</option>
-                {vars.map(v => (
-                  <option key={v.id} value={v.id}>${v.name}</option>
-                ))}
-              </select>
+                nodes={project.variableNodes}
+                placeholder={t.watchers.noVariable}
+                className="flex-1 min-w-0"
+              />
 
               {/* Operator */}
               <select
@@ -305,6 +304,7 @@ function WatcherCard({
                   value={watcher.condition.value}
                   onChange={v => patchCondition({ value: v })}
                   vars={vars}
+                  variableNodes={project.variableNodes}
                 />
               )}
             </div>
