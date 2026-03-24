@@ -3,6 +3,12 @@ import type { Translations } from '../types';
 const en: Translations = {
   locale: { name: 'English' },
 
+  common: {
+    confirm: 'Confirm',
+    cancel:  'Cancel',
+    delete:  'Delete',
+  },
+
   sidebar: {
     scenes:     'Scenes',
     characters: 'Characters',
@@ -184,6 +190,7 @@ const en: Translations = {
     fieldNameColor: 'Name color',
     fieldDialogBg:  'Dialog background',
     fieldAccent:    'Accent color',
+    fieldTextColor: 'Text color',
     exampleLine:    'Sample character line.',
     avatarLabel:    'Avatar:',
     avatarStatic:   '🔗 Static',
@@ -195,6 +202,11 @@ const en: Translations = {
     addMapping:     '+ Add',
     noMappings:     'Add at least one mapping.',
     defaultMapping: 'Default (no match):',
+    createTitle:    'New Character',
+    editTitle:      'Edit Character',
+    save:           'Save',
+    nameTaken:      'A character with this name already exists.',
+    nameEmpty:      'Name cannot be empty.',
   },
 
   variables: {

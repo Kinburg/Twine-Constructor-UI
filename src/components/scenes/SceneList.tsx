@@ -19,6 +19,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { sceneMatchesQuery } from '../../utils/searchUtils';
 import { useT } from '../../i18n';
 import type { Scene } from '../../types';
+import { useConfirm } from '../shared/ConfirmModal';
 
 // ─── Shared scene row content (no DnD bindings) ───────────────────────────────
 
@@ -202,6 +203,7 @@ export function SceneList() {
   const [noteEditingId, setNoteEditingId] = useState<string | null>(null);
   const [activeTags, setActiveTags]       = useState<Set<string>>(new Set());
   const [filterMode, setFilterMode]       = useState<'or' | 'and'>('or');
+  const { ask, modal: confirmModal } = useConfirm();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
@@ -269,7 +271,7 @@ export function SceneList() {
     onSelect:      () => setActiveScene(scene.id),
     onStartRename: () => setEditingId(scene.id),
     onDuplicate:   () => duplicateScene(scene.id),
-    onDelete:      () => { if (confirm(t.scene.confirmDelete(scene.name))) deleteScene(scene.id); },
+    onDelete:      () => ask({ message: t.scene.confirmDelete(scene.name), variant: 'danger' }, () => deleteScene(scene.id)),
     onNoteToggle:  () => setNoteEditingId(id => id === scene.id ? null : scene.id),
     onNoteClose:   (text: string) => { updateSceneNote(scene.id, text.trim() || undefined); setNoteEditingId(null); },
   });
@@ -377,6 +379,7 @@ export function SceneList() {
       >
         {t.scene.add}
       </button>
+      {confirmModal}
     </div>
   );
 }

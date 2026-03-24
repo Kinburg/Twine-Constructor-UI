@@ -160,17 +160,18 @@ interface CharVarBuildResult {
  */
 function buildCharVarNodes(
   charName: string,
-  colors: { bgColor: string; borderColor: string; nameColor: string; avatarConfig?: AvatarConfig },
+  colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig },
 ): CharVarBuildResult {
   const prefix = charToVarPrefix(charName);
 
-  const nameVarId        = uuid();
-  const bgColorVarId     = uuid();
-  const borderColorVarId = uuid();
-  const nameColorVarId   = uuid();
-  const avatarVarId      = uuid();
-  const stylesGroupId    = uuid();
-  const groupId          = uuid();
+  const nameVarId         = uuid();
+  const bgColorVarId      = uuid();
+  const borderColorVarId  = uuid();
+  const nameColorVarId    = uuid();
+  const textColorVarId    = uuid();
+  const avatarVarId       = uuid();
+  const stylesGroupId     = uuid();
+  const groupId           = uuid();
 
   const nameVar: Variable = {
     kind: 'variable', id: nameVarId,
@@ -204,6 +205,14 @@ function buildCharVarNodes(
     description: 'Character name color',
   };
 
+  const textColorVar: Variable = {
+    kind: 'variable', id: textColorVarId,
+    name: 'textColor',
+    varType: 'string',
+    defaultValue: colors.textColor,
+    description: 'Dialogue text color',
+  };
+
   const avatarVar: Variable = {
     kind: 'variable', id: avatarVarId,
     name: 'avatar',
@@ -215,7 +224,7 @@ function buildCharVarNodes(
   const stylesGroup: VariableGroup = {
     kind: 'group', id: stylesGroupId,
     name: 'styles',
-    children: [bgColorVar, borderColorVar, nameColorVar, avatarVar],
+    children: [bgColorVar, borderColorVar, nameColorVar, textColorVar, avatarVar],
   };
 
   const group: VariableGroup = {
@@ -226,7 +235,7 @@ function buildCharVarNodes(
 
   return {
     group,
-    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, avatarVarId },
+    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, textColorVarId, avatarVarId },
   };
 }
 
@@ -345,6 +354,44 @@ function migrateCharacterAvatarVar(p: Project): Project {
 }
 
 /**
+ * Add $prefix_textColor variable to characters that were created before it existed.
+ * Runs idempotently (skips if textColorVarId already present).
+ */
+function migrateCharacterTextColorVar(p: Project): Project {
+  let variableNodes = p.variableNodes;
+  let characters = p.characters;
+  let changed = false;
+
+  for (let i = 0; i < characters.length; i++) {
+    const char = characters[i];
+    if (!char.varIds || char.varIds.textColorVarId) continue;
+
+    const prefix = charToVarPrefix(char.name);
+    const textColorVarId = uuid();
+
+    const textColorVar: Variable = {
+      kind: 'variable', id: textColorVarId,
+      name: `${prefix}_textColor`,
+      varType: 'string',
+      defaultValue: char.textColor ?? '#e2e8f0',
+      description: 'Dialogue text color',
+    };
+
+    variableNodes = addNode(
+      variableNodes as AnyNode[],
+      char.varIds.stylesGroupId,
+      textColorVar as AnyNode,
+    ) as VariableTreeNode[];
+
+    const updatedVarIds: CharacterVarIds = { ...char.varIds, textColorVarId };
+    characters = characters.map((c, idx) => idx === i ? { ...c, varIds: updatedVarIds } : c);
+    changed = true;
+  }
+
+  return changed ? { ...p, variableNodes, characters } : p;
+}
+
+/**
  * Add avatarConfig to characters created before AvatarConfig was introduced.
  * Converts legacy avatarUrl → avatarConfig { mode: 'static', src: avatarUrl }.
  * Runs idempotently (skips characters that already have avatarConfig).
@@ -411,6 +458,8 @@ function migrateProject(raw: any): Project {
   p = migrateCharacterAvatarVar(p as Project);
   // Add avatarConfig to characters that predate this feature
   p = migrateCharacterAvatarConfig(p as Project);
+  // Add $prefix_textColor variable to characters that predate this feature
+  p = migrateCharacterTextColorVar(p as Project);
 
   if (!p.watchers) p.watchers = [];
 
@@ -1045,6 +1094,7 @@ export const useProjectStore = create<ProjectState>()(
               bgColor: char.bgColor,
               borderColor: char.borderColor,
               nameColor: char.nameColor,
+              textColor: char.textColor ?? '#e2e8f0',
               avatarConfig: char.avatarConfig,
             });
             const character: Character = { ...char, id: charId, varIds };
@@ -1092,6 +1142,9 @@ export const useProjectStore = create<ProjectState>()(
               }
               if (patch.nameColor !== undefined) {
                 variableNodes = updateVarInTree(variableNodes, varIds.nameColorVarId, { defaultValue: patch.nameColor });
+              }
+              if (patch.textColor !== undefined && varIds.textColorVarId) {
+                variableNodes = updateVarInTree(variableNodes, varIds.textColorVarId, { defaultValue: patch.textColor });
               }
               // Avatar config change → sync $prefix_avatar defaultValue (static src only)
               if (patch.avatarConfig !== undefined && varIds.avatarVarId) {

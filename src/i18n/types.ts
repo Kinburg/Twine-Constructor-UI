@@ -6,6 +6,12 @@ export interface Translations {
   /** Display name shown in the language selector */
   locale: { name: string };
 
+  common: {
+    confirm: string;
+    cancel: string;
+    delete: string;
+  };
+
   sidebar: {
     scenes: string;
     characters: string;
@@ -205,6 +211,7 @@ export interface Translations {
     fieldNameColor: string;
     fieldDialogBg: string;
     fieldAccent: string;
+    fieldTextColor: string;
     exampleLine: string;
     avatarLabel: string;
     avatarStatic: string;
@@ -216,6 +223,11 @@ export interface Translations {
     addMapping: string;
     noMappings: string;
     defaultMapping: string;
+    createTitle: string;
+    editTitle: string;
+    save: string;
+    nameTaken: string;
+    nameEmpty: string;
   };
 
   // ─── Variables ──────────────────────────────────────────────────────────────

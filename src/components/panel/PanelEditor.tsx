@@ -9,6 +9,7 @@ import type {
   Variable, Asset,
 } from '../../types';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useConfirm } from '../shared/ConfirmModal';
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -28,6 +29,7 @@ export function PanelEditor() {
   );
   const [addingTab, setAddingTab] = useState(false);
   const [tabNameDraft, setTabNameDraft] = useState('');
+  const { ask, modal: confirmModal } = useConfirm();
 
   const vars = flattenVariables(project.variableNodes);
   const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
@@ -85,12 +87,14 @@ export function PanelEditor() {
                 <button className="text-slate-600 hover:text-slate-300 text-xs px-0.5 cursor-pointer" title={t.panel.moveRight}
                   onClick={() => moveTab(tab.id, 1)} disabled={idx === sidebarPanel.tabs.length - 1}>▶</button>
                 <button className="text-slate-600 hover:text-red-400 text-xs px-0.5 cursor-pointer" title={t.panel.deleteTab}
-                  onClick={() => {
-                    if (!confirm(t.panel.confirmDeleteTab(tab.label))) return;
-                    deletePanelTab(tab.id);
-                    const remaining = sidebarPanel.tabs.filter(t => t.id !== tab.id);
-                    setActiveTabId(remaining[0]?.id ?? null);
-                  }}>✕</button>
+                  onClick={() => ask(
+                    { message: t.panel.confirmDeleteTab(tab.label), variant: 'danger' },
+                    () => {
+                      deletePanelTab(tab.id);
+                      const remaining = sidebarPanel.tabs.filter(t => t.id !== tab.id);
+                      setActiveTabId(remaining[0]?.id ?? null);
+                    },
+                  )}>✕</button>
               </div>
             )}
           </div>
@@ -141,6 +145,7 @@ export function PanelEditor() {
           </>
         )}
       </div>
+      {confirmModal}
     </div>
   );
 }
@@ -228,6 +233,7 @@ function TabRowsEditor({
 }) {
   const t = useT();
   const { addPanelRow, updatePanelRow, deletePanelRow, addPanelCell } = useProjectStore();
+  const { ask, modal: confirmModal } = useConfirm();
 
   return (
     <div className="flex flex-col gap-3">
@@ -254,7 +260,10 @@ function TabRowsEditor({
             </label>
 
             <button className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
-              onClick={() => { if (confirm(t.rowsEditor.confirmDeleteRow)) deletePanelRow(tab.id, row.id); }}>
+              onClick={() => ask(
+                { message: t.rowsEditor.confirmDeleteRow, variant: 'danger' },
+                () => deletePanelRow(tab.id, row.id),
+              )}>
               ✕
             </button>
           </div>
@@ -311,6 +320,7 @@ function TabRowsEditor({
       >
         {t.rowsEditor.addRow}
       </button>
+      {confirmModal}
     </div>
   );
 }

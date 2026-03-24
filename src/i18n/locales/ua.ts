@@ -3,6 +3,12 @@ import type { Translations } from '../types';
 const ua: Translations = {
   locale: { name: 'Українська' },
 
+  common: {
+    confirm: 'Підтвердити',
+    cancel:  'Скасувати',
+    delete:  'Видалити',
+  },
+
   sidebar: {
     scenes:     'Сцени',
     characters: 'Персонажі',
@@ -184,6 +190,7 @@ const ua: Translations = {
     fieldNameColor: 'Колір імені',
     fieldDialogBg:  'Фон діалогу',
     fieldAccent:    'Акцентний колір',
+    fieldTextColor: 'Колір тексту',
     exampleLine:    'Приклад репліки персонажа.',
     avatarLabel:    'Аватар:',
     avatarStatic:   '🔗 Статичний',
@@ -195,6 +202,11 @@ const ua: Translations = {
     addMapping:     '+ Додати',
     noMappings:     'Додайте принаймні одну відповідність.',
     defaultMapping: 'За замовч. (немає збігів):',
+    createTitle:    'Новий персонаж',
+    editTitle:      'Редагувати персонажа',
+    save:           'Зберегти',
+    nameTaken:      'Персонаж з таким іменем вже існує.',
+    nameEmpty:      'Ім\'я не може бути порожнім.',
   },
 
   variables: {

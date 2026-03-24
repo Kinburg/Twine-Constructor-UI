@@ -232,10 +232,13 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         ? vars.find(v => v.id === char!.varIds!.borderColorVarId) : null;
       const nameColorVar   = char?.varIds?.nameColorVarId
         ? vars.find(v => v.id === char!.varIds!.nameColorVarId)   : null;
+      const textColorVar   = char?.varIds?.textColorVarId
+        ? vars.find(v => v.id === char!.varIds!.textColorVarId)   : null;
       // Fallback to static value (quoted string literal) when variable not found
-      const bgExpr     = bgColorVar     ? `$${varPath(bgColorVar, nodes)}`     : `'${char?.bgColor    ?? '#23262e'}'`;
-      const borderExpr = borderColorVar ? `$${varPath(borderColorVar, nodes)}` : `'${char?.borderColor ?? '#4a90d9'}'`;
-      const nameExpr   = nameColorVar   ? `$${varPath(nameColorVar, nodes)}`   : `'${char?.nameColor   ?? '#e0e0e0'}'`;
+      const bgExpr       = bgColorVar     ? `$${varPath(bgColorVar, nodes)}`     : `'${char?.bgColor     ?? '#23262e'}'`;
+      const borderExpr   = borderColorVar ? `$${varPath(borderColorVar, nodes)}` : `'${char?.borderColor  ?? '#4a90d9'}'`;
+      const nameExpr     = nameColorVar   ? `$${varPath(nameColorVar, nodes)}`   : `'${char?.nameColor    ?? '#e0e0e0'}'`;
+      const textExpr     = textColorVar   ? `$${varPath(textColorVar, nodes)}`   : `'${char?.textColor    ?? '#e2e8f0'}'`;
       // Border side switches with alignment; explicitly reset the opposite side
       const borderDir     = block.align === 'right' ? 'right' : 'left';
       const borderAntiDir = block.align === 'right' ? 'left'  : 'right';
@@ -243,7 +246,8 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       const nameStyleExpr = block.align === 'right'
         ? `'text-align:right;color:'+${nameExpr}`
         : `'color:'+${nameExpr}`;
-      const body = `<div class="char-body" @style="${bodyStyleExpr}"><span class="char-name" @style="${nameStyleExpr}">${charNameDisplay}</span><span class="char-text">${block.text}</span>${innerBlocksHtml}</div>`;
+      const textStyleExpr = `'color:'+${textExpr}`;
+      const body = `<div class="char-body" @style="${bodyStyleExpr}"><span class="char-name" @style="${nameStyleExpr}">${charNameDisplay}</span><span class="char-text" @style="${textStyleExpr}">${block.text}</span>${innerBlocksHtml}</div>`;
       // Avatar always comes first in DOM for BOTH alignments.
       // CSS `.dlg-right { flex-direction: row-reverse }` flips the visual order for right-aligned dialogues,
       // placing the avatar on the right side without changing the DOM order.
@@ -1375,6 +1379,9 @@ function buildCharacterCSS(characters: Character[]): string {
       `}\n` +
       `.dialogue.${cls} .char-name {\n` +
       `  color: ${c.nameColor};\n` +
+      `}\n` +
+      `.dialogue.${cls} .char-text {\n` +
+      `  color: ${c.textColor ?? '#e2e8f0'};\n` +
       `}`
     );
   }).join('\n\n');

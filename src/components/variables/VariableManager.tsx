@@ -3,6 +3,7 @@ import { useProjectStore } from '../../store/projectStore';
 import type { Variable, VariableGroup, VariableTreeNode, VariableType } from '../../types';
 import { getVariablePath } from '../../utils/treeUtils';
 import { useT } from '../../i18n';
+import { useConfirm } from '../shared/ConfirmModal';
 
 const TYPE_DEFAULTS: Record<VariableType, string> = {
   number: '0', string: '', boolean: 'false', array: '[]',
@@ -219,6 +220,7 @@ function GroupNode({
 }) {
   const t = useT();
   const { deleteVariableNode } = useProjectStore();
+  const { ask, modal: confirmModal } = useConfirm();
 
   return (
     <div>
@@ -235,8 +237,10 @@ function GroupNode({
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/grp:opacity-100 transition-opacity"
           onClick={e => {
             e.stopPropagation();
-            if (confirm(t.variables.confirmDeleteGroup(group.name)))
-              deleteVariableNode(group.id);
+            ask(
+              { message: t.variables.confirmDeleteGroup(group.name), variant: 'danger' },
+              () => deleteVariableNode(group.id),
+            );
           }}
         >
           ✕
@@ -257,6 +261,7 @@ function GroupNode({
           />
         </div>
       )}
+      {confirmModal}
     </div>
   );
 }
@@ -274,6 +279,7 @@ function VariableNode({
 }) {
   const t = useT();
   const { updateVariable, deleteVariableNode } = useProjectStore();
+  const { ask, modal: confirmModal } = useConfirm();
   const upd = (patch: Partial<Variable>) => updateVariable(v.id, patch);
 
   return (
@@ -292,7 +298,10 @@ function VariableNode({
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/var:opacity-100 transition-opacity"
           onClick={e => {
             e.stopPropagation();
-            if (confirm(t.variables.confirmDeleteVar(v.name))) deleteVariableNode(v.id);
+            ask(
+              { message: t.variables.confirmDeleteVar(v.name), variant: 'danger' },
+              () => deleteVariableNode(v.id),
+            );
           }}
         >
           ✕
@@ -363,6 +372,7 @@ function VariableNode({
           </div>
         </div>
       )}
+      {confirmModal}
     </div>
   );
 }

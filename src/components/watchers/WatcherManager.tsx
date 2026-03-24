@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import { useT } from '../../i18n';
+import { useConfirm } from '../shared/ConfirmModal';
 import { ArrayAccessorInput } from '../blocks/ArrayAccessorInput';
 import { VarValueInput } from '../blocks/VarValueInput';
 import { VariablePicker } from '../shared/VariablePicker';
@@ -402,6 +403,7 @@ export function WatcherManager() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const prevLengthRef = useRef(watchers.length);
+  const { ask, modal: confirmModal } = useConfirm();
 
   useEffect(() => {
     if (watchers.length > prevLengthRef.current && watchers.length > 0) {
@@ -421,12 +423,10 @@ export function WatcherManager() {
           expanded={expandedId === w.id}
           onToggle={() => setExpandedId(expandedId === w.id ? null : w.id)}
           onUpdate={patch => updateWatcher(w.id, patch)}
-          onDelete={() => {
-            if (confirm(t.watchers.confirmDelete(w.label))) {
-              deleteWatcher(w.id);
-              if (expandedId === w.id) setExpandedId(null);
-            }
-          }}
+          onDelete={() => ask(
+            { message: t.watchers.confirmDelete(w.label), variant: 'danger' },
+            () => { deleteWatcher(w.id); if (expandedId === w.id) setExpandedId(null); },
+          )}
         />
       ))}
 
@@ -440,6 +440,7 @@ export function WatcherManager() {
       >
         {t.watchers.add}
       </button>
+      {confirmModal}
     </div>
   );
 }

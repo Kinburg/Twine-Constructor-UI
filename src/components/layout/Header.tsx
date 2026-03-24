@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
+import { useConfirm } from '../shared/ConfirmModal';
 import { generateStandaloneHtml } from '../../utils/exportToHtml';
 import { exportToTwee } from '../../utils/exportToTwee';
 import {
@@ -29,6 +30,7 @@ export function Header() {
   const [busy, setBusy]                     = useState(false);
   const [previewOpen, setPreviewOpen]       = useState(false);
   const [graphOpen, setGraphOpen]           = useState(false);
+  const { ask, modal: confirmModal } = useConfirm();
 
   useEffect(() => {
     setScReady(hasSCTemplate());
@@ -134,12 +136,14 @@ export function Header() {
     }
   };
 
-  const handleNewProject = async () => {
-    if (!confirm(t.header.confirmNew)) return;
-    const folder = await fsApi.openFolderDialog();
-    resetProject();
-    if (folder) setProjectDir(folder);
-  };
+  const handleNewProject = () => ask(
+    { message: t.header.confirmNew },
+    async () => {
+      const folder = await fsApi.openFolderDialog();
+      resetProject();
+      if (folder) setProjectDir(folder);
+    },
+  );
 
   const handleOpenProjectFolder = async () => {
     if (projectDir) await fsApi.openPath(projectDir);
@@ -185,12 +189,10 @@ export function Header() {
     }
   };
 
-  const handleClearSC = () => {
-    if (!confirm(t.header.confirmClearSC)) return;
-    clearSCTemplate();
-    setScReady(false);
-    setScVersion(null);
-  };
+  const handleClearSC = () => ask(
+    { message: t.header.confirmClearSC, variant: 'danger' },
+    () => { clearSCTemplate(); setScReady(false); setScVersion(null); },
+  );
 
   // ─── Export ───────────────────────────────────────────────────────────────
 
@@ -204,9 +206,9 @@ export function Header() {
       if (!dir) return;
       const html = generateStandaloneHtml(project, template);
       await fsApi.writeFile(joinPath(dir, 'index.html'), html);
-      if (confirm(t.header.confirmHtmlSaved)) {
+      ask({ message: t.header.confirmHtmlSaved }, async () => {
         await fsApi.openPath(dir);
-      }
+      });
     } catch (e) {
       alert(t.header.errorExportHtml(String(e)));
     } finally {
@@ -553,6 +555,7 @@ export function Header() {
           )}
         </div>
       </div>
+      {confirmModal}
     </header>
   );
 }

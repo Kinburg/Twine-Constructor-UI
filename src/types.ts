@@ -480,6 +480,7 @@ export interface CharacterVarIds {
   borderColorVarId: string; // $prefix_borderColor variable id
   nameColorVarId: string;   // $prefix_nameColor variable id
   avatarVarId: string;      // $prefix_avatar variable id (URL string, empty = hidden)
+  textColorVarId?: string;  // $prefix_textColor variable id (added in v1.7)
 }
 
 export type AvatarMode = 'static' | 'bound';
@@ -501,9 +502,10 @@ export interface AvatarConfig {
 export interface Character {
   id: string;
   name: string;
-  nameColor: string;   // color for character name label
-  bgColor: string;     // dialogue box background
-  borderColor: string; // left border accent
+  nameColor: string;    // color for character name label
+  textColor?: string;   // color for dialogue text body (added in v1.7)
+  bgColor: string;      // dialogue box background
+  borderColor: string;  // left border accent
   /** @deprecated Use avatarConfig instead. Kept for migration from pre-v1.4 saves. */
   avatarUrl?: string;
   /** Avatar settings (static URL or variable-bound). Added in v1.4. */

@@ -374,7 +374,7 @@ export function DialogueBlockEditor({
           <textarea
             ref={dialogueRef}
             className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-24' : 'pr-24'}`}
-            style={{ color: selectedChar ? '#e2e8f0' : undefined }}
+            style={{ color: selectedChar ? (selectedChar.textColor ?? '#e2e8f0') : undefined }}
             placeholder={t.dialogueBlock.linePlaceholder}
             value={block.text}
             onFocus={saveSnapshot}

@@ -42,6 +42,9 @@ function buildCharacterCSS(characters: Character[]): string {
       `.dialogue.${cls} .char-name {`,
       `  color: ${c.nameColor};`,
       `}`,
+      `.dialogue.${cls} .char-text {`,
+      `  color: ${c.textColor ?? '#e2e8f0'};`,
+      `}`,
     ].join('\n');
   }).join('\n\n');
   return `${base}\n\n${perChar}`;
