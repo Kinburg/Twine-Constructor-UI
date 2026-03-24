@@ -50,6 +50,7 @@ const en: Translations = {
     checkbox:         'Checkbox',
     radio:            'Radio',
     function:         'Function',
+    popup:            'Popup',
     drag:             'Drag to reorder',
     copy:             'Copy block to clipboard',
     duplicate:        'Duplicate block',
@@ -79,6 +80,7 @@ const en: Translations = {
     checkbox:    { label: 'Checkbox',   desc: 'Multiple selection' },
     radio:       { label: 'Radio',      desc: 'Single selection' },
     function:    { label: 'Function',   desc: 'Call a function scene' },
+    popup:       { label: 'Popup',      desc: 'Open a dialog on load' },
   },
 
   condition: {
@@ -579,6 +581,22 @@ const en: Translations = {
     deleteAction:   'Delete action',
     selectVariable: '— variable —',
     textPlaceholder: 'text',
+  },
+
+  popupBlock: {
+    sceneLabel:       'Popup scene:',
+    noPopupScenes:    'No scenes tagged "popup"',
+    titleLabel:       'Title:',
+    titlePlaceholder: 'Dialog title (leave empty to hide)',
+  },
+
+  actionType: {
+    setVariable:           'Variable',
+    openPopup:             'Open popup',
+    popupScene:            'Popup scene:',
+    popupTitle:            'Title:',
+    popupTitlePlaceholder: 'Dialog title (optional)',
+    noPopupScenes:         'No scenes tagged "popup"',
   },
 
   sceneSettings: {

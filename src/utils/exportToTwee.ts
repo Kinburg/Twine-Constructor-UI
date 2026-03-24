@@ -68,6 +68,11 @@ function varRefWithAccessor(path: string, accessor: ArrayAccessor | undefined, v
 
 /** Convert a single ButtonAction to SugarCube macro, handling array operators. */
 function actionToSC(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[], lineIndent: string): string {
+  if (a.type === 'open-popup') {
+    const name = a.targetSceneId || '???';
+    const title = a.title ?? '';
+    return `${lineIndent}<<run Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();>>`;
+  }
   const v = vars.find(x => x.id === a.variableId);
   if (!v) return '';
   const path = varPath(v, nodes);
@@ -563,6 +568,12 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         lines.push(`${indent}<<radiobutton "${vname}" "${opt.value}" autocheck>> ${opt.label}`);
       }
       return lines.join('\n');
+    }
+
+    case 'popup': {
+      const name = block.targetSceneId || '???';
+      const title = block.title ?? '';
+      return `${indent}<<run Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();>>`;
     }
   }
 }
@@ -1099,6 +1110,11 @@ function conditionToJS(cond: WatcherCondition, vars: Variable[], nodes: Variable
 
 /** Convert a single ButtonAction to a JS statement for use in the watcher script. */
 function actionToJS(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[]): string {
+  if (a.type === 'open-popup') {
+    const name = a.targetSceneId || '???';
+    const title = a.title ?? '';
+    return `Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();`;
+  }
   const v = vars.find(x => x.id === a.variableId);
   if (!v) return '';
 

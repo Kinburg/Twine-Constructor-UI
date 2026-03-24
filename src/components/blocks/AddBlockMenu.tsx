@@ -22,6 +22,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'checkbox':     '☑',
   'radio':        '🔵',
   'function':     'ƒ',
+  'popup':        '🪟',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -69,6 +70,7 @@ export function makeBlock(type: BlockType): Block {
       },
       actions: [],
     };
+    case 'popup':        return { id, type, targetSceneId: '' };
   }
 }
 
@@ -105,6 +107,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     { type: 'checkbox',     icon: BLOCK_ICONS['checkbox'],     label: t.addBlock.checkbox.label,    desc: t.addBlock.checkbox.desc },
     { type: 'radio',        icon: BLOCK_ICONS['radio'],        label: t.addBlock.radio.label,       desc: t.addBlock.radio.desc },
     { type: 'function',     icon: BLOCK_ICONS['function'],     label: t.addBlock.function.label,    desc: t.addBlock.function.desc },
+    { type: 'popup',        icon: BLOCK_ICONS['popup'],        label: t.addBlock.popup.label,        desc: t.addBlock.popup.desc },
   ];
 
   const add = (type: BlockType) => {

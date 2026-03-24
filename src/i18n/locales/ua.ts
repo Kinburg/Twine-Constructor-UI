@@ -50,6 +50,7 @@ const ua: Translations = {
     checkbox:         'Прапорці',
     radio:            'Перемикачі',
     function:         'Функція',
+    popup:            'Попап',
     drag:             'Перетягнути для сортування',
     copy:             'Копіювати блок у буфер',
     duplicate:        'Дублювати блок',
@@ -79,6 +80,7 @@ const ua: Translations = {
     checkbox:    { label: 'Прапорці',    desc: 'Множинний вибір' },
     radio:       { label: 'Перемикачі', desc: 'Одиночний вибір' },
     function:    { label: 'Функція',    desc: 'Виклик функціональної сцени' },
+    popup:       { label: 'Попап',      desc: 'Відкрити діалог при завантаженні' },
   },
 
   condition: {
@@ -579,6 +581,22 @@ const ua: Translations = {
     deleteAction:    'Видалити дію',
     selectVariable:  '— змінна —',
     textPlaceholder: 'текст',
+  },
+
+  popupBlock: {
+    sceneLabel:       'Попап-сцена:',
+    noPopupScenes:    'Немає сцен з тегом "popup"',
+    titleLabel:       'Заголовок:',
+    titlePlaceholder: 'Заголовок діалогу (залишити порожнім — без заголовка)',
+  },
+
+  actionType: {
+    setVariable:           'Змінна',
+    openPopup:             'Відкрити попап',
+    popupScene:            'Попап-сцена:',
+    popupTitle:            'Заголовок:',
+    popupTitlePlaceholder: 'Заголовок діалогу (опційно)',
+    noPopupScenes:         'Немає сцен з тегом "popup"',
   },
 
   sceneSettings: {

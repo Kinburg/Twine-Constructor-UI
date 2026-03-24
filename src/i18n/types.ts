@@ -54,6 +54,7 @@ export interface Translations {
     checkbox: string;
     radio: string;
     function: string;
+    popup: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -84,6 +85,7 @@ export interface Translations {
     checkbox:    { label: string; desc: string };
     radio:       { label: string; desc: string };
     function:    { label: string; desc: string };
+    popup:       { label: string; desc: string };
   };
 
   includeBlock: {
@@ -597,6 +599,24 @@ export interface Translations {
     deleteAction: string;
     selectVariable: string;
     textPlaceholder: string;
+  };
+
+  // ─── Popup block ─────────────────────────────────────────────────────────────
+  popupBlock: {
+    sceneLabel:        string;
+    noPopupScenes:     string;
+    titleLabel:        string;
+    titlePlaceholder:  string;
+  };
+
+  // ─── Shared: action type selector (ButtonBlock, LinkBlock, FunctionBlock, CellButton) ──
+  actionType: {
+    setVariable: string;
+    openPopup:   string;
+    popupScene:  string;
+    popupTitle:  string;
+    popupTitlePlaceholder: string;
+    noPopupScenes: string;
   };
 
   // ─── Scene settings modal ────────────────────────────────────────────────────

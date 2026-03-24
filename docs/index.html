@@ -218,7 +218,7 @@
       border-color: rgba(124,106,247,.4);
       background: var(--surface2);
     }
-    .feature-icon { font-size: 28px; margin-bottom: 12px; display: block; }
+    .feature-icon { width: 32px; height: 32px; margin-bottom: 12px; display: block; opacity: .9; }
     .feature-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
     .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
 
@@ -274,7 +274,7 @@
       gap: 32px;
       flex-wrap: wrap;
     }
-    .platform-icon { font-size: 48px; flex-shrink: 0; }
+    .platform-icon { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
     .platform-info h3 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
     .platform-info p { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
 
@@ -357,8 +357,8 @@
 <!-- ── Hero ─────────────────────────────────────────────────── -->
 <section class="hero">
   <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:28px;">
-    <div class="hero-badge" style="margin-bottom:0;">✦ <span lang-content="uk">Безкоштовний інструмент</span><span lang-content="en">Free tool</span></div>
-    <div class="hero-badge" style="margin-bottom:0;background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.3);color:#4ade80;">⚡ <span lang-content="uk">Активна розробка</span><span lang-content="en">Actively developed</span></div>
+    <div class="hero-badge" style="margin-bottom:0;"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px;"><path d="M6 0 L7.1 4.9 L12 6 L7.1 7.1 L6 12 L4.9 7.1 L0 6 L4.9 4.9 Z" fill="currentColor"/></svg><span lang-content="uk">Безкоштовний інструмент</span><span lang-content="en">Free tool</span></div>
+    <div class="hero-badge" style="margin-bottom:0;background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.3);color:#4ade80;"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px;"><path d="M7.5 1 L3.5 7 H6.5 L4.5 11 L8.5 5 H5.5 Z" fill="currentColor"/></svg><span lang-content="uk">Активна розробка</span><span lang-content="en">Actively developed</span></div>
   </div>
   <h1>Purl</h1>
   <p class="hero-tagline" lang-content="uk">No-code редактор для створення інтерактивних історій на SugarCube&nbsp;2</p>
@@ -374,7 +374,7 @@
       GitHub
     </a>
   </div>
-  <div><span class="free-badge">✓ <span lang-content="uk">Повністю безкоштовно</span><span lang-content="en">Completely free</span></span></div>
+  <div><span class="free-badge"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-2px;margin-right:4px;"><path d="M2 6 L5 9.5 L10 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span lang-content="uk">Повністю безкоштовно</span><span lang-content="en">Completely free</span></span></div>
 </section>
 
 <!-- ── App preview ───────────────────────────────────────────── -->
@@ -409,11 +409,11 @@
     Purl is a desktop app for Windows, macOS and Linux that lets you create interactive fiction and visual novels in SugarCube 2 format without writing code. Build your story from visual blocks, and Purl generates a ready-to-use .twee file for Tweego or Twine.
   </p>
   <p class="section-desc" style="margin-top:-20px;" lang-content="uk">
-    <span style="color:var(--green);">⚡</span>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;"><path d="M8.5 1 L4 8 H7.5 L5.5 13 L10 6 H6.5 Z" fill="var(--green)"/></svg>
     Purl активно розвивається — нові блоки та функції регулярно з'являються у кожному оновленні.
   </p>
   <p class="section-desc" style="margin-top:-20px;" lang-content="en">
-    <span style="color:var(--green);">⚡</span>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;"><path d="M8.5 1 L4 8 H7.5 L5.5 13 L10 6 H6.5 Z" fill="var(--green)"/></svg>
     Purl is actively developed — new blocks and features are regularly added with every update.
   </p>
 </div>
@@ -429,69 +429,121 @@
 
   <div class="features-grid">
     <div class="feature-card">
-      <span class="feature-icon">🧱</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="24" height="7" rx="2" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".18"/>
+        <rect x="4" y="13" width="24" height="7" rx="2" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".1" opacity=".7"/>
+        <rect x="4" y="22" width="24" height="7" rx="2" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".06" opacity=".45"/>
+        <circle cx="9" cy="7.5" r="1.1" fill="var(--accent)"/>
+        <circle cx="12.5" cy="7.5" r="1.1" fill="var(--accent)"/>
+      </svg>
       <h3 lang-content="uk">Блоковий редактор</h3>
       <h3 lang-content="en">Block editor</h3>
       <p lang-content="uk">Додавайте та впорядковуйте блоки перетягуванням. Кожна сцена — окремий список блоків.</p>
       <p lang-content="en">Add and reorder blocks by drag & drop. Each scene is a separate list of blocks.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">💬</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M2 5 Q2 2 5 2 H27 Q30 2 30 5 V18 Q30 21 27 21 H14 L6 29 L7 21 H5 Q2 21 2 18 Z" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".12"/>
+        <rect x="7" y="8" width="14" height="2.2" rx="1.1" fill="var(--accent)" opacity=".8"/>
+        <rect x="7" y="13" width="10" height="2.2" rx="1.1" fill="var(--accent)" opacity=".5"/>
+      </svg>
       <h3 lang-content="uk">Діалоги та тексти</h3>
       <h3 lang-content="en">Dialogue & text</h3>
       <p lang-content="uk">Блоки діалогів з персонажами, кольорами та аватарами. Ефекти друкарської машинки та затримки.</p>
       <p lang-content="en">Dialogue blocks with characters, colors and avatars. Typewriter and delay effects.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">🔀</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M3 16 L12 16" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M12 16 L15 10 L18 16 L15 22 Z" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".15"/>
+        <path d="M18 13 L28 8" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M24.5 6.5 L28 8 L26.5 11.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M18 19 L28 24" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity=".55"/>
+        <path d="M24.5 21.5 L28 23 L26.5 26.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
+      </svg>
       <h3 lang-content="uk">Вибори та умови</h3>
       <h3 lang-content="en">Choices & conditions</h3>
       <p lang-content="uk">Блоки вибору, кнопки, посилання та умовні гілки з підтримкою вкладених блоків.</p>
       <p lang-content="en">Choice blocks, buttons, links and conditional branches with nested block support.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">📊</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="8" y="7" width="16" height="18" rx="3" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".1"/>
+        <path d="M8 12 L3 12 M8 17 L3 17 M8 22 L3 22" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"/>
+        <path d="M24 12 L29 12 M24 17 L29 17 M24 22 L29 22" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" opacity=".55"/>
+        <rect x="11" y="11" width="10" height="1.8" rx=".9" fill="var(--accent)" opacity=".7"/>
+        <rect x="11" y="16" width="7" height="1.8" rx=".9" fill="var(--accent)" opacity=".5"/>
+        <rect x="11" y="21" width="9" height="1.8" rx=".9" fill="var(--accent)" opacity=".35"/>
+      </svg>
       <h3 lang-content="uk">Змінні та логіка</h3>
       <h3 lang-content="en">Variables & logic</h3>
       <p lang-content="uk">Числа, рядки, булеві, масиви. Вирази, маппінг, режими random та dynamic.</p>
       <p lang-content="en">Numbers, strings, booleans, arrays. Expressions, mapping, random and dynamic modes.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">🖼️</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="5" width="20" height="16" rx="2.5" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08" opacity=".7"/>
+        <circle cx="8" cy="11" r="2.2" fill="var(--accent)" opacity=".45"/>
+        <path d="M2 18 L7 13 L12 17 L16 13 L22 17" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="var(--accent)" fill-opacity=".1" opacity=".6"/>
+        <rect x="18" y="16" width="12" height="12" rx="2" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.6"/>
+        <path d="M22 20 L27 22 L22 24 Z" fill="var(--accent)" opacity=".8"/>
+      </svg>
       <h3 lang-content="uk">Медіа</h3>
       <h3 lang-content="en">Media</h3>
       <p lang-content="uk">Блоки зображень і відео. Статичний або динамічний режим прив'язки до змінної.</p>
       <p lang-content="en">Image and video blocks. Static or dynamic mode bound to a variable.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">📤</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 3 H20 L28 11 V29 H6 Z" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <path d="M20 3 V11 H28" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+        <path d="M17 27 V17 M13 21 L17 17 L21 21" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
       <h3 lang-content="uk">Експорт у .twee</h3>
       <h3 lang-content="en">Export to .twee</h3>
       <p lang-content="uk">Генерація готового .twee файлу для Tweego або імпорту в Twine 2.</p>
       <p lang-content="en">Generates a ready .twee file for Tweego or import into Twine 2.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">📦</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <path d="M16 3 C11 8 11 24 16 29 C21 24 21 8 16 3 Z" stroke="var(--accent)" stroke-width="1.3" fill="none" opacity=".5"/>
+        <path d="M3 16 H29" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
+        <path d="M5 10 Q16 7 27 10" stroke="var(--accent)" stroke-width="1" opacity=".35"/>
+        <path d="M5 22 Q16 25 27 22" stroke="var(--accent)" stroke-width="1" opacity=".35"/>
+      </svg>
       <h3 lang-content="uk">Експорт у HTML + assets</h3>
       <h3 lang-content="en">Export to HTML + assets</h3>
       <p lang-content="uk">Генерує самодостатній HTML-файл разом із папкою assets. Готово до публікації — відкривається у браузері без жодних додаткових інструментів.</p>
       <p lang-content="en">Generates a standalone HTML file together with an assets folder. Ready to publish — opens in any browser with no extra tools needed.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">⚡</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <path d="M19.5 4.5 L11 17 H17 L12.5 27.5 L21 15 H15 Z" fill="var(--accent)" fill-opacity=".9"/>
+      </svg>
       <h3 lang-content="uk">Спостерігачі (Watchers)</h3>
       <h3 lang-content="en">Watchers</h3>
       <p lang-content="uk">Фонове відстеження змінних: задайте умову та дії, які виконуються автоматично при зміні сцени або натисканні кнопки.</p>
       <p lang-content="en">Background variable tracking: set a condition and actions that fire automatically on scene change or button click.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">↩️</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M6 10 C7 5 14 3 20 7 C25 10 27 16 24 21" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" fill="none"/>
+        <path d="M3 7 L6 10 L9 7" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M26 22 C25 27 18 29 12 25" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" fill="none" opacity=".5"/>
+        <path d="M29 25 L26 22 L23 25" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
+      </svg>
       <h3>Undo / Redo</h3>
       <p lang-content="uk">Повна історія дій до 100 кроків. Ctrl+Z / Ctrl+Shift+Z або кнопки в панелі інструментів.</p>
       <p lang-content="en">Full action history up to 100 steps. Ctrl+Z / Ctrl+Shift+Z or toolbar buttons.</p>
     </div>
     <div class="feature-card">
-      <span class="feature-icon">🔍</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="14" cy="13" r="9" stroke="var(--accent)" stroke-width="2" fill="var(--accent)" fill-opacity=".1"/>
+        <path d="M21 21 L29 29" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
+        <path d="M10 13 H18 M14 9 V17" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
+      </svg>
       <h3 lang-content="uk">Пошук по проєкту</h3>
       <h3 lang-content="en">Project search</h3>
       <p lang-content="uk">Пошук по тексту сцен, блоків та по використанню змінних. Перехід до результату одним кліком.</p>
@@ -504,8 +556,8 @@
 <div class="section">
   <span class="section-label" lang-content="uk">Типи блоків</span>
   <span class="section-label" lang-content="en">Block types</span>
-  <h2 class="section-title" lang-content="uk">18 типів блоків</h2>
-  <h2 class="section-title" lang-content="en">18 block types</h2>
+  <h2 class="section-title" lang-content="uk">19 типів блоків</h2>
+  <h2 class="section-title" lang-content="en">19 block types</h2>
   <p class="section-desc" lang-content="uk">Кожен блок — готовий елемент сцени. Комбінуйте їх для будь-якого жанру.</p>
   <p class="section-desc" lang-content="en">Each block is a ready-to-use scene element. Combine them for any genre.</p>
   <div class="blocks-grid">
@@ -781,6 +833,25 @@
       <p class="block-card-desc" lang-content="en">Executes a function-tagged scene without navigating — variables update, player stays in place. Great for reusable logic.</p>
     </div>
 
+    <!-- Popup -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="1" y="3" width="23" height="19" rx="2.5" fill="var(--accent)" fill-opacity=".06" stroke="var(--accent)" stroke-width="1.3" opacity=".35"/>
+          <rect x="8" y="10" width="23" height="19" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".12"/>
+          <rect x="8" y="10" width="23" height="6" rx="3" fill="var(--accent)" fill-opacity=".28"/>
+          <rect x="8" y="13" width="23" height="3" fill="var(--accent)" fill-opacity=".28"/>
+          <circle cx="27" cy="13" r="1.6" fill="var(--accent)" opacity=".75"/>
+          <rect x="12" y="20" width="11" height="2" rx="1" fill="var(--accent)" opacity=".65"/>
+          <rect x="12" y="24" width="8" height="2" rx="1" fill="var(--accent)" opacity=".4"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Спливаюче вікно</span>
+        <span class="block-card-name" lang-content="en">Popup</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Відкриває модальне вікно SugarCube Dialog при рендері пасажу. Вміст береться зі сцени з тегом «popup». Кнопки також можуть відкривати попапи.</p>
+      <p class="block-card-desc" lang-content="en">Opens a SugarCube Dialog modal when the passage renders. Content comes from a scene tagged "popup". Buttons can open popups too.</p>
+    </div>
+
     <!-- Raw Code -->
     <div class="block-card">
       <div class="block-card-header">
@@ -826,7 +897,27 @@
   <h2 class="section-title" lang-content="uk">Завантажити Purl</h2>
   <h2 class="section-title" lang-content="en">Download Purl</h2>
   <div class="platform-card">
-    <div class="platform-icon">🪟&nbsp;🍎&nbsp;🐧</div>
+    <div class="platform-icon">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" title="Windows">
+        <rect x="2" y="2" width="17" height="17" rx="2" fill="var(--accent)" fill-opacity=".75"/>
+        <rect x="21" y="2" width="17" height="17" rx="2" fill="var(--accent)" fill-opacity=".55"/>
+        <rect x="2" y="21" width="17" height="17" rx="2" fill="var(--accent)" fill-opacity=".55"/>
+        <rect x="21" y="21" width="17" height="17" rx="2" fill="var(--accent)" fill-opacity=".35"/>
+      </svg>
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" title="macOS">
+        <path d="M20 9 C20 6 23.5 4 26 4 C26 7.5 23.5 9.5 20 9 Z" fill="var(--accent)" opacity=".7"/>
+        <path d="M20 10 C26 10 33 15.5 33 23 C33 31 29 37 24 37 C22 37 21.5 36 20 36 C18.5 36 18 37 16 37 C11 37 7 31 7 23 C7 15.5 14 10 20 10 Z" fill="var(--accent)" fill-opacity=".6"/>
+        <path d="M13 15 C11 18 10.5 22 11.5 25" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".2"/>
+      </svg>
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" title="Linux">
+        <ellipse cx="20" cy="27" rx="9" ry="10" fill="var(--accent)" fill-opacity=".55"/>
+        <circle cx="20" cy="13" r="8" fill="var(--accent)" fill-opacity=".5"/>
+        <ellipse cx="20" cy="29" rx="5.5" ry="7" fill="var(--accent)" fill-opacity=".14"/>
+        <circle cx="17" cy="11" r="2" fill="var(--accent)"/>
+        <circle cx="23" cy="11" r="2" fill="var(--accent)"/>
+        <path d="M18 15 L20 18 L22 15" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".6"/>
+      </svg>
+    </div>
     <div class="platform-info">
       <h3>Windows · macOS · Linux</h3>
       <p lang-content="uk">Безкоштовно · відкритий вихідний код · файли для всіх платформ на сторінці релізу</p>
@@ -857,21 +948,25 @@
 
   <div class="features-grid" style="max-width:820px;margin:0 auto;">
     <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <span class="feature-icon">🎨</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M16 3 C9 3 4 8 4 14 C4 18.5 6.5 22 11 24 C13 25 12.5 27 11.5 28 C10.5 29 10.5 30.5 13 30.5 C15.5 30.5 17.5 29.5 18.5 27.5 C19 26 20.5 25.5 21.5 26.5 C24.5 27.5 28.5 24.5 28.5 20 C28.5 10.5 23 3 16 3 Z" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".1"/>
+        <circle cx="10" cy="11" r="2.2" fill="var(--accent)"/>
+        <circle cx="15.5" cy="7.5" r="2.2" fill="var(--accent)" opacity=".75"/>
+        <circle cx="21.5" cy="8" r="2.2" fill="var(--accent)" opacity=".5"/>
+        <circle cx="25.5" cy="13.5" r="2.2" fill="var(--accent)" opacity=".35"/>
+        <circle cx="24.5" cy="20" r="2.2" fill="var(--accent)" opacity=".2"/>
+      </svg>
       <h3 lang-content="uk">Фонові стилі</h3>
       <h3 lang-content="en">Background Styles</h3>
       <p lang-content="uk">Іменовані стилі фону для сцен та бокової панелі: колір, зображення з бібліотеки ассетів, прив'язка до змінних для динамічної зміни.</p>
       <p lang-content="en">Named background styles for scenes and sidebar panel: color, image from asset library, variable binding for dynamic changes.</p>
     </div>
     <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <span class="feature-icon">🪟</span>
-      <h3 lang-content="uk">Спливаючі вікна</h3>
-      <h3 lang-content="en">Popup Windows</h3>
-      <p lang-content="uk">Модальні вікна поверх поточної сцени для інформації про предмети, карток персонажів та підтверджень — без переходу між пасажами.</p>
-      <p lang-content="en">Modal overlays on top of the current scene for item info, character cards and confirmations — no passage navigation needed.</p>
-    </div>
-    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <span class="feature-icon">🔊</span>
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M5 12 H10 L18 5 V27 L10 20 H5 Z" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".18"/>
+        <path d="M21.5 10 C25 12.5 25 19.5 21.5 22" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+        <path d="M24.5 7 C30 10.5 30 21.5 24.5 25" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" fill="none" opacity=".5"/>
+      </svg>
       <h3 lang-content="uk">Аудіо та слайдери</h3>
       <h3 lang-content="en">Audio & Sliders</h3>
       <p lang-content="uk">Блок відтворення звуку та музики, а також блок-слайдер для повзунків (гучність, характеристики тощо).</p>
@@ -885,13 +980,17 @@
 <!-- ── Donate ────────────────────────────────────────────────── -->
 <div class="section">
   <div class="donate-section">
-    <div style="font-size:36px;">💜</div>
+    <div style="display:flex;justify-content:center;margin-bottom:4px;">
+      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M22 39 C22 39 4 27 4 15 C4 9 8.5 5 14 5 C17.5 5 20 7 22 9.5 C24 7 26.5 5 30 5 C35.5 5 40 9 40 15 C40 27 22 39 22 39 Z" fill="var(--accent)" fill-opacity=".65" stroke="var(--accent2)" stroke-width="1.5"/>
+      </svg>
+    </div>
     <h2 style="margin-top:12px;" lang-content="uk">Підтримати розробника</h2>
     <h2 style="margin-top:12px;" lang-content="en">Support the developer</h2>
     <p lang-content="uk">Purl безкоштовний і залишатиметься таким. Якщо застосунок виявився корисним — ви можете підтримати його розвиток добровільним донатом.</p>
     <p lang-content="en">Purl is free and will stay free. If it has been useful to you, consider supporting its development with a voluntary donation.</p>
     <a href="legal.html#donate" class="donate-btn">
-      ♥ <span lang-content="uk">Задонатити</span><span lang-content="en">Donate</span>
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="vertical-align:-3px;margin-right:2px;"><path d="M8 14 C8 14 1 9.5 1 5.5 C1 3 3 1.5 5 1.5 C6.5 1.5 7.5 2.5 8 3.5 C8.5 2.5 9.5 1.5 11 1.5 C13 1.5 15 3 15 5.5 C15 9.5 8 14 8 14 Z" fill="currentColor"/></svg><span lang-content="uk">Задонатити</span><span lang-content="en">Donate</span>
     </a>
   </div>
 </div>

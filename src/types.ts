@@ -200,15 +200,28 @@ export interface ButtonStyle {
   fullWidth: boolean;
 }
 
-/** A single variable mutation triggered by the button */
-export interface ButtonAction {
+/** A variable mutation action (default action type). */
+export interface VarSetAction {
   id: string;
+  type?: 'set-variable';
   variableId: string;
   operator: VarOperator;
   value: string;
   /** Array accessor — only relevant when variableId points to an array variable. */
   accessor?: ArrayAccessor;
 }
+
+/** Opens a SugarCube Dialog with the specified popup-tagged scene. */
+export interface OpenPopupAction {
+  id: string;
+  type: 'open-popup';
+  /** Scene NAME (must be tagged 'popup'). */
+  targetSceneId: string;
+  /** Optional dialog title bar text. Empty string = no title bar. */
+  title?: string;
+}
+
+export type ButtonAction = VarSetAction | OpenPopupAction;
 
 export interface WatcherCondition {
   variableId: string;
@@ -388,6 +401,20 @@ export const SYSTEM_TAG_COLORS: Record<SystemTag, string> = {
 };
 
 /**
+ * Auto-opens a SugarCube Dialog with a popup-tagged scene when the passage renders.
+ * The dialog is created via Dialog.setup() / Dialog.wiki() / Dialog.open().
+ */
+export interface PopupBlock {
+  id: string;
+  type: 'popup';
+  /** Scene NAME — must be tagged 'popup'. */
+  targetSceneId: string;
+  /** Optional dialog title bar text. Empty string = no title bar. */
+  title?: string;
+  delay?: BlockDelay;
+}
+
+/**
  * A styled button that executes a "function" scene (tagged func) on click,
  * running its passage macros silently without navigating.
  * Optionally mutates variables before executing the function.
@@ -420,7 +447,8 @@ export type Block =
   | DividerBlock
   | CheckboxBlock
   | RadioBlock
-  | FunctionBlock;
+  | FunctionBlock
+  | PopupBlock;
 
 export type BlockType = Block['type'];
 
