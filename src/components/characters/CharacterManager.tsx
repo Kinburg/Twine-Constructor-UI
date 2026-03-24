@@ -55,6 +55,16 @@ export function CharacterManager() {
 
   return (
     <div className="p-2 flex flex-col gap-1">
+      {/* Add toolbar */}
+      <div className="flex gap-1 pb-1 border-b border-slate-800 mb-1">
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={openCreate}
+        >
+          {t.characters.add}
+        </button>
+      </div>
+
       {characters.map(char => (
         <CharacterRow
           key={char.id}
@@ -70,13 +80,6 @@ export function CharacterManager() {
       {characters.length === 0 && (
         <p className="text-xs text-slate-600 italic px-2 py-1">{t.characters.empty}</p>
       )}
-
-      <button
-        className="mt-1 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 text-left transition-colors cursor-pointer"
-        onClick={openCreate}
-      >
-        {t.characters.add}
-      </button>
 
       {modalState && (
         <CharacterModal

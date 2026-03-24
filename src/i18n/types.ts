@@ -38,6 +38,11 @@ export interface Translations {
     note: string;
     notePlaceholder: string;
     filterNoScenes: string;
+    createTitle: string;
+    editTitle: string;
+    fieldName: string;
+    nameTaken: string;
+    nameEmpty: string;
   };
 
   block: {

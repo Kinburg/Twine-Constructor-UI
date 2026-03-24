@@ -505,21 +505,23 @@ interface ProjectState {
   // Scenes
   setActiveScene: (id: string) => void;
   addScene: () => void;
+  addSceneWithData: (data: { name: string; tags: string[]; notes?: string }) => void;
   deleteScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
   updateSceneNote: (id: string, notes: string | undefined) => void;
   updateSceneGraphPosition: (id: string, x: number, y: number) => void;
   updateSceneTags: (id: string, tags: string[]) => void;
+  updateSceneSettings: (id: string, data: { name: string; tags: string[]; notes?: string }) => void;
   reorderScenes: (scenes: Scene[]) => void;
   duplicateScene: (sceneId: string) => void;
 
   // Blocks
-  addBlock: (sceneId: string, block: Block) => void;
+  addBlock: (sceneId: string, block: Block, insertIndex?: number) => void;
   updateBlock: (sceneId: string, blockId: string, patch: Partial<Block>) => void;
   deleteBlock: (sceneId: string, blockId: string) => void;
   reorderBlocks: (sceneId: string, blocks: Block[]) => void;
   duplicateBlock: (sceneId: string, blockId: string) => void;
-  pasteToScene: (sceneId: string, block: Block) => void;
+  pasteToScene: (sceneId: string, block: Block, insertIndex?: number) => void;
 
   // Nested blocks (condition branches)
   addNestedBlock: (sceneId: string, blockId: string, branchId: string, block: Block) => void;
@@ -731,6 +733,16 @@ export const useProjectStore = create<ProjectState>()(
           }));
         },
 
+        addSceneWithData: ({ name, tags, notes }) => {
+          get().saveSnapshot();
+          const id = uuid();
+          const scene: Scene = { id, name, tags, blocks: [], notes: notes || undefined };
+          set(s => ({
+            project: { ...s.project, scenes: [...s.project.scenes, scene] },
+            activeSceneId: id,
+          }));
+        },
+
         deleteScene: (id) => {
           get().saveSnapshot();
           set(s => {
@@ -758,6 +770,11 @@ export const useProjectStore = create<ProjectState>()(
         updateSceneTags: (id, tags) => {
           get().saveSnapshot();
           set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, tags })) }));
+        },
+
+        updateSceneSettings: (id, { name, tags, notes }) => {
+          get().saveSnapshot();
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, name, tags, notes: notes || undefined })) }));
         },
 
         reorderScenes: (scenes) => {
@@ -788,10 +805,15 @@ export const useProjectStore = create<ProjectState>()(
 
         // ── Blocks ──────────────────────────────────────────────────────────
 
-        addBlock: (sceneId, block) => {
+        addBlock: (sceneId, block, insertIndex) => {
           get().saveSnapshot();
           set(s => ({
-            project: updateScene(s.project, sceneId, sc => ({ ...sc, blocks: [...sc.blocks, block] })),
+            project: updateScene(s.project, sceneId, sc => {
+              const blocks = [...sc.blocks];
+              if (insertIndex !== undefined) blocks.splice(insertIndex, 0, block);
+              else blocks.push(block);
+              return { ...sc, blocks };
+            }),
           }));
         },
 
@@ -829,12 +851,16 @@ export const useProjectStore = create<ProjectState>()(
           }));
         },
 
-        pasteToScene: (sceneId, block) => {
+        pasteToScene: (sceneId, block, insertIndex) => {
           get().saveSnapshot();
           set(s => ({
-            project: updateScene(s.project, sceneId, sc => ({
-              ...sc, blocks: [...sc.blocks, deepCloneBlock(block)],
-            })),
+            project: updateScene(s.project, sceneId, sc => {
+              const cloned = deepCloneBlock(block);
+              const blocks = [...sc.blocks];
+              if (insertIndex !== undefined) blocks.splice(insertIndex, 0, cloned);
+              else blocks.push(cloned);
+              return { ...sc, blocks };
+            }),
           }));
         },
 

@@ -414,6 +414,16 @@ export function WatcherManager() {
 
   return (
     <div className="p-2 flex flex-col gap-1">
+      {/* Add toolbar */}
+      <div className="flex gap-1 pb-1 border-b border-slate-800 mb-1">
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={addWatcher}
+        >
+          {t.watchers.add}
+        </button>
+      </div>
+
       {watchers.map(w => (
         <WatcherCard
           key={w.id}
@@ -433,13 +443,6 @@ export function WatcherManager() {
       {watchers.length === 0 && (
         <p className="text-xs text-slate-600 italic px-2 py-1">{t.watchers.empty}</p>
       )}
-
-      <button
-        className="mt-1 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 text-left transition-colors cursor-pointer"
-        onClick={addWatcher}
-      >
-        {t.watchers.add}
-      </button>
       {confirmModal}
     </div>
   );

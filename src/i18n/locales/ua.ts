@@ -35,6 +35,11 @@ const ua: Translations = {
     note:            'Нотатка сцени (не експортується)',
     notePlaceholder: 'Нотатка розробника...',
     filterNoScenes:  'Жодна сцена не відповідає тегам',
+    createTitle:     'Нова сцена',
+    editTitle:       'Налаштування сцени',
+    fieldName:       'Назва',
+    nameTaken:       'Сцена з такою назвою вже існує.',
+    nameEmpty:       'Назва не може бути порожньою.',
   },
 
   block: {

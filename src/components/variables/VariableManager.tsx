@@ -45,6 +45,22 @@ export function VariableManager() {
 
   return (
     <div className="p-2 flex flex-col gap-1">
+      {/* Add toolbar */}
+      <div className="flex gap-1 pb-1 border-b border-slate-800 mb-1">
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={handleAddRootVar}
+        >
+          {t.variables.addVariable}
+        </button>
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={() => setAddingRootGroup(true)}
+        >
+          {t.variables.addGroup}
+        </button>
+      </div>
+
       <TreeLevel
         nodes={project.variableNodes}
         depth={0}
@@ -58,7 +74,7 @@ export function VariableManager() {
       />
 
       {/* Root-level "add group" inline input */}
-      {addingRootGroup ? (
+      {addingRootGroup && (
         <input
           ref={rootGroupRef}
           className="text-xs bg-slate-800 text-white rounded px-2 py-1 outline-none border border-indigo-500 font-mono mt-1"
@@ -71,21 +87,6 @@ export function VariableManager() {
             if (e.key === 'Escape') { setAddingRootGroup(false); setRootGroupName(''); }
           }}
         />
-      ) : (
-        <div className="flex gap-1 mt-1 flex-wrap">
-          <button
-            className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
-            onClick={handleAddRootVar}
-          >
-            {t.variables.addVariable}
-          </button>
-          <button
-            className="text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
-            onClick={() => setAddingRootGroup(true)}
-          >
-            {t.variables.addGroup}
-          </button>
-        </div>
       )}
     </div>
   );

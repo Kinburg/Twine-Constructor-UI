@@ -18,95 +18,90 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
 import { sceneMatchesQuery } from '../../utils/searchUtils';
 import { useT } from '../../i18n';
-import type { Scene } from '../../types';
+import { SYSTEM_TAGS, SYSTEM_TAG_COLORS } from '../../types';
+import type { Scene, SystemTag } from '../../types';
 import { useConfirm } from '../shared/ConfirmModal';
+import { SceneModal } from './SceneModal';
 
 // ─── Shared scene row content (no DnD bindings) ───────────────────────────────
 
 type SceneRowProps = {
   scene: Scene;
   isActive: boolean;
-  noteOpen: boolean;
   dragHandle: React.ReactNode;
   canDelete: boolean;
   onSelect: () => void;
-  onStartRename: () => void;
+  onEdit: () => void;
   onDuplicate: () => void;
   onDelete: () => void;
-  onNoteToggle: () => void;
-  onNoteClose: (text: string) => void;
 };
 
 function SceneItemRow({
-  scene, isActive, noteOpen, dragHandle, canDelete,
-  onSelect, onStartRename, onDuplicate, onDelete, onNoteToggle, onNoteClose,
+  scene, isActive, dragHandle, canDelete,
+  onSelect, onEdit, onDuplicate, onDelete,
 }: SceneRowProps) {
   const t = useT();
   const hasNote = !!scene.notes;
 
+  // Color dot: first system tag wins
+  const systemTag = scene.tags.find(tag =>
+    (SYSTEM_TAGS as readonly string[]).includes(tag),
+  ) as SystemTag | undefined;
+  const dotColor = systemTag ? SYSTEM_TAG_COLORS[systemTag] : null;
+
   return (
-    <>
-      <div
-        className={`group flex items-center rounded px-2 py-1.5 cursor-pointer transition-colors ${
-          isActive ? 'bg-indigo-700/40 text-white' : 'hover:bg-slate-800 text-slate-300'
-        }`}
-        onClick={onSelect}
-      >
-        {dragHandle}
-        <span className="flex-1 text-xs truncate">{scene.name}</span>
+    <div
+      className={`group flex items-center rounded px-2 py-1.5 cursor-pointer transition-colors ${
+        isActive ? 'bg-indigo-700/40 text-white' : 'hover:bg-slate-800 text-slate-300'
+      }`}
+      onClick={onSelect}
+      onDoubleClick={e => { e.stopPropagation(); onEdit(); }}
+    >
+      {dragHandle}
 
-        <button
-          className={`text-xs px-0.5 cursor-pointer transition-all ${
-            hasNote
-              ? 'text-amber-400 hover:text-amber-300'
-              : 'opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-300'
-          }`}
-          title={hasNote ? `${t.scene.note}: ${scene.notes}` : t.scene.note}
-          onClick={e => { e.stopPropagation(); onNoteToggle(); }}
-        >
-          📝
-        </button>
-        <button
-          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-white text-xs px-0.5 transition-opacity cursor-pointer"
-          title={t.scene.rename}
-          onClick={e => { e.stopPropagation(); onStartRename(); }}
-        >
-          ✏️
-        </button>
-        <button
-          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-300 text-xs px-0.5 transition-opacity cursor-pointer"
-          title={t.scene.duplicate}
-          onClick={e => { e.stopPropagation(); onDuplicate(); }}
-        >
-          ⧉
-        </button>
-        {canDelete && (
-          <button
-            className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 text-xs px-0.5 transition-opacity cursor-pointer"
-            title={t.scene.delete}
-            onClick={e => { e.stopPropagation(); onDelete(); }}
-          >
-            🗑️
-          </button>
-        )}
-      </div>
-
-      {noteOpen && (
-        <div className="px-2 pb-1.5" onClick={e => e.stopPropagation()}>
-          <textarea
-            autoFocus
-            className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1 outline-none border border-amber-800/60 focus:border-amber-600 resize-none placeholder-slate-500"
-            rows={3}
-            placeholder={t.scene.notePlaceholder}
-            defaultValue={scene.notes ?? ''}
-            onBlur={e => onNoteClose(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Escape') onNoteClose(scene.notes ?? '');
-            }}
-          />
-        </div>
+      {/* Color dot for system tags */}
+      {dotColor && (
+        <span
+          className="w-2 h-2 rounded-full shrink-0 mr-1.5"
+          style={{ background: dotColor }}
+        />
       )}
-    </>
+
+      <span className="flex-1 text-xs truncate">{scene.name}</span>
+
+      {/* Note indicator */}
+      <button
+        className={`text-xs px-0.5 cursor-pointer transition-all ${
+          hasNote
+            ? 'text-amber-400 hover:text-amber-300'
+            : 'opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-300'
+        }`}
+        title={hasNote ? `${t.scene.note}: ${scene.notes}` : t.scene.note}
+        onClick={e => { e.stopPropagation(); onEdit(); }}
+      >
+        📝
+      </button>
+
+      {/* Duplicate */}
+      <button
+        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-300 text-xs px-0.5 transition-opacity cursor-pointer"
+        title={t.scene.duplicate}
+        onClick={e => { e.stopPropagation(); onDuplicate(); }}
+      >
+        ⧉
+      </button>
+
+      {/* Delete */}
+      {canDelete && (
+        <button
+          className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 text-xs px-0.5 transition-opacity cursor-pointer"
+          title={t.scene.delete}
+          onClick={e => { e.stopPropagation(); onDelete(); }}
+        >
+          🗑️
+        </button>
+      )}
+    </div>
   );
 }
 
@@ -141,7 +136,6 @@ function SortableSceneItem(props: Omit<SceneRowProps, 'dragHandle'>) {
 // ─── Plain wrapper (no DnD, used when filter is active) ───────────────────────
 
 function PlainSceneItem(props: Omit<SceneRowProps, 'dragHandle'>) {
-  // Drag handle shown but dimmed to indicate sorting is unavailable
   const dragHandle = (
     <span className="text-slate-800 text-xs mr-1.5 select-none shrink-0">⠿</span>
   );
@@ -152,46 +146,21 @@ function PlainSceneItem(props: Omit<SceneRowProps, 'dragHandle'>) {
   );
 }
 
-// ─── Renaming item ─────────────────────────────────────────────────────────────
-
-function RenamingSceneItem({
-  initialName, onCommit, onCancel,
-}: {
-  initialName: string;
-  onCommit: (name: string) => void;
-  onCancel: () => void;
-}) {
-  const [draft, setDraft] = useState(initialName);
-
-  return (
-    <div className="flex items-center rounded px-2 py-1.5 bg-indigo-700/20">
-      <span className="text-slate-600 text-xs mr-1.5 select-none">⠿</span>
-      <input
-        autoFocus
-        className="flex-1 bg-slate-700 text-white px-1 py-0 rounded text-xs outline-none border border-indigo-500"
-        value={draft}
-        onChange={e => setDraft(e.target.value)}
-        onBlur={() => { if (draft.trim()) onCommit(draft.trim()); else onCancel(); }}
-        onKeyDown={e => {
-          if (e.key === 'Enter' && draft.trim()) onCommit(draft.trim());
-          if (e.key === 'Escape') onCancel();
-        }}
-      />
-    </div>
-  );
-}
-
 // ─── Main SceneList ────────────────────────────────────────────────────────────
+
+type ModalState =
+  | { mode: 'create' }
+  | { mode: 'edit'; scene: Scene }
+  | null;
 
 export function SceneList() {
   const {
     project,
     activeSceneId,
     setActiveScene,
-    addScene,
+    addSceneWithData,
     deleteScene,
-    renameScene,
-    updateSceneNote,
+    updateSceneSettings,
     duplicateScene,
     reorderScenes,
   } = useProjectStore();
@@ -199,21 +168,18 @@ export function SceneList() {
 
   const searchQuery = useEditorStore(s => s.searchQuery);
 
-  const [editingId, setEditingId]         = useState<string | null>(null);
-  const [noteEditingId, setNoteEditingId] = useState<string | null>(null);
-  const [activeTags, setActiveTags]       = useState<Set<string>>(new Set());
-  const [filterMode, setFilterMode]       = useState<'or' | 'and'>('or');
+  const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
+  const [filterMode, setFilterMode] = useState<'or' | 'and'>('or');
+  const [modalState, setModalState] = useState<ModalState>(null);
   const { ask, modal: confirmModal } = useConfirm();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
-  /** Flat variable list for variable-name search. */
   const variables = useMemo(
     () => flattenVariables(project.variableNodes ?? []),
     [project.variableNodes],
   );
 
-  /** All unique tags used across all scenes, sorted. */
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     for (const sc of project.scenes) {
@@ -231,9 +197,7 @@ export function SceneList() {
     });
   };
 
-  /** Tag filter is active when at least one tag is selected. */
   const isTagFiltering = activeTags.size > 0;
-  /** Any filter is active (tags OR search query). */
   const isFiltering = isTagFiltering || searchQuery.trim() !== '';
 
   const visibleScenes = useMemo(() => {
@@ -263,23 +227,49 @@ export function SceneList() {
     }
   };
 
-  /** Shared scene-item callback props (same for both sortable and plain). */
+  const openCreate = () => setModalState({ mode: 'create' });
+  const openEdit = (scene: Scene) => setModalState({ mode: 'edit', scene });
+
+  const takenNames = (excludeId?: string) =>
+    project.scenes
+      .filter(s => s.id !== excludeId)
+      .map(s => s.name);
+
   const itemCallbacks = (scene: Scene) => ({
-    isActive:      scene.id === activeSceneId,
-    noteOpen:      noteEditingId === scene.id,
-    canDelete:     project.scenes.length > 1,
-    onSelect:      () => setActiveScene(scene.id),
-    onStartRename: () => setEditingId(scene.id),
-    onDuplicate:   () => duplicateScene(scene.id),
-    onDelete:      () => ask({ message: t.scene.confirmDelete(scene.name), variant: 'danger' }, () => deleteScene(scene.id)),
-    onNoteToggle:  () => setNoteEditingId(id => id === scene.id ? null : scene.id),
-    onNoteClose:   (text: string) => { updateSceneNote(scene.id, text.trim() || undefined); setNoteEditingId(null); },
+    isActive:    scene.id === activeSceneId,
+    canDelete:   project.scenes.length > 1,
+    onSelect:    () => setActiveScene(scene.id),
+    onEdit:      () => openEdit(scene),
+    onDuplicate: () => duplicateScene(scene.id),
+    onDelete:    () => ask(
+      { message: t.scene.confirmDelete(scene.name), variant: 'danger' },
+      () => deleteScene(scene.id),
+    ),
   });
+
+  const defaultSceneName = () => {
+    const base = 'Scene';
+    const existing = project.scenes.map(s => s.name);
+    let name = base;
+    let i = project.scenes.length + 1;
+    while (existing.includes(name)) { name = `${base} ${i}`; i++; }
+    return name;
+  };
 
   return (
     <div className="p-2 flex flex-col gap-0.5">
 
-      {/* Tag filter strip — only shown when there are tags in the project */}
+      {/* Add toolbar */}
+      <div className="flex gap-1 pb-1 border-b border-slate-800 mb-1">
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={openCreate}
+        >
+          {t.scene.add}
+        </button>
+      </div>
+
+      {/* Tag filter strip */}
       {allTags.length > 0 && (
         <div className="mb-0.5">
           <div className="flex flex-wrap gap-1 items-center pb-1">
@@ -297,7 +287,6 @@ export function SceneList() {
               </button>
             ))}
 
-            {/* OR / AND toggle — shown only when tag filter is active */}
             {isTagFiltering && (
               <div className="ml-auto flex items-center rounded overflow-hidden border border-slate-600 text-xs shrink-0">
                 <button
@@ -339,46 +328,44 @@ export function SceneList() {
               )}
             </div>
           ) : (
-            visibleScenes.map(scene =>
-              editingId === scene.id ? (
-                <RenamingSceneItem
-                  key={scene.id}
-                  initialName={scene.name}
-                  onCommit={name => { renameScene(scene.id, name); setEditingId(null); }}
-                  onCancel={() => setEditingId(null)}
-                />
-              ) : (
-                <PlainSceneItem key={scene.id} scene={scene} {...itemCallbacks(scene)} />
-              )
-            )
+            visibleScenes.map(scene => (
+              <PlainSceneItem key={scene.id} scene={scene} {...itemCallbacks(scene)} />
+            ))
           )}
         </div>
       ) : (
         /* Normal view with DnD */
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={project.scenes.map((s: Scene) => s.id)} strategy={verticalListSortingStrategy}>
-            {project.scenes.map((scene: Scene) =>
-              editingId === scene.id ? (
-                <RenamingSceneItem
-                  key={scene.id}
-                  initialName={scene.name}
-                  onCommit={name => { renameScene(scene.id, name); setEditingId(null); }}
-                  onCancel={() => setEditingId(null)}
-                />
-              ) : (
-                <SortableSceneItem key={scene.id} scene={scene} {...itemCallbacks(scene)} />
-              )
-            )}
+            {project.scenes.map((scene: Scene) => (
+              <SortableSceneItem key={scene.id} scene={scene} {...itemCallbacks(scene)} />
+            ))}
           </SortableContext>
         </DndContext>
       )}
 
-      <button
-        className="mt-1 w-full text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 text-left transition-colors cursor-pointer"
-        onClick={addScene}
-      >
-        {t.scene.add}
-      </button>
+      {modalState && (
+        <SceneModal
+          mode={modalState.mode}
+          initial={modalState.mode === 'create'
+            ? { name: defaultSceneName(), tags: [], notes: undefined }
+            : { name: modalState.scene.name, tags: modalState.scene.tags, notes: modalState.scene.notes }
+          }
+          takenNames={modalState.mode === 'create'
+            ? takenNames()
+            : takenNames(modalState.scene.id)
+          }
+          onSave={data => {
+            if (modalState.mode === 'create') {
+              addSceneWithData(data);
+            } else {
+              updateSceneSettings(modalState.scene.id, data);
+            }
+          }}
+          onClose={() => setModalState(null)}
+        />
+      )}
+
       {confirmModal}
     </div>
   );

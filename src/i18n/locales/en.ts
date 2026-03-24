@@ -35,6 +35,11 @@ const en: Translations = {
     note:            'Scene note (not exported)',
     notePlaceholder: 'Developer note...',
     filterNoScenes:  'No scenes match these tags',
+    createTitle:     'New Scene',
+    editTitle:       'Scene Settings',
+    fieldName:       'Name',
+    nameTaken:       'A scene with this name already exists.',
+    nameEmpty:       'Name cannot be empty.',
   },
 
   block: {
