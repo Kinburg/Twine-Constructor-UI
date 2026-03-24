@@ -5,6 +5,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
   type DragEndEvent,
 } from '@dnd-kit/core';
 import {
@@ -19,11 +20,12 @@ import { useEditorStore } from '../../store/editorStore';
 import { sceneMatchesQuery } from '../../utils/searchUtils';
 import { useT } from '../../i18n';
 import { SYSTEM_TAGS, SYSTEM_TAG_COLORS } from '../../types';
-import type { Scene, SystemTag } from '../../types';
+import type { Scene, SceneGroup, SystemTag } from '../../types';
 import { useConfirm } from '../shared/ConfirmModal';
 import { SceneModal } from './SceneModal';
+import { SceneGroupModal } from './SceneGroupModal';
 
-// ─── Shared scene row content (no DnD bindings) ───────────────────────────────
+// ─── Shared scene row content ─────────────────────────────────────────────────
 
 type SceneRowProps = {
   scene: Scene;
@@ -43,7 +45,6 @@ function SceneItemRow({
   const t = useT();
   const hasNote = !!scene.notes;
 
-  // Color dot: first system tag wins
   const systemTag = scene.tags.find(tag =>
     (SYSTEM_TAGS as readonly string[]).includes(tag),
   ) as SystemTag | undefined;
@@ -59,17 +60,12 @@ function SceneItemRow({
     >
       {dragHandle}
 
-      {/* Color dot for system tags */}
       {dotColor && (
-        <span
-          className="w-2 h-2 rounded-full shrink-0 mr-1.5"
-          style={{ background: dotColor }}
-        />
+        <span className="w-2 h-2 rounded-full shrink-0 mr-1.5" style={{ background: dotColor }} />
       )}
 
       <span className="flex-1 text-xs truncate">{scene.name}</span>
 
-      {/* Note indicator */}
       <button
         className={`text-xs px-0.5 cursor-pointer transition-all ${
           hasNote
@@ -82,7 +78,6 @@ function SceneItemRow({
         📝
       </button>
 
-      {/* Duplicate */}
       <button
         className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-300 text-xs px-0.5 transition-opacity cursor-pointer"
         title={t.scene.duplicate}
@@ -91,7 +86,6 @@ function SceneItemRow({
         ⧉
       </button>
 
-      {/* Delete */}
       {canDelete && (
         <button
           className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 text-xs px-0.5 transition-opacity cursor-pointer"
@@ -105,11 +99,14 @@ function SceneItemRow({
   );
 }
 
-// ─── Sortable wrapper (DnD enabled) ───────────────────────────────────────────
+// ─── Sortable scene item ──────────────────────────────────────────────────────
 
 function SortableSceneItem(props: Omit<SceneRowProps, 'dragHandle'>) {
   const t = useT();
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.scene.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.scene.id,
+    data: { groupId: props.scene.groupId ?? null },
+  });
 
   const dragHandle = (
     <span
@@ -133,7 +130,7 @@ function SortableSceneItem(props: Omit<SceneRowProps, 'dragHandle'>) {
   );
 }
 
-// ─── Plain wrapper (no DnD, used when filter is active) ───────────────────────
+// ─── Plain scene item (no DnD, used in filtered view) ────────────────────────
 
 function PlainSceneItem(props: Omit<SceneRowProps, 'dragHandle'>) {
   const dragHandle = (
@@ -146,12 +143,89 @@ function PlainSceneItem(props: Omit<SceneRowProps, 'dragHandle'>) {
   );
 }
 
-// ─── Main SceneList ────────────────────────────────────────────────────────────
+// ─── Droppable container (for empty groups) ───────────────────────────────────
 
-type ModalState =
+function DroppableContainer({ id, children, className }: {
+  id: string;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`${className ?? ''} ${isOver ? 'ring-1 ring-inset ring-indigo-500/40 rounded' : ''}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ─── Group header ─────────────────────────────────────────────────────────────
+
+function SceneGroupHeader({ group, onEdit, onDelete, onToggle }: {
+  group: SceneGroup;
+  onEdit: () => void;
+  onDelete: () => void;
+  onToggle: () => void;
+}) {
+  const t = useT();
+  const hasNote = !!group.notes;
+
+  return (
+    <div
+      className="group flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-slate-800/60 rounded transition-colors select-none"
+      onClick={onToggle}
+    >
+      <span className="text-slate-500 text-xs w-3 shrink-0">
+        {group.collapsed ? '▸' : '▾'}
+      </span>
+      <span className="flex-1 text-xs font-medium text-slate-300 truncate">{group.name}</span>
+
+      <button
+        className={`text-xs px-0.5 cursor-pointer transition-all ${
+          hasNote
+            ? 'text-amber-400 hover:text-amber-300'
+            : 'opacity-0 group-hover:opacity-100 text-slate-400 hover:text-amber-300'
+        }`}
+        title={hasNote ? `${t.scene.note}: ${group.notes}` : t.scene.note}
+        onClick={e => { e.stopPropagation(); onEdit(); }}
+      >
+        📝
+      </button>
+
+      <button
+        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-indigo-300 text-xs px-0.5 cursor-pointer transition-opacity"
+        title={t.scene.groupEditTitle}
+        onClick={e => { e.stopPropagation(); onEdit(); }}
+      >
+        ⚙
+      </button>
+
+      <button
+        className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-400 text-xs px-0.5 cursor-pointer transition-opacity"
+        title={t.scene.delete}
+        onClick={e => { e.stopPropagation(); onDelete(); }}
+      >
+        🗑️
+      </button>
+    </div>
+  );
+}
+
+// ─── Modal state types ────────────────────────────────────────────────────────
+
+type SceneModalState =
   | { mode: 'create' }
   | { mode: 'edit'; scene: Scene }
   | null;
+
+type GroupModalState =
+  | { mode: 'create' }
+  | { mode: 'edit'; group: SceneGroup }
+  | null;
+
+// ─── Main SceneList ───────────────────────────────────────────────────────────
 
 export function SceneList() {
   const {
@@ -162,7 +236,11 @@ export function SceneList() {
     deleteScene,
     updateSceneSettings,
     duplicateScene,
-    reorderScenes,
+    reorderGroupScenes,
+    moveSceneToGroup,
+    addSceneGroup,
+    updateSceneGroup,
+    deleteSceneGroup,
   } = useProjectStore();
   const t = useT();
 
@@ -170,7 +248,8 @@ export function SceneList() {
 
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [filterMode, setFilterMode] = useState<'or' | 'and'>('or');
-  const [modalState, setModalState] = useState<ModalState>(null);
+  const [sceneModal, setSceneModal] = useState<SceneModalState>(null);
+  const [groupModal, setGroupModal] = useState<GroupModalState>(null);
   const { ask, modal: confirmModal } = useConfirm();
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -182,64 +261,89 @@ export function SceneList() {
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
-    for (const sc of project.scenes) {
-      for (const tag of sc.tags) tags.add(tag);
-    }
+    for (const sc of project.scenes) for (const tag of sc.tags) tags.add(tag);
     return [...tags].sort();
   }, [project.scenes]);
 
   const toggleTag = (tag: string) => {
     setActiveTags(prev => {
       const next = new Set(prev);
-      if (next.has(tag)) next.delete(tag);
-      else next.add(tag);
+      if (next.has(tag)) next.delete(tag); else next.add(tag);
       return next;
     });
   };
 
-  const isTagFiltering = activeTags.size > 0;
-  const isFiltering = isTagFiltering || searchQuery.trim() !== '';
+  const isFiltering = activeTags.size > 0 || searchQuery.trim() !== '';
 
   const visibleScenes = useMemo(() => {
     let scenes = project.scenes;
-
     if (activeTags.size > 0) {
-      scenes = scenes.filter(sc => {
-        if (filterMode === 'or') return sc.tags.some(tag => activeTags.has(tag));
-        return [...activeTags].every(tag => sc.tags.includes(tag));
-      });
+      scenes = scenes.filter(sc =>
+        filterMode === 'or'
+          ? sc.tags.some(tag => activeTags.has(tag))
+          : [...activeTags].every(tag => sc.tags.includes(tag)),
+      );
     }
-
     if (searchQuery.trim()) {
       scenes = scenes.filter(sc => sceneMatchesQuery(sc, searchQuery, variables));
     }
-
     return scenes;
   }, [project.scenes, activeTags, filterMode, searchQuery, variables]);
+
+  // ── DnD ──────────────────────────────────────────────────────────────────────
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    const oldIndex = project.scenes.findIndex(s => s.id === active.id);
-    const newIndex = project.scenes.findIndex(s => s.id === over.id);
-    if (oldIndex !== -1 && newIndex !== -1) {
-      reorderScenes(arrayMove(project.scenes, oldIndex, newIndex));
+
+    const activeScene = project.scenes.find(s => s.id === active.id);
+    if (!activeScene) return;
+
+    const activeGroupId = activeScene.groupId ?? null;
+    const overId = String(over.id);
+
+    // Dropped onto another scene
+    const overScene = project.scenes.find(s => s.id === overId);
+    if (overScene) {
+      const overGroupId = overScene.groupId ?? null;
+      if (activeGroupId === overGroupId) {
+        // Same container — reorder
+        const groupScenes = project.scenes.filter(s => (s.groupId ?? null) === activeGroupId);
+        const oldIdx = groupScenes.findIndex(s => s.id === active.id);
+        const newIdx = groupScenes.findIndex(s => s.id === overId);
+        if (oldIdx !== -1 && newIdx !== -1 && oldIdx !== newIdx) {
+          reorderGroupScenes(arrayMove(groupScenes, oldIdx, newIdx));
+        }
+      } else {
+        // Different container — move
+        moveSceneToGroup(String(active.id), overGroupId, overId);
+      }
+      return;
+    }
+
+    // Dropped onto a group container or ungrouped container
+    const targetGroupId = overId === '__ungrouped__' ? null
+      : project.sceneGroups.find(g => g.id === overId) ? overId
+      : null;
+
+    if (targetGroupId !== activeGroupId) {
+      moveSceneToGroup(String(active.id), targetGroupId, null);
     }
   };
 
-  const openCreate = () => setModalState({ mode: 'create' });
-  const openEdit = (scene: Scene) => setModalState({ mode: 'edit', scene });
+  // ── Helpers ───────────────────────────────────────────────────────────────────
 
-  const takenNames = (excludeId?: string) =>
-    project.scenes
-      .filter(s => s.id !== excludeId)
-      .map(s => s.name);
+  const takenSceneNames = (excludeId?: string) =>
+    project.scenes.filter(s => s.id !== excludeId).map(s => s.name);
+
+  const takenGroupNames = (excludeId?: string) =>
+    project.sceneGroups.filter(g => g.id !== excludeId).map(g => g.name);
 
   const itemCallbacks = (scene: Scene) => ({
     isActive:    scene.id === activeSceneId,
     canDelete:   project.scenes.length > 1,
     onSelect:    () => setActiveScene(scene.id),
-    onEdit:      () => openEdit(scene),
+    onEdit:      () => setSceneModal({ mode: 'edit', scene }),
     onDuplicate: () => duplicateScene(scene.id),
     onDelete:    () => ask(
       { message: t.scene.confirmDelete(scene.name), variant: 'danger' },
@@ -250,22 +354,33 @@ export function SceneList() {
   const defaultSceneName = () => {
     const base = 'Scene';
     const existing = project.scenes.map(s => s.name);
-    let name = base;
-    let i = project.scenes.length + 1;
+    let name = base; let i = project.scenes.length + 1;
     while (existing.includes(name)) { name = `${base} ${i}`; i++; }
     return name;
   };
 
+  // Scenes grouped by groupId
+  const ungroupedScenes = project.scenes.filter(s => !s.groupId);
+  const scenesInGroup = (groupId: string) => project.scenes.filter(s => s.groupId === groupId);
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+
   return (
     <div className="p-2 flex flex-col gap-0.5">
 
-      {/* Add toolbar */}
+      {/* Toolbar */}
       <div className="flex gap-1 pb-1 border-b border-slate-800 mb-1">
         <button
           className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
-          onClick={openCreate}
+          onClick={() => setSceneModal({ mode: 'create' })}
         >
           {t.scene.add}
+        </button>
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={() => setGroupModal({ mode: 'create' })}
+        >
+          {t.scene.addGroup}
         </button>
       </div>
 
@@ -286,25 +401,16 @@ export function SceneList() {
                 {tag}
               </button>
             ))}
-
-            {isTagFiltering && (
+            {activeTags.size > 0 && (
               <div className="ml-auto flex items-center rounded overflow-hidden border border-slate-600 text-xs shrink-0">
                 <button
-                  className={`px-1.5 py-0.5 cursor-pointer transition-colors ${
-                    filterMode === 'or' ? 'bg-indigo-700 text-white' : 'text-slate-500 hover:text-slate-300'
-                  }`}
+                  className={`px-1.5 py-0.5 cursor-pointer transition-colors ${filterMode === 'or' ? 'bg-indigo-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                   onClick={() => setFilterMode('or')}
-                >
-                  OR
-                </button>
+                >OR</button>
                 <button
-                  className={`px-1.5 py-0.5 cursor-pointer transition-colors ${
-                    filterMode === 'and' ? 'bg-indigo-700 text-white' : 'text-slate-500 hover:text-slate-300'
-                  }`}
+                  className={`px-1.5 py-0.5 cursor-pointer transition-colors ${filterMode === 'and' ? 'bg-indigo-700 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                   onClick={() => setFilterMode('and')}
-                >
-                  AND
-                </button>
+                >AND</button>
               </div>
             )}
           </div>
@@ -312,7 +418,7 @@ export function SceneList() {
         </div>
       )}
 
-      {/* Filtered list — no DnD */}
+      {/* ── Filtered flat view ── */}
       {isFiltering ? (
         <div className="flex flex-col gap-0.5">
           {visibleScenes.length === 0 ? (
@@ -322,9 +428,7 @@ export function SceneList() {
                 <button
                   className="mt-1.5 text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
                   onClick={() => setFilterMode('or')}
-                >
-                  → OR
-                </button>
+                >→ OR</button>
               )}
             </div>
           ) : (
@@ -334,35 +438,99 @@ export function SceneList() {
           )}
         </div>
       ) : (
-        /* Normal view with DnD */
+        /* ── Normal grouped view with DnD ── */
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={project.scenes.map((s: Scene) => s.id)} strategy={verticalListSortingStrategy}>
-            {project.scenes.map((scene: Scene) => (
-              <SortableSceneItem key={scene.id} scene={scene} {...itemCallbacks(scene)} />
-            ))}
-          </SortableContext>
+
+          {/* Ungrouped scenes */}
+          {ungroupedScenes.length > 0 && (
+            <SortableContext
+              items={ungroupedScenes.map(s => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <DroppableContainer id="__ungrouped__" className="flex flex-col gap-0.5 mb-1">
+                {ungroupedScenes.map(scene => (
+                  <SortableSceneItem key={scene.id} scene={scene} {...itemCallbacks(scene)} />
+                ))}
+              </DroppableContainer>
+            </SortableContext>
+          )}
+
+          {/* Groups */}
+          {project.sceneGroups.map(group => {
+            const groupScenes = scenesInGroup(group.id);
+            return (
+              <div key={group.id} className="mb-1">
+                <SceneGroupHeader
+                  group={group}
+                  onToggle={() => updateSceneGroup(group.id, { collapsed: !group.collapsed })}
+                  onEdit={() => setGroupModal({ mode: 'edit', group })}
+                  onDelete={() => ask(
+                    { message: t.scene.groupConfirmDelete(group.name), variant: 'danger' },
+                    () => deleteSceneGroup(group.id),
+                  )}
+                />
+                {!group.collapsed && (
+                  <SortableContext
+                    items={groupScenes.map(s => s.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <DroppableContainer
+                      id={group.id}
+                      className="flex flex-col gap-0.5 pl-3 min-h-[28px]"
+                    >
+                      {groupScenes.map(scene => (
+                        <SortableSceneItem key={scene.id} scene={scene} {...itemCallbacks(scene)} />
+                      ))}
+                      {groupScenes.length === 0 && (
+                        <div className="text-xs text-slate-600 italic px-2 py-1">
+                          {t.scene.groupUngrouped}
+                        </div>
+                      )}
+                    </DroppableContainer>
+                  </SortableContext>
+                )}
+              </div>
+            );
+          })}
         </DndContext>
       )}
 
-      {modalState && (
+      {/* ── Modals ── */}
+      {sceneModal && (
         <SceneModal
-          mode={modalState.mode}
-          initial={modalState.mode === 'create'
+          mode={sceneModal.mode}
+          initial={sceneModal.mode === 'create'
             ? { name: defaultSceneName(), tags: [], notes: undefined }
-            : { name: modalState.scene.name, tags: modalState.scene.tags, notes: modalState.scene.notes }
+            : { name: sceneModal.scene.name, tags: sceneModal.scene.tags, notes: sceneModal.scene.notes }
           }
-          takenNames={modalState.mode === 'create'
-            ? takenNames()
-            : takenNames(modalState.scene.id)
+          takenNames={sceneModal.mode === 'create'
+            ? takenSceneNames()
+            : takenSceneNames(sceneModal.scene.id)
           }
           onSave={data => {
-            if (modalState.mode === 'create') {
-              addSceneWithData(data);
-            } else {
-              updateSceneSettings(modalState.scene.id, data);
-            }
+            if (sceneModal.mode === 'create') addSceneWithData(data);
+            else updateSceneSettings(sceneModal.scene.id, data);
           }}
-          onClose={() => setModalState(null)}
+          onClose={() => setSceneModal(null)}
+        />
+      )}
+
+      {groupModal && (
+        <SceneGroupModal
+          mode={groupModal.mode}
+          initial={groupModal.mode === 'create'
+            ? { name: '', notes: undefined }
+            : { name: groupModal.group.name, notes: groupModal.group.notes }
+          }
+          takenNames={groupModal.mode === 'create'
+            ? takenGroupNames()
+            : takenGroupNames(groupModal.group.id)
+          }
+          onSave={data => {
+            if (groupModal.mode === 'create') addSceneGroup(data);
+            else updateSceneGroup(groupModal.group.id, data);
+          }}
+          onClose={() => setGroupModal(null)}
         />
       )}
 

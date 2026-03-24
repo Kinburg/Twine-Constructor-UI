@@ -43,6 +43,14 @@ export interface Translations {
     fieldName: string;
     nameTaken: string;
     nameEmpty: string;
+    addGroup: string;
+    groupCreateTitle: string;
+    groupEditTitle: string;
+    groupFieldName: string;
+    groupNameTaken: string;
+    groupNameEmpty: string;
+    groupConfirmDelete: (name: string) => string;
+    groupUngrouped: string;
   };
 
   block: {

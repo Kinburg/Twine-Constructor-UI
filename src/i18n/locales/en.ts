@@ -40,6 +40,14 @@ const en: Translations = {
     fieldName:       'Name',
     nameTaken:       'A scene with this name already exists.',
     nameEmpty:       'Name cannot be empty.',
+    addGroup:           '+ Add group',
+    groupCreateTitle:   'New Group',
+    groupEditTitle:     'Edit Group',
+    groupFieldName:     'Group name',
+    groupNameTaken:     'A group with this name already exists.',
+    groupNameEmpty:     'Group name cannot be empty.',
+    groupConfirmDelete: (name) => `Delete group "${name}"? Scenes inside will become ungrouped.`,
+    groupUngrouped:     'Ungrouped',
   },
 
   block: {

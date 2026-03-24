@@ -40,6 +40,14 @@ const ua: Translations = {
     fieldName:       'Назва',
     nameTaken:       'Сцена з такою назвою вже існує.',
     nameEmpty:       'Назва не може бути порожньою.',
+    addGroup:           '+ Додати групу',
+    groupCreateTitle:   'Нова група',
+    groupEditTitle:     'Редагувати групу',
+    groupFieldName:     'Назва групи',
+    groupNameTaken:     'Група з такою назвою вже існує.',
+    groupNameEmpty:     'Назва групи не може бути порожньою.',
+    groupConfirmDelete: (name) => `Видалити групу "${name}"? Сцени всередині стануть негрупованими.`,
+    groupUngrouped:     'Без групи',
   },
 
   block: {

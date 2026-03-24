@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
-  Project, Scene, Block, Character, CharacterVarIds,
+  Project, Scene, SceneGroup, Block, Character, CharacterVarIds,
   Variable, VariableGroup, VariableTreeNode,
   Asset, AssetGroup, AssetTreeNode,
   ChoiceOption, ConditionBranch,
@@ -37,6 +37,7 @@ function makeDefaultProject(): Project {
     title: 'New Project',
     ifid: generateIfid(),
     scenes: [{ id: uuid(), name: 'Start', tags: [], blocks: [] }],
+    sceneGroups: [],
     characters: [],
     variableNodes: [],
     assetNodes: [],
@@ -462,6 +463,7 @@ function migrateProject(raw: any): Project {
   p = migrateCharacterTextColorVar(p as Project);
 
   if (!p.watchers) p.watchers = [];
+  if (!p.sceneGroups) p.sceneGroups = [];
 
   return p as Project;
 }
@@ -514,6 +516,13 @@ interface ProjectState {
   updateSceneSettings: (id: string, data: { name: string; tags: string[]; notes?: string }) => void;
   reorderScenes: (scenes: Scene[]) => void;
   duplicateScene: (sceneId: string) => void;
+
+  // Scene groups
+  addSceneGroup: (data: { name: string; notes?: string }) => void;
+  updateSceneGroup: (id: string, patch: Partial<SceneGroup>) => void;
+  deleteSceneGroup: (id: string) => void;
+  moveSceneToGroup: (sceneId: string, groupId: string | null, overId: string | null) => void;
+  reorderGroupScenes: (reorderedScenes: Scene[]) => void;
 
   // Blocks
   addBlock: (sceneId: string, block: Block, insertIndex?: number) => void;
@@ -800,6 +809,91 @@ export const useProjectStore = create<ProjectState>()(
               project: { ...s.project, scenes },
               activeSceneId: clone.id,
             };
+          });
+        },
+
+        // ── Scene groups ─────────────────────────────────────────────────────
+
+        addSceneGroup: ({ name, notes }) => {
+          get().saveSnapshot();
+          const id = uuid();
+          set(s => ({
+            project: { ...s.project, sceneGroups: [...s.project.sceneGroups, { id, name, notes }] },
+          }));
+        },
+
+        updateSceneGroup: (id, patch) => {
+          set(s => ({
+            project: {
+              ...s.project,
+              sceneGroups: s.project.sceneGroups.map(g => g.id === id ? { ...g, ...patch } : g),
+            },
+          }));
+        },
+
+        deleteSceneGroup: (id) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: {
+              ...s.project,
+              sceneGroups: s.project.sceneGroups.filter(g => g.id !== id),
+              scenes: s.project.scenes.map(sc =>
+                sc.groupId === id ? { ...sc, groupId: undefined } : sc,
+              ),
+            },
+          }));
+        },
+
+        moveSceneToGroup: (sceneId, groupId, overId) => {
+          get().saveSnapshot();
+          set(s => {
+            const scenes = [...s.project.scenes];
+            const idx = scenes.findIndex(sc => sc.id === sceneId);
+            if (idx === -1) return s;
+
+            const movedScene: Scene = { ...scenes[idx] };
+            if (groupId) movedScene.groupId = groupId;
+            else delete movedScene.groupId;
+
+            scenes.splice(idx, 1);
+
+            if (overId) {
+              const overIdx = scenes.findIndex(sc => sc.id === overId);
+              if (overIdx !== -1) {
+                scenes.splice(overIdx + 1, 0, movedScene);
+                return { project: { ...s.project, scenes } };
+              }
+            }
+
+            // Append after the last scene in the target group (or ungrouped block)
+            let insertAt = -1;
+            for (let i = scenes.length - 1; i >= 0; i--) {
+              const scGroupId = scenes[i].groupId ?? null;
+              if (scGroupId === groupId) { insertAt = i + 1; break; }
+            }
+            if (insertAt === -1) scenes.push(movedScene);
+            else scenes.splice(insertAt, 0, movedScene);
+
+            return { project: { ...s.project, scenes } };
+          });
+        },
+
+        reorderGroupScenes: (reorderedScenes) => {
+          get().saveSnapshot();
+          set(s => {
+            if (reorderedScenes.length === 0) return s;
+            const groupId = reorderedScenes[0].groupId ?? null;
+            const allScenes = s.project.scenes;
+
+            // Collect the positions of scenes belonging to this group
+            const positions: number[] = [];
+            allScenes.forEach((sc, i) => {
+              if ((sc.groupId ?? null) === groupId) positions.push(i);
+            });
+
+            const newScenes = [...allScenes];
+            reorderedScenes.forEach((sc, i) => { newScenes[positions[i]] = sc; });
+            return { project: { ...s.project, scenes: newScenes } };
           });
         },
 

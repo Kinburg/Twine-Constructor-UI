@@ -454,6 +454,13 @@ export type BlockType = Block['type'];
 
 // ─── Scene ──────────────────────────────────────────────────────────────────
 
+export interface SceneGroup {
+  id: string;
+  name: string;
+  notes?: string;
+  collapsed?: boolean;
+}
+
 export interface Scene {
   id: string;
   name: string;
@@ -461,6 +468,8 @@ export interface Scene {
   blocks: Block[];
   /** Optional developer note — shown in the editor only, never exported. */
   notes?: string;
+  /** Group this scene belongs to (undefined = ungrouped). */
+  groupId?: string;
   /** Position of this scene's node in the scene graph window. */
   graphPosition?: { x: number; y: number };
 }
@@ -715,6 +724,7 @@ export interface Project {
   title: string;
   ifid: string;
   scenes: Scene[];
+  sceneGroups: SceneGroup[];
   characters: Character[];
   variableNodes: VariableTreeNode[];
   assetNodes: AssetTreeNode[];
