@@ -44,7 +44,7 @@ jobs:
           $CMD public/Icon.PNG -resize 128x128 build/icons/128x128.png
 
       - name: Build application
-        run: npm run dist
+        run: npm run dist -- --publish never
 
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
