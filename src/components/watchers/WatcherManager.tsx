@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
 import { ArrayAccessorInput } from '../blocks/ArrayAccessorInput';
@@ -403,6 +404,7 @@ export function WatcherManager() {
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const prevLengthRef = useRef(watchers.length);
+  const confirmDeleteWatcher = useEditorPrefsStore(s => s.confirmDeleteWatcher);
   const { ask, modal: confirmModal } = useConfirm();
 
   useEffect(() => {
@@ -433,10 +435,14 @@ export function WatcherManager() {
           expanded={expandedId === w.id}
           onToggle={() => setExpandedId(expandedId === w.id ? null : w.id)}
           onUpdate={patch => updateWatcher(w.id, patch)}
-          onDelete={() => ask(
-            { message: t.watchers.confirmDelete(w.label), variant: 'danger' },
-            () => { deleteWatcher(w.id); if (expandedId === w.id) setExpandedId(null); },
-          )}
+          onDelete={() => {
+            const doDelete = () => { deleteWatcher(w.id); if (expandedId === w.id) setExpandedId(null); };
+            if (confirmDeleteWatcher) {
+              ask({ message: t.watchers.confirmDelete(w.label), variant: 'danger' }, doDelete);
+            } else {
+              doDelete();
+            }
+          }}
         />
       ))}
 

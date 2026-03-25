@@ -719,10 +719,27 @@ export interface SidebarPanel {
 
 // ─── Project ─────────────────────────────────────────────────────────────────
 
+export interface ProjectSettings {
+  startingScene:   string;   // name of the first scene, default 'Start'
+  historyControls: boolean;  // show browser back/forward buttons
+  saveLoadMenu:    boolean;  // show SugarCube save/load menu
+  bgColor?:        string;   // story background color
+  sidebarColor?:   string;   // sidebar/StoryCaption background color
+  titleColor?:     string;   // StoryTitle text color
+  titleFont?:      string;   // StoryTitle font-family
+  /** Relative path (within assets/) of the sidebar header image, if set */
+  headerImageSrc?: string;
+  /** ID of the sidebarPanel row that holds the header image */
+  headerRowId?:    string;
+}
+
 export interface Project {
   id: string;
   title: string;
   ifid: string;
+  author?: string;
+  description?: string;
+  settings: ProjectSettings;
   scenes: Scene[];
   sceneGroups: SceneGroup[];
   characters: Character[];

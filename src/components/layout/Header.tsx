@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
 import { generateStandaloneHtml } from '../../utils/exportToHtml';
@@ -11,6 +12,8 @@ import {
 } from '../../utils/scRuntime';
 import { fsApi, joinPath, safeName } from '../../lib/fsApi';
 
+const PURL_EXT = 'purl';
+
 export function Header() {
   const {
     project, projectDir,
@@ -18,7 +21,8 @@ export function Header() {
     undo, redo, canUndo, canRedo,
   } = useProjectStore();
   const { locale, setLocale } = useLocaleStore();
-  const { searchQuery, setSearchQuery } = useEditorStore();
+  const { searchQuery, setSearchQuery, setProjectSettingsOpen, setEditorPrefsOpen } = useEditorStore();
+  const { confirmOpenFolderAfterExport } = useEditorPrefsStore();
   const t = useT();
 
   const [editingTitle, setEditingTitle]     = useState(false);
@@ -69,8 +73,9 @@ export function Header() {
 
   async function doSaveToDir(dir: string): Promise<void> {
     await fsApi.mkdir(joinPath(dir, 'assets'));
-    const content = JSON.stringify(project, null, 2);
-    await fsApi.writeFile(joinPath(dir, 'project.tgproject'), content);
+    const content  = JSON.stringify(project, null, 2);
+    const fileName = `${safeName(project.title)}.${PURL_EXT}`;
+    await fsApi.writeFile(joinPath(dir, fileName), content);
   }
 
   async function ensureProjectDir(): Promise<string | null> {
@@ -123,7 +128,7 @@ export function Header() {
   const handleOpenProject = async () => {
     const filePath = await fsApi.openFileDialog({
       title: t.header.open,
-      filters: [{ name: 'Purl Project', extensions: ['tgproject', 'json'] }],
+      filters: [{ name: 'Purl Project', extensions: [PURL_EXT, 'tgproject', 'json'] }],
     });
     if (!filePath) return;
     try {
@@ -138,10 +143,9 @@ export function Header() {
 
   const handleNewProject = () => ask(
     { message: t.header.confirmNew },
-    async () => {
-      const folder = await fsApi.openFolderDialog();
+    () => {
       resetProject();
-      if (folder) setProjectDir(folder);
+      setProjectSettingsOpen(true);
     },
   );
 
@@ -206,9 +210,9 @@ export function Header() {
       if (!dir) return;
       const html = generateStandaloneHtml(project, template);
       await fsApi.writeFile(joinPath(dir, 'index.html'), html);
-      ask({ message: t.header.confirmHtmlSaved }, async () => {
-        await fsApi.openPath(dir);
-      });
+      if (confirmOpenFolderAfterExport) {
+        ask({ message: t.header.confirmHtmlSaved }, async () => { await fsApi.openPath(dir); });
+      }
     } catch (e) {
       alert(t.header.errorExportHtml(String(e)));
     } finally {
@@ -480,73 +484,49 @@ export function Header() {
           </button>
 
           {menuOpen && (
-            <div className="absolute right-0 top-full mt-1 bg-slate-800 border border-slate-600 rounded shadow-xl z-50 min-w-52">
+            <div className="absolute right-0 top-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-2xl z-50 min-w-64 overflow-hidden py-1.5">
+
               {/* Language */}
-              {locales.length > 1 && (
-                <div className="px-4 py-2.5 flex items-center gap-2">
-                  <span className="text-xs text-slate-400 shrink-0">{t.header.language}:</span>
+              {locales.length > 1 && (<>
+                <div className="px-3 py-2">
                   <select
                     value={locale}
                     onChange={e => setLocale(e.target.value)}
-                    className="bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 outline-none cursor-pointer hover:border-slate-500 transition-colors flex-1"
+                    className="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 border border-slate-600 outline-none cursor-pointer hover:border-slate-500 transition-colors"
                   >
                     {locales.map(l => (
                       <option key={l.code} value={l.code}>{l.name}</option>
                     ))}
                   </select>
                 </div>
-              )}
+                <div className="h-px bg-slate-700/80 mx-2 my-1" />
+              </>)}
 
-              <div className="border-t border-slate-700" />
-
-              {/* Save */}
-              <button
-                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
-                onClick={handleSaveProject}
-                disabled={busy}
-              >
-                <div className="font-medium">💾 {busy ? t.header.saving : t.header.save}</div>
-                <div className="text-xs text-slate-400 mt-0.5">
-                  {projectDir ? t.header.saveTitle(projectDir) : t.header.saveNoDir}
-                </div>
-              </button>
-              <button
-                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
-                onClick={handleSaveProjectAs}
-                disabled={busy}
-              >
-                <div className="font-medium">{t.header.saveAsFolder}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{t.header.saveAsFolderDesc}</div>
-              </button>
+              {/* File section */}
+              <MenuSection label={t.header.menuSectionFile} />
+              <MenuItem icon="💾" label={busy ? t.header.saving : t.header.save}
+                desc={projectDir ? t.header.saveTitle(projectDir) : t.header.saveNoDir}
+                shortcut="Ctrl+S" onClick={handleSaveProject} disabled={busy} />
+              <MenuItem icon="📁" label={t.header.saveAsFolder} desc={t.header.saveAsFolderDesc}
+                onClick={handleSaveProjectAs} disabled={busy} />
               {projectDir && (
-                <button
-                  className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
-                  onClick={() => { setMenuOpen(false); handleOpenProjectFolder(); }}
-                >
-                  <div className="font-medium">📁 {t.header.openFolder}</div>
-                  <div className="text-xs text-slate-400 mt-0.5 truncate max-w-xs">{projectDir}</div>
-                </button>
+                <MenuItem icon="🗂" label={t.header.openFolder} desc={projectDir}
+                  onClick={() => { setMenuOpen(false); handleOpenProjectFolder(); }} />
               )}
+              <div className="h-px bg-slate-700/50 mx-3 my-1" />
+              <MenuItem icon="📂" label={t.header.open} desc={t.header.openTitle}
+                onClick={() => { setMenuOpen(false); handleOpenProject(); }} disabled={busy} />
+              <MenuItem icon="📄" label={t.header.new} desc={t.header.newDesc}
+                onClick={() => { setMenuOpen(false); handleNewProject(); }} disabled={busy} />
 
-              <div className="border-t border-slate-700" />
+              <div className="h-px bg-slate-700/80 mx-2 my-1" />
 
-              {/* Open / New */}
-              <button
-                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
-                onClick={() => { setMenuOpen(false); handleOpenProject(); }}
-                disabled={busy}
-              >
-                <div className="font-medium">📂 {t.header.open}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{t.header.openTitle}</div>
-              </button>
-              <button
-                className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer disabled:opacity-50"
-                onClick={() => { setMenuOpen(false); handleNewProject(); }}
-                disabled={busy}
-              >
-                <div className="font-medium">📄 {t.header.new}</div>
-                <div className="text-xs text-slate-400 mt-0.5">{t.header.confirmNew.slice(0, 40)}…</div>
-              </button>
+              {/* Settings section */}
+              <MenuSection label={t.header.menuSectionSettings} />
+              <MenuItem icon="⚙" label={t.header.projectSettings} desc={t.header.projectSettingsDesc}
+                onClick={() => { setMenuOpen(false); setProjectSettingsOpen(true); }} />
+              <MenuItem icon="🛠" label={t.header.editorPrefs} desc={t.header.editorPrefsDesc}
+                onClick={() => { setMenuOpen(false); setEditorPrefsOpen(true); }} />
             </div>
           )}
 
@@ -557,6 +537,45 @@ export function Header() {
       </div>
       {confirmModal}
     </header>
+  );
+}
+
+// ─── Menu sub-components ──────────────────────────────────────────────────────
+
+function MenuSection({ label }: { label: string }) {
+  return (
+    <div className="px-3 pt-1.5 pb-1 flex items-center gap-2">
+      <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-widest shrink-0">{label}</span>
+      <div className="flex-1 h-px bg-slate-700/60" />
+    </div>
+  );
+}
+
+function MenuItem({ icon, label, desc, shortcut, onClick, disabled }: {
+  icon: string;
+  label: string;
+  desc?: string;
+  shortcut?: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      className="w-full text-left px-3 py-1.5 flex items-center gap-2.5 hover:bg-slate-700/60 active:bg-slate-700 transition-colors cursor-pointer disabled:opacity-40 group"
+      onClick={onClick}
+      disabled={disabled}
+    >
+      <span className="text-base w-5 text-center shrink-0 leading-none">{icon}</span>
+      <div className="flex-1 min-w-0">
+        <div className="text-sm text-slate-200 font-medium leading-tight group-hover:text-white transition-colors">{label}</div>
+        {desc && <div className="text-xs text-slate-500 mt-0.5 truncate">{desc}</div>}
+      </div>
+      {shortcut && (
+        <kbd className="text-[10px] text-slate-600 shrink-0 font-mono bg-slate-900/60 px-1.5 py-0.5 rounded border border-slate-700/80">
+          {shortcut}
+        </kbd>
+      )}
+    </button>
   );
 }
 

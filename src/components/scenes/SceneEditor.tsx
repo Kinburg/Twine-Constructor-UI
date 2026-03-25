@@ -59,7 +59,7 @@ export function SceneEditor() {
       )}
 
       {/* Scene header */}
-      <div className="px-4 py-2 bg-slate-800/50 border-b border-slate-700 flex items-center gap-3 shrink-0">
+      <div className="scene-header px-4 py-2 bg-slate-800/50 border-b border-slate-700 flex items-center gap-3 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">{t.scene.label}</span>
           <span className="text-sm font-semibold text-white">{scene.name}</span>
@@ -100,7 +100,7 @@ export function SceneEditor() {
       {/* Blocks */}
       <div className="flex-1 relative" style={{ minHeight: 0 }}>
         <div className="absolute inset-0 overflow-y-auto">
-          <div className="px-4 py-3 flex flex-col gap-0">
+          <div className="blocks-container px-4 py-3 flex flex-col gap-0">
             {scene.blocks.length > 0 ? (
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext

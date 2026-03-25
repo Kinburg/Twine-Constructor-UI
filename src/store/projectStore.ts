@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
-  Project, Scene, SceneGroup, Block, Character, CharacterVarIds,
+  Project, ProjectSettings, Scene, SceneGroup, Block, Character, CharacterVarIds,
   Variable, VariableGroup, VariableTreeNode,
   Asset, AssetGroup, AssetTreeNode,
   ChoiceOption, ConditionBranch,
@@ -31,11 +31,18 @@ export const DEFAULT_PANEL_STYLE: PanelStyle = {
 
 const DEFAULT_PANEL: SidebarPanel = { tabs: [], liveUpdate: false, style: DEFAULT_PANEL_STYLE };
 
+export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
+  startingScene:   'Start',
+  historyControls: true,
+  saveLoadMenu:    true,
+};
+
 function makeDefaultProject(): Project {
   return {
     id: uuid(),
     title: 'New Project',
     ifid: generateIfid(),
+    settings: { ...DEFAULT_PROJECT_SETTINGS },
     scenes: [{ id: uuid(), name: 'Start', tags: [], blocks: [] }],
     sceneGroups: [],
     characters: [],
@@ -464,6 +471,10 @@ function migrateProject(raw: any): Project {
 
   if (!p.watchers) p.watchers = [];
   if (!p.sceneGroups) p.sceneGroups = [];
+  if (!p.settings) p.settings = { ...DEFAULT_PROJECT_SETTINGS };
+  if (p.settings.startingScene === undefined) p.settings.startingScene = DEFAULT_PROJECT_SETTINGS.startingScene;
+  if (p.settings.historyControls === undefined) p.settings.historyControls = DEFAULT_PROJECT_SETTINGS.historyControls;
+  if (p.settings.saveLoadMenu === undefined) p.settings.saveLoadMenu = DEFAULT_PROJECT_SETTINGS.saveLoadMenu;
 
   return p as Project;
 }
@@ -489,6 +500,7 @@ interface ProjectState {
 
   setProjectDir: (dir: string | null) => void;
   setProjectTitle: (title: string) => void;
+  updateProjectMeta: (patch: Partial<Pick<Project, 'title' | 'author' | 'description' | 'settings' | 'sidebarPanel'>>) => void;
   loadProject: (project: Project, dir?: string) => void;
   resetProject: () => void;
   setSidebarTab: (tab: SidebarTabId) => void;
@@ -521,6 +533,7 @@ interface ProjectState {
   addSceneGroup: (data: { name: string; notes?: string }) => void;
   updateSceneGroup: (id: string, patch: Partial<SceneGroup>) => void;
   deleteSceneGroup: (id: string) => void;
+  deleteSceneGroupWithScenes: (id: string) => void;
   moveSceneToGroup: (sceneId: string, groupId: string | null, overId: string | null) => void;
   reorderGroupScenes: (reorderedScenes: Scene[]) => void;
 
@@ -557,7 +570,7 @@ interface ProjectState {
   deleteConditionBranch: (sceneId: string, blockId: string, branchId: string) => void;
 
   // Characters
-  addCharacter: (char: Omit<Character, 'id'>) => void;
+  addCharacter: (char: Omit<Character, 'id'>) => string;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
   deleteCharacter: (id: string) => void;
 
@@ -656,6 +669,11 @@ export const useProjectStore = create<ProjectState>()(
         setProjectTitle: (title) => {
           get().saveSnapshot();
           set(s => ({ project: { ...s.project, title } }));
+        },
+
+        updateProjectMeta: (patch) => {
+          get().saveSnapshot();
+          set(s => ({ project: { ...s.project, ...patch } }));
         },
 
         loadProject: (rawProject, dir) => {
@@ -842,6 +860,24 @@ export const useProjectStore = create<ProjectState>()(
               ),
             },
           }));
+        },
+
+        deleteSceneGroupWithScenes: (id) => {
+          get().saveSnapshot();
+          set(s => {
+            const remaining = s.project.scenes.filter(sc => sc.groupId !== id);
+            const activeSceneId = remaining.some(sc => sc.id === s.activeSceneId)
+              ? s.activeSceneId
+              : (remaining[0]?.id ?? null);
+            return {
+              project: {
+                ...s.project,
+                sceneGroups: s.project.sceneGroups.filter(g => g.id !== id),
+                scenes: remaining,
+              },
+              activeSceneId,
+            };
+          });
         },
 
         moveSceneToGroup: (sceneId, groupId, overId) => {
@@ -1208,8 +1244,8 @@ export const useProjectStore = create<ProjectState>()(
 
         addCharacter: (char) => {
           get().saveSnapshot();
+          const charId = uuid();
           set(s => {
-            const charId = uuid();
             const { group, varIds } = buildCharVarNodes(char.name, {
               bgColor: char.bgColor,
               borderColor: char.borderColor,
@@ -1226,6 +1262,7 @@ export const useProjectStore = create<ProjectState>()(
               },
             };
           });
+          return charId;
         },
 
         updateCharacter: (id, patch) =>

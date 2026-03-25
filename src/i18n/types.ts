@@ -188,6 +188,13 @@ export interface Translations {
     errorExportTwee: (e: unknown) => string;
     dialogSaveTwee: string;
     menuTitle: string;
+    menuSectionFile: string;
+    menuSectionSettings: string;
+    newDesc: string;
+    projectSettings: string;
+    projectSettingsDesc: string;
+    editorPrefs: string;
+    editorPrefsDesc: string;
   };
 
   // ─── Asset manager ──────────────────────────────────────────────────────────
@@ -241,6 +248,12 @@ export interface Translations {
     save: string;
     nameTaken: string;
     nameEmpty: string;
+    customVarsSection: string;
+    customVarsAdd: string;
+    customVarsNamePlaceholder: string;
+    customVarsEmpty: string;
+    customVarsNameEmpty: string;
+    customVarsConfirmDelete: (name: string) => string;
   };
 
   // ─── Variables ──────────────────────────────────────────────────────────────
@@ -642,6 +655,62 @@ export interface Translations {
     popupTitle:  string;
     popupTitlePlaceholder: string;
     noPopupScenes: string;
+  };
+
+  // ─── Editor preferences modal ────────────────────────────────────────────────
+  editorPrefs: {
+    title: string;
+    sectionAutosave: string;
+    autosaveLabel: string;
+    autosaveIntervalLabel: string;
+    intervalMinutes: (n: number) => string;
+    sectionAppearance: string;
+    compactModeLabel: string;
+    sectionConfirms: string;
+    confirmDeleteScene: string;
+    confirmDeleteGroup: string;
+    confirmDeleteVariable: string;
+    confirmDeleteWatcher: string;
+    confirmDeleteBlock: string;
+    confirmDeleteCharacter: string;
+    sectionGroupDelete: string;
+    deleteGroupBehaviorLabel: string;
+    deleteGroupUngroup: string;
+    deleteGroupWithScenes: string;
+    sectionExport: string;
+    confirmOpenFolderAfterExport: string;
+  };
+
+  // ─── Project settings modal ──────────────────────────────────────────────────
+  projectSettings: {
+    createTitle:            string;
+    editTitle:              string;
+    fieldTitle:             string;
+    fieldTitlePlaceholder:  string;
+    fieldAuthor:            string;
+    fieldAuthorPlaceholder: string;
+    fieldDescription:       string;
+    fieldDescPlaceholder:   string;
+    fieldHeaderImage:       string;
+    headerImageAdd:         string;
+    headerImageChange:      string;
+    headerImageRemove:      string;
+    sectionAppearance:      string;
+    fieldBgColor:           string;
+    fieldSidebarColor:      string;
+    fieldTitleColor:        string;
+    fieldTitleFont:         string;
+    fieldTitleFontPlaceholder: string;
+    sectionAdvanced:        string;
+    fieldStartingScene:     string;
+    fieldStartingScenePlaceholder: string;
+    fieldHistoryControls:   string;
+    fieldSaveLoadMenu:      string;
+    create:                 string;
+    save:                   string;
+    chooseFolder:           string;
+    titleEmpty:             string;
+    headerImageNote:        string;
   };
 
   // ─── Scene settings modal ────────────────────────────────────────────────────

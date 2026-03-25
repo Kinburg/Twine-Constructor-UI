@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import type { Variable, VariableGroup, VariableTreeNode, VariableType } from '../../types';
 import { getVariablePath } from '../../utils/treeUtils';
 import { useT } from '../../i18n';
@@ -221,6 +222,7 @@ function GroupNode({
 }) {
   const t = useT();
   const { deleteVariableNode } = useProjectStore();
+  const confirmDeleteVariable = useEditorPrefsStore(s => s.confirmDeleteVariable);
   const { ask, modal: confirmModal } = useConfirm();
 
   return (
@@ -238,10 +240,11 @@ function GroupNode({
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/grp:opacity-100 transition-opacity"
           onClick={e => {
             e.stopPropagation();
-            ask(
-              { message: t.variables.confirmDeleteGroup(group.name), variant: 'danger' },
-              () => deleteVariableNode(group.id),
-            );
+            if (confirmDeleteVariable) {
+              ask({ message: t.variables.confirmDeleteGroup(group.name), variant: 'danger' }, () => deleteVariableNode(group.id));
+            } else {
+              deleteVariableNode(group.id);
+            }
           }}
         >
           ✕
@@ -280,6 +283,7 @@ function VariableNode({
 }) {
   const t = useT();
   const { updateVariable, deleteVariableNode } = useProjectStore();
+  const confirmDeleteVariable = useEditorPrefsStore(s => s.confirmDeleteVariable);
   const { ask, modal: confirmModal } = useConfirm();
   const upd = (patch: Partial<Variable>) => updateVariable(v.id, patch);
 
@@ -299,10 +303,11 @@ function VariableNode({
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/var:opacity-100 transition-opacity"
           onClick={e => {
             e.stopPropagation();
-            ask(
-              { message: t.variables.confirmDeleteVar(v.name), variant: 'danger' },
-              () => deleteVariableNode(v.id),
-            );
+            if (confirmDeleteVariable) {
+              ask({ message: t.variables.confirmDeleteVar(v.name), variant: 'danger' }, () => deleteVariableNode(v.id));
+            } else {
+              deleteVariableNode(v.id);
+            }
           }}
         >
           ✕

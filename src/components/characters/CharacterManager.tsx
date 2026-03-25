@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useProjectStore } from '../../store/projectStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import type { Character } from '../../types';
 import { useT } from '../../i18n';
-import { CharacterModal } from './CharacterModal';
+import { CharacterModal, type PendingVar } from './CharacterModal';
 import { useConfirm } from '../shared/ConfirmModal';
 
 const DEFAULT_COLORS = [
@@ -39,9 +40,10 @@ type ModalState =
 
 export function CharacterManager() {
   const t = useT();
-  const { project, addCharacter, updateCharacter, deleteCharacter } = useProjectStore();
+  const { project, addCharacter, updateCharacter, deleteCharacter, addVariable } = useProjectStore();
   const { characters } = project;
   const [modalState, setModalState] = useState<ModalState>(null);
+  const confirmDeleteCharacter = useEditorPrefsStore(s => s.confirmDeleteCharacter);
   const { ask, modal: confirmModal } = useConfirm();
 
   const openCreate = () => {
@@ -70,10 +72,13 @@ export function CharacterManager() {
           key={char.id}
           char={char}
           onEdit={() => setModalState({ mode: 'edit', char })}
-          onDelete={() => ask(
-            { message: t.characters.confirmDelete(char.name), variant: 'danger' },
-            () => deleteCharacter(char.id),
-          )}
+          onDelete={() => {
+            if (confirmDeleteCharacter) {
+              ask({ message: t.characters.confirmDelete(char.name), variant: 'danger' }, () => deleteCharacter(char.id));
+            } else {
+              deleteCharacter(char.id);
+            }
+          }}
         />
       ))}
 
@@ -84,13 +89,22 @@ export function CharacterManager() {
       {modalState && (
         <CharacterModal
           mode={modalState.mode}
+          charId={modalState.mode === 'edit' ? modalState.char.id : undefined}
           initial={modalState.mode === 'create' ? modalState.draft : modalState.char}
           takenNames={characters
             .filter(c => modalState.mode !== 'edit' || c.id !== modalState.char.id)
             .map(c => c.name)}
-          onSave={data => {
+          onSave={(data, pendingVars: PendingVar[]) => {
             if (modalState.mode === 'create') {
-              addCharacter(data);
+              const newId = addCharacter(data);
+              if (pendingVars.length > 0) {
+                // After addCharacter, the new char's varIds.groupId is in the store
+                const newChar = useProjectStore.getState().project.characters.find(c => c.id === newId);
+                const groupId = newChar?.varIds?.groupId ?? null;
+                for (const v of pendingVars) {
+                  addVariable(groupId, { name: v.name, varType: v.varType, defaultValue: v.defaultValue, description: '' });
+                }
+              }
             } else {
               updateCharacter(modalState.char.id, data);
             }

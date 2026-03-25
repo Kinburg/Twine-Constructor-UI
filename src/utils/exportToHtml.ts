@@ -1,4 +1,4 @@
-import type { Project, Character, VariableGroup } from '../types';
+import type { Project, ProjectSettings, Character, VariableGroup } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
 import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, defaultValueLiteral, buildObjectLiteral } from './exportToTwee';
 
@@ -14,6 +14,41 @@ function esc(s: string): string {
 
 function escAttr(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+}
+
+// ─── Project settings → CSS / JS ──────────────────────────────────────────────
+
+function buildGlobalCSS(settings?: ProjectSettings): string {
+  if (!settings) return '';
+  const rules: string[] = [];
+
+  if (settings.bgColor)
+    rules.push(`body, #story { background-color: ${settings.bgColor} !important; }`);
+
+  if (settings.sidebarColor)
+    rules.push(`#ui-bar, #ui-bar-body { background-color: ${settings.sidebarColor} !important; }`);
+
+  if (settings.titleColor || settings.titleFont) {
+    const props: string[] = [];
+    if (settings.titleColor) props.push(`color: ${settings.titleColor}`);
+    if (settings.titleFont)  props.push(`font-family: ${settings.titleFont}`);
+    rules.push(`#story-title { ${props.join('; ')}; }`);
+  }
+
+  return rules.join('\n');
+}
+
+function buildSettingsScript(settings?: ProjectSettings): string {
+  if (!settings) return '';
+  const lines: string[] = [];
+
+  if (settings.historyControls === false)
+    lines.push('Config.history.controls = false;');
+
+  if (settings.saveLoadMenu === false)
+    lines.push('if (window.UIBar) UIBar.stow(); Config.saves.isAllowed = () => false;');
+
+  return lines.join('\n');
 }
 
 // ─── CSS generation ───────────────────────────────────────────────────────────
@@ -107,17 +142,19 @@ export function buildPassages(project: Project): {
     });
   }
 
-  // Record where scene passages start
-  const startPid = pid;
+  // Scene passages — track PID for startingScene
+  const startSceneName = project.settings?.startingScene || 'Start';
+  let startPid = pid; // fallback to first scene
 
-  // Scene passages
   scenes.forEach((scene, idx) => {
     const body = scene.blocks
       .map(b => blockToSC(b, characters, variables, variableNodes))
       .filter(Boolean)
       .join('\n');
+    const scenePid = pid++;
+    if (scene.name === startSceneName) startPid = scenePid;
     passages.push({
-      pid: pid++,
+      pid: scenePid,
       name: scene.name,
       tags: scene.tags.join(' '),
       content: body || '',
@@ -130,9 +167,12 @@ export function buildPassages(project: Project): {
   const panelCSS  = buildPanelCSS(sidebarPanel);
   const buttonCSS = buildButtonsCSS(scenes);
   const tipCSS    = buildTooltipCSS();
-  const combinedCSS = [charCSS, panelCSS, buttonCSS, tipCSS].filter(Boolean).join('\n\n');
+  const globalCSS = buildGlobalCSS(project.settings);
+  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS].filter(Boolean).join('\n\n');
 
+  const settingsScript = buildSettingsScript(project.settings);
   const scriptContent = [
+    settingsScript,
     buildPanelScript(sidebarPanel),
     buildInputScript(scenes),
     buildLiveScript(scenes),
@@ -156,9 +196,10 @@ export function generateStandaloneHtml(project: Project, scTemplate: string): st
 
   const innerContent = `${styleBlock}\n${scriptBlock}\n${passageBlocks}`;
 
+  const authorAttr = project.author ? ` author="${escAttr(project.author)}"` : '';
   const storyDataElement =
     `<tw-storydata name="${escAttr(project.title)}" startnode="${startPid}" ` +
-    `creator="Purl" creator-version="1.0.0"` +
+    `creator="Purl" creator-version="1.0.0"${authorAttr} ` +
     `format="SugarCube" format-version="2.36.1" ` +
     `ifid="${escAttr(project.ifid)}" zoom="1" options="" hidden>\n` +
     `${innerContent}\n` +

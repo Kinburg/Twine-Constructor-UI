@@ -2,6 +2,8 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
+import { useConfirm } from '../shared/ConfirmModal';
 import { useT, blockTypeLabel } from '../../i18n';
 import type { Block } from '../../types';
 import { TextBlockEditor } from './TextBlockEditor';
@@ -54,6 +56,8 @@ interface Props {
 export function BlockItem({ block, sceneId }: Props) {
   const { deleteBlock, duplicateBlock } = useProjectStore();
   const { copyToClipboard } = useEditorStore();
+  const confirmDeleteBlock = useEditorPrefsStore(s => s.confirmDeleteBlock);
+  const { ask, modal: confirmModal } = useConfirm();
   const t = useT();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: block.id });
 
@@ -68,13 +72,14 @@ export function BlockItem({ block, sceneId }: Props) {
   const border = block.type === 'note' ? 'border-amber-800/50' : 'border-slate-700';
 
   return (
+    <>
     <div
       ref={setNodeRef}
       style={style}
       className={`rounded border ${border} ${color} overflow-hidden`}
     >
       {/* Block header */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-700/50">
+      <div className="block-header flex items-center justify-between px-3 py-1.5 border-b border-slate-700/50">
         <div className="flex items-center gap-2">
           <span
             {...listeners}
@@ -104,7 +109,13 @@ export function BlockItem({ block, sceneId }: Props) {
           <button
             className="text-slate-600 hover:text-red-400 text-sm transition-colors cursor-pointer"
             title={t.block.delete}
-            onClick={() => deleteBlock(sceneId, block.id)}
+            onClick={() => {
+              if (confirmDeleteBlock) {
+                ask({ message: `${t.block.delete}?`, variant: 'danger' }, () => deleteBlock(sceneId, block.id));
+              } else {
+                deleteBlock(sceneId, block.id);
+              }
+            }}
           >
             ✕
           </button>
@@ -112,7 +123,7 @@ export function BlockItem({ block, sceneId }: Props) {
       </div>
 
       {/* Block body */}
-      <div className="p-3">
+      <div className="block-body p-3">
         {block.type === 'text'         && <TextBlockEditor        block={block} sceneId={sceneId} />}
         {block.type === 'dialogue'     && <DialogueBlockEditor    block={block} sceneId={sceneId} />}
         {block.type === 'choice'       && <ChoiceBlockEditor      block={block} sceneId={sceneId} />}
@@ -134,5 +145,7 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'popup'        && <PopupBlockEditor       block={block} sceneId={sceneId} />}
       </div>
     </div>
+    {confirmModal}
+    </>
   );
 }

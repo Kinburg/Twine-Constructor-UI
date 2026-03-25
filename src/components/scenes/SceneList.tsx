@@ -17,6 +17,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { sceneMatchesQuery } from '../../utils/searchUtils';
 import { useT } from '../../i18n';
 import { SYSTEM_TAGS, SYSTEM_TAG_COLORS } from '../../types';
@@ -52,7 +53,7 @@ function SceneItemRow({
 
   return (
     <div
-      className={`group flex items-center rounded px-2 py-1.5 cursor-pointer transition-colors ${
+      className={`scene-row group flex items-center rounded px-2 py-1.5 cursor-pointer transition-colors ${
         isActive ? 'bg-indigo-700/40 text-white' : 'hover:bg-slate-800 text-slate-300'
       }`}
       onClick={onSelect}
@@ -174,7 +175,7 @@ function SceneGroupHeader({ group, onEdit, onDelete, onToggle }: {
 
   return (
     <div
-      className="group flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-slate-800/60 rounded transition-colors select-none"
+      className="scene-row group flex items-center gap-1 px-2 py-1.5 cursor-pointer hover:bg-slate-800/60 rounded transition-colors select-none"
       onClick={onToggle}
     >
       <span className="text-slate-500 text-xs w-3 shrink-0">
@@ -241,10 +242,16 @@ export function SceneList() {
     addSceneGroup,
     updateSceneGroup,
     deleteSceneGroup,
+    deleteSceneGroupWithScenes,
   } = useProjectStore();
   const t = useT();
 
   const searchQuery = useEditorStore(s => s.searchQuery);
+  const {
+    confirmDeleteScene,
+    confirmDeleteGroup,
+    deleteGroupWithScenes,
+  } = useEditorPrefsStore();
 
   const [activeTags, setActiveTags] = useState<Set<string>>(new Set());
   const [filterMode, setFilterMode] = useState<'or' | 'and'>('or');
@@ -345,10 +352,13 @@ export function SceneList() {
     onSelect:    () => setActiveScene(scene.id),
     onEdit:      () => setSceneModal({ mode: 'edit', scene }),
     onDuplicate: () => duplicateScene(scene.id),
-    onDelete:    () => ask(
-      { message: t.scene.confirmDelete(scene.name), variant: 'danger' },
-      () => deleteScene(scene.id),
-    ),
+    onDelete:    () => {
+      if (confirmDeleteScene) {
+        ask({ message: t.scene.confirmDelete(scene.name), variant: 'danger' }, () => deleteScene(scene.id));
+      } else {
+        deleteScene(scene.id);
+      }
+    },
   });
 
   const defaultSceneName = () => {
@@ -464,10 +474,16 @@ export function SceneList() {
                   group={group}
                   onToggle={() => updateSceneGroup(group.id, { collapsed: !group.collapsed })}
                   onEdit={() => setGroupModal({ mode: 'edit', group })}
-                  onDelete={() => ask(
-                    { message: t.scene.groupConfirmDelete(group.name), variant: 'danger' },
-                    () => deleteSceneGroup(group.id),
-                  )}
+                  onDelete={() => {
+                    const doDelete = () => deleteGroupWithScenes
+                      ? deleteSceneGroupWithScenes(group.id)
+                      : deleteSceneGroup(group.id);
+                    if (confirmDeleteGroup) {
+                      ask({ message: t.scene.groupConfirmDelete(group.name), variant: 'danger' }, doDelete);
+                    } else {
+                      doDelete();
+                    }
+                  }}
                 />
                 {!group.collapsed && (
                   <SortableContext

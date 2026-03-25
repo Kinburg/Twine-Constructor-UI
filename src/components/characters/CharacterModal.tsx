@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useProjectStore, flattenVariables, flattenAssets } from '../../store/projectStore';
+import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
-import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset } from '../../types';
+import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset, VariableType, VariableTreeNode, VariableGroup } from '../../types';
 import { useT } from '../../i18n';
 
 function resolveEditorSrc(src: string, projectDir: string | null): string {
@@ -16,18 +16,49 @@ function defaultAvatarConfig(): AvatarConfig {
   return { mode: 'static', src: '', variableId: '', mapping: [], defaultSrc: '' };
 }
 
+export interface PendingVar {
+  _tempId: string;
+  name: string;
+  varType: VariableType;
+  defaultValue: string;
+}
+
+/** Find a group by ID anywhere in the variable tree */
+function findGroup(nodes: VariableTreeNode[], id: string): VariableGroup | null {
+  for (const n of nodes) {
+    if (n.kind === 'group' && n.id === id) return n;
+    if (n.kind === 'group') {
+      const found = findGroup(n.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+/**
+ * Returns direct Variable children of the character's root group,
+ * excluding the auto-managed name var (and any group nodes like stylesGroup).
+ */
+function getCharUserVars(nodes: VariableTreeNode[], groupId: string, nameVarId: string): Variable[] {
+  const group = findGroup(nodes, groupId);
+  if (!group) return [];
+  return group.children.filter(
+    (n): n is Variable => n.kind === 'variable' && n.id !== nameVarId,
+  );
+}
+
 interface Props {
   mode: 'create' | 'edit';
+  charId?: string;
   initial: Omit<Character, 'id'>;
   takenNames: string[];
-  onSave: (data: Omit<Character, 'id'>) => void;
+  onSave: (data: Omit<Character, 'id'>, pendingVars: PendingVar[]) => void;
   onClose: () => void;
 }
 
-export function CharacterModal({ mode, initial, takenNames, onSave, onClose }: Props) {
+export function CharacterModal({ mode, charId, initial, takenNames, onSave, onClose }: Props) {
   const t = useT();
-  const { project } = useProjectStore();
-  const vars = flattenVariables(project.variableNodes);
+  const { project, addVariable, deleteVariableNode } = useProjectStore();
   const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
 
   const [name, setName] = useState(initial.name);
@@ -36,6 +67,17 @@ export function CharacterModal({ mode, initial, takenNames, onSave, onClose }: P
   const [bgColor, setBgColor] = useState(initial.bgColor);
   const [borderColor, setBorderColor] = useState(initial.borderColor);
   const [avatarCfg, setAvatarCfg] = useState<AvatarConfig>(initial.avatarConfig ?? defaultAvatarConfig());
+
+  // In edit mode: read live user vars from the char's variable group (excluding auto-managed ones)
+  const liveChar = mode === 'edit' && charId
+    ? project.characters.find(c => c.id === charId)
+    : null;
+  const existingUserVars = liveChar?.varIds
+    ? getCharUserVars(project.variableNodes, liveChar.varIds.groupId, liveChar.varIds.nameVarId)
+    : [];
+
+  // In create mode: track pending vars locally until save
+  const [pendingVars, setPendingVars] = useState<PendingVar[]>([]);
 
   const draft: Omit<Character, 'id'> = { name, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg };
 
@@ -48,9 +90,39 @@ export function CharacterModal({ mode, initial, takenNames, onSave, onClose }: P
 
   const handleSave = () => {
     if (nameError) return;
-    onSave({ ...draft, name: trimmedName });
+    onSave({ ...draft, name: trimmedName }, pendingVars);
     onClose();
   };
+
+  // Edit mode: apply immediately via store (same as Variables tab)
+  const handleAddVar = (v: { name: string; varType: VariableType; defaultValue: string }) => {
+    if (mode === 'edit' && liveChar?.varIds) {
+      addVariable(liveChar.varIds.groupId, { name: v.name, varType: v.varType, defaultValue: v.defaultValue, description: '' });
+    } else {
+      setPendingVars(prev => [...prev, { ...v, _tempId: crypto.randomUUID() }]);
+    }
+  };
+
+  const handleDeleteVar = (id: string) => {
+    if (mode === 'edit') {
+      deleteVariableNode(id);
+    } else {
+      setPendingVars(prev => prev.filter(v => v._tempId !== id));
+    }
+  };
+
+  // Flat list for the avatar variable picker
+  const allVarsList: Variable[] = (() => {
+    const result: Variable[] = [];
+    function collect(nodes: VariableTreeNode[]) {
+      for (const n of nodes) {
+        if (n.kind === 'variable') result.push(n);
+        else collect(n.children);
+      }
+    }
+    collect(project.variableNodes);
+    return result;
+  })();
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -148,9 +220,19 @@ export function CharacterModal({ mode, initial, takenNames, onSave, onClose }: P
           {/* Avatar */}
           <AvatarEditor
             cfg={avatarCfg}
-            vars={vars}
+            vars={allVarsList}
             imgAssets={imgAssets}
             onChange={setAvatarCfg}
+          />
+
+          {/* Custom variables */}
+          <CustomVarsSection
+            mode={mode}
+            existingVars={existingUserVars}
+            pendingVars={pendingVars}
+            onAdd={handleAddVar}
+            onDeleteExisting={id => handleDeleteVar(id)}
+            onDeletePending={tempId => handleDeleteVar(tempId)}
           />
         </div>
 
@@ -470,6 +552,136 @@ function AvatarImagePicker({
         value={value}
         onChange={e => onChange(e.target.value)}
       />
+    </div>
+  );
+}
+
+// ─── Custom vars section ───────────────────────────────────────────────────────
+
+function CustomVarsSection({
+  mode,
+  existingVars,
+  pendingVars,
+  onAdd,
+  onDeleteExisting,
+  onDeletePending,
+}: {
+  mode: 'create' | 'edit';
+  existingVars: Variable[];
+  pendingVars: PendingVar[];
+  onAdd: (v: { name: string; varType: VariableType; defaultValue: string }) => void;
+  onDeleteExisting: (id: string) => void;
+  onDeletePending: (tempId: string) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newType, setNewType] = useState<VariableType>('string');
+  const [newDefault, setNewDefault] = useState('');
+  const [nameError, setNameError] = useState('');
+
+  const totalCount = existingVars.length + pendingVars.length;
+
+  const handleAdd = () => {
+    const trimmed = newName.trim();
+    if (!trimmed) { setNameError(t.characters.customVarsNameEmpty); return; }
+    setNameError('');
+    onAdd({ name: trimmed, varType: newType, defaultValue: newDefault });
+    setNewName('');
+    setNewDefault('');
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer select-none w-full"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span className="text-slate-600 text-[10px]">{open ? '▼' : '▶'}</span>
+        <span className="font-medium">{t.characters.customVarsSection}</span>
+        {totalCount > 0 && <span className="text-slate-600 font-mono">({totalCount})</span>}
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-0.5 pl-3 border-l border-slate-700/60 mt-0.5">
+          {/* Existing vars */}
+          {existingVars.map(v => (
+            <VarRow key={v.id}
+              label={`$${v.name}`} type={v.varType} defaultVal={v.defaultValue}
+              dimmed={false}
+              onDelete={() => onDeleteExisting(v.id)}
+            />
+          ))}
+          {/* Pending vars (create mode only) */}
+          {pendingVars.map(v => (
+            <VarRow key={v._tempId}
+              label={`$${v.name}`} type={v.varType} defaultVal={v.defaultValue}
+              dimmed={true}
+              onDelete={() => onDeletePending(v._tempId)}
+            />
+          ))}
+          {totalCount === 0 && (
+            <p className="text-xs text-slate-600 italic py-1">{t.characters.customVarsEmpty}</p>
+          )}
+
+          {/* Add form */}
+          <div className="flex flex-col gap-1 pt-1.5 mt-0.5 border-t border-slate-700/40">
+            <div className="flex gap-1.5 items-start">
+              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                <input
+                  className={`w-full bg-slate-700 text-xs text-white rounded px-2 py-1 outline-none border ${nameError ? 'border-red-500' : 'border-slate-600 focus:border-indigo-500'} font-mono placeholder-slate-600`}
+                  placeholder={t.characters.customVarsNamePlaceholder}
+                  value={newName}
+                  onChange={e => { setNewName(e.target.value); setNameError(''); }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
+                />
+                {nameError && <span className="text-[10px] text-red-400">{nameError}</span>}
+              </div>
+              <select
+                className="bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 cursor-pointer shrink-0"
+                value={newType}
+                onChange={e => setNewType(e.target.value as VariableType)}
+              >
+                <option value="string">string</option>
+                <option value="number">number</option>
+                <option value="boolean">boolean</option>
+                <option value="array">array</option>
+              </select>
+              <input
+                className="bg-slate-700 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono w-20 shrink-0 placeholder-slate-600"
+                placeholder="default"
+                value={newDefault}
+                onChange={e => setNewDefault(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
+              />
+              <button
+                className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors shrink-0 py-1"
+                onClick={handleAdd}
+              >
+                {t.characters.customVarsAdd}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VarRow({ label, type, defaultVal, dimmed, onDelete }: {
+  label: string; type: string; defaultVal: string; dimmed: boolean; onDelete: () => void;
+}) {
+  return (
+    <div className="flex items-center gap-2 py-1 group">
+      <span className={`text-xs font-mono min-w-0 flex-1 truncate ${dimmed ? 'text-indigo-300/50' : 'text-indigo-300'}`}>{label}</span>
+      <span className="text-[10px] text-slate-500 shrink-0">{type}</span>
+      <span className="text-xs font-mono text-slate-500 shrink-0 max-w-[4rem] truncate">{defaultVal || '—'}</span>
+      <button
+        className="text-slate-700 hover:text-red-400 text-xs cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={onDelete}
+      >
+        ✕
+      </button>
     </div>
   );
 }
