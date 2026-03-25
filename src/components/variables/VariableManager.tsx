@@ -1,21 +1,32 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import type { Variable, VariableGroup, VariableTreeNode, VariableType } from '../../types';
+import { getVariablePath } from '../../utils/treeUtils';
 import { useT } from '../../i18n';
+import { useConfirm } from '../shared/ConfirmModal';
 
-const TYPE_DEFAULTS: Record<VariableType, string> = {
+export const TYPE_DEFAULTS: Record<VariableType, string> = {
   number: '0', string: '', boolean: 'false', array: '[]',
 };
 
-const TYPE_COLOR: Record<VariableType, string> = {
+export const TYPE_COLOR: Record<VariableType, string> = {
   number: 'text-sky-400', string: 'text-emerald-400', boolean: 'text-amber-400', array: 'text-violet-400',
 };
+
+/** Callbacks for tree mutations — allows backing by store or local state */
+export interface TreeActions {
+  onAddVariable: (parentId: string | null, data: { name: string; varType: VariableType; defaultValue: string; description: string }) => void;
+  onAddGroup: (parentId: string | null, name: string) => void;
+  onUpdateVariable: (id: string, patch: Partial<Variable>) => void;
+  onDeleteNode: (id: string) => void;
+}
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
 export function VariableManager() {
   const t = useT();
-  const { project, addVariableGroup, addVariable } = useProjectStore();
+  const { project, addVariableGroup, addVariable, updateVariable, deleteVariableNode } = useProjectStore();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingVarId, setEditingVarId] = useState<string | null>(null);
 
@@ -27,6 +38,13 @@ export function VariableManager() {
 
   const toggleExpand = (id: string) =>
     setExpandedIds(prev => { const s = new Set(prev); if (s.has(id)) { s.delete(id); } else { s.add(id); } return s; });
+
+  const actions: TreeActions = {
+    onAddVariable: (parentId, data) => addVariable(parentId, data),
+    onAddGroup: (parentId, name) => addVariableGroup(parentId, name),
+    onUpdateVariable: (id, patch) => updateVariable(id, patch),
+    onDeleteNode: (id) => deleteVariableNode(id),
+  };
 
   const confirmRootGroup = () => {
     const name = rootGroupName.trim();
@@ -43,6 +61,22 @@ export function VariableManager() {
 
   return (
     <div className="p-2 flex flex-col gap-1">
+      {/* Add toolbar */}
+      <div className="flex gap-1 pb-1 border-b border-slate-800 mb-1">
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={handleAddRootVar}
+        >
+          {t.variables.addVariable}
+        </button>
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={() => setAddingRootGroup(true)}
+        >
+          {t.variables.addGroup}
+        </button>
+      </div>
+
       <TreeLevel
         nodes={project.variableNodes}
         depth={0}
@@ -51,43 +85,31 @@ export function VariableManager() {
         onToggleExpand={toggleExpand}
         onEditVar={setEditingVarId}
         parentId={null}
+        allNodes={project.variableNodes}
+        pathPrefix=""
+        actions={actions}
       />
 
       {/* Root-level "add group" inline input */}
-      {addingRootGroup ? (
+      {addingRootGroup && (
         <input
           ref={rootGroupRef}
           className="text-xs bg-slate-800 text-white rounded px-2 py-1 outline-none border border-indigo-500 font-mono mt-1"
           placeholder={t.variables.groupNamePlaceholder}
           value={rootGroupName}
-          onChange={e => setRootGroupName(e.target.value)}
+          onChange={e => setRootGroupName(e.target.value.replace(/[^a-zA-Zа-яёА-ЯЁ0-9_]/g, ''))}
           onBlur={confirmRootGroup}
           onKeyDown={e => {
             if (e.key === 'Enter') confirmRootGroup();
             if (e.key === 'Escape') { setAddingRootGroup(false); setRootGroupName(''); }
           }}
         />
-      ) : (
-        <div className="flex gap-1 mt-1 flex-wrap">
-          <button
-            className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
-            onClick={handleAddRootVar}
-          >
-            {t.variables.addVariable}
-          </button>
-          <button
-            className="text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
-            onClick={() => setAddingRootGroup(true)}
-          >
-            {t.variables.addGroup}
-          </button>
-        </div>
       )}
     </div>
   );
 }
 
-function countVars(nodes: VariableTreeNode[]): number {
+export function countVars(nodes: VariableTreeNode[]): number {
   return nodes.reduce((acc, n) => {
     if (n.kind === 'variable') return acc + 1;
     return acc + countVars(n.children);
@@ -96,8 +118,8 @@ function countVars(nodes: VariableTreeNode[]): number {
 
 // ─── Tree level ───────────────────────────────────────────────────────────────
 
-function TreeLevel({
-  nodes, depth, expandedIds, editingVarId, onToggleExpand, onEditVar, parentId,
+export function TreeLevel({
+  nodes, depth, expandedIds, editingVarId, onToggleExpand, onEditVar, parentId, allNodes, pathPrefix, actions, showAddAtRoot,
 }: {
   nodes: VariableTreeNode[];
   depth: number;
@@ -106,9 +128,13 @@ function TreeLevel({
   onToggleExpand: (id: string) => void;
   onEditVar: (id: string | null) => void;
   parentId: string | null;
+  allNodes: VariableTreeNode[];
+  pathPrefix: string;
+  actions: TreeActions;
+  /** Show add buttons even at depth 0 (used by character modal) */
+  showAddAtRoot?: boolean;
 }) {
   const t = useT();
-  const { addVariable, addVariableGroup } = useProjectStore();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName]     = useState('');
   const groupInputRef = useRef<HTMLInputElement>(null);
@@ -116,12 +142,14 @@ function TreeLevel({
 
   const confirmGroup = () => {
     const name = groupName.trim();
-    if (name) addVariableGroup(parentId, name);
+    if (name) actions.onAddGroup(parentId, name);
     setAddingGroup(false);
     setGroupName('');
   };
 
-  if (nodes.length === 0 && depth === 0) {
+  const showAddButtons = depth > 0 || showAddAtRoot;
+
+  if (nodes.length === 0 && depth === 0 && !showAddAtRoot) {
     return <p className="text-xs text-slate-600 italic px-2 py-1">{t.variables.empty}</p>;
   }
 
@@ -129,6 +157,7 @@ function TreeLevel({
     <>
       {nodes.map(node => {
         if (node.kind === 'group') {
+          const gPath = pathPrefix ? `${pathPrefix}.${node.name}` : node.name;
           return (
             <GroupNode
               key={node.id}
@@ -139,6 +168,9 @@ function TreeLevel({
               editingVarId={editingVarId}
               onToggleExpand={onToggleExpand}
               onEditVar={onEditVar}
+              groupPath={gPath}
+              allNodes={allNodes}
+              actions={actions}
             />
           );
         }
@@ -149,12 +181,14 @@ function TreeLevel({
             depth={depth}
             expanded={editingVarId === node.id}
             onToggle={() => onEditVar(editingVarId === node.id ? null : node.id)}
+            allNodes={allNodes}
+            actions={actions}
           />
         );
       })}
 
-      {/* Inline group add (only for non-root: root handles it separately) */}
-      {depth > 0 && (
+      {/* Inline group/variable add */}
+      {showAddButtons && (
         addingGroup ? (
           <input
             ref={groupInputRef}
@@ -162,7 +196,7 @@ function TreeLevel({
             style={{ marginLeft: depth * 12 + 4 }}
             placeholder={t.variables.groupNamePlaceholder}
             value={groupName}
-            onChange={e => setGroupName(e.target.value)}
+            onChange={e => setGroupName(e.target.value.replace(/[^a-zA-Zа-яёА-ЯЁ0-9_]/g, ''))}
             onBlur={confirmGroup}
             onKeyDown={e => {
               if (e.key === 'Enter') confirmGroup();
@@ -175,7 +209,7 @@ function TreeLevel({
               className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
               onClick={() => {
                 const allFlat = countVars(nodes);
-                addVariable(parentId, { name: `var${allFlat + 1}`, varType: 'number', defaultValue: '0', description: '' });
+                actions.onAddVariable(parentId, { name: `var${allFlat + 1}`, varType: 'number', defaultValue: '0', description: '' });
               }}
             >
               {t.variables.addVariable}
@@ -196,7 +230,7 @@ function TreeLevel({
 // ─── Group node ───────────────────────────────────────────────────────────────
 
 function GroupNode({
-  group, depth, expanded, expandedIds, editingVarId, onToggleExpand, onEditVar,
+  group, depth, expanded, expandedIds, editingVarId, onToggleExpand, onEditVar, groupPath, allNodes, actions,
 }: {
   group: VariableGroup;
   depth: number;
@@ -205,9 +239,13 @@ function GroupNode({
   editingVarId: string | null;
   onToggleExpand: (id: string) => void;
   onEditVar: (id: string | null) => void;
+  groupPath: string;
+  allNodes: VariableTreeNode[];
+  actions: TreeActions;
 }) {
   const t = useT();
-  const { deleteVariableNode } = useProjectStore();
+  const confirmDeleteVariable = useEditorPrefsStore(s => s.confirmDeleteVariable);
+  const { ask, modal: confirmModal } = useConfirm();
 
   return (
     <div>
@@ -217,13 +255,18 @@ function GroupNode({
         onClick={() => onToggleExpand(group.id)}
       >
         <span className="text-slate-500 text-xs w-3 shrink-0">{expanded ? '▾' : '▸'}</span>
+        <span className="text-orange-400/60 text-xs font-mono shrink-0">{'{}'}</span>
         <span className="text-xs text-slate-300 font-medium flex-1 truncate">{group.name}</span>
+        <span className="text-xs text-slate-600 font-mono truncate opacity-0 group-hover/grp:opacity-100 transition-opacity">${groupPath}</span>
         <button
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/grp:opacity-100 transition-opacity"
           onClick={e => {
             e.stopPropagation();
-            if (confirm(t.variables.confirmDeleteGroup(group.name)))
-              deleteVariableNode(group.id);
+            if (confirmDeleteVariable) {
+              ask({ message: t.variables.confirmDeleteGroup(group.name), variant: 'danger' }, () => actions.onDeleteNode(group.id));
+            } else {
+              actions.onDeleteNode(group.id);
+            }
           }}
         >
           ✕
@@ -239,9 +282,13 @@ function GroupNode({
             onToggleExpand={onToggleExpand}
             onEditVar={onEditVar}
             parentId={group.id}
+            allNodes={allNodes}
+            pathPrefix={groupPath}
+            actions={actions}
           />
         </div>
       )}
+      {confirmModal}
     </div>
   );
 }
@@ -249,16 +296,19 @@ function GroupNode({
 // ─── Variable node ────────────────────────────────────────────────────────────
 
 function VariableNode({
-  variable: v, depth, expanded, onToggle,
+  variable: v, depth, expanded, onToggle, allNodes, actions,
 }: {
   variable: Variable;
   depth: number;
   expanded: boolean;
   onToggle: () => void;
+  allNodes: VariableTreeNode[];
+  actions: TreeActions;
 }) {
   const t = useT();
-  const { updateVariable, deleteVariableNode } = useProjectStore();
-  const upd = (patch: Partial<Variable>) => updateVariable(v.id, patch);
+  const confirmDeleteVariable = useEditorPrefsStore(s => s.confirmDeleteVariable);
+  const { ask, modal: confirmModal } = useConfirm();
+  const upd = (patch: Partial<Variable>) => actions.onUpdateVariable(v.id, patch);
 
   return (
     <div className="rounded border border-slate-700/60 overflow-hidden" style={{ marginLeft: depth * 12 }}>
@@ -270,13 +320,17 @@ function VariableNode({
         <span className={`text-xs font-mono font-bold ${TYPE_COLOR[v.varType]} w-3 shrink-0`}>
           {v.varType[0].toUpperCase()}
         </span>
-        <span className="flex-1 text-xs text-white font-mono truncate">${v.name}</span>
+        <span className="flex-1 text-xs text-white font-mono truncate">${getVariablePath(v.id, allNodes) || v.name}</span>
         <span className="text-xs text-slate-500 font-mono truncate max-w-[50px]">{v.defaultValue || '…'}</span>
         <button
           className="text-slate-700 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/var:opacity-100 transition-opacity"
           onClick={e => {
             e.stopPropagation();
-            if (confirm(t.variables.confirmDeleteVar(v.name))) deleteVariableNode(v.id);
+            if (confirmDeleteVariable) {
+              ask({ message: t.variables.confirmDeleteVar(v.name), variant: 'danger' }, () => actions.onDeleteNode(v.id));
+            } else {
+              actions.onDeleteNode(v.id);
+            }
           }}
         >
           ✕
@@ -289,7 +343,7 @@ function VariableNode({
         <div className="px-3 py-2 flex flex-col gap-2 border-t border-slate-700 bg-slate-800/30">
           <Field label={t.variables.fieldName}>
             <input
-              className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
+              className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
               value={v.name}
               onChange={e => upd({ name: e.target.value.replace(/[^a-zA-Zа-яёА-ЯЁ0-9_]/g, '') })}
               placeholder="varName"
@@ -299,7 +353,7 @@ function VariableNode({
 
           <Field label={t.variables.fieldType}>
             <select
-              className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+              className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={v.varType}
               onChange={e => {
                 const varType = e.target.value as VariableType;
@@ -316,7 +370,7 @@ function VariableNode({
           <Field label={t.variables.fieldDefault}>
             {v.varType === 'boolean' ? (
               <select
-                className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
                 value={v.defaultValue}
                 onChange={e => upd({ defaultValue: e.target.value })}
               >
@@ -325,7 +379,7 @@ function VariableNode({
               </select>
             ) : (
               <input
-                className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
+                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
                 value={v.defaultValue}
                 placeholder={v.varType === 'number' ? t.variables.defaultPlaceholderNumber : v.varType === 'array' ? '[]' : t.variables.defaultPlaceholderText}
                 onChange={e => upd({ defaultValue: e.target.value })}
@@ -335,18 +389,19 @@ function VariableNode({
 
           <Field label={t.variables.fieldDescription}>
             <input
-              className="flex-1 bg-slate-800 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+              className="flex-1 min-w-0 bg-slate-800 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
               value={v.description}
               placeholder={t.variables.descriptionPlaceholder}
               onChange={e => upd({ description: e.target.value })}
             />
           </Field>
 
-          <div className="text-xs text-slate-500 font-mono bg-slate-800/60 px-2 py-1 rounded">
-            {'<<set $' + v.name + ' to ' + (v.varType === 'string' ? `"${v.defaultValue}"` : v.defaultValue || (v.varType === 'array' ? '[]' : v.defaultValue)) + '>>'}
+          <div className="text-xs text-slate-500 font-mono bg-slate-800/60 px-2 py-1 rounded break-all">
+            {'<<set $' + (getVariablePath(v.id, allNodes) || v.name) + ' to ' + (v.varType === 'string' ? `"${v.defaultValue}"` : v.defaultValue || (v.varType === 'array' ? '[]' : v.defaultValue)) + '>>'}
           </div>
         </div>
       )}
+      {confirmModal}
     </div>
   );
 }
@@ -355,7 +410,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return (
     <div className="flex items-center gap-2">
       <label className="text-xs text-slate-400 w-20 shrink-0">{label}:</label>
-      <div className="flex-1 flex items-center gap-1">{children}</div>
+      <div className="flex-1 min-w-0 flex items-center gap-1">{children}</div>
     </div>
   );
 }

@@ -1,14 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type {
-  Project, Scene, Block, Character, CharacterVarIds,
+  Project, ProjectSettings, Scene, SceneGroup, Block, Character, CharacterVarIds,
   Variable, VariableGroup, VariableTreeNode,
   Asset, AssetGroup, AssetTreeNode,
   ChoiceOption, ConditionBranch,
   SidebarPanel, SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   AvatarConfig, AvatarMode,
+  Watcher,
 } from '../types';
-import { flattenVariables, flattenAssets } from '../utils/treeUtils';
+import { flattenVariables, flattenAssets, hasSiblingNameConflict } from '../utils/treeUtils';
 
 export { flattenVariables, flattenAssets };
 
@@ -30,16 +31,25 @@ export const DEFAULT_PANEL_STYLE: PanelStyle = {
 
 const DEFAULT_PANEL: SidebarPanel = { tabs: [], liveUpdate: false, style: DEFAULT_PANEL_STYLE };
 
+export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
+  startingScene:   'Start',
+  historyControls: true,
+  saveLoadMenu:    true,
+};
+
 function makeDefaultProject(): Project {
   return {
     id: uuid(),
     title: 'New Project',
     ifid: generateIfid(),
+    settings: { ...DEFAULT_PROJECT_SETTINGS },
     scenes: [{ id: uuid(), name: 'Start', tags: [], blocks: [] }],
+    sceneGroups: [],
     characters: [],
     variableNodes: [],
     assetNodes: [],
     sidebarPanel: DEFAULT_PANEL,
+    watchers: [],
   };
 }
 
@@ -51,6 +61,27 @@ function removeNode<T extends AnyNode>(nodes: T[], id: string): T[] {
   return nodes
     .filter(n => n.id !== id)
     .map(n => n.children ? { ...n, children: removeNode(n.children as T[], id) } : n) as T[];
+}
+
+/** Get the children of a parent group (or root nodes if parentId is null) */
+function getSiblings(nodes: VariableTreeNode[], parentId: string | null): VariableTreeNode[] {
+  if (parentId === null) return nodes;
+  for (const n of nodes) {
+    if (n.kind === 'group') {
+      if (n.id === parentId) return n.children;
+      const found = getSiblings(n.children, parentId);
+      if (found) return found;
+    }
+  }
+  return [];
+}
+
+/** Ensure a unique name among siblings by appending a numeric suffix */
+function ensureUniqueName(name: string, siblings: VariableTreeNode[]): string {
+  if (!hasSiblingNameConflict(name, siblings)) return name;
+  let i = 2;
+  while (hasSiblingNameConflict(`${name}${i}`, siblings)) i++;
+  return `${name}${i}`;
 }
 
 function addNode<T extends AnyNode>(nodes: T[], parentId: string | null, node: T): T[] {
@@ -137,21 +168,22 @@ interface CharVarBuildResult {
  */
 function buildCharVarNodes(
   charName: string,
-  colors: { bgColor: string; borderColor: string; nameColor: string; avatarConfig?: AvatarConfig },
+  colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig },
 ): CharVarBuildResult {
   const prefix = charToVarPrefix(charName);
 
-  const nameVarId        = uuid();
-  const bgColorVarId     = uuid();
-  const borderColorVarId = uuid();
-  const nameColorVarId   = uuid();
-  const avatarVarId      = uuid();
-  const stylesGroupId    = uuid();
-  const groupId          = uuid();
+  const nameVarId         = uuid();
+  const bgColorVarId      = uuid();
+  const borderColorVarId  = uuid();
+  const nameColorVarId    = uuid();
+  const textColorVarId    = uuid();
+  const avatarVarId       = uuid();
+  const stylesGroupId     = uuid();
+  const groupId           = uuid();
 
   const nameVar: Variable = {
     kind: 'variable', id: nameVarId,
-    name: `${prefix}_name`,
+    name: 'name',
     varType: 'string',
     defaultValue: charName,
     description: `Character name "${charName}"`,
@@ -159,7 +191,7 @@ function buildCharVarNodes(
 
   const bgColorVar: Variable = {
     kind: 'variable', id: bgColorVarId,
-    name: `${prefix}_bgColor`,
+    name: 'bgColor',
     varType: 'string',
     defaultValue: colors.bgColor,
     description: 'Dialogue background color',
@@ -167,7 +199,7 @@ function buildCharVarNodes(
 
   const borderColorVar: Variable = {
     kind: 'variable', id: borderColorVarId,
-    name: `${prefix}_borderColor`,
+    name: 'borderColor',
     varType: 'string',
     defaultValue: colors.borderColor,
     description: 'Dialogue border color',
@@ -175,15 +207,23 @@ function buildCharVarNodes(
 
   const nameColorVar: Variable = {
     kind: 'variable', id: nameColorVarId,
-    name: `${prefix}_nameColor`,
+    name: 'nameColor',
     varType: 'string',
     defaultValue: colors.nameColor,
     description: 'Character name color',
   };
 
+  const textColorVar: Variable = {
+    kind: 'variable', id: textColorVarId,
+    name: 'textColor',
+    varType: 'string',
+    defaultValue: colors.textColor,
+    description: 'Dialogue text color',
+  };
+
   const avatarVar: Variable = {
     kind: 'variable', id: avatarVarId,
-    name: `${prefix}_avatar`,
+    name: 'avatar',
     varType: 'string',
     defaultValue: colors.avatarConfig?.mode === 'static' ? (colors.avatarConfig.src ?? '') : '',
     description: `Avatar URL for character "${charName}" (empty = hidden)`,
@@ -192,7 +232,7 @@ function buildCharVarNodes(
   const stylesGroup: VariableGroup = {
     kind: 'group', id: stylesGroupId,
     name: 'styles',
-    children: [bgColorVar, borderColorVar, nameColorVar, avatarVar],
+    children: [bgColorVar, borderColorVar, nameColorVar, textColorVar, avatarVar],
   };
 
   const group: VariableGroup = {
@@ -203,7 +243,7 @@ function buildCharVarNodes(
 
   return {
     group,
-    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, avatarVarId },
+    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, textColorVarId, avatarVarId },
   };
 }
 
@@ -322,6 +362,44 @@ function migrateCharacterAvatarVar(p: Project): Project {
 }
 
 /**
+ * Add $prefix_textColor variable to characters that were created before it existed.
+ * Runs idempotently (skips if textColorVarId already present).
+ */
+function migrateCharacterTextColorVar(p: Project): Project {
+  let variableNodes = p.variableNodes;
+  let characters = p.characters;
+  let changed = false;
+
+  for (let i = 0; i < characters.length; i++) {
+    const char = characters[i];
+    if (!char.varIds || char.varIds.textColorVarId) continue;
+
+    const prefix = charToVarPrefix(char.name);
+    const textColorVarId = uuid();
+
+    const textColorVar: Variable = {
+      kind: 'variable', id: textColorVarId,
+      name: `${prefix}_textColor`,
+      varType: 'string',
+      defaultValue: char.textColor ?? '#e2e8f0',
+      description: 'Dialogue text color',
+    };
+
+    variableNodes = addNode(
+      variableNodes as AnyNode[],
+      char.varIds.stylesGroupId,
+      textColorVar as AnyNode,
+    ) as VariableTreeNode[];
+
+    const updatedVarIds: CharacterVarIds = { ...char.varIds, textColorVarId };
+    characters = characters.map((c, idx) => idx === i ? { ...c, varIds: updatedVarIds } : c);
+    changed = true;
+  }
+
+  return changed ? { ...p, variableNodes, characters } : p;
+}
+
+/**
  * Add avatarConfig to characters created before AvatarConfig was introduced.
  * Converts legacy avatarUrl → avatarConfig { mode: 'static', src: avatarUrl }.
  * Runs idempotently (skips characters that already have avatarConfig).
@@ -388,6 +466,15 @@ function migrateProject(raw: any): Project {
   p = migrateCharacterAvatarVar(p as Project);
   // Add avatarConfig to characters that predate this feature
   p = migrateCharacterAvatarConfig(p as Project);
+  // Add $prefix_textColor variable to characters that predate this feature
+  p = migrateCharacterTextColorVar(p as Project);
+
+  if (!p.watchers) p.watchers = [];
+  if (!p.sceneGroups) p.sceneGroups = [];
+  if (!p.settings) p.settings = { ...DEFAULT_PROJECT_SETTINGS };
+  if (p.settings.startingScene === undefined) p.settings.startingScene = DEFAULT_PROJECT_SETTINGS.startingScene;
+  if (p.settings.historyControls === undefined) p.settings.historyControls = DEFAULT_PROJECT_SETTINGS.historyControls;
+  if (p.settings.saveLoadMenu === undefined) p.settings.saveLoadMenu = DEFAULT_PROJECT_SETTINGS.saveLoadMenu;
 
   return p as Project;
 }
@@ -402,19 +489,22 @@ function findAssetNodeById(nodes: AssetTreeNode[], id: string): AssetTreeNode | 
 
 // ─── Store shape ──────────────────────────────────────────────────────────────
 
-type SidebarTabId = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel';
+type SidebarTabId = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers';
 
 interface ProjectState {
   project: Project;
   activeSceneId: string | null;
   activeSidebarTab: SidebarTabId;
+  sidebarWidth: number;
   projectDir: string | null;
 
   setProjectDir: (dir: string | null) => void;
   setProjectTitle: (title: string) => void;
+  updateProjectMeta: (patch: Partial<Pick<Project, 'title' | 'author' | 'description' | 'settings' | 'sidebarPanel'>>) => void;
   loadProject: (project: Project, dir?: string) => void;
   resetProject: () => void;
   setSidebarTab: (tab: SidebarTabId) => void;
+  setSidebarWidth: (width: number) => void;
   fixVariableNames: () => void;
 
   // History / undo / redo
@@ -429,21 +519,31 @@ interface ProjectState {
   // Scenes
   setActiveScene: (id: string) => void;
   addScene: () => void;
+  addSceneWithData: (data: { name: string; tags: string[]; notes?: string }) => void;
   deleteScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
   updateSceneNote: (id: string, notes: string | undefined) => void;
   updateSceneGraphPosition: (id: string, x: number, y: number) => void;
   updateSceneTags: (id: string, tags: string[]) => void;
+  updateSceneSettings: (id: string, data: { name: string; tags: string[]; notes?: string }) => void;
   reorderScenes: (scenes: Scene[]) => void;
   duplicateScene: (sceneId: string) => void;
 
+  // Scene groups
+  addSceneGroup: (data: { name: string; notes?: string }) => void;
+  updateSceneGroup: (id: string, patch: Partial<SceneGroup>) => void;
+  deleteSceneGroup: (id: string) => void;
+  deleteSceneGroupWithScenes: (id: string) => void;
+  moveSceneToGroup: (sceneId: string, groupId: string | null, overId: string | null) => void;
+  reorderGroupScenes: (reorderedScenes: Scene[]) => void;
+
   // Blocks
-  addBlock: (sceneId: string, block: Block) => void;
+  addBlock: (sceneId: string, block: Block, insertIndex?: number) => void;
   updateBlock: (sceneId: string, blockId: string, patch: Partial<Block>) => void;
   deleteBlock: (sceneId: string, blockId: string) => void;
   reorderBlocks: (sceneId: string, blocks: Block[]) => void;
   duplicateBlock: (sceneId: string, blockId: string) => void;
-  pasteToScene: (sceneId: string, block: Block) => void;
+  pasteToScene: (sceneId: string, block: Block, insertIndex?: number) => void;
 
   // Nested blocks (condition branches)
   addNestedBlock: (sceneId: string, blockId: string, branchId: string, block: Block) => void;
@@ -470,9 +570,14 @@ interface ProjectState {
   deleteConditionBranch: (sceneId: string, blockId: string, branchId: string) => void;
 
   // Characters
-  addCharacter: (char: Omit<Character, 'id'>) => void;
+  addCharacter: (char: Omit<Character, 'id'>) => string;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
   deleteCharacter: (id: string) => void;
+
+  // Watchers
+  addWatcher: () => void;
+  updateWatcher: (id: string, patch: Partial<Watcher>) => void;
+  deleteWatcher: (id: string) => void;
 
   // Variable tree
   addVariableGroup: (parentId: string | null, name: string) => void;
@@ -552,6 +657,7 @@ export const useProjectStore = create<ProjectState>()(
         project: defaultProject,
         activeSceneId: defaultProject.scenes[0].id,
         activeSidebarTab: 'scenes',
+        sidebarWidth: 288,
         projectDir: null,
         _history: [],
         _future: [],
@@ -563,6 +669,11 @@ export const useProjectStore = create<ProjectState>()(
         setProjectTitle: (title) => {
           get().saveSnapshot();
           set(s => ({ project: { ...s.project, title } }));
+        },
+
+        updateProjectMeta: (patch) => {
+          get().saveSnapshot();
+          set(s => ({ project: { ...s.project, ...patch } }));
         },
 
         loadProject: (rawProject, dir) => {
@@ -581,6 +692,7 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         setSidebarTab: (tab) => set({ activeSidebarTab: tab }),
+        setSidebarWidth: (width) => set({ sidebarWidth: Math.max(220, Math.min(600, width)) }),
 
         // Run migration via set() so it's reactive + persisted.
         // Called once on app mount to handle HMR / warm-reload scenarios
@@ -648,6 +760,16 @@ export const useProjectStore = create<ProjectState>()(
           }));
         },
 
+        addSceneWithData: ({ name, tags, notes }) => {
+          get().saveSnapshot();
+          const id = uuid();
+          const scene: Scene = { id, name, tags, blocks: [], notes: notes || undefined };
+          set(s => ({
+            project: { ...s.project, scenes: [...s.project.scenes, scene] },
+            activeSceneId: id,
+          }));
+        },
+
         deleteScene: (id) => {
           get().saveSnapshot();
           set(s => {
@@ -677,6 +799,11 @@ export const useProjectStore = create<ProjectState>()(
           set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, tags })) }));
         },
 
+        updateSceneSettings: (id, { name, tags, notes }) => {
+          get().saveSnapshot();
+          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, name, tags, notes: notes || undefined })) }));
+        },
+
         reorderScenes: (scenes) => {
           get().saveSnapshot();
           set(s => ({ project: { ...s.project, scenes } }));
@@ -703,12 +830,120 @@ export const useProjectStore = create<ProjectState>()(
           });
         },
 
-        // ── Blocks ──────────────────────────────────────────────────────────
+        // ── Scene groups ─────────────────────────────────────────────────────
 
-        addBlock: (sceneId, block) => {
+        addSceneGroup: ({ name, notes }) => {
+          get().saveSnapshot();
+          const id = uuid();
+          set(s => ({
+            project: { ...s.project, sceneGroups: [...s.project.sceneGroups, { id, name, notes }] },
+          }));
+        },
+
+        updateSceneGroup: (id, patch) => {
+          set(s => ({
+            project: {
+              ...s.project,
+              sceneGroups: s.project.sceneGroups.map(g => g.id === id ? { ...g, ...patch } : g),
+            },
+          }));
+        },
+
+        deleteSceneGroup: (id) => {
           get().saveSnapshot();
           set(s => ({
-            project: updateScene(s.project, sceneId, sc => ({ ...sc, blocks: [...sc.blocks, block] })),
+            project: {
+              ...s.project,
+              sceneGroups: s.project.sceneGroups.filter(g => g.id !== id),
+              scenes: s.project.scenes.map(sc =>
+                sc.groupId === id ? { ...sc, groupId: undefined } : sc,
+              ),
+            },
+          }));
+        },
+
+        deleteSceneGroupWithScenes: (id) => {
+          get().saveSnapshot();
+          set(s => {
+            const remaining = s.project.scenes.filter(sc => sc.groupId !== id);
+            const activeSceneId = remaining.some(sc => sc.id === s.activeSceneId)
+              ? s.activeSceneId
+              : (remaining[0]?.id ?? null);
+            return {
+              project: {
+                ...s.project,
+                sceneGroups: s.project.sceneGroups.filter(g => g.id !== id),
+                scenes: remaining,
+              },
+              activeSceneId,
+            };
+          });
+        },
+
+        moveSceneToGroup: (sceneId, groupId, overId) => {
+          get().saveSnapshot();
+          set(s => {
+            const scenes = [...s.project.scenes];
+            const idx = scenes.findIndex(sc => sc.id === sceneId);
+            if (idx === -1) return s;
+
+            const movedScene: Scene = { ...scenes[idx] };
+            if (groupId) movedScene.groupId = groupId;
+            else delete movedScene.groupId;
+
+            scenes.splice(idx, 1);
+
+            if (overId) {
+              const overIdx = scenes.findIndex(sc => sc.id === overId);
+              if (overIdx !== -1) {
+                scenes.splice(overIdx + 1, 0, movedScene);
+                return { project: { ...s.project, scenes } };
+              }
+            }
+
+            // Append after the last scene in the target group (or ungrouped block)
+            let insertAt = -1;
+            for (let i = scenes.length - 1; i >= 0; i--) {
+              const scGroupId = scenes[i].groupId ?? null;
+              if (scGroupId === groupId) { insertAt = i + 1; break; }
+            }
+            if (insertAt === -1) scenes.push(movedScene);
+            else scenes.splice(insertAt, 0, movedScene);
+
+            return { project: { ...s.project, scenes } };
+          });
+        },
+
+        reorderGroupScenes: (reorderedScenes) => {
+          get().saveSnapshot();
+          set(s => {
+            if (reorderedScenes.length === 0) return s;
+            const groupId = reorderedScenes[0].groupId ?? null;
+            const allScenes = s.project.scenes;
+
+            // Collect the positions of scenes belonging to this group
+            const positions: number[] = [];
+            allScenes.forEach((sc, i) => {
+              if ((sc.groupId ?? null) === groupId) positions.push(i);
+            });
+
+            const newScenes = [...allScenes];
+            reorderedScenes.forEach((sc, i) => { newScenes[positions[i]] = sc; });
+            return { project: { ...s.project, scenes: newScenes } };
+          });
+        },
+
+        // ── Blocks ──────────────────────────────────────────────────────────
+
+        addBlock: (sceneId, block, insertIndex) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: updateScene(s.project, sceneId, sc => {
+              const blocks = [...sc.blocks];
+              if (insertIndex !== undefined) blocks.splice(insertIndex, 0, block);
+              else blocks.push(block);
+              return { ...sc, blocks };
+            }),
           }));
         },
 
@@ -746,12 +981,16 @@ export const useProjectStore = create<ProjectState>()(
           }));
         },
 
-        pasteToScene: (sceneId, block) => {
+        pasteToScene: (sceneId, block, insertIndex) => {
           get().saveSnapshot();
           set(s => ({
-            project: updateScene(s.project, sceneId, sc => ({
-              ...sc, blocks: [...sc.blocks, deepCloneBlock(block)],
-            })),
+            project: updateScene(s.project, sceneId, sc => {
+              const cloned = deepCloneBlock(block);
+              const blocks = [...sc.blocks];
+              if (insertIndex !== undefined) blocks.splice(insertIndex, 0, cloned);
+              else blocks.push(cloned);
+              return { ...sc, blocks };
+            }),
           }));
         },
 
@@ -1005,12 +1244,13 @@ export const useProjectStore = create<ProjectState>()(
 
         addCharacter: (char) => {
           get().saveSnapshot();
+          const charId = uuid();
           set(s => {
-            const charId = uuid();
             const { group, varIds } = buildCharVarNodes(char.name, {
               bgColor: char.bgColor,
               borderColor: char.borderColor,
               nameColor: char.nameColor,
+              textColor: char.textColor ?? '#e2e8f0',
               avatarConfig: char.avatarConfig,
             });
             const character: Character = { ...char, id: charId, varIds };
@@ -1022,6 +1262,7 @@ export const useProjectStore = create<ProjectState>()(
               },
             };
           });
+          return charId;
         },
 
         updateCharacter: (id, patch) =>
@@ -1035,23 +1276,15 @@ export const useProjectStore = create<ProjectState>()(
             if (oldChar.varIds) {
               const { varIds } = oldChar;
 
-              // Name changed → rename group, rename variable identifiers, update defaultValue
+              // Name changed → rename group + update name var's defaultValue
               if (patch.name !== undefined && patch.name !== oldChar.name) {
-                const newPrefix = charToVarPrefix(patch.name);
-                // Rename the top-level group to the new character name
-                variableNodes = updateGroupNameInTree(variableNodes, varIds.groupId, patch.name);
-                // Rename all four variable identifiers AND update the name var's defaultValue
+                variableNodes = updateGroupNameInTree(variableNodes, varIds.groupId, charToVarPrefix(patch.name));
                 variableNodes = updateVarInTree(variableNodes, varIds.nameVarId, {
-                  name: `${newPrefix}_name`,
                   defaultValue: patch.name,
                   description: `Character name "${patch.name}"`,
                 });
-                variableNodes = updateVarInTree(variableNodes, varIds.bgColorVarId,     { name: `${newPrefix}_bgColor` });
-                variableNodes = updateVarInTree(variableNodes, varIds.borderColorVarId, { name: `${newPrefix}_borderColor` });
-                variableNodes = updateVarInTree(variableNodes, varIds.nameColorVarId,   { name: `${newPrefix}_nameColor` });
                 if (varIds.avatarVarId) {
-                  variableNodes = updateVarInTree(variableNodes, varIds.avatarVarId,    {
-                    name: `${newPrefix}_avatar`,
+                  variableNodes = updateVarInTree(variableNodes, varIds.avatarVarId, {
                     description: `Avatar URL for character "${patch.name}" (empty = hidden)`,
                   });
                 }
@@ -1066,6 +1299,9 @@ export const useProjectStore = create<ProjectState>()(
               }
               if (patch.nameColor !== undefined) {
                 variableNodes = updateVarInTree(variableNodes, varIds.nameColorVarId, { defaultValue: patch.nameColor });
+              }
+              if (patch.textColor !== undefined && varIds.textColorVarId) {
+                variableNodes = updateVarInTree(variableNodes, varIds.textColorVarId, { defaultValue: patch.textColor });
               }
               // Avatar config change → sync $prefix_avatar defaultValue (static src only)
               if (patch.avatarConfig !== undefined && varIds.avatarVarId) {
@@ -1100,11 +1336,47 @@ export const useProjectStore = create<ProjectState>()(
           });
         },
 
+        // ── Watchers ───────────────────────────────────────────────────────────
+
+        addWatcher: () => {
+          get().saveSnapshot();
+          const w: Watcher = {
+            id: uuid(),
+            label: '',
+            enabled: true,
+            condition: { variableId: '', operator: '==', value: '' },
+            actions: [],
+          };
+          set(s => ({ project: { ...s.project, watchers: [...(s.project.watchers ?? []), w] } }));
+        },
+
+        updateWatcher: (id, patch) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: {
+              ...s.project,
+              watchers: (s.project.watchers ?? []).map(w => w.id === id ? { ...w, ...patch } : w),
+            },
+          }));
+        },
+
+        deleteWatcher: (id) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: {
+              ...s.project,
+              watchers: (s.project.watchers ?? []).filter(w => w.id !== id),
+            },
+          }));
+        },
+
         // ── Variable tree ──────────────────────────────────────────────────────
 
         addVariableGroup: (parentId, name) => {
           get().saveSnapshot();
-          const group: VariableGroup = { kind: 'group', id: uuid(), name, children: [] };
+          const siblings = getSiblings(get().project.variableNodes, parentId);
+          const safeName = ensureUniqueName(name, siblings);
+          const group: VariableGroup = { kind: 'group', id: uuid(), name: safeName, children: [] };
           set(s => ({
             project: {
               ...s.project,
@@ -1115,7 +1387,9 @@ export const useProjectStore = create<ProjectState>()(
 
         addVariable: (parentId, v) => {
           get().saveSnapshot();
-          const variable: Variable = { kind: 'variable', id: uuid(), ...v };
+          const siblings = getSiblings(get().project.variableNodes, parentId);
+          const safeName = ensureUniqueName(v.name, siblings);
+          const variable: Variable = { kind: 'variable', id: uuid(), ...v, name: safeName };
           set(s => ({
             project: {
               ...s.project,
@@ -1300,6 +1574,7 @@ export const useProjectStore = create<ProjectState>()(
         project: state.project,
         activeSceneId: state.activeSceneId,
         activeSidebarTab: state.activeSidebarTab,
+        sidebarWidth: state.sidebarWidth,
         projectDir: state.projectDir,
       }),
       onRehydrateStorage: () => (state) => {

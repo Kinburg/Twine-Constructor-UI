@@ -3,6 +3,7 @@ import type { ImageBlock, ImageBoundMapping, Asset } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { VariablePicker } from '../shared/VariablePicker';
 
 // ─── Asset image picker ───────────────────────────────────────────────────────
 // Dropdown from registered assets + manual path/URL input.
@@ -183,16 +184,12 @@ export function ImageBlockEditor({
           {/* Variable selector */}
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.variableLabel}</label>
-            <select
-              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+            <VariablePicker
               value={block.variableId ?? ''}
-              onChange={e => update({ variableId: e.target.value })}
-            >
-              <option value="">{t.imageBlock.selectVariable}</option>
-              {variables.map(v => (
-                <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
-              ))}
-            </select>
+              onChange={id => update({ variableId: id })}
+              nodes={project.variableNodes}
+              placeholder={t.imageBlock.selectVariable}
+            />
           </div>
 
           {/* Mapping list */}
@@ -250,21 +247,25 @@ export function ImageBlockEditor({
 
                   {/* Range */}
                   {mt === 'range' && (
-                    <div className="flex gap-1 items-center">
-                      <span className="text-xs text-slate-500 shrink-0 w-12">{t.imageBlock.fromLabel}</span>
-                      <input
-                        className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                        placeholder="0"
-                        value={m.rangeMin ?? ''}
-                        onChange={e => patchMapping(i, { rangeMin: e.target.value })}
-                      />
-                      <span className="text-xs text-slate-500 shrink-0">{t.imageBlock.toLabel}</span>
-                      <input
-                        className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                        placeholder="20"
-                        value={m.rangeMax ?? ''}
-                        onChange={e => patchMapping(i, { rangeMax: e.target.value })}
-                      />
+                    <div className="grid grid-cols-2 gap-1">
+                      <div className="flex gap-1 items-center">
+                        <span className="text-xs text-slate-500 shrink-0 w-12">{t.imageBlock.fromLabel}</span>
+                        <input
+                          className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                          placeholder="0"
+                          value={m.rangeMin ?? ''}
+                          onChange={e => patchMapping(i, { rangeMin: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex gap-1 items-center">
+                        <span className="text-xs text-slate-500 shrink-0">{t.imageBlock.toLabel}</span>
+                        <input
+                          className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
+                          placeholder="20"
+                          value={m.rangeMax ?? ''}
+                          onChange={e => patchMapping(i, { rangeMax: e.target.value })}
+                        />
+                      </div>
                     </div>
                   )}
 

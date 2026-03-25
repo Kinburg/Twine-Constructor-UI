@@ -13,6 +13,14 @@ interface EditorState {
   /** Current search query string (empty = no search active). */
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+
+  /** Whether the Project Settings modal is open. */
+  projectSettingsOpen: boolean;
+  setProjectSettingsOpen: (open: boolean) => void;
+
+  /** Whether the Editor Preferences modal is open. */
+  editorPrefsOpen: boolean;
+  setEditorPrefsOpen: (open: boolean) => void;
 }
 
 export const useEditorStore = create<EditorState>()((set) => ({
@@ -22,4 +30,10 @@ export const useEditorStore = create<EditorState>()((set) => ({
 
   searchQuery: '',
   setSearchQuery: (q) => set({ searchQuery: q }),
+
+  projectSettingsOpen: false,
+  setProjectSettingsOpen: (open) => set({ projectSettingsOpen: open }),
+
+  editorPrefsOpen: false,
+  setEditorPrefsOpen: (open) => set({ editorPrefsOpen: open }),
 }));

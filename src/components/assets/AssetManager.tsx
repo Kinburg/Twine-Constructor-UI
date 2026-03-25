@@ -3,6 +3,7 @@ import { useProjectStore } from '../../store/projectStore';
 import type { Asset, AssetGroup, AssetTreeNode } from '../../types';
 import { fsApi, joinPath, safeName, toLocalFileUrl } from '../../lib/fsApi';
 import { useT } from '../../i18n';
+import { useConfirm } from '../shared/ConfirmModal';
 
 // ─── Video extensions ─────────────────────────────────────────────────────────
 
@@ -250,6 +251,7 @@ function GroupRow({
   onStartAddGroup, onAddFiles, onDelete, projectDir,
 }: NodeViewProps & { group: AssetGroup }) {
   const t = useT();
+  const { ask, modal: confirmModal } = useConfirm();
   const isOpen = expandedIds.has(group.id);
   const indent = depth * 14;
 
@@ -295,10 +297,10 @@ function GroupRow({
           <ActionBtn
             title={t.assets.deleteGroupTitle}
             danger
-            onClick={() => {
-              if (confirm(t.assets.confirmDeleteGroup(group.name)))
-                onDelete(group.id);
-            }}
+            onClick={() => ask(
+              { message: t.assets.confirmDeleteGroup(group.name), variant: 'danger' },
+              () => onDelete(group.id),
+            )}
           >
             ✕
           </ActionBtn>
@@ -332,6 +334,7 @@ function GroupRow({
           )}
         </div>
       )}
+      {confirmModal}
     </div>
   );
 }

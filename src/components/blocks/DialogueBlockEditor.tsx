@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core';
@@ -23,6 +23,8 @@ import { RawBlockEditor } from './RawBlockEditor';
 import { TableBlockEditor } from './TableBlockEditor';
 import { NoteBlockEditor } from './NoteBlockEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { TextInsertToolbar } from '../shared/TextInsertToolbar';
+import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
 
 /**
  * Converts an avatar src value to a URL the editor renderer can actually load:
@@ -216,6 +218,9 @@ export function DialogueBlockEditor({
   const t = useT();
   const update = onUpdate ?? ((p: Partial<DialogueBlock>) => updateBlock(sceneId, block.id, p as never));
   const { characters } = project;
+  const vars = flattenVariables(project.variableNodes);
+  const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
+  const dialogueRef = useRef<HTMLTextAreaElement>(null);
 
   const selectedChar = characters.find(c => c.id === block.characterId);
   const align = block.align ?? 'left';
@@ -349,15 +354,27 @@ export function DialogueBlockEditor({
         )}
 
         {/* Name + text area */}
-        <div style={bodyStyle}>
+        <div style={bodyStyle} className="relative">
           {selectedChar && (
             <span className="text-xs font-bold block mb-1" style={{ color: selectedChar.nameColor, textAlign: isRight ? 'right' : 'left' }}>
               {selectedChar.name}{block.nameSuffix ? ` (${block.nameSuffix})` : ''}
             </span>
           )}
+          <div className={`absolute top-0.5 z-10 ${isRight ? 'left-0.5' : 'right-0.5'}`}>
+            <TextInsertToolbar
+              targetRef={dialogueRef}
+              value={block.text}
+              onChange={text => update({ text })}
+              vars={vars}
+              imageAssets={imgAssets}
+              variableNodes={project.variableNodes}
+              scenes={project.scenes}
+            />
+          </div>
           <textarea
-            className="w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500"
-            style={{ color: selectedChar ? '#e2e8f0' : undefined }}
+            ref={dialogueRef}
+            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-24' : 'pr-24'}`}
+            style={{ color: selectedChar ? (selectedChar.textColor ?? '#e2e8f0') : undefined }}
             placeholder={t.dialogueBlock.linePlaceholder}
             value={block.text}
             onFocus={saveSnapshot}

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -13,17 +13,15 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { useProjectStore } from '../../store/projectStore';
-import { useEditorStore } from '../../store/editorStore';
-import { useT, blockTypeLabel } from '../../i18n';
+import { useT } from '../../i18n';
 import { BlockItem } from '../blocks/BlockItem';
-import { AddBlockMenu } from '../blocks/AddBlockMenu';
-import { SceneSettingsModal } from './SceneSettingsModal';
+import { InsertZone } from '../blocks/InsertZone';
+import { SceneModal } from './SceneModal';
 import { SYSTEM_TAGS, SYSTEM_TAG_COLORS } from '../../types';
 import type { Block, SystemTag } from '../../types';
 
 export function SceneEditor() {
-  const { project, activeSceneId, reorderBlocks, pasteToScene } = useProjectStore();
-  const { clipboardBlock } = useEditorStore();
+  const { project, activeSceneId, reorderBlocks, updateSceneSettings } = useProjectStore();
   const t = useT();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
@@ -51,11 +49,17 @@ export function SceneEditor() {
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {settingsOpen && (
-        <SceneSettingsModal scene={scene} onClose={() => setSettingsOpen(false)} />
+        <SceneModal
+          mode="edit"
+          initial={{ name: scene.name, tags: scene.tags, notes: scene.notes }}
+          takenNames={project.scenes.filter(s => s.id !== scene.id).map(s => s.name)}
+          onSave={data => updateSceneSettings(scene.id, data)}
+          onClose={() => setSettingsOpen(false)}
+        />
       )}
 
       {/* Scene header */}
-      <div className="px-4 py-2 bg-slate-800/50 border-b border-slate-700 flex items-center gap-3 shrink-0">
+      <div className="scene-header px-4 py-2 bg-slate-800/50 border-b border-slate-700 flex items-center gap-3 shrink-0">
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">{t.scene.label}</span>
           <span className="text-sm font-semibold text-white">{scene.name}</span>
@@ -96,34 +100,33 @@ export function SceneEditor() {
       {/* Blocks */}
       <div className="flex-1 relative" style={{ minHeight: 0 }}>
         <div className="absolute inset-0 overflow-y-auto">
-          <div className="px-4 py-3 flex flex-col gap-2">
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext
-                items={scene.blocks.map((b: Block) => b.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {scene.blocks.map((block: Block) => (
-                  <BlockItem key={block.id} block={block} sceneId={scene.id} />
-                ))}
-              </SortableContext>
-            </DndContext>
-
-            {scene.blocks.length === 0 && (
-              <div className="text-slate-600 text-sm text-center py-8">
-                {t.scene.empty}
-              </div>
-            )}
-
-            <AddBlockMenu sceneId={scene.id} />
-
-            {clipboardBlock && (
-              <button
-                className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/50 rounded px-2 py-1 transition-colors cursor-pointer text-left border border-dashed border-indigo-800/50"
-                title={t.block.paste(blockTypeLabel(t, clipboardBlock.type))}
-                onClick={() => pasteToScene(scene.id, clipboardBlock)}
-              >
-                {t.block.paste(blockTypeLabel(t, clipboardBlock.type))}
-              </button>
+          <div className="blocks-container px-4 py-3 flex flex-col gap-0">
+            {scene.blocks.length > 0 ? (
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext
+                  items={scene.blocks.map((b: Block) => b.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <InsertZone sceneId={scene.id} insertIndex={0} />
+                  {scene.blocks.map((block: Block, i: number) => (
+                    <Fragment key={block.id}>
+                      <BlockItem block={block} sceneId={scene.id} />
+                      <InsertZone
+                        sceneId={scene.id}
+                        insertIndex={i + 1}
+                        isLast={i === scene.blocks.length - 1}
+                      />
+                    </Fragment>
+                  ))}
+                </SortableContext>
+              </DndContext>
+            ) : (
+              <>
+                <div className="text-slate-600 text-sm text-center py-8">
+                  {t.scene.empty}
+                </div>
+                <InsertZone sceneId={scene.id} insertIndex={0} isLast />
+              </>
             )}
           </div>
         </div>

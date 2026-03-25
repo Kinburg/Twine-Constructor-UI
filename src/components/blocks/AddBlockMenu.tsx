@@ -22,6 +22,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'checkbox':     '☑',
   'radio':        '🔵',
   'function':     'ƒ',
+  'popup':        '🪟',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -69,6 +70,7 @@ export function makeBlock(type: BlockType): Block {
       },
       actions: [],
     };
+    case 'popup':        return { id, type, targetSceneId: '' };
   }
 }
 
@@ -78,13 +80,19 @@ interface Props {
   onAdd?: (block: Block) => void;
   /** Hide certain block types (e.g. prevent nesting conditions) */
   excludeTypes?: BlockType[];
+  /** Start in open state (used by InsertZone) */
+  initialOpen?: boolean;
+  /** Called when cancel is clicked in initialOpen mode */
+  onClose?: () => void;
 }
 
-export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
+export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, onClose }: Props) {
   const { addBlock } = useProjectStore();
   const t = useT();
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(initialOpen ?? false);
   const ref = useRef<HTMLDivElement>(null);
+
+  const close = () => { setOpen(false); onClose?.(); };
 
   const BLOCK_ENTRIES: { type: BlockType; label: string; icon: string; desc: string }[] = [
     { type: 'text',         icon: BLOCK_ICONS['text'],         label: t.addBlock.text.label,        desc: t.addBlock.text.desc },
@@ -105,6 +113,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
     { type: 'checkbox',     icon: BLOCK_ICONS['checkbox'],     label: t.addBlock.checkbox.label,    desc: t.addBlock.checkbox.desc },
     { type: 'radio',        icon: BLOCK_ICONS['radio'],        label: t.addBlock.radio.label,       desc: t.addBlock.radio.desc },
     { type: 'function',     icon: BLOCK_ICONS['function'],     label: t.addBlock.function.label,    desc: t.addBlock.function.desc },
+    { type: 'popup',        icon: BLOCK_ICONS['popup'],        label: t.addBlock.popup.label,        desc: t.addBlock.popup.desc },
   ];
 
   const add = (type: BlockType) => {
@@ -147,7 +156,7 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [] }: Props) {
           </div>
           <button
             className="w-full py-1 text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
-            onClick={() => setOpen(false)}
+            onClick={close}
           >
             {t.addBlock.cancel}
           </button>

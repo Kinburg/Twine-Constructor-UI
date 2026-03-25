@@ -1,8 +1,12 @@
+import { useRef } from 'react';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { ButtonBlock, ButtonAction, ButtonStyle, VarOperator } from '../../types';
+import { SYSTEM_TAGS } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
+import { VarInsertButton } from '../shared/VarInsertButton';
+import { VariablePicker } from '../shared/VariablePicker';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -178,6 +182,61 @@ interface ActionRowProps {
 
 function ActionRow({ action, variables, onChange, onDelete, onFocusValue }: ActionRowProps) {
   const t = useT();
+  const { project } = useProjectStore();
+  const isPopup = action.type === 'open-popup';
+
+  // Popup action row
+  if (isPopup) {
+    const popupScenes = project.scenes.filter(s => s.tags.includes('popup'));
+    return (
+      <div className="flex flex-col gap-1 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
+        <div className="flex items-center gap-1.5">
+          <select
+            className="w-24 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+            value="open-popup"
+            onChange={e => {
+              if (e.target.value === 'set-variable') {
+                onChange({ type: undefined, variableId: '', operator: '=' as VarOperator, value: '' } as Partial<ButtonAction>);
+              }
+            }}
+          >
+            <option value="set-variable">{t.actionType.setVariable}</option>
+            <option value="open-popup">{t.actionType.openPopup}</option>
+          </select>
+          {popupScenes.length === 0 ? (
+            <span className="flex-1 text-xs text-slate-500 italic">{t.actionType.noPopupScenes}</span>
+          ) : (
+            <select
+              className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+              value={action.targetSceneId}
+              onChange={e => onChange({ targetSceneId: e.target.value } as Partial<ButtonAction>)}
+            >
+              <option value="">— select —</option>
+              {popupScenes.map(s => (
+                <option key={s.id} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+          )}
+          <button
+            className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
+            title={t.buttonBlock.deleteAction}
+            onClick={onDelete}
+          >✕</button>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-slate-500 w-24 shrink-0">{t.actionType.popupTitle}</span>
+          <input
+            className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none"
+            placeholder={t.actionType.popupTitlePlaceholder}
+            value={action.title ?? ''}
+            onChange={e => onChange({ title: e.target.value } as Partial<ButtonAction>)}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Variable set action row
   const selVar = variables.find(v => v.id === action.variableId);
   const isArray = selVar?.varType === 'array';
   const accessorKind = action.accessor?.kind ?? 'whole';
@@ -194,26 +253,37 @@ function ActionRow({ action, variables, onChange, onDelete, onFocusValue }: Acti
   return (
     <div className="flex flex-col gap-1 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
       <div className="flex items-center gap-1.5">
-        {/* Variable select */}
+        {/* Action type selector */}
         <select
-          className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
-          value={action.variableId}
+          className="w-24 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+          value="set-variable"
           onChange={e => {
-            const newVar = variables.find(v => v.id === e.target.value);
+            if (e.target.value === 'open-popup') {
+              onChange({ type: 'open-popup', variableId: undefined, operator: undefined, value: undefined, accessor: undefined, targetSceneId: '', title: '' } as unknown as Partial<ButtonAction>);
+            }
+          }}
+        >
+          <option value="set-variable">{t.actionType.setVariable}</option>
+          <option value="open-popup">{t.actionType.openPopup}</option>
+        </select>
+
+        {/* Variable select */}
+        <VariablePicker
+          value={action.variableId}
+          onChange={id => {
+            const newVar = variables.find(v => v.id === id);
             const leavingArray = isArray && newVar?.varType !== 'array';
             const arrayOpOnNonArray = leavingArray && (action.operator === 'push' || action.operator === 'remove' || action.operator === 'clear');
             onChange({
-              variableId: e.target.value,
+              variableId: id,
               ...(arrayOpOnNonArray ? { operator: '=' as VarOperator } : {}),
               ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
-        >
-          <option value="">{t.buttonBlock.selectVariable}</option>
-          {variables.map(v => (
-            <option key={v.id} value={v.id}>${v.name}</option>
-          ))}
-        </select>
+          nodes={project.variableNodes}
+          placeholder={t.buttonBlock.selectVariable}
+          className="flex-1 min-w-0"
+        />
 
         {/* Operator */}
         <select
@@ -280,6 +350,7 @@ export function ButtonBlockEditor({
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
   const variables = flattenVariables(project.variableNodes);
+  const labelRef = useRef<HTMLInputElement>(null);
 
   // Patch helpers
   const patchStyle = (patch: Partial<ButtonStyle>) =>
@@ -309,11 +380,19 @@ export function ButtonBlockEditor({
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-24 shrink-0">{t.buttonBlock.labelField}</label>
         <input
+          ref={labelRef}
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none"
           placeholder={t.buttonBlock.labelPlaceholder}
           value={block.label}
           onFocus={saveSnapshot}
           onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
+        />
+        <VarInsertButton
+          targetRef={labelRef}
+          value={block.label}
+          onChange={label => updateBlock(sceneId, block.id, { label })}
+          vars={variables}
+          variableNodes={project.variableNodes}
         />
       </div>
 

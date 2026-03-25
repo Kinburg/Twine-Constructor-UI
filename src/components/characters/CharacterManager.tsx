@@ -1,15 +1,21 @@
-import { useState, useEffect, useRef } from 'react';
-import { useProjectStore, flattenVariables, flattenAssets } from '../../store/projectStore';
-import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
-
-function resolveEditorSrc(src: string, projectDir: string | null): string {
-  if (!src) return '';
-  if (/^https?:\/\//i.test(src) || src.startsWith('data:') || src.startsWith('localfile://')) return src;
-  if (projectDir) return toLocalFileUrl(joinPath(projectDir, src));
-  return '';
-}
-import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset } from '../../types';
+import { useState } from 'react';
+import { useProjectStore } from '../../store/projectStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
+import type { Character, VariableTreeNode } from '../../types';
 import { useT } from '../../i18n';
+import { CharacterModal } from './CharacterModal';
+import { useConfirm } from '../shared/ConfirmModal';
+
+function findGroupInTree(nodes: VariableTreeNode[], id: string): VariableTreeNode | null {
+  for (const n of nodes) {
+    if (n.kind === 'group' && n.id === id) return n;
+    if (n.kind === 'group') {
+      const found = findGroupInTree(n.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
 
 const DEFAULT_COLORS = [
   { nameColor: '#7dd3fc', bgColor: '#0c2340', borderColor: '#0ea5e9' },
@@ -26,54 +32,62 @@ function nextColor() {
   return c;
 }
 
-function defaultAvatarConfig(): AvatarConfig {
-  return { mode: 'static', src: '', variableId: '', mapping: [], defaultSrc: '' };
-}
-
-function newChar(defaultName: string): Omit<Character, 'id'> {
+function newCharDraft(name: string): Omit<Character, 'id'> {
   const c = nextColor();
   return {
-    name: defaultName,
+    name,
     nameColor: c.nameColor,
+    textColor: '#e2e8f0',
     bgColor: c.bgColor,
     borderColor: c.borderColor,
-    avatarConfig: defaultAvatarConfig(),
+    avatarConfig: { mode: 'static', src: '', variableId: '', mapping: [], defaultSrc: '' },
   };
 }
 
+type ModalState =
+  | { mode: 'create'; draft: Omit<Character, 'id'> }
+  | { mode: 'edit'; char: Character }
+  | null;
+
 export function CharacterManager() {
   const t = useT();
-  const { project, addCharacter, updateCharacter, deleteCharacter } = useProjectStore();
+  const { project, addCharacter, updateCharacter, deleteCharacter, addVariable, addVariableGroup } = useProjectStore();
   const { characters } = project;
-  const vars = flattenVariables(project.variableNodes);
-  const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const prevLengthRef = useRef(characters.length);
+  const [modalState, setModalState] = useState<ModalState>(null);
+  const confirmDeleteCharacter = useEditorPrefsStore(s => s.confirmDeleteCharacter);
+  const { ask, modal: confirmModal } = useConfirm();
 
-  // Auto-expand the latest added character.
-  useEffect(() => {
-    if (characters.length > prevLengthRef.current && characters.length > 0) {
-      const newest = characters[characters.length - 1];
-      setExpandedId(newest.id);
-    }
-    prevLengthRef.current = characters.length;
-  }, [characters.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  const openCreate = () => {
+    const baseName = t.characters.defaultName;
+    const existing = characters.map(c => c.name);
+    let name = baseName;
+    let i = 2;
+    while (existing.includes(name)) { name = `${baseName}${i}`; i++; }
+    setModalState({ mode: 'create', draft: newCharDraft(name) });
+  };
 
   return (
     <div className="p-2 flex flex-col gap-1">
+      {/* Add toolbar */}
+      <div className="flex gap-1 pb-1 border-b border-slate-800 mb-1">
+        <button
+          className="flex-1 text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          onClick={openCreate}
+        >
+          {t.characters.add}
+        </button>
+      </div>
+
       {characters.map(char => (
-        <CharacterCard
+        <CharacterRow
           key={char.id}
           char={char}
-          vars={vars}
-          imgAssets={imgAssets}
-          expanded={expandedId === char.id}
-          onToggle={() => setExpandedId(expandedId === char.id ? null : char.id)}
-          onUpdate={patch => updateCharacter(char.id, patch)}
+          onEdit={() => setModalState({ mode: 'edit', char })}
           onDelete={() => {
-            if (confirm(t.characters.confirmDelete(char.name))) {
+            if (confirmDeleteCharacter) {
+              ask({ message: t.characters.confirmDelete(char.name), variant: 'danger' }, () => deleteCharacter(char.id));
+            } else {
               deleteCharacter(char.id);
-              if (expandedId === char.id) setExpandedId(null);
             }
           }}
         />
@@ -83,453 +97,79 @@ export function CharacterManager() {
         <p className="text-xs text-slate-600 italic px-2 py-1">{t.characters.empty}</p>
       )}
 
-      <button
-        className="mt-1 text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 text-left transition-colors cursor-pointer"
-        onClick={() => addCharacter(newChar(t.characters.defaultName))}
-      >
-        {t.characters.add}
-      </button>
+      {modalState && (
+        <CharacterModal
+          mode={modalState.mode}
+          charId={modalState.mode === 'edit' ? modalState.char.id : undefined}
+          initial={modalState.mode === 'create' ? modalState.draft : modalState.char}
+          takenNames={characters
+            .filter(c => modalState.mode !== 'edit' || c.id !== modalState.char.id)
+            .map(c => c.name)}
+          onSave={(data, pendingNodes: VariableTreeNode[]) => {
+            if (modalState.mode === 'create') {
+              const newId = addCharacter(data);
+              if (pendingNodes.length > 0) {
+                const newChar = useProjectStore.getState().project.characters.find(c => c.id === newId);
+                const groupId = newChar?.varIds?.groupId ?? null;
+                const addNodesRecursive = (nodes: VariableTreeNode[], parentId: string | null) => {
+                  for (const n of nodes) {
+                    if (n.kind === 'variable') {
+                      addVariable(parentId, { name: n.name, varType: n.varType, defaultValue: n.defaultValue, description: n.description });
+                    } else {
+                      addVariableGroup(parentId, n.name);
+                      // Find the just-added group to get its store-generated ID
+                      const storeNodes = useProjectStore.getState().project.variableNodes;
+                      const parentGroup = parentId ? findGroupInTree(storeNodes, parentId) : null;
+                      const siblings = parentGroup ? parentGroup.children : storeNodes;
+                      const addedGroup = siblings.find(s => s.kind === 'group' && s.name === n.name);
+                      if (addedGroup && n.children.length > 0) {
+                        addNodesRecursive(n.children, addedGroup.id);
+                      }
+                    }
+                  }
+                };
+                addNodesRecursive(pendingNodes, groupId);
+              }
+            } else {
+              updateCharacter(modalState.char.id, data);
+            }
+          }}
+          onClose={() => setModalState(null)}
+        />
+      )}
+      {confirmModal}
     </div>
   );
 }
 
-function CharacterCard({
+function CharacterRow({
   char,
-  vars,
-  imgAssets,
-  expanded,
-  onToggle,
-  onUpdate,
+  onEdit,
   onDelete,
 }: {
   char: Character;
-  vars: Variable[];
-  imgAssets: Asset[];
-  expanded: boolean;
-  onToggle: () => void;
-  onUpdate: (patch: Partial<Character>) => void;
+  onEdit: () => void;
   onDelete: () => void;
 }) {
   const t = useT();
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  useEffect(() => {
-    if (expanded) {
-      const id = requestAnimationFrame(() => nameInputRef.current?.focus());
-      return () => cancelAnimationFrame(id);
-    }
-  }, [expanded]);
-
-  const avatarCfg: AvatarConfig = char.avatarConfig ?? defaultAvatarConfig();
-
-  return (
-    <div className="rounded border border-slate-700 overflow-hidden">
-      {/* Header row */}
-      <div
-        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-slate-800 transition-colors"
-        onClick={onToggle}
-      >
-        <div
-          className="w-3 h-3 rounded-full shrink-0"
-          style={{ background: char.borderColor }}
-        />
-        <span className="flex-1 text-xs text-white truncate" style={{ color: char.nameColor }}>
-          {char.name || t.characters.noName}
-        </span>
-        <button
-          className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
-          onClick={e => { e.stopPropagation(); onDelete(); }}
-        >
-          🗑️
-        </button>
-        <span className="text-slate-500 text-xs">{expanded ? '▲' : '▼'}</span>
-      </div>
-
-      {/* Expanded form */}
-      {expanded && (
-        <div
-          className="px-3 py-2 flex flex-col gap-2 border-t border-slate-700"
-          style={{ borderLeft: `3px solid ${char.borderColor}` }}
-        >
-          <Field label={t.characters.fieldName}>
-            <input
-              ref={nameInputRef}
-              className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              value={char.name}
-              onChange={e => onUpdate({ name: e.target.value })}
-            />
-          </Field>
-          <Field label={t.characters.fieldNameColor}>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                className="w-8 h-7 rounded cursor-pointer bg-transparent border-0"
-                value={char.nameColor}
-                onChange={e => onUpdate({ nameColor: e.target.value })}
-              />
-              <span className="text-xs font-mono" style={{ color: char.nameColor }}>{char.nameColor}</span>
-            </div>
-          </Field>
-          <Field label={t.characters.fieldDialogBg}>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                className="w-8 h-7 rounded cursor-pointer bg-transparent border-0"
-                value={char.bgColor}
-                onChange={e => onUpdate({ bgColor: e.target.value })}
-              />
-              <span className="text-xs font-mono text-slate-300">{char.bgColor}</span>
-            </div>
-          </Field>
-          <Field label={t.characters.fieldAccent}>
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                className="w-8 h-7 rounded cursor-pointer bg-transparent border-0"
-                value={char.borderColor}
-                onChange={e => onUpdate({ borderColor: e.target.value })}
-              />
-              <span className="text-xs font-mono text-slate-300">{char.borderColor}</span>
-            </div>
-          </Field>
-
-          {/* Avatar settings */}
-          <AvatarEditor
-            cfg={avatarCfg}
-            vars={vars}
-            imgAssets={imgAssets}
-            onChange={cfg => onUpdate({ avatarConfig: cfg })}
-          />
-
-          {/* Live preview */}
-          <CharacterPreview char={char} avatarCfg={avatarCfg} />
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Character preview ──────────────────────────────────────────────────────────
-
-function CharacterPreview({ char, avatarCfg }: { char: Character; avatarCfg: AvatarConfig }) {
-  const t = useT();
-  const { projectDir } = useProjectStore();
-
-  // Collect all srcs for bound mode cycling
-  const boundSrcs = avatarCfg.mode === 'bound'
-    ? [...avatarCfg.mapping.map(m => m.src), avatarCfg.defaultSrc].filter(Boolean)
-    : [];
-
-  const [cycleIdx, setCycleIdx] = useState(0);
-
-  // Reset cycle index when avatar config changes
-  useEffect(() => { setCycleIdx(0); }, [avatarCfg.mode, avatarCfg.variableId]);
-
-  // Cycle through bound images every 2s
-  useEffect(() => {
-    if (avatarCfg.mode !== 'bound' || boundSrcs.length <= 1) return;
-    const id = setInterval(() => setCycleIdx(i => (i + 1) % boundSrcs.length), 2000);
-    return () => clearInterval(id);
-  });  // re-evaluates each render so boundSrcs.length stays fresh
-
-  let rawSrc = '';
-  if (avatarCfg.mode === 'static' && avatarCfg.src) {
-    rawSrc = avatarCfg.src;
-  } else if (avatarCfg.mode === 'bound' && boundSrcs.length > 0) {
-    rawSrc = boundSrcs[cycleIdx % boundSrcs.length];
-  }
-  const avatarSrc = resolveEditorSrc(rawSrc, projectDir);
-
-  const [imgFailed, setImgFailed] = useState(false);
-  useEffect(() => { setImgFailed(false); }, [avatarSrc]);
-
-  const showAvatar = Boolean(avatarSrc) && !imgFailed;
-
   return (
     <div
-      className="mt-1 rounded p-2 flex gap-2 items-start"
-      style={{ background: char.bgColor, borderLeft: `4px solid ${char.borderColor}` }}
+      className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer"
+      onClick={onEdit}
     >
-      {showAvatar && (
-        <img
-          src={avatarSrc}
-          className="w-10 h-10 object-cover rounded flex-shrink-0"
-          alt=""
-          onError={() => setImgFailed(true)}
-        />
-      )}
-      <div className="flex-1">
-        <span className="text-xs font-bold block" style={{ color: char.nameColor }}>
-          {char.name || t.characters.fieldName}
-        </span>
-        <p className="text-xs text-slate-300 italic m-0">{t.characters.exampleLine}</p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Avatar editor ─────────────────────────────────────────────────────────────
-
-function AvatarEditor({
-  cfg,
-  vars,
-  imgAssets,
-  onChange,
-}: {
-  cfg: AvatarConfig;
-  vars: Variable[];
-  imgAssets: Asset[];
-  onChange: (c: AvatarConfig) => void;
-}) {
-  const t = useT();
-  return (
-    <div className="flex flex-col gap-2">
-      {/* Mode toggle */}
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.characters.avatarLabel}</label>
-        <div className="flex gap-1">
-          <button
-            className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
-              cfg.mode === 'static'
-                ? 'bg-indigo-600 border-indigo-500 text-white'
-                : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
-            }`}
-            onClick={() => onChange({ ...cfg, mode: 'static' })}
-          >
-            {t.characters.avatarStatic}
-          </button>
-          <button
-            className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
-              cfg.mode === 'bound'
-                ? 'bg-indigo-600 border-indigo-500 text-white'
-                : 'bg-slate-800 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500'
-            }`}
-            onClick={() => onChange({ ...cfg, mode: 'bound' })}
-          >
-            {t.characters.avatarDynamic}
-          </button>
-        </div>
-      </div>
-
-      {/* Static mode: asset picker + manual URL */}
-      {cfg.mode === 'static' && (
-        <Field label={t.characters.fieldImage}>
-          <AvatarImagePicker
-            imgAssets={imgAssets}
-            value={cfg.src}
-            onChange={src => onChange({ ...cfg, src })}
-          />
-        </Field>
-      )}
-
-      {/* Bound mode: variable + mappings + default */}
-      {cfg.mode === 'bound' && (
-        <div className="flex flex-col gap-1.5">
-          {/* Variable selector */}
-          <Field label={t.characters.fieldVariable}>
-            <select
-              className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-              value={cfg.variableId}
-              onChange={e => onChange({ ...cfg, variableId: e.target.value })}
-            >
-              <option value="">{t.characters.selectVariable}</option>
-              {vars.map(v => (
-                <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
-              ))}
-            </select>
-          </Field>
-
-          {/* Mappings */}
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">{t.characters.mappingsLabel}</span>
-              <button
-                className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
-                onClick={() => onChange({
-                  ...cfg,
-                  mapping: [
-                    ...cfg.mapping,
-                    {
-                      id: crypto.randomUUID(),
-                      matchType: 'exact',
-                      value: '',
-                      rangeMin: '',
-                      rangeMax: '',
-                      src: '',
-                    } satisfies ImageBoundMapping,
-                  ],
-                })}
-              >
-                {t.characters.addMapping}
-              </button>
-            </div>
-
-            {cfg.mapping.map((m, i) => (
-              <MappingEntry
-                key={m.id ?? i}
-                m={m}
-                imgAssets={imgAssets}
-                onChange={patch => onChange({
-                  ...cfg,
-                  mapping: cfg.mapping.map((x, j) => j === i ? { ...x, ...patch } : x),
-                })}
-                onDelete={() => onChange({
-                  ...cfg,
-                  mapping: cfg.mapping.filter((_, j) => j !== i),
-                })}
-              />
-            ))}
-
-            {cfg.mapping.length === 0 && (
-              <p className="text-xs text-slate-600 italic">{t.characters.noMappings}</p>
-            )}
-
-            {/* Default image */}
-            <div className="flex flex-col gap-1 mt-0.5">
-              <span className="text-xs text-slate-400">{t.characters.defaultMapping}</span>
-              <AvatarImagePicker
-                imgAssets={imgAssets}
-                value={cfg.defaultSrc}
-                onChange={defaultSrc => onChange({ ...cfg, defaultSrc })}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Mapping entry row ─────────────────────────────────────────────────────────
-
-function MappingEntry({
-  m,
-  imgAssets,
-  onChange,
-  onDelete,
-}: {
-  m: ImageBoundMapping;
-  imgAssets: Asset[];
-  onChange: (patch: Partial<ImageBoundMapping>) => void;
-  onDelete: () => void;
-}) {
-  const t = useT();
-  const mt = m.matchType ?? 'exact';
-  return (
-    <div className="flex flex-col gap-1 border border-slate-700/60 rounded p-1.5">
-      {/* Mode toggle + delete */}
-      <div className="flex items-center gap-1">
-        <select
-          className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={mt}
-          onChange={e => onChange({ matchType: e.target.value as 'exact' | 'range' })}
-        >
-          <option value="exact">{t.cellModal.matchExact}</option>
-          <option value="range">{t.cellModal.matchRange}</option>
-        </select>
-        <button
-          className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
-          onClick={onDelete}
-        >
-          ✕
-        </button>
-      </div>
-
-      {/* Exact value */}
-      {mt === 'exact' && (
-        <div className="flex gap-1 items-center">
-          <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.valueLabel}</span>
-          <input
-            className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-            placeholder="happy"
-            value={m.value}
-            onChange={e => onChange({ value: e.target.value })}
-          />
-        </div>
-      )}
-
-      {/* Range values */}
-      {mt === 'range' && (
-        <div className="flex gap-1 items-center">
-          <span className="text-xs text-slate-500 shrink-0 w-6">{t.cellModal.fromLabel}</span>
-          <input
-            className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-            placeholder="0"
-            value={m.rangeMin ?? ''}
-            onChange={e => onChange({ rangeMin: e.target.value })}
-          />
-          <span className="text-xs text-slate-500 shrink-0">{t.cellModal.toLabel}</span>
-          <input
-            className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-            placeholder="20"
-            value={m.rangeMax ?? ''}
-            onChange={e => onChange({ rangeMax: e.target.value })}
-          />
-        </div>
-      )}
-
-      {/* Image picker */}
-      <div className="flex gap-1 items-start">
-        <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">{t.cellModal.fileLabel}</span>
-        <AvatarImagePicker
-          imgAssets={imgAssets}
-          value={m.src}
-          onChange={src => onChange({ src })}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ─── Asset image picker ────────────────────────────────────────────────────────
-
-/** Dropdown from uploaded image assets + manual URL/path input (like PanelEditor's AssetImagePicker). */
-function AvatarImagePicker({
-  imgAssets,
-  value,
-  onChange,
-}: {
-  imgAssets: Asset[];
-  value: string;
-  onChange: (src: string) => void;
-}) {
-  const t = useT();
-  const matched = imgAssets.find(a => a.relativePath === value);
-
-  return (
-    <div className="flex-1 flex flex-col gap-1 min-w-0">
-      {imgAssets.length > 0 && (
-        <select
-          className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={matched?.id ?? ''}
-          onChange={e => {
-            const asset = imgAssets.find(a => a.id === e.target.value);
-            if (asset) onChange(asset.relativePath);
-            else if (e.target.value === '') onChange('');
-          }}
-        >
-          <option value="">{t.cellModal.selectAsset}</option>
-          {imgAssets.map(a => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </select>
-      )}
-      <input
-        className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-        placeholder="assets/img.png or https://..."
-        value={value}
-        onChange={e => onChange(e.target.value)}
+      <div
+        className="w-3 h-3 rounded-full shrink-0"
+        style={{ background: char.borderColor }}
       />
-    </div>
-  );
-}
-
-// ─── Field helper ──────────────────────────────────────────────────────────────
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div className="flex items-start gap-2">
-      <label className="text-xs text-slate-400 w-20 shrink-0 pt-1">{label}:</label>
-      <div className="flex-1 min-w-0">{children}</div>
+      <span className="flex-1 text-xs truncate" style={{ color: char.nameColor }}>
+        {char.name || t.characters.noName}
+      </span>
+      <button
+        className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
+        onClick={e => { e.stopPropagation(); onDelete(); }}
+      >
+        🗑️
+      </button>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { CheckboxBlock, CheckboxOption } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { VariablePicker } from '../shared/VariablePicker';
 
 export function CheckboxBlockEditor({
   block,
@@ -68,16 +69,13 @@ export function CheckboxBlockEditor({
       {block.mode === 'array' && (
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-24 shrink-0">{t.checkboxBlock.variableLabel}</label>
-          <select
-            className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+          <VariablePicker
             value={block.variableId ?? ''}
-            onChange={e => patch({ variableId: e.target.value })}
-          >
-            <option value="">{t.checkboxBlock.selectVariable}</option>
-            {arrayVars.map(v => (
-              <option key={v.id} value={v.id}>${v.name}</option>
-            ))}
-          </select>
+            onChange={id => patch({ variableId: id })}
+            nodes={project.variableNodes}
+            placeholder={t.checkboxBlock.selectVariable}
+            filterType="array"
+          />
         </div>
       )}
 
@@ -110,16 +108,14 @@ export function CheckboxBlockEditor({
 
             {/* Flags mode: boolean variable per option */}
             {block.mode === 'flags' && (
-              <select
-                className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+              <VariablePicker
                 value={opt.variableId ?? ''}
-                onChange={e => patchOption(opt.id, { variableId: e.target.value })}
-              >
-                <option value="">{t.checkboxBlock.optionVarPlaceholder}</option>
-                {booleanVars.map(v => (
-                  <option key={v.id} value={v.id}>${v.name}</option>
-                ))}
-              </select>
+                onChange={id => patchOption(opt.id, { variableId: id })}
+                nodes={project.variableNodes}
+                placeholder={t.checkboxBlock.optionVarPlaceholder}
+                filterType="boolean"
+                className="flex-1"
+              />
             )}
 
             {/* Array mode: value that gets pushed/removed */}

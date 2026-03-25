@@ -26,3 +26,10 @@ textarea {
 /* Drag handle cursor */
 .drag-handle { cursor: grab; }
 .drag-handle:active { cursor: grabbing; }
+
+/* Compact mode */
+.compact .block-header { padding: 2px 8px; }
+.compact .block-body   { padding: 6px 8px; }
+.compact .scene-header { padding: 2px 16px; }
+.compact .blocks-container { padding: 4px 8px; }
+.compact .scene-row    { padding-top: 2px; padding-bottom: 2px; }

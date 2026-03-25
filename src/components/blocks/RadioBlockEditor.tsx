@@ -2,6 +2,7 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { RadioBlock, RadioOption } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { VariablePicker } from '../shared/VariablePicker';
 
 export function RadioBlockEditor({
   block,
@@ -49,16 +50,13 @@ export function RadioBlockEditor({
       {/* Variable selector */}
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-24 shrink-0">{t.radioBlock.variableLabel}</label>
-        <select
-          className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
+        <VariablePicker
           value={block.variableId}
-          onChange={e => patch({ variableId: e.target.value })}
-        >
-          <option value="">{t.radioBlock.selectVariable}</option>
-          {stringVars.map(v => (
-            <option key={v.id} value={v.id}>${v.name}</option>
-          ))}
-        </select>
+          onChange={id => patch({ variableId: id })}
+          nodes={project.variableNodes}
+          placeholder={t.radioBlock.selectVariable}
+          filterType="string"
+        />
       </div>
 
       {/* Options */}

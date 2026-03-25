@@ -200,14 +200,43 @@ export interface ButtonStyle {
   fullWidth: boolean;
 }
 
-/** A single variable mutation triggered by the button */
-export interface ButtonAction {
+/** A variable mutation action (default action type). */
+export interface VarSetAction {
   id: string;
+  type?: 'set-variable';
   variableId: string;
   operator: VarOperator;
   value: string;
   /** Array accessor — only relevant when variableId points to an array variable. */
   accessor?: ArrayAccessor;
+}
+
+/** Opens a SugarCube Dialog with the specified popup-tagged scene. */
+export interface OpenPopupAction {
+  id: string;
+  type: 'open-popup';
+  /** Scene NAME (must be tagged 'popup'). */
+  targetSceneId: string;
+  /** Optional dialog title bar text. Empty string = no title bar. */
+  title?: string;
+}
+
+export type ButtonAction = VarSetAction | OpenPopupAction;
+
+export interface WatcherCondition {
+  variableId: string;
+  operator: ConditionOperator;
+  value: string;
+  accessor?: ArrayAccessor;
+}
+
+export interface Watcher {
+  id: string;
+  label: string;
+  enabled: boolean;
+  condition: WatcherCondition;
+  actions: ButtonAction[];
+  navigate?: { type: 'back' } | { type: 'scene'; sceneId: string };
 }
 
 export interface ButtonBlock {
@@ -372,6 +401,20 @@ export const SYSTEM_TAG_COLORS: Record<SystemTag, string> = {
 };
 
 /**
+ * Auto-opens a SugarCube Dialog with a popup-tagged scene when the passage renders.
+ * The dialog is created via Dialog.setup() / Dialog.wiki() / Dialog.open().
+ */
+export interface PopupBlock {
+  id: string;
+  type: 'popup';
+  /** Scene NAME — must be tagged 'popup'. */
+  targetSceneId: string;
+  /** Optional dialog title bar text. Empty string = no title bar. */
+  title?: string;
+  delay?: BlockDelay;
+}
+
+/**
  * A styled button that executes a "function" scene (tagged func) on click,
  * running its passage macros silently without navigating.
  * Optionally mutates variables before executing the function.
@@ -404,11 +447,19 @@ export type Block =
   | DividerBlock
   | CheckboxBlock
   | RadioBlock
-  | FunctionBlock;
+  | FunctionBlock
+  | PopupBlock;
 
 export type BlockType = Block['type'];
 
 // ─── Scene ──────────────────────────────────────────────────────────────────
+
+export interface SceneGroup {
+  id: string;
+  name: string;
+  notes?: string;
+  collapsed?: boolean;
+}
 
 export interface Scene {
   id: string;
@@ -417,6 +468,8 @@ export interface Scene {
   blocks: Block[];
   /** Optional developer note — shown in the editor only, never exported. */
   notes?: string;
+  /** Group this scene belongs to (undefined = ungrouped). */
+  groupId?: string;
   /** Position of this scene's node in the scene graph window. */
   graphPosition?: { x: number; y: number };
 }
@@ -436,6 +489,7 @@ export interface CharacterVarIds {
   borderColorVarId: string; // $prefix_borderColor variable id
   nameColorVarId: string;   // $prefix_nameColor variable id
   avatarVarId: string;      // $prefix_avatar variable id (URL string, empty = hidden)
+  textColorVarId?: string;  // $prefix_textColor variable id (added in v1.7)
 }
 
 export type AvatarMode = 'static' | 'bound';
@@ -457,9 +511,10 @@ export interface AvatarConfig {
 export interface Character {
   id: string;
   name: string;
-  nameColor: string;   // color for character name label
-  bgColor: string;     // dialogue box background
-  borderColor: string; // left border accent
+  nameColor: string;    // color for character name label
+  textColor?: string;   // color for dialogue text body (added in v1.7)
+  bgColor: string;      // dialogue box background
+  borderColor: string;  // left border accent
   /** @deprecated Use avatarConfig instead. Kept for migration from pre-v1.4 saves. */
   avatarUrl?: string;
   /** Avatar settings (static URL or variable-bound). Added in v1.4. */
@@ -664,13 +719,32 @@ export interface SidebarPanel {
 
 // ─── Project ─────────────────────────────────────────────────────────────────
 
+export interface ProjectSettings {
+  startingScene:   string;   // name of the first scene, default 'Start'
+  historyControls: boolean;  // show browser back/forward buttons
+  saveLoadMenu:    boolean;  // show SugarCube save/load menu
+  bgColor?:        string;   // story background color
+  sidebarColor?:   string;   // sidebar/StoryCaption background color
+  titleColor?:     string;   // StoryTitle text color
+  titleFont?:      string;   // StoryTitle font-family
+  /** Relative path (within assets/) of the sidebar header image, if set */
+  headerImageSrc?: string;
+  /** ID of the sidebarPanel row that holds the header image */
+  headerRowId?:    string;
+}
+
 export interface Project {
   id: string;
   title: string;
   ifid: string;
+  author?: string;
+  description?: string;
+  settings: ProjectSettings;
   scenes: Scene[];
+  sceneGroups: SceneGroup[];
   characters: Character[];
   variableNodes: VariableTreeNode[];
   assetNodes: AssetTreeNode[];
   sidebarPanel: SidebarPanel;
+  watchers: Watcher[];
 }

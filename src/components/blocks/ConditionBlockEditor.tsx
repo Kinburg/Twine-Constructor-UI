@@ -15,6 +15,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
+import { VariablePicker } from '../shared/VariablePicker';
 import { useT, blockTypeLabel } from '../../i18n';
 import type {
   ConditionBlock, ConditionBranchType, ConditionOperator, Block, ArrayAccessor,
@@ -265,27 +266,24 @@ export function ConditionBlockEditor({
               return (
               <>
                 {/* Variable selector */}
-                <select
-                  className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
+                <VariablePicker
                   value={branch.variableId}
-                  onChange={e => {
-                    const newVar = variables.find(v => v.id === e.target.value);
+                  onChange={id => {
+                    const newVar = variables.find(v => v.id === id);
                     const newAccessorKind = newVar?.varType === 'array' ? (branch.accessor?.kind ?? 'whole') : 'whole';
                     const newOps = operatorsForType(newVar?.varType, newAccessorKind);
                     const opStillValid = newOps.some(op => op.value === branch.operator);
                     const newIsNumeric = newVar?.varType === 'number' || newVar?.varType === undefined;
                     updateConditionBranch(sceneId, block.id, branch.id, {
-                      variableId: e.target.value,
+                      variableId: id,
                       ...(!opStillValid ? { operator: newOps[0].value } : {}),
                       ...(!newIsNumeric && newVar?.varType !== 'array' ? { rangeMode: false, accessor: undefined } : {}),
                     });
                   }}
-                >
-                  <option value="">{t.condition.varPlaceholder}</option>
-                  {variables.map(v => (
-                    <option key={v.id} value={v.id}>${v.name}</option>
-                  ))}
-                </select>
+                  nodes={project.variableNodes}
+                  placeholder={t.condition.varPlaceholder}
+                  className="flex-1 min-w-0"
+                />
 
                 {/* Array accessor — shown as a full-width second row when var is array */}
                 {isArray && (

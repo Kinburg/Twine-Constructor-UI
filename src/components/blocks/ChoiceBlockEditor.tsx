@@ -1,8 +1,49 @@
+import { useRef } from 'react';
 import { useProjectStore } from '../../store/projectStore';
-import type { ChoiceBlock, ChoiceOption } from '../../types';
+import type { ChoiceBlock, ChoiceOption, Variable, VariableTreeNode } from '../../types';
 import { SYSTEM_TAGS } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { VarInsertButton } from '../shared/VarInsertButton';
+import { flattenVariables } from '../../utils/treeUtils';
+
+/** Isolated component so each option gets its own ref (avoids reading refs during render). */
+function OptionLabelInput({
+  value,
+  placeholder,
+  vars,
+  variableNodes,
+  onFocus,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  vars: Variable[];
+  variableNodes?: VariableTreeNode[];
+  onFocus: () => void;
+  onChange: (label: string) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <input
+        ref={ref}
+        className="flex-1 bg-slate-700 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+        placeholder={placeholder}
+        value={value}
+        onFocus={onFocus}
+        onChange={e => onChange(e.target.value)}
+      />
+      <VarInsertButton
+        targetRef={ref}
+        value={value}
+        onChange={onChange}
+        vars={vars}
+        variableNodes={variableNodes}
+      />
+    </>
+  );
+}
 
 export function ChoiceBlockEditor({
   block,
@@ -16,6 +57,7 @@ export function ChoiceBlockEditor({
   const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption, saveSnapshot, updateBlock } = useProjectStore();
   const scenes = project.scenes.filter(s => !s.tags.some(tag => (SYSTEM_TAGS as readonly string[]).includes(tag)));
   const t = useT();
+  const vars = flattenVariables(project.variableNodes);
 
   const handleAddOption = onUpdate
     ? () => {
@@ -44,12 +86,13 @@ export function ChoiceBlockEditor({
         <div key={opt.id} className="flex flex-col gap-1.5 bg-slate-800/60 rounded p-2 border border-slate-700">
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500 shrink-0">#{idx + 1}</span>
-            <input
-              className="flex-1 bg-slate-700 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder={t.choiceBlock.optionPlaceholder}
+            <OptionLabelInput
               value={opt.label}
+              placeholder={t.choiceBlock.optionPlaceholder}
+              vars={vars}
+              variableNodes={project.variableNodes}
               onFocus={saveSnapshot}
-              onChange={e => handleUpdateOption(opt.id, { label: e.target.value })}
+              onChange={label => handleUpdateOption(opt.id, { label })}
             />
             <button
               className="text-slate-600 hover:text-red-400 text-xs cursor-pointer transition-colors"

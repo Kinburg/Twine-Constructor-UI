@@ -8,6 +8,7 @@ import type {
   ImageBoundMapping, Variable, Asset,
 } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { VariablePicker } from '../shared/VariablePicker';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -824,13 +825,16 @@ function TVarSelect({ vars, value, onChange }: {
   vars: Variable[]; value: string; onChange: (id: string) => void;
 }) {
   const t = useT();
+  const { project } = useProjectStore();
   return (
     <TMField label={t.cellModal.typeVariable}>
-      <select className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-        value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">{t.cellModal.selectVariable}</option>
-        {vars.map(v => <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>)}
-      </select>
+      <VariablePicker
+        value={value}
+        onChange={onChange}
+        nodes={project.variableNodes}
+        placeholder={t.cellModal.selectVariable}
+        className="flex-1"
+      />
     </TMField>
   );
 }
@@ -976,17 +980,72 @@ function TCellButtonEditor({
           <span className="text-xs text-slate-500 italic">{t.buttonBlock.noActions}</span>
         )}
         {c.actions.map(a => {
+          if (a.type === 'open-popup') {
+            const popupScenes = project.scenes.filter(s => s.tags.includes('popup'));
+            return (
+              <div key={a.id} className="flex flex-col gap-1 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
+                <div className="flex items-center gap-1.5">
+                  <select
+                    className="w-24 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none cursor-pointer"
+                    value="open-popup"
+                    onChange={e => {
+                      if (e.target.value === 'set-variable') {
+                        patchAction(a.id, { type: undefined, variableId: '', operator: '=' as VarOperator, value: '' } as Partial<ButtonAction>);
+                      }
+                    }}
+                  >
+                    <option value="set-variable">{t.actionType.setVariable}</option>
+                    <option value="open-popup">{t.actionType.openPopup}</option>
+                  </select>
+                  {popupScenes.length === 0 ? (
+                    <span className="flex-1 text-xs text-slate-500 italic">{t.actionType.noPopupScenes}</span>
+                  ) : (
+                    <select
+                      className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none cursor-pointer"
+                      value={a.targetSceneId}
+                      onChange={e => patchAction(a.id, { targetSceneId: e.target.value } as Partial<ButtonAction>)}
+                    >
+                      <option value="">— select —</option>
+                      {popupScenes.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                    </select>
+                  )}
+                  <button className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
+                    onClick={() => removeAction(a.id)}>✕</button>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-slate-500 w-24 shrink-0">{t.actionType.popupTitle}</span>
+                  <input
+                    className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none"
+                    placeholder={t.actionType.popupTitlePlaceholder}
+                    value={a.title ?? ''}
+                    onChange={e => patchAction(a.id, { title: e.target.value } as Partial<ButtonAction>)}
+                  />
+                </div>
+              </div>
+            );
+          }
           const selVar = vars.find(v => v.id === a.variableId);
           return (
             <div key={a.id} className="flex items-center gap-1.5 bg-slate-800/60 border border-slate-700 rounded px-2 py-1.5">
               <select
-                className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
-                value={a.variableId}
-                onChange={e => patchAction(a.id, { variableId: e.target.value })}
+                className="w-24 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 outline-none cursor-pointer"
+                value="set-variable"
+                onChange={e => {
+                  if (e.target.value === 'open-popup') {
+                    patchAction(a.id, { type: 'open-popup', variableId: undefined, operator: undefined, value: undefined, accessor: undefined, targetSceneId: '', title: '' } as unknown as Partial<ButtonAction>);
+                  }
+                }}
               >
-                <option value="">{t.buttonBlock.selectVariable}</option>
-                {vars.map(v => <option key={v.id} value={v.id}>${v.name}</option>)}
+                <option value="set-variable">{t.actionType.setVariable}</option>
+                <option value="open-popup">{t.actionType.openPopup}</option>
               </select>
+              <VariablePicker
+                value={a.variableId}
+                onChange={id => patchAction(a.id, { variableId: id })}
+                nodes={project.variableNodes}
+                placeholder={t.buttonBlock.selectVariable}
+                className="flex-1 min-w-0"
+              />
               <select
                 className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer font-mono"
                 value={a.operator}

@@ -1,15 +1,18 @@
+import { useCallback, useRef } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import { SceneList } from '../scenes/SceneList';
 import { CharacterManager } from '../characters/CharacterManager';
 import { VariableManager } from '../variables/VariableManager';
 import { AssetManager } from '../assets/AssetManager';
+import { WatcherManager } from '../watchers/WatcherManager';
 
-type Tab = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel';
+type Tab = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers';
 
 export function Sidebar() {
-  const { activeSidebarTab, setSidebarTab } = useProjectStore();
+  const { activeSidebarTab, setSidebarTab, sidebarWidth, setSidebarWidth } = useProjectStore();
   const t = useT();
+  const dragging = useRef(false);
 
   const TABS: { id: Tab; label: string; icon: string }[] = [
     { id: 'scenes',     label: t.sidebar.scenes,     icon: '🎬' },
@@ -17,10 +20,37 @@ export function Sidebar() {
     { id: 'variables',  label: t.sidebar.variables,  icon: '📊' },
     { id: 'assets',     label: t.sidebar.assets,     icon: '🖼️' },
     { id: 'panel',      label: t.sidebar.panel,      icon: '🗂️' },
+    { id: 'watchers',   label: t.sidebar.watchers,   icon: '⚡' },
   ];
 
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    const startX = e.clientX;
+    const startW = sidebarWidth;
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      setSidebarWidth(startW + (ev.clientX - startX));
+    };
+    const onUp = () => {
+      dragging.current = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, [sidebarWidth, setSidebarWidth]);
+
   return (
-    <aside className="flex flex-col w-72 shrink-0 bg-slate-900 border-r border-slate-700 overflow-hidden">
+    <aside
+      className="flex flex-col shrink-0 bg-slate-900 border-r border-slate-700 overflow-hidden relative"
+      style={{ width: sidebarWidth }}
+    >
       {/* Tab bar */}
       <div className="flex border-b border-slate-700">
         {TABS.map(tab => (
@@ -54,7 +84,14 @@ export function Sidebar() {
         {activeSidebarTab === 'characters' && <CharacterManager />}
         {activeSidebarTab === 'variables'  && <VariableManager />}
         {activeSidebarTab === 'assets'     && <AssetManager />}
+        {activeSidebarTab === 'watchers'   && <WatcherManager />}
       </div>
+
+      {/* Resize handle */}
+      <div
+        className="absolute top-0 right-0 w-1.5 h-full cursor-col-resize hover:bg-indigo-500/30 active:bg-indigo-500/50 transition-colors z-10"
+        onMouseDown={onMouseDown}
+      />
     </aside>
   );
 }

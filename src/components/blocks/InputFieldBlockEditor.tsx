@@ -3,6 +3,7 @@ import type { InputFieldBlock } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
+import { VariablePicker } from '../shared/VariablePicker';
 
 // Badge showing the variable type and which SugarCube macro will be used
 function MacroBadge({ varType }: { varType: string | undefined }) {
@@ -52,24 +53,20 @@ export function InputFieldBlockEditor({
       {/* Variable selector */}
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-24 shrink-0">{t.inputFieldBlock.variableLabel}</label>
-        <select
-          className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+        <VariablePicker
           value={block.variableId}
-          onChange={e => {
-            const v = variables.find(x => x.id === e.target.value);
+          onChange={id => {
+            const v = variables.find(x => x.id === id);
             const leavingArray = isArray && v?.varType !== 'array';
             updateBlock(sceneId, block.id, {
-              variableId: e.target.value,
+              variableId: id,
               placeholder: v?.defaultValue ?? '',
               ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
-        >
-          <option value="">{t.inputFieldBlock.selectVariable}</option>
-          {variables.map(v => (
-            <option key={v.id} value={v.id}>${v.name} ({v.varType})</option>
-          ))}
-        </select>
+          nodes={project.variableNodes}
+          placeholder={t.inputFieldBlock.selectVariable}
+        />
         {variables.length === 0 && (
           <span className="text-xs text-slate-500 italic">{t.inputFieldBlock.noVariable}</span>
         )}

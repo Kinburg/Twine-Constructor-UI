@@ -6,12 +6,19 @@ export interface Translations {
   /** Display name shown in the language selector */
   locale: { name: string };
 
+  common: {
+    confirm: string;
+    cancel: string;
+    delete: string;
+  };
+
   sidebar: {
     scenes: string;
     characters: string;
     variables: string;
     assets: string;
     panel: string;
+    watchers: string;
   };
 
   scene: {
@@ -31,6 +38,19 @@ export interface Translations {
     note: string;
     notePlaceholder: string;
     filterNoScenes: string;
+    createTitle: string;
+    editTitle: string;
+    fieldName: string;
+    nameTaken: string;
+    nameEmpty: string;
+    addGroup: string;
+    groupCreateTitle: string;
+    groupEditTitle: string;
+    groupFieldName: string;
+    groupNameTaken: string;
+    groupNameEmpty: string;
+    groupConfirmDelete: (name: string) => string;
+    groupUngrouped: string;
   };
 
   block: {
@@ -53,6 +73,7 @@ export interface Translations {
     checkbox: string;
     radio: string;
     function: string;
+    popup: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -83,6 +104,7 @@ export interface Translations {
     checkbox:    { label: string; desc: string };
     radio:       { label: string; desc: string };
     function:    { label: string; desc: string };
+    popup:       { label: string; desc: string };
   };
 
   includeBlock: {
@@ -166,6 +188,13 @@ export interface Translations {
     errorExportTwee: (e: unknown) => string;
     dialogSaveTwee: string;
     menuTitle: string;
+    menuSectionFile: string;
+    menuSectionSettings: string;
+    newDesc: string;
+    projectSettings: string;
+    projectSettingsDesc: string;
+    editorPrefs: string;
+    editorPrefsDesc: string;
   };
 
   // ─── Asset manager ──────────────────────────────────────────────────────────
@@ -202,6 +231,7 @@ export interface Translations {
     fieldNameColor: string;
     fieldDialogBg: string;
     fieldAccent: string;
+    fieldTextColor: string;
     exampleLine: string;
     avatarLabel: string;
     avatarStatic: string;
@@ -213,6 +243,17 @@ export interface Translations {
     addMapping: string;
     noMappings: string;
     defaultMapping: string;
+    createTitle: string;
+    editTitle: string;
+    save: string;
+    nameTaken: string;
+    nameEmpty: string;
+    customVarsSection: string;
+    customVarsAdd: string;
+    customVarsNamePlaceholder: string;
+    customVarsEmpty: string;
+    customVarsNameEmpty: string;
+    customVarsConfirmDelete: (name: string) => string;
   };
 
   // ─── Variables ──────────────────────────────────────────────────────────────
@@ -598,11 +639,129 @@ export interface Translations {
     textPlaceholder: string;
   };
 
+  // ─── Popup block ─────────────────────────────────────────────────────────────
+  popupBlock: {
+    sceneLabel:        string;
+    noPopupScenes:     string;
+    titleLabel:        string;
+    titlePlaceholder:  string;
+  };
+
+  // ─── Shared: action type selector (ButtonBlock, LinkBlock, FunctionBlock, CellButton) ──
+  actionType: {
+    setVariable: string;
+    openPopup:   string;
+    popupScene:  string;
+    popupTitle:  string;
+    popupTitlePlaceholder: string;
+    noPopupScenes: string;
+  };
+
+  // ─── Editor preferences modal ────────────────────────────────────────────────
+  editorPrefs: {
+    title: string;
+    sectionAutosave: string;
+    autosaveLabel: string;
+    autosaveIntervalLabel: string;
+    intervalMinutes: (n: number) => string;
+    sectionAppearance: string;
+    compactModeLabel: string;
+    sectionConfirms: string;
+    confirmDeleteScene: string;
+    confirmDeleteGroup: string;
+    confirmDeleteVariable: string;
+    confirmDeleteWatcher: string;
+    confirmDeleteBlock: string;
+    confirmDeleteCharacter: string;
+    sectionGroupDelete: string;
+    deleteGroupBehaviorLabel: string;
+    deleteGroupUngroup: string;
+    deleteGroupWithScenes: string;
+    sectionExport: string;
+    confirmOpenFolderAfterExport: string;
+  };
+
+  // ─── Project settings modal ──────────────────────────────────────────────────
+  projectSettings: {
+    createTitle:            string;
+    editTitle:              string;
+    fieldTitle:             string;
+    fieldTitlePlaceholder:  string;
+    fieldAuthor:            string;
+    fieldAuthorPlaceholder: string;
+    fieldDescription:       string;
+    fieldDescPlaceholder:   string;
+    fieldHeaderImage:       string;
+    headerImageAdd:         string;
+    headerImageChange:      string;
+    headerImageRemove:      string;
+    sectionAppearance:      string;
+    fieldBgColor:           string;
+    fieldSidebarColor:      string;
+    fieldTitleColor:        string;
+    fieldTitleFont:         string;
+    fieldTitleFontPlaceholder: string;
+    sectionAdvanced:        string;
+    fieldStartingScene:     string;
+    fieldStartingScenePlaceholder: string;
+    fieldHistoryControls:   string;
+    fieldSaveLoadMenu:      string;
+    create:                 string;
+    save:                   string;
+    chooseFolder:           string;
+    titleEmpty:             string;
+    headerImageNote:        string;
+  };
+
   // ─── Scene settings modal ────────────────────────────────────────────────────
   sceneSettings: {
     title: string;
     tagsLabel: string;
     addTagPlaceholder: string;
     done: string;
+  };
+
+  // ─── Watchers ────────────────────────────────────────────────────────────────
+  watchers: {
+    add: string;
+    empty: string;
+    confirmDelete: (label: string) => string;
+    defaultLabel: string;
+    labelPlaceholder: string;
+    enabledLabel: string;
+    conditionSection: string;
+    actionsSection: string;
+    navigateSection: string;
+    navigateNone: string;
+    navigateBack: string;
+    navigateScene: string;
+    noVariable: string;
+    addAction: string;
+    unconditionalLabel: string;
+    unconditionalHint: string;
+  };
+
+  insertToolbar: {
+    varTitle: string;
+    codeTitle: string;
+    tooltipTitle: string;
+    exprTitle: string;
+    condTitle: string;
+    linkTitle: string;
+    tooltipText: string;
+    tooltipContent: string;
+    tooltipImage: string;
+    tooltipNoImage: string;
+    exprLabel: string;
+    exprPlaceholder: string;
+    condVariable: string;
+    condValue: string;
+    condIfTrue: string;
+    condElse: string;
+    condElseOptional: string;
+    linkLabel: string;
+    linkTarget: string;
+    linkTargetPlaceholder: string;
+    insert: string;
   };
 }
