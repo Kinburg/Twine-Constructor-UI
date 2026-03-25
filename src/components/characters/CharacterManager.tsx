@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
-import type { Character, VariableTreeNode } from '../../types';
+import type { Character, VariableTreeNode, VariableGroup } from '../../types';
 import { useT } from '../../i18n';
 import { CharacterModal } from './CharacterModal';
 import { useConfirm } from '../shared/ConfirmModal';
 
-function findGroupInTree(nodes: VariableTreeNode[], id: string): VariableTreeNode | null {
+function findGroupInTree(nodes: VariableTreeNode[], id: string): VariableGroup | null {
   for (const n of nodes) {
     if (n.kind === 'group' && n.id === id) return n;
     if (n.kind === 'group') {

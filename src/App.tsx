@@ -13,7 +13,7 @@ import { useGraphBridge } from './hooks/useGraphBridge';
 import { useAutosave } from './hooks/useAutosave';
 
 export default function App() {
-  const { activeSidebarTab, fixVariableNames, undo, redo, project, projectDir } = useProjectStore();
+  const { activeSidebarTab, fixVariableNames, undo, redo, projectDir } = useProjectStore();
   const { projectSettingsOpen, setProjectSettingsOpen, editorPrefsOpen, setEditorPrefsOpen } = useEditorStore();
   const compactMode = useEditorPrefsStore(s => s.compactMode);
   useAutosave();

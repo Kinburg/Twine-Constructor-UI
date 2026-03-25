@@ -80,7 +80,7 @@ interface Props {
 export function ProjectSettingsModal({ mode, onClose }: Props) {
   const t = useT();
   const ps = t.projectSettings;
-  const { project, projectDir, updateProjectMeta, resetProject, setProjectDir, loadProject } = useProjectStore();
+  const { project, projectDir, updateProjectMeta, loadProject } = useProjectStore();
   const { setProjectSettingsOpen } = useEditorStore();
 
   // ─── Form state ─────────────────────────────────────────────────────────────
@@ -189,7 +189,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     setBusy(true);
     try {
       let headerSrc: string | null = project.settings.headerImageSrc ?? null;
-      let rowId: string | null     = project.settings.headerRowId     ?? null;
+      const rowId: string | null     = project.settings.headerRowId     ?? null;
 
       if (headerRemoved) {
         headerSrc = null;
@@ -254,7 +254,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
         characters:   [],
         variableNodes: [],
         assetNodes:   [],
-        sidebarPanel: { tabs: [], liveUpdate: false, style: { rowGap: 2, borderWidth: 1, borderColor: '#555555', showOuterBorder: false, showRowBorders: false, showCellBorders: false } },
+        sidebarPanel: { tabs: [], liveUpdate: false, style: { rowGap: 2, borderWidth: 1, borderColor: '#555555', showOuterBorder: false, showRowBorders: false, showCellBorders: false } } as SidebarPanel,
         watchers:     [],
       };
 
@@ -318,7 +318,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
               placeholder={ps.fieldTitlePlaceholder}
               value={title}
               onChange={e => setTitle(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') mode === 'create' ? handleCreate() : handleSave(); }}
+              onKeyDown={e => { if (e.key === 'Enter') { if (mode === 'create') handleCreate(); else handleSave(); } }}
             />
             {titleError && <span className="text-xs text-red-400">{titleError}</span>}
           </Field>

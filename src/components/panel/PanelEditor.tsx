@@ -1039,7 +1039,7 @@ function CellButtonEditor({
   const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
     onUpdateContent({
       ...c,
-      actions: c.actions.map(a => a.id === actionId ? { ...a, ...patch } : a),
+      actions: c.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) as ButtonAction[],
     });
 
   const addAction = () =>

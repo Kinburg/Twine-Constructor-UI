@@ -1,4 +1,4 @@
-import { useProjectStore, flattenAssets, flattenVariables } from '../../store/projectStore';
+import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import type { ImageBlock, ImageBoundMapping, Asset } from '../../types';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { useT } from '../../i18n';
@@ -75,8 +75,6 @@ export function ImageBlockEditor({
   const update = onUpdate ?? ((p: Partial<ImageBlock>) => updateBlock(sceneId, block.id, p as never));
   const t = useT();
   const imageAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
-  const variables   = flattenVariables(project.variableNodes);
-
   const mode    = block.mode ?? 'static';
   const mapping = block.mapping ?? [];
 

@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
-import { TreeLevel, type TreeActions } from '../variables/VariableManager';
-import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset, VariableType, VariableTreeNode, VariableGroup } from '../../types';
+import { TreeLevel } from '../variables/VariableManager';
+import type { TreeActions } from '../variables/variableTreeShared';
+import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset, VariableTreeNode, VariableGroup } from '../../types';
 import { useT } from '../../i18n';
 
 function resolveEditorSrc(src: string, projectDir: string | null): string {
@@ -141,19 +142,6 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
     },
   };
 
-  // Flat list for the avatar variable picker
-  const allVarsList: Variable[] = (() => {
-    const result: Variable[] = [];
-    function collect(nodes: VariableTreeNode[]) {
-      for (const n of nodes) {
-        if (n.kind === 'variable') result.push(n);
-        else collect(n.children);
-      }
-    }
-    collect(project.variableNodes);
-    return result;
-  })();
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
@@ -250,7 +238,6 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
           {/* Avatar */}
           <AvatarEditor
             cfg={avatarCfg}
-            vars={allVarsList}
             imgAssets={imgAssets}
             onChange={setAvatarCfg}
           />
@@ -339,12 +326,10 @@ function CharacterPreview({ char, avatarCfg }: { char: Omit<Character, 'id'>; av
 
 function AvatarEditor({
   cfg,
-  vars,
   imgAssets,
   onChange,
 }: {
   cfg: AvatarConfig;
-  vars: Variable[];
   imgAssets: Asset[];
   onChange: (c: AvatarConfig) => void;
 }) {

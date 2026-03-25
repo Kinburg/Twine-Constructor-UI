@@ -1,4 +1,4 @@
-import type { Project, ProjectSettings, Character, VariableGroup } from '../types';
+import type { Project, ProjectSettings, Character } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
 import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, defaultValueLiteral, buildObjectLiteral } from './exportToTwee';
 

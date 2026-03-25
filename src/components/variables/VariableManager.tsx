@@ -5,22 +5,7 @@ import type { Variable, VariableGroup, VariableTreeNode, VariableType } from '..
 import { getVariablePath } from '../../utils/treeUtils';
 import { useT } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
-
-export const TYPE_DEFAULTS: Record<VariableType, string> = {
-  number: '0', string: '', boolean: 'false', array: '[]',
-};
-
-export const TYPE_COLOR: Record<VariableType, string> = {
-  number: 'text-sky-400', string: 'text-emerald-400', boolean: 'text-amber-400', array: 'text-violet-400',
-};
-
-/** Callbacks for tree mutations — allows backing by store or local state */
-export interface TreeActions {
-  onAddVariable: (parentId: string | null, data: { name: string; varType: VariableType; defaultValue: string; description: string }) => void;
-  onAddGroup: (parentId: string | null, name: string) => void;
-  onUpdateVariable: (id: string, patch: Partial<Variable>) => void;
-  onDeleteNode: (id: string) => void;
-}
+import { TYPE_DEFAULTS, TYPE_COLOR, type TreeActions } from './variableTreeShared';
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
@@ -109,7 +94,7 @@ export function VariableManager() {
   );
 }
 
-export function countVars(nodes: VariableTreeNode[]): number {
+function countVars(nodes: VariableTreeNode[]): number {
   return nodes.reduce((acc, n) => {
     if (n.kind === 'variable') return acc + 1;
     return acc + countVars(n.children);
