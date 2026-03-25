@@ -46,10 +46,12 @@
       "uninstallerIcon": "public/Icon.ico"
     },
     "linux": {
-      "target": "AppImage"
+      "target": "AppImage",
+      "icon": "public/Icon.PNG"
     },
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "public/Icon.PNG"
     }
   },
   "dependencies": {
