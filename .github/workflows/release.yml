@@ -28,6 +28,19 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Generate icons for electron-builder (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p build/icons
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get install -y imagemagick
+          elif [ "$RUNNER_OS" = "macOS" ]; then
+            brew install imagemagick 2>/dev/null || true
+          fi
+          magick public/Icon.PNG -resize 512x512 build/icons/512x512.png
+          magick public/Icon.PNG -resize 256x256 build/icons/256x256.png
+          magick public/Icon.PNG -resize 128x128 build/icons/128x128.png
+
       - name: Build application
         run: npm run dist
 

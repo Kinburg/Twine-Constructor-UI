@@ -47,11 +47,11 @@
     },
     "linux": {
       "target": "AppImage",
-      "icon": "public/Icon.PNG"
+      "icon": "build/icons"
     },
     "mac": {
       "target": "dmg",
-      "icon": "public/Icon.PNG"
+      "icon": "build/icons"
     }
   },
   "dependencies": {
