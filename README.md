@@ -96,6 +96,7 @@ git push --tags
 
 GitHub Actions will automatically build the installer and create a Release with artifacts.
 
+
 ## License
 
 MIT
