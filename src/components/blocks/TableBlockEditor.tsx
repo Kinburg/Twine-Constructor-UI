@@ -545,7 +545,7 @@ function TCellEditModal({
 
         {c.type === 'variable' && (
           <>
-            <TVarSelect vars={vars} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
+            <TVarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
             <TMField label={t.cellModal.prefix}>
               <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
                 value={c.prefix} onChange={e => onUpdateContent({ ...c, prefix: e.target.value })} />
@@ -559,7 +559,7 @@ function TCellEditModal({
 
         {c.type === 'progress' && (
           <>
-            <TVarSelect vars={vars.filter(v => v.varType === 'number')} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
+            <TVarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
             <TMField label={t.cellModal.maximum}>
               <input type="number" min={1}
                 className="w-24 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 font-mono"
@@ -641,7 +641,7 @@ function TCellEditModal({
 
         {c.type === 'image-bound' && (
           <>
-            <TVarSelect vars={vars} value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
+            <TVarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
             <TObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
@@ -821,8 +821,8 @@ function TCheckField({ label, checked, onChange }: {
   );
 }
 
-function TVarSelect({ vars, value, onChange }: {
-  vars: Variable[]; value: string; onChange: (id: string) => void;
+function TVarSelect({ value, onChange }: {
+  value: string; onChange: (id: string) => void;
 }) {
   const t = useT();
   const { project } = useProjectStore();
@@ -879,7 +879,7 @@ function TCellButtonEditor({
     onUpdateContent({ ...c, style: { ...c.style, ...patch } });
 
   const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
-    onUpdateContent({ ...c, actions: c.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) });
+    onUpdateContent({ ...c, actions: c.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) as ButtonAction[] });
 
   const addAction = () =>
     onUpdateContent({ ...c, actions: [...c.actions, { id: crypto.randomUUID(), variableId: '', operator: '=' as VarOperator, value: '' }] });

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { VariableTreeNode, VariableType, VariableGroup, Variable } from '../../types';
+import type { VariableTreeNode, VariableType, VariableGroup } from '../../types';
 import { getVariablePath, hasLeafVariables } from '../../utils/treeUtils';
 
 export interface VariablePickerProps {

@@ -170,8 +170,6 @@ function buildCharVarNodes(
   charName: string,
   colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig },
 ): CharVarBuildResult {
-  const prefix = charToVarPrefix(charName);
-
   const nameVarId         = uuid();
   const bgColorVarId      = uuid();
   const borderColorVarId  = uuid();

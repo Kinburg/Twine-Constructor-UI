@@ -7,7 +7,7 @@ import { ArrayAccessorInput } from '../blocks/ArrayAccessorInput';
 import { VarValueInput } from '../blocks/VarValueInput';
 import { VariablePicker } from '../shared/VariablePicker';
 import type {
-  Watcher, WatcherCondition, ButtonAction,
+  Watcher, WatcherCondition, ButtonAction, VarSetAction,
   ConditionOperator, VarOperator, ArrayAccessor, Variable,
 } from '../../types';
 
@@ -72,9 +72,9 @@ function ActionRow({
   onChange,
   onDelete,
 }: {
-  action: ButtonAction;
+  action: VarSetAction;
   vars: Variable[];
-  onChange: (patch: Partial<ButtonAction>) => void;
+  onChange: (patch: Partial<VarSetAction>) => void;
   onDelete: () => void;
 }) {
   const t = useT();
@@ -176,7 +176,7 @@ function WatcherCard({
     onUpdate({ condition: { ...watcher.condition, ...patch } });
 
   const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
-    onUpdate({ actions: watcher.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) });
+    onUpdate({ actions: watcher.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) as ButtonAction[] });
 
   const addAction = () =>
     onUpdate({ actions: [...watcher.actions, { id: crypto.randomUUID(), variableId: '', operator: '=' as VarOperator, value: '' }] });
@@ -337,7 +337,7 @@ function WatcherCard({
           {/* Actions */}
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.watchers.actionsSection}</span>
-            {watcher.actions.map(a => (
+            {watcher.actions.filter((a): a is VarSetAction => a.type !== 'open-popup').map(a => (
               <ActionRow
                 key={a.id}
                 action={a}

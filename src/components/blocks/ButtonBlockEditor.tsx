@@ -1,7 +1,6 @@
 import { useRef } from 'react';
 import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import type { ButtonBlock, ButtonAction, ButtonStyle, VarOperator } from '../../types';
-import { SYSTEM_TAGS } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
@@ -358,7 +357,7 @@ export function ButtonBlockEditor({
 
   const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
     updateBlock(sceneId, block.id, {
-      actions: block.actions.map(a => a.id === actionId ? { ...a, ...patch } : a),
+      actions: block.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) as ButtonAction[],
     });
 
   const addAction = () =>

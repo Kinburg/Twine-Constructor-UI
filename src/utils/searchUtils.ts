@@ -29,7 +29,7 @@ export function blockSearchText(block: Block, vars: Variable[]): string {
         return [
           block.label ?? '',
           ...(block.actions ?? []).map(a =>
-            a.variableId ? `$${varName(vars, a.variableId)}` : '',
+            'variableId' in a && a.variableId ? `$${varName(vars, a.variableId)}` : '',
           ),
         ].filter(Boolean).join(' ');
 

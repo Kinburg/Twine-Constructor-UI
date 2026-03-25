@@ -328,7 +328,7 @@ export function LinkBlockEditor({
 
   const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
     updateBlock(sceneId, block.id, {
-      actions: block.actions.map(a => a.id === actionId ? { ...a, ...patch } : a),
+      actions: block.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) as ButtonAction[],
     });
 
   const addAction = () =>

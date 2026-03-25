@@ -1,4 +1,4 @@
-import { useProjectStore, flattenVariables } from '../../store/projectStore';
+import { useProjectStore } from '../../store/projectStore';
 import type { RadioBlock, RadioOption } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
@@ -13,9 +13,6 @@ export function RadioBlockEditor({
 }) {
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
-  const variables = flattenVariables(project.variableNodes);
-  const stringVars = variables.filter(v => v.varType === 'string');
-
   const patch = (p: Partial<RadioBlock>) => updateBlock(sceneId, block.id, p);
 
   const patchOption = (optId: string, p: Partial<RadioOption>) =>

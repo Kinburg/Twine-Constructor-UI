@@ -1,4 +1,4 @@
-import { useProjectStore, flattenVariables } from '../../store/projectStore';
+import { useProjectStore } from '../../store/projectStore';
 import type { CheckboxBlock, CheckboxOption } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
@@ -13,10 +13,6 @@ export function CheckboxBlockEditor({
 }) {
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
-  const variables = flattenVariables(project.variableNodes);
-  const arrayVars   = variables.filter(v => v.varType === 'array');
-  const booleanVars = variables.filter(v => v.varType === 'boolean');
-
   const patch = (p: Partial<CheckboxBlock>) => updateBlock(sceneId, block.id, p);
 
   const patchOption = (optId: string, p: Partial<CheckboxOption>) =>
