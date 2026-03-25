@@ -11,6 +11,7 @@ import { EditorPrefsModal } from './components/editor/EditorPrefsModal';
 import { usePreviewSync } from './hooks/usePreviewSync';
 import { useGraphBridge } from './hooks/useGraphBridge';
 import { useAutosave } from './hooks/useAutosave';
+import { Toaster } from 'sonner';
 
 export default function App() {
   const { activeSidebarTab, fixVariableNames, undo, redo, projectDir } = useProjectStore();
@@ -62,6 +63,17 @@ export default function App() {
       {editorPrefsOpen && (
         <EditorPrefsModal onClose={() => setEditorPrefsOpen(false)} />
       )}
+      <Toaster
+        position="bottom-right"
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: '#1e293b',
+            border: '1px solid #334155',
+            color: '#e2e8f0',
+          },
+        }}
+      />
     </div>
   );
 }

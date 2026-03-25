@@ -1,5 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useProjectStore, DEFAULT_PANEL_STYLE } from '../../store/projectStore';
+import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT } from '../../i18n';
 import type { Block, BlockType } from '../../types';
 
@@ -74,27 +75,23 @@ export function makeBlock(type: BlockType): Block {
   }
 }
 
-interface Props {
-  sceneId: string;
-  /** Override the add handler — used for nested blocks inside conditions */
-  onAdd?: (block: Block) => void;
-  /** Hide certain block types (e.g. prevent nesting conditions) */
-  excludeTypes?: BlockType[];
-  /** Start in open state (used by InsertZone) */
-  initialOpen?: boolean;
-  /** Called when cancel is clicked in initialOpen mode */
-  onClose?: () => void;
-}
+// ── Category definitions ──────────────────────────────────────────────────────
 
-export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, onClose }: Props) {
-  const { addBlock } = useProjectStore();
-  const t = useT();
-  const [open, setOpen] = useState(initialOpen ?? false);
-  const ref = useRef<HTMLDivElement>(null);
+type CategoryKey = 'content' | 'interaction' | 'logic' | 'system';
 
-  const close = () => { setOpen(false); onClose?.(); };
+const BLOCK_CATEGORIES: { key: CategoryKey; types: BlockType[] }[] = [
+  { key: 'content',     types: ['text', 'dialogue', 'image', 'video', 'table', 'divider'] },
+  { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio'] },
+  { key: 'logic',       types: ['condition', 'variable-set', 'function', 'popup'] },
+  { key: 'system',      types: ['raw', 'include', 'note'] },
+];
 
-  const BLOCK_ENTRIES: { type: BlockType; label: string; icon: string; desc: string }[] = [
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+interface BlockEntry { type: BlockType; label: string; icon: string; desc: string }
+
+function buildEntries(t: ReturnType<typeof useT>): BlockEntry[] {
+  return [
     { type: 'text',         icon: BLOCK_ICONS['text'],         label: t.addBlock.text.label,        desc: t.addBlock.text.desc },
     { type: 'dialogue',     icon: BLOCK_ICONS['dialogue'],     label: t.addBlock.dialogue.label,    desc: t.addBlock.dialogue.desc },
     { type: 'choice',       icon: BLOCK_ICONS['choice'],       label: t.addBlock.choice.label,      desc: t.addBlock.choice.desc },
@@ -113,55 +110,204 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, o
     { type: 'checkbox',     icon: BLOCK_ICONS['checkbox'],     label: t.addBlock.checkbox.label,    desc: t.addBlock.checkbox.desc },
     { type: 'radio',        icon: BLOCK_ICONS['radio'],        label: t.addBlock.radio.label,       desc: t.addBlock.radio.desc },
     { type: 'function',     icon: BLOCK_ICONS['function'],     label: t.addBlock.function.label,    desc: t.addBlock.function.desc },
-    { type: 'popup',        icon: BLOCK_ICONS['popup'],        label: t.addBlock.popup.label,        desc: t.addBlock.popup.desc },
+    { type: 'popup',        icon: BLOCK_ICONS['popup'],        label: t.addBlock.popup.label,       desc: t.addBlock.popup.desc },
   ];
+}
+
+// ── Block button (full — with desc) ──────────────────────────────────────────
+
+function BlockButton({ entry, onClick }: { entry: BlockEntry; onClick: () => void }) {
+  return (
+    <button
+      className="flex items-center gap-2 px-3 py-2 hover:bg-slate-700 text-left transition-colors cursor-pointer border-b border-r border-slate-700"
+      onClick={onClick}
+    >
+      <span className="text-base leading-none">{entry.icon}</span>
+      <div>
+        <div className="text-xs text-white font-medium">{entry.label}</div>
+        <div className="text-xs text-slate-400 leading-tight">{entry.desc}</div>
+      </div>
+    </button>
+  );
+}
+
+// ── Block button (compact — icon + label only, for "Recent") ─────────────────
+
+function BlockButtonCompact({ entry, onClick }: { entry: BlockEntry; onClick: () => void }) {
+  return (
+    <button
+      className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-slate-700 rounded text-left transition-colors cursor-pointer"
+      onClick={onClick}
+      title={entry.desc}
+    >
+      <span className="text-sm leading-none">{entry.icon}</span>
+      <span className="text-xs text-white">{entry.label}</span>
+    </button>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+interface Props {
+  sceneId: string;
+  /** Override the add handler — used for nested blocks inside conditions */
+  onAdd?: (block: Block) => void;
+  /** Hide certain block types (e.g. prevent nesting conditions) */
+  excludeTypes?: BlockType[];
+  /** Start in open state (used by InsertZone) */
+  initialOpen?: boolean;
+  /** Called when cancel is clicked in initialOpen mode */
+  onClose?: () => void;
+}
+
+export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, onClose }: Props) {
+  const { addBlock } = useProjectStore();
+  const { recentBlockTypes, trackRecentBlock } = useEditorPrefsStore();
+  const t = useT();
+  const [open, setOpen] = useState(initialOpen ?? false);
+  const [search, setSearch] = useState('');
+  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
+  const ref = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const close = () => { setOpen(false); setSearch(''); setExpandedCats(new Set()); onClose?.(); };
+
+  // Auto-focus search when menu opens
+  useEffect(() => {
+    if (open) searchRef.current?.focus();
+  }, [open]);
+
+  const allEntries = buildEntries(t);
+  const entryMap = new Map(allEntries.map((e) => [e.type, e]));
+
+  const excluded = new Set(excludeTypes);
+  const isVisible = (type: BlockType) => !excluded.has(type);
 
   const add = (type: BlockType) => {
     const block = makeBlock(type);
+    trackRecentBlock(type);
     if (onAdd) {
       onAdd(block);
     } else {
       addBlock(sceneId, block);
     }
-    setOpen(false);
+    close();
   };
 
-  const visible = BLOCK_ENTRIES.filter(bt => !excludeTypes.includes(bt.type));
+  const toggleCat = (key: string) => {
+    setExpandedCats((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
 
-  return (
-    <div ref={ref} className="mt-1">
-      {!open ? (
+  // ── Search filtering ────────────────────────────────────────────────────────
+  const q = search.trim().toLowerCase();
+  const searchResults = q
+    ? allEntries.filter(
+        (e) => isVisible(e.type) && (e.label.toLowerCase().includes(q) || e.desc.toLowerCase().includes(q)),
+      )
+    : null;
+
+  // ── Recent entries (only those not excluded) ────────────────────────────────
+  const recentEntries = recentBlockTypes
+    .filter((type) => isVisible(type) && entryMap.has(type))
+    .map((type) => entryMap.get(type)!);
+
+  // ── Closed state ────────────────────────────────────────────────────────────
+  if (!open) {
+    return (
+      <div ref={ref} className="mt-1">
         <button
           className="w-full py-1.5 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-500 hover:text-indigo-400 rounded text-xs transition-colors cursor-pointer"
           onClick={() => setOpen(true)}
         >
           {t.addBlock.trigger}
         </button>
-      ) : (
-        <div className="border border-slate-600 rounded bg-slate-800 overflow-hidden">
-          <div className="grid grid-cols-2">
-            {visible.map(bt => (
-              <button
-                key={bt.type}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-slate-700 text-left transition-colors cursor-pointer border-b border-r border-slate-700"
-                onClick={() => add(bt.type)}
-              >
-                <span className="text-base leading-none">{bt.icon}</span>
-                <div>
-                  <div className="text-xs text-white font-medium">{bt.label}</div>
-                  <div className="text-xs text-slate-400 leading-tight">{bt.desc}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-          <button
-            className="w-full py-1 text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
-            onClick={close}
-          >
-            {t.addBlock.cancel}
-          </button>
+      </div>
+    );
+  }
+
+  // ── Open state ──────────────────────────────────────────────────────────────
+  return (
+    <div ref={ref} className="mt-1">
+      <div className="border border-slate-600 rounded bg-slate-800 overflow-hidden">
+        {/* Search */}
+        <div className="px-2 pt-2 pb-1">
+          <input
+            ref={searchRef}
+            type="text"
+            className="w-full px-2 py-1 text-xs bg-slate-900 border border-slate-600 rounded text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-colors"
+            placeholder={t.addBlock.search}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
         </div>
-      )}
+
+        {/* Search results (flat list) */}
+        {searchResults ? (
+          searchResults.length > 0 ? (
+            <div className="grid grid-cols-2">
+              {searchResults.map((e) => (
+                <BlockButton key={e.type} entry={e} onClick={() => add(e.type)} />
+              ))}
+            </div>
+          ) : (
+            <div className="px-3 py-2 text-xs text-slate-500 text-center">—</div>
+          )
+        ) : (
+          <>
+            {/* Recent */}
+            {recentEntries.length > 0 && (
+              <div className="px-2 py-1 border-b border-slate-700">
+                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">{t.addBlock.recent}</div>
+                <div className="flex flex-wrap">
+                  {recentEntries.map((e) => (
+                    <BlockButtonCompact key={e.type} entry={e} onClick={() => add(e.type)} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Categories accordion */}
+            {BLOCK_CATEGORIES.map((cat) => {
+              const catEntries = cat.types.filter(isVisible).map((type) => entryMap.get(type)!);
+              if (catEntries.length === 0) return null;
+              const isExpanded = expandedCats.has(cat.key);
+              return (
+                <div key={cat.key} className="border-b border-slate-700 last:border-b-0">
+                  <button
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700/50 transition-colors cursor-pointer"
+                    onClick={() => toggleCat(cat.key)}
+                  >
+                    <span className="font-medium">
+                      {isExpanded ? '▾' : '▸'}{' '}
+                      {t.addBlock.categories[cat.key]}
+                    </span>
+                    <span className="text-slate-500">{catEntries.length}</span>
+                  </button>
+                  {isExpanded && (
+                    <div className="grid grid-cols-2">
+                      {catEntries.map((e) => (
+                        <BlockButton key={e.type} entry={e} onClick={() => add(e.type)} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </>
+        )}
+
+        {/* Cancel */}
+        <button
+          className="w-full py-1 text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
+          onClick={close}
+        >
+          {t.addBlock.cancel}
+        </button>
+      </div>
     </div>
   );
 }

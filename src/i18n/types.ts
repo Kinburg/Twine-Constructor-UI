@@ -86,6 +86,14 @@ export interface Translations {
   addBlock: {
     trigger: string;
     cancel: string;
+    search: string;
+    recent: string;
+    categories: {
+      content: string;
+      interaction: string;
+      logic: string;
+      system: string;
+    };
     text:        { label: string; desc: string };
     dialogue:    { label: string; desc: string };
     choice:      { label: string; desc: string };
@@ -195,6 +203,9 @@ export interface Translations {
     projectSettingsDesc: string;
     editorPrefs: string;
     editorPrefsDesc: string;
+    successSave: string;
+    successExportHtml: string;
+    successExportTwee: string;
   };
 
   // ─── Asset manager ──────────────────────────────────────────────────────────
@@ -218,6 +229,8 @@ export interface Translations {
     emptyGroup: string;
     videoTitle: string;
     removeTitle: string;
+    confirmDeleteFile: (name: string) => string;
+    refresh: string;
   };
 
   // ─── Characters ─────────────────────────────────────────────────────────────
@@ -711,6 +724,8 @@ export interface Translations {
     chooseFolder:           string;
     titleEmpty:             string;
     headerImageNote:        string;
+    successSave:            string;
+    successCreate:          string;
   };
 
   // ─── Scene settings modal ────────────────────────────────────────────────────

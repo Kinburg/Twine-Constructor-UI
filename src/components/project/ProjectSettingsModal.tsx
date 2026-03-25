@@ -3,6 +3,7 @@ import { useProjectStore, DEFAULT_PROJECT_SETTINGS } from '../../store/projectSt
 import { useEditorStore } from '../../store/editorStore';
 import { useT } from '../../i18n';
 import { fsApi, joinPath, safeName, toLocalFileUrl } from '../../lib/fsApi';
+import { toast } from 'sonner';
 import type { ProjectSettings, SidebarPanel, SidebarTab, SidebarRow } from '../../types';
 
 // ─── Header image helpers ──────────────────────────────────────────────────────
@@ -214,6 +215,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
 
       setProjectSettingsOpen(false);
       onClose();
+      toast.success(t.projectSettings.successSave);
     } catch (e) {
       alert(String(e));
     } finally {
@@ -275,6 +277,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
       loadProject(newProject, folder);
       setProjectSettingsOpen(false);
       onClose();
+      toast.success(t.projectSettings.successCreate);
     } catch (e) {
       alert(String(e));
     } finally {

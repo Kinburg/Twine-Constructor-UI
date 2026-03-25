@@ -11,6 +11,8 @@ interface ElectronAPI {
   exists(filePath: string): Promise<boolean>;
   renameDir(oldPath: string, newPath: string): Promise<void>;
   listDir(dirPath: string): Promise<{ name: string; isDir: boolean }[]>;
+  deleteFile(filePath: string): Promise<void>;
+  deleteDir(dirPath: string): Promise<void>;
 
   // Dialogs
   openFileDialog(options?: {

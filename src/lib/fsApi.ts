@@ -14,6 +14,8 @@ export const fsApi = {
   exists:         (p: string)                     => api().exists(p),
   renameDir:      (old: string, next: string)     => api().renameDir(old, next),
   listDir:        (p: string)                     => api().listDir(p),
+  deleteFile:     (p: string)                     => api().deleteFile(p),
+  deleteDir:      (p: string)                     => api().deleteDir(p),
   openFileDialog: (opts?: Parameters<ElectronAPI['openFileDialog']>[0]) =>
     api().openFileDialog(opts),
   openFilesDialog: (opts?: Parameters<ElectronAPI['openFilesDialog']>[0]) =>

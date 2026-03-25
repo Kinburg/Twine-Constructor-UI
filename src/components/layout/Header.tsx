@@ -11,6 +11,7 @@ import {
   parseSCFormatJs, storeSCTemplate, clearSCTemplate,
 } from '../../utils/scRuntime';
 import { fsApi, joinPath, safeName } from '../../lib/fsApi';
+import { toast } from 'sonner';
 
 const PURL_EXT = 'purl';
 
@@ -103,6 +104,7 @@ export function Header() {
         setProjectDir(dir);
       }
       await doSaveToDir(dir);
+      toast.success(t.header.successSave);
     } catch (e) {
       alert(t.header.errorSave(String(e)));
     } finally {
@@ -118,6 +120,7 @@ export function Header() {
     try {
       setProjectDir(dir);
       await doSaveToDir(dir);
+      toast.success(t.header.successSave);
     } catch (e) {
       alert(t.header.errorSave(String(e)));
     } finally {
@@ -210,6 +213,7 @@ export function Header() {
       if (!dir) return;
       const html = generateStandaloneHtml(project, template);
       await fsApi.writeFile(joinPath(dir, 'index.html'), html);
+      toast.success(t.header.successExportHtml);
       if (confirmOpenFolderAfterExport) {
         ask({ message: t.header.confirmHtmlSaved }, async () => { await fsApi.openPath(dir); });
       }
@@ -236,6 +240,7 @@ export function Header() {
     try {
       const html = generateStandaloneHtml(project, template);
       await fsApi.writeFile(filePath, html);
+      toast.success(t.header.successExportHtml);
     } catch (e) {
       alert(t.header.errorExportHtml(String(e)));
     } finally {
@@ -257,6 +262,7 @@ export function Header() {
     try {
       const twee = exportToTwee(project);
       await fsApi.writeFile(filePath, twee);
+      toast.success(t.header.successExportTwee);
     } catch (e) {
       alert(t.header.errorExportTwee(String(e)));
     } finally {

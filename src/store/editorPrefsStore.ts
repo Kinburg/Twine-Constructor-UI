@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import type { BlockType } from '../types';
 
 export interface EditorPrefs {
   // ── Autosave ──────────────────────────────────────────────────────────────
@@ -23,6 +24,9 @@ export interface EditorPrefs {
 
   // ── Export ────────────────────────────────────────────────────────────────
   confirmOpenFolderAfterExport: boolean;
+
+  // ── Add-block menu ──────────────────────────────────────────────────────
+  recentBlockTypes: BlockType[];
 }
 
 const DEFAULTS: EditorPrefs = {
@@ -41,10 +45,15 @@ const DEFAULTS: EditorPrefs = {
   deleteGroupWithScenes: false,
 
   confirmOpenFolderAfterExport: true,
+
+  recentBlockTypes: [],
 };
+
+const MAX_RECENT = 5;
 
 interface EditorPrefsState extends EditorPrefs {
   setPrefs: (patch: Partial<EditorPrefs>) => void;
+  trackRecentBlock: (type: BlockType) => void;
 }
 
 export const useEditorPrefsStore = create<EditorPrefsState>()(
@@ -52,6 +61,9 @@ export const useEditorPrefsStore = create<EditorPrefsState>()(
     (set) => ({
       ...DEFAULTS,
       setPrefs: (patch) => set(patch),
+      trackRecentBlock: (type) => set((s) => ({
+        recentBlockTypes: [type, ...s.recentBlockTypes.filter((t) => t !== type)].slice(0, MAX_RECENT),
+      })),
     }),
     { name: 'purl-editor-prefs' },
   ),

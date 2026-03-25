@@ -81,6 +81,14 @@ const ua: Translations = {
   addBlock: {
     trigger:     '+ Додати блок',
     cancel:      'Скасувати',
+    search:      'Пошук блоків...',
+    recent:      'Нещодавні',
+    categories: {
+      content:     'Контент',
+      interaction: 'Взаємодія',
+      logic:       'Логіка',
+      system:      'Системні',
+    },
     text:        { label: 'Текст',       desc: 'Нарративний текст' },
     dialogue:    { label: 'Діалог',      desc: 'Репліка персонажа' },
     choice:      { label: 'Вибір',       desc: 'Варіанти / посилання' },
@@ -176,6 +184,9 @@ const ua: Translations = {
     projectSettingsDesc:    'Редагувати назву, автора, кольори та параметри',
     editorPrefs:            'Налаштування редактора',
     editorPrefsDesc:        'Автозбереження, компактний режим, підтвердження видалення',
+    successSave:            'Проєкт збережено',
+    successExportHtml:      'HTML успішно експортовано',
+    successExportTwee:      'Twee успішно експортовано',
   },
 
   assets: {
@@ -194,10 +205,12 @@ const ua: Translations = {
     addSubgroupTitle:     'Додати підгрупу',
     addFilesToGroupTitle: 'Додати файли до групи',
     deleteGroupTitle:     'Видалити групу (файли на диску залишаються)',
-    confirmDeleteGroup:   (name) => `Видалити групу "${name}" з дерева?\nФайли на диску залишаться.`,
+    confirmDeleteGroup:   (name) => `Видалити папку "${name}" та весь її вміст з диску?`,
     emptyGroup:           'порожньо',
     videoTitle:           'Відео',
-    removeTitle:          'Прибрати зі списку (файл на диску залишається)',
+    removeTitle:          'Видалити файл з диску',
+    confirmDeleteFile:    (name) => `Видалити файл "${name}" з диску?`,
+    refresh:              'Оновити з диску',
   },
 
   characters: {
@@ -689,6 +702,8 @@ const ua: Translations = {
     chooseFolder:           'Вибрати папку',
     titleEmpty:             'Назва не може бути порожньою.',
     headerImageNote:        'Розміщується у верхній частині панелі гравця.',
+    successSave:            'Налаштування збережено',
+    successCreate:          'Проєкт створено',
   },
 
   sceneSettings: {

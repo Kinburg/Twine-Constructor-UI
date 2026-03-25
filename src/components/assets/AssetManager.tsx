@@ -8,10 +8,112 @@ import { useConfirm } from '../shared/ConfirmModal';
 // ─── Video extensions ─────────────────────────────────────────────────────────
 
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'ogv', 'mov', 'avi', 'mkv']);
+const MEDIA_EXTS = new Set([
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif',
+  'mp4', 'webm', 'ogg', 'ogv', 'mov', 'avi', 'mkv',
+]);
 
 function getAssetType(filename: string): 'image' | 'video' {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
   return VIDEO_EXTS.has(ext) ? 'video' : 'image';
+}
+
+function isMediaFile(filename: string): boolean {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+  return MEDIA_EXTS.has(ext);
+}
+
+// ─── Tree lookup ──────────────────────────────────────────────────────────────
+
+function findNodeById(nodes: AssetTreeNode[], id: string): AssetTreeNode | null {
+  for (const n of nodes) {
+    if (n.id === id) return n;
+    if (n.kind === 'group') {
+      const found = findNodeById(n.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+// ─── Filesystem ↔ asset tree full sync ────────────────────────────────────────
+
+/**
+ * Recursively sync the asset tree with what's actually on disk.
+ * - Files/folders on disk but missing from store → added
+ * - Files/folders in store but missing from disk → removed
+ * - Existing nodes keep their IDs
+ */
+async function syncWithDisk(
+  existing: AssetTreeNode[],
+  absDir: string,
+  relDir: string,
+): Promise<{ result: AssetTreeNode[]; changed: boolean }> {
+  let entries: { name: string; isDir: boolean }[];
+  try { entries = await fsApi.listDir(absDir); } catch { return { result: [], changed: existing.length > 0 }; }
+
+  // Index existing children by relativePath for quick lookup
+  const existingByRel = new Map<string, AssetTreeNode>();
+  for (const n of existing) existingByRel.set(n.relativePath, n);
+
+  // Track which disk entries we've seen (to detect store-only nodes later)
+  const diskPaths = new Set<string>();
+
+  let changed = false;
+  const result: AssetTreeNode[] = [];
+
+  for (const entry of entries) {
+    const childRel = `${relDir}/${entry.name}`;
+    const childAbs = joinPath(absDir, entry.name);
+    diskPaths.add(childRel);
+
+    if (entry.isDir) {
+      const existingGroup = existingByRel.get(childRel);
+      if (existingGroup && existingGroup.kind === 'group') {
+        // Existing group — recurse to sync children
+        const sub = await syncWithDisk(existingGroup.children, childAbs, childRel);
+        if (sub.changed) {
+          result.push({ ...existingGroup, children: sub.result });
+          changed = true;
+        } else {
+          result.push(existingGroup);
+        }
+      } else {
+        // New folder on disk — create group and scan contents
+        const sub = await syncWithDisk([], childAbs, childRel);
+        result.push({
+          kind: 'group', id: crypto.randomUUID(),
+          name: entry.name, relativePath: childRel,
+          children: sub.result,
+        } satisfies AssetGroup);
+        changed = true;
+      }
+    } else {
+      // File — only track media files
+      if (isMediaFile(entry.name)) {
+        const existingAsset = existingByRel.get(childRel);
+        if (existingAsset && existingAsset.kind === 'asset') {
+          result.push(existingAsset); // keep existing ID
+        } else {
+          result.push({
+            kind: 'asset', id: crypto.randomUUID(),
+            name: entry.name, assetType: getAssetType(entry.name),
+            relativePath: childRel,
+          } satisfies Asset);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  // Detect store nodes that no longer exist on disk → removed
+  for (const n of existing) {
+    if (!diskPaths.has(n.relativePath)) {
+      changed = true; // node was in store but not on disk — it's dropped
+    }
+  }
+
+  return { result, changed };
 }
 
 // ─── Pending "add group" state ────────────────────────────────────────────────
@@ -27,7 +129,7 @@ export function AssetManager() {
   const t = useT();
   const {
     project, projectDir, setProjectDir,
-    addAssetGroup, addAsset, deleteAssetNode,
+    addAssetGroup, addAsset, deleteAssetNode, syncAssets,
   } = useProjectStore();
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
@@ -44,6 +146,27 @@ export function AssetManager() {
       setTimeout(() => groupInputRef.current?.focus(), 0);
     }
   }, [pendingGroup]);
+
+  // ── Sync asset tree with filesystem ────────────────────────────────────────
+  const runSync = async () => {
+    if (!projectDir) return;
+    const assetsAbs = joinPath(projectDir, 'assets');
+    const exists = await fsApi.exists(assetsAbs);
+    if (!exists) return;
+    const { result, changed } = await syncWithDisk(
+      useProjectStore.getState().project.assetNodes, assetsAbs, 'assets',
+    );
+    if (changed) syncAssets(result);
+  };
+
+  // Auto-sync on mount / projectDir change
+  useEffect(() => {
+    if (!projectDir) return;
+    let cancelled = false;
+    runSync().then(() => { if (cancelled) return; });
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectDir]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -146,6 +269,20 @@ export function AssetManager() {
     }
   }
 
+  // ── Delete (from store + disk) ─────────────────────────────────────────────
+
+  async function handleDelete(id: string) {
+    const node = findNodeById(project.assetNodes, id);
+    if (node && projectDir) {
+      const absPath = joinPath(projectDir, node.relativePath);
+      try {
+        if (node.kind === 'group') await fsApi.deleteDir(absPath);
+        else                       await fsApi.deleteFile(absPath);
+      } catch { /* file may already be gone */ }
+    }
+    deleteAssetNode(id);
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const { assetNodes } = project;
@@ -199,6 +336,13 @@ export function AssetManager() {
         >
           {t.assets.addFiles}
         </button>
+        <button
+          className="text-xs text-slate-500 hover:text-indigo-300 hover:bg-slate-800 rounded px-1.5 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600"
+          title={t.assets.refresh}
+          onClick={runSync}
+        >
+          ↻
+        </button>
       </div>
 
       {assetNodes.length === 0 && !pendingGroup && (
@@ -216,7 +360,7 @@ export function AssetManager() {
           onToggle={toggleExpand}
           onStartAddGroup={startAddGroup}
           onAddFiles={handleAddFiles}
-          onDelete={deleteAssetNode}
+          onDelete={handleDelete}
           projectDir={projectDir}
         />
       ))}
@@ -345,6 +489,7 @@ function AssetRow({
   asset, depth, onDelete, projectDir,
 }: NodeViewProps & { asset: Asset }) {
   const t = useT();
+  const { ask, modal: confirmModal } = useConfirm();
   const indent = depth * 14;
   const isVideo = asset.assetType === 'video';
 
@@ -383,10 +528,14 @@ function AssetRow({
       <button
         className="opacity-0 group-hover/row:opacity-100 text-slate-600 hover:text-red-400 text-xs cursor-pointer transition-opacity shrink-0 px-0.5"
         title={t.assets.removeTitle}
-        onClick={() => onDelete(asset.id)}
+        onClick={() => ask(
+          { message: t.assets.confirmDeleteFile(asset.name), variant: 'danger' },
+          () => onDelete(asset.id),
+        )}
       >
         ✕
       </button>
+      {confirmModal}
     </div>
   );
 }

@@ -588,6 +588,8 @@ interface ProjectState {
   renameAssetGroup: (id: string, name: string, newRelativePath: string) => void;
   addAsset: (parentGroupId: string | null, a: Omit<Asset, 'id' | 'kind'>) => void;
   deleteAssetNode: (id: string) => void;
+  /** Replace assetNodes wholesale (used by filesystem sync, no undo snapshot) */
+  syncAssets: (nodes: AssetTreeNode[]) => void;
 
   // Sidebar panel
   setPanelLiveUpdate: (v: boolean) => void;
@@ -1459,6 +1461,9 @@ export const useProjectStore = create<ProjectState>()(
             },
           }));
         },
+
+        syncAssets: (nodes) =>
+          set(s => ({ project: { ...s.project, assetNodes: nodes } })),
 
         // ── Sidebar panel ──────────────────────────────────────────────────────
 

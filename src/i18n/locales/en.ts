@@ -81,6 +81,14 @@ const en: Translations = {
   addBlock: {
     trigger:     '+ Add block',
     cancel:      'Cancel',
+    search:      'Search blocks...',
+    recent:      'Recent',
+    categories: {
+      content:     'Content',
+      interaction: 'Interaction',
+      logic:       'Logic',
+      system:      'System',
+    },
     text:        { label: 'Text',       desc: 'Narrative text' },
     dialogue:    { label: 'Dialogue',   desc: 'Character line' },
     choice:      { label: 'Choice',     desc: 'Options / links' },
@@ -176,6 +184,9 @@ const en: Translations = {
     projectSettingsDesc:    'Edit title, author, colors and story options',
     editorPrefs:            'Editor Preferences',
     editorPrefsDesc:        'Autosave, compact mode, delete confirmations',
+    successSave:            'Project saved',
+    successExportHtml:      'HTML exported successfully',
+    successExportTwee:      'Twee exported successfully',
   },
 
   assets: {
@@ -194,10 +205,12 @@ const en: Translations = {
     addSubgroupTitle:     'Add subgroup',
     addFilesToGroupTitle: 'Add files to group',
     deleteGroupTitle:     'Remove group (files on disk are kept)',
-    confirmDeleteGroup:   (name) => `Remove group "${name}" from the tree?\nFiles on disk will remain.`,
+    confirmDeleteGroup:   (name) => `Delete folder "${name}" and all its contents from disk?`,
     emptyGroup:           'empty',
     videoTitle:           'Video',
-    removeTitle:          'Remove from list (file on disk is kept)',
+    removeTitle:          'Delete file from disk',
+    confirmDeleteFile:    (name) => `Delete file "${name}" from disk?`,
+    refresh:              'Refresh from disk',
   },
 
   characters: {
@@ -689,6 +702,8 @@ const en: Translations = {
     chooseFolder:           'Choose folder',
     titleEmpty:             'Title cannot be empty.',
     headerImageNote:        'Placed at the top of the story sidebar.',
+    successSave:            'Settings saved',
+    successCreate:          'Project created',
   },
 
   sceneSettings: {
