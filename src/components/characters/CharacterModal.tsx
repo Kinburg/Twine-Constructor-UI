@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
+import { TreeLevel, type TreeActions } from '../variables/VariableManager';
 import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset, VariableType, VariableTreeNode, VariableGroup } from '../../types';
 import { useT } from '../../i18n';
 
@@ -14,13 +15,6 @@ function resolveEditorSrc(src: string, projectDir: string | null): string {
 
 function defaultAvatarConfig(): AvatarConfig {
   return { mode: 'static', src: '', variableId: '', mapping: [], defaultSrc: '' };
-}
-
-export interface PendingVar {
-  _tempId: string;
-  name: string;
-  varType: VariableType;
-  defaultValue: string;
 }
 
 /** Find a group by ID anywhere in the variable tree */
@@ -36,15 +30,42 @@ function findGroup(nodes: VariableTreeNode[], id: string): VariableGroup | null 
 }
 
 /**
- * Returns direct Variable children of the character's root group,
- * excluding the auto-managed name var (and any group nodes like stylesGroup).
+ * Returns user-added children of the character's root group,
+ * excluding the auto-managed name var and styles group.
  */
-function getCharUserVars(nodes: VariableTreeNode[], groupId: string, nameVarId: string): Variable[] {
+function getCharUserNodes(nodes: VariableTreeNode[], groupId: string, nameVarId: string, stylesGroupId: string): VariableTreeNode[] {
   const group = findGroup(nodes, groupId);
   if (!group) return [];
-  return group.children.filter(
-    (n): n is Variable => n.kind === 'variable' && n.id !== nameVarId,
-  );
+  return group.children.filter(n => n.id !== nameVarId && n.id !== stylesGroupId);
+}
+
+// ─── Local tree operations for create mode ──────────────────────────────────
+
+function localAddNode(nodes: VariableTreeNode[], parentId: string | null, node: VariableTreeNode): VariableTreeNode[] {
+  if (parentId === null) return [...nodes, node];
+  return nodes.map(n => {
+    if (n.kind === 'group' && n.id === parentId) {
+      return { ...n, children: [...n.children, node] };
+    }
+    if (n.kind === 'group') {
+      return { ...n, children: localAddNode(n.children, parentId, node) };
+    }
+    return n;
+  });
+}
+
+function localRemoveNode(nodes: VariableTreeNode[], id: string): VariableTreeNode[] {
+  return nodes
+    .filter(n => n.id !== id)
+    .map(n => n.kind === 'group' ? { ...n, children: localRemoveNode(n.children, id) } : n);
+}
+
+function localUpdateVar(nodes: VariableTreeNode[], id: string, patch: Partial<Variable>): VariableTreeNode[] {
+  return nodes.map(n => {
+    if (n.kind === 'variable' && n.id === id) return { ...n, ...patch };
+    if (n.kind === 'group') return { ...n, children: localUpdateVar(n.children, id, patch) };
+    return n;
+  });
 }
 
 interface Props {
@@ -52,13 +73,13 @@ interface Props {
   charId?: string;
   initial: Omit<Character, 'id'>;
   takenNames: string[];
-  onSave: (data: Omit<Character, 'id'>, pendingVars: PendingVar[]) => void;
+  onSave: (data: Omit<Character, 'id'>, pendingNodes: VariableTreeNode[]) => void;
   onClose: () => void;
 }
 
 export function CharacterModal({ mode, charId, initial, takenNames, onSave, onClose }: Props) {
   const t = useT();
-  const { project, addVariable, deleteVariableNode } = useProjectStore();
+  const { project, addVariable, addVariableGroup, updateVariable, deleteVariableNode } = useProjectStore();
   const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
 
   const [name, setName] = useState(initial.name);
@@ -68,16 +89,16 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
   const [borderColor, setBorderColor] = useState(initial.borderColor);
   const [avatarCfg, setAvatarCfg] = useState<AvatarConfig>(initial.avatarConfig ?? defaultAvatarConfig());
 
-  // In edit mode: read live user vars from the char's variable group (excluding auto-managed ones)
+  // In edit mode: read live user nodes from the char's variable group (excluding auto-managed ones)
   const liveChar = mode === 'edit' && charId
     ? project.characters.find(c => c.id === charId)
     : null;
-  const existingUserVars = liveChar?.varIds
-    ? getCharUserVars(project.variableNodes, liveChar.varIds.groupId, liveChar.varIds.nameVarId)
+  const charUserNodes = liveChar?.varIds
+    ? getCharUserNodes(project.variableNodes, liveChar.varIds.groupId, liveChar.varIds.nameVarId, liveChar.varIds.stylesGroupId)
     : [];
 
-  // In create mode: track pending vars locally until save
-  const [pendingVars, setPendingVars] = useState<PendingVar[]>([]);
+  // In create mode: track pending nodes locally until save
+  const [pendingNodes, setPendingNodes] = useState<VariableTreeNode[]>([]);
 
   const draft: Omit<Character, 'id'> = { name, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg };
 
@@ -90,25 +111,34 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
 
   const handleSave = () => {
     if (nameError) return;
-    onSave({ ...draft, name: trimmedName }, pendingVars);
+    onSave({ ...draft, name: trimmedName }, pendingNodes);
     onClose();
   };
 
-  // Edit mode: apply immediately via store (same as Variables tab)
-  const handleAddVar = (v: { name: string; varType: VariableType; defaultValue: string }) => {
-    if (mode === 'edit' && liveChar?.varIds) {
-      addVariable(liveChar.varIds.groupId, { name: v.name, varType: v.varType, defaultValue: v.defaultValue, description: '' });
-    } else {
-      setPendingVars(prev => [...prev, { ...v, _tempId: crypto.randomUUID() }]);
-    }
+  // Tree actions for edit mode (backed by store)
+  const editActions: TreeActions = {
+    onAddVariable: (parentId, data) => addVariable(parentId, data),
+    onAddGroup: (parentId, name) => addVariableGroup(parentId, name),
+    onUpdateVariable: (id, patch) => updateVariable(id, patch),
+    onDeleteNode: (id) => deleteVariableNode(id),
   };
 
-  const handleDeleteVar = (id: string) => {
-    if (mode === 'edit') {
-      deleteVariableNode(id);
-    } else {
-      setPendingVars(prev => prev.filter(v => v._tempId !== id));
-    }
+  // Tree actions for create mode (backed by local state)
+  const createActions: TreeActions = {
+    onAddVariable: (parentId, data) => {
+      const newVar: Variable = { kind: 'variable', id: crypto.randomUUID(), name: data.name, varType: data.varType, defaultValue: data.defaultValue, description: data.description };
+      setPendingNodes(prev => localAddNode(prev, parentId, newVar));
+    },
+    onAddGroup: (parentId, name) => {
+      const newGroup: VariableGroup = { kind: 'group', id: crypto.randomUUID(), name, children: [] };
+      setPendingNodes(prev => localAddNode(prev, parentId, newGroup));
+    },
+    onUpdateVariable: (id, patch) => {
+      setPendingNodes(prev => localUpdateVar(prev, id, patch));
+    },
+    onDeleteNode: (id) => {
+      setPendingNodes(prev => localRemoveNode(prev, id));
+    },
   };
 
   // Flat list for the avatar variable picker
@@ -226,13 +256,11 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
           />
 
           {/* Custom variables */}
-          <CustomVarsSection
-            mode={mode}
-            existingVars={existingUserVars}
-            pendingVars={pendingVars}
-            onAdd={handleAddVar}
-            onDeleteExisting={id => handleDeleteVar(id)}
-            onDeletePending={tempId => handleDeleteVar(tempId)}
+          <CharacterVarsEditor
+            nodes={mode === 'edit' ? charUserNodes : pendingNodes}
+            allNodes={mode === 'edit' ? charUserNodes : pendingNodes}
+            actions={mode === 'edit' ? editActions : createActions}
+            parentId={mode === 'edit' && liveChar?.varIds ? liveChar.varIds.groupId : null}
           />
         </div>
 
@@ -556,40 +584,28 @@ function AvatarImagePicker({
   );
 }
 
-// ─── Custom vars section ───────────────────────────────────────────────────────
+// ─── Character vars editor (tree-based) ─────────────────────────────────────
 
-function CustomVarsSection({
-  mode,
-  existingVars,
-  pendingVars,
-  onAdd,
-  onDeleteExisting,
-  onDeletePending,
+function CharacterVarsEditor({
+  nodes,
+  allNodes,
+  actions,
+  parentId,
 }: {
-  mode: 'create' | 'edit';
-  existingVars: Variable[];
-  pendingVars: PendingVar[];
-  onAdd: (v: { name: string; varType: VariableType; defaultValue: string }) => void;
-  onDeleteExisting: (id: string) => void;
-  onDeletePending: (tempId: string) => void;
+  nodes: VariableTreeNode[];
+  allNodes: VariableTreeNode[];
+  actions: TreeActions;
+  parentId: string | null;
 }) {
   const t = useT();
   const [open, setOpen] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newType, setNewType] = useState<VariableType>('string');
-  const [newDefault, setNewDefault] = useState('');
-  const [nameError, setNameError] = useState('');
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [editingVarId, setEditingVarId] = useState<string | null>(null);
 
-  const totalCount = existingVars.length + pendingVars.length;
+  const toggleExpand = (id: string) =>
+    setExpandedIds(prev => { const s = new Set(prev); if (s.has(id)) { s.delete(id); } else { s.add(id); } return s; });
 
-  const handleAdd = () => {
-    const trimmed = newName.trim();
-    if (!trimmed) { setNameError(t.characters.customVarsNameEmpty); return; }
-    setNameError('');
-    onAdd({ name: trimmed, varType: newType, defaultValue: newDefault });
-    setNewName('');
-    setNewDefault('');
-  };
+  const totalCount = nodes.length;
 
   return (
     <div className="flex flex-col gap-1">
@@ -603,85 +619,26 @@ function CustomVarsSection({
       </button>
 
       {open && (
-        <div className="flex flex-col gap-0.5 pl-3 border-l border-slate-700/60 mt-0.5">
-          {/* Existing vars */}
-          {existingVars.map(v => (
-            <VarRow key={v.id}
-              label={`$${v.name}`} type={v.varType} defaultVal={v.defaultValue}
-              dimmed={false}
-              onDelete={() => onDeleteExisting(v.id)}
-            />
-          ))}
-          {/* Pending vars (create mode only) */}
-          {pendingVars.map(v => (
-            <VarRow key={v._tempId}
-              label={`$${v.name}`} type={v.varType} defaultVal={v.defaultValue}
-              dimmed={true}
-              onDelete={() => onDeletePending(v._tempId)}
-            />
-          ))}
-          {totalCount === 0 && (
-            <p className="text-xs text-slate-600 italic py-1">{t.characters.customVarsEmpty}</p>
+        <div className="flex flex-col gap-0.5 pl-1 border-l border-slate-700/60 mt-0.5">
+          {nodes.length === 0 && (
+            <p className="text-xs text-slate-600 italic py-1 pl-2">{t.characters.customVarsEmpty}</p>
           )}
 
-          {/* Add form */}
-          <div className="flex flex-col gap-1 pt-1.5 mt-0.5 border-t border-slate-700/40">
-            <div className="flex gap-1.5 items-start">
-              <div className="flex flex-col gap-0.5 flex-1 min-w-0">
-                <input
-                  className={`w-full bg-slate-700 text-xs text-white rounded px-2 py-1 outline-none border ${nameError ? 'border-red-500' : 'border-slate-600 focus:border-indigo-500'} font-mono placeholder-slate-600`}
-                  placeholder={t.characters.customVarsNamePlaceholder}
-                  value={newName}
-                  onChange={e => { setNewName(e.target.value); setNameError(''); }}
-                  onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-                />
-                {nameError && <span className="text-[10px] text-red-400">{nameError}</span>}
-              </div>
-              <select
-                className="bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 cursor-pointer shrink-0"
-                value={newType}
-                onChange={e => setNewType(e.target.value as VariableType)}
-              >
-                <option value="string">string</option>
-                <option value="number">number</option>
-                <option value="boolean">boolean</option>
-                <option value="array">array</option>
-              </select>
-              <input
-                className="bg-slate-700 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono w-20 shrink-0 placeholder-slate-600"
-                placeholder="default"
-                value={newDefault}
-                onChange={e => setNewDefault(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') handleAdd(); }}
-              />
-              <button
-                className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer transition-colors shrink-0 py-1"
-                onClick={handleAdd}
-              >
-                {t.characters.customVarsAdd}
-              </button>
-            </div>
-          </div>
+          <TreeLevel
+            nodes={nodes}
+            depth={0}
+            expandedIds={expandedIds}
+            editingVarId={editingVarId}
+            onToggleExpand={toggleExpand}
+            onEditVar={setEditingVarId}
+            parentId={parentId}
+            allNodes={allNodes}
+            pathPrefix=""
+            actions={actions}
+            showAddAtRoot
+          />
         </div>
       )}
-    </div>
-  );
-}
-
-function VarRow({ label, type, defaultVal, dimmed, onDelete }: {
-  label: string; type: string; defaultVal: string; dimmed: boolean; onDelete: () => void;
-}) {
-  return (
-    <div className="flex items-center gap-2 py-1 group">
-      <span className={`text-xs font-mono min-w-0 flex-1 truncate ${dimmed ? 'text-indigo-300/50' : 'text-indigo-300'}`}>{label}</span>
-      <span className="text-[10px] text-slate-500 shrink-0">{type}</span>
-      <span className="text-xs font-mono text-slate-500 shrink-0 max-w-[4rem] truncate">{defaultVal || '—'}</span>
-      <button
-        className="text-slate-700 hover:text-red-400 text-xs cursor-pointer shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={onDelete}
-      >
-        ✕
-      </button>
     </div>
   );
 }

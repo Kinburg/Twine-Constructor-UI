@@ -6,19 +6,27 @@ import { getVariablePath } from '../../utils/treeUtils';
 import { useT } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
 
-const TYPE_DEFAULTS: Record<VariableType, string> = {
+export const TYPE_DEFAULTS: Record<VariableType, string> = {
   number: '0', string: '', boolean: 'false', array: '[]',
 };
 
-const TYPE_COLOR: Record<VariableType, string> = {
+export const TYPE_COLOR: Record<VariableType, string> = {
   number: 'text-sky-400', string: 'text-emerald-400', boolean: 'text-amber-400', array: 'text-violet-400',
 };
+
+/** Callbacks for tree mutations — allows backing by store or local state */
+export interface TreeActions {
+  onAddVariable: (parentId: string | null, data: { name: string; varType: VariableType; defaultValue: string; description: string }) => void;
+  onAddGroup: (parentId: string | null, name: string) => void;
+  onUpdateVariable: (id: string, patch: Partial<Variable>) => void;
+  onDeleteNode: (id: string) => void;
+}
 
 // ─── Root component ───────────────────────────────────────────────────────────
 
 export function VariableManager() {
   const t = useT();
-  const { project, addVariableGroup, addVariable } = useProjectStore();
+  const { project, addVariableGroup, addVariable, updateVariable, deleteVariableNode } = useProjectStore();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [editingVarId, setEditingVarId] = useState<string | null>(null);
 
@@ -30,6 +38,13 @@ export function VariableManager() {
 
   const toggleExpand = (id: string) =>
     setExpandedIds(prev => { const s = new Set(prev); if (s.has(id)) { s.delete(id); } else { s.add(id); } return s; });
+
+  const actions: TreeActions = {
+    onAddVariable: (parentId, data) => addVariable(parentId, data),
+    onAddGroup: (parentId, name) => addVariableGroup(parentId, name),
+    onUpdateVariable: (id, patch) => updateVariable(id, patch),
+    onDeleteNode: (id) => deleteVariableNode(id),
+  };
 
   const confirmRootGroup = () => {
     const name = rootGroupName.trim();
@@ -72,6 +87,7 @@ export function VariableManager() {
         parentId={null}
         allNodes={project.variableNodes}
         pathPrefix=""
+        actions={actions}
       />
 
       {/* Root-level "add group" inline input */}
@@ -93,7 +109,7 @@ export function VariableManager() {
   );
 }
 
-function countVars(nodes: VariableTreeNode[]): number {
+export function countVars(nodes: VariableTreeNode[]): number {
   return nodes.reduce((acc, n) => {
     if (n.kind === 'variable') return acc + 1;
     return acc + countVars(n.children);
@@ -102,8 +118,8 @@ function countVars(nodes: VariableTreeNode[]): number {
 
 // ─── Tree level ───────────────────────────────────────────────────────────────
 
-function TreeLevel({
-  nodes, depth, expandedIds, editingVarId, onToggleExpand, onEditVar, parentId, allNodes, pathPrefix,
+export function TreeLevel({
+  nodes, depth, expandedIds, editingVarId, onToggleExpand, onEditVar, parentId, allNodes, pathPrefix, actions, showAddAtRoot,
 }: {
   nodes: VariableTreeNode[];
   depth: number;
@@ -114,9 +130,11 @@ function TreeLevel({
   parentId: string | null;
   allNodes: VariableTreeNode[];
   pathPrefix: string;
+  actions: TreeActions;
+  /** Show add buttons even at depth 0 (used by character modal) */
+  showAddAtRoot?: boolean;
 }) {
   const t = useT();
-  const { addVariable, addVariableGroup } = useProjectStore();
   const [addingGroup, setAddingGroup] = useState(false);
   const [groupName, setGroupName]     = useState('');
   const groupInputRef = useRef<HTMLInputElement>(null);
@@ -124,12 +142,14 @@ function TreeLevel({
 
   const confirmGroup = () => {
     const name = groupName.trim();
-    if (name) addVariableGroup(parentId, name);
+    if (name) actions.onAddGroup(parentId, name);
     setAddingGroup(false);
     setGroupName('');
   };
 
-  if (nodes.length === 0 && depth === 0) {
+  const showAddButtons = depth > 0 || showAddAtRoot;
+
+  if (nodes.length === 0 && depth === 0 && !showAddAtRoot) {
     return <p className="text-xs text-slate-600 italic px-2 py-1">{t.variables.empty}</p>;
   }
 
@@ -150,6 +170,7 @@ function TreeLevel({
               onEditVar={onEditVar}
               groupPath={gPath}
               allNodes={allNodes}
+              actions={actions}
             />
           );
         }
@@ -161,12 +182,13 @@ function TreeLevel({
             expanded={editingVarId === node.id}
             onToggle={() => onEditVar(editingVarId === node.id ? null : node.id)}
             allNodes={allNodes}
+            actions={actions}
           />
         );
       })}
 
-      {/* Inline group add (only for non-root: root handles it separately) */}
-      {depth > 0 && (
+      {/* Inline group/variable add */}
+      {showAddButtons && (
         addingGroup ? (
           <input
             ref={groupInputRef}
@@ -187,7 +209,7 @@ function TreeLevel({
               className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
               onClick={() => {
                 const allFlat = countVars(nodes);
-                addVariable(parentId, { name: `var${allFlat + 1}`, varType: 'number', defaultValue: '0', description: '' });
+                actions.onAddVariable(parentId, { name: `var${allFlat + 1}`, varType: 'number', defaultValue: '0', description: '' });
               }}
             >
               {t.variables.addVariable}
@@ -208,7 +230,7 @@ function TreeLevel({
 // ─── Group node ───────────────────────────────────────────────────────────────
 
 function GroupNode({
-  group, depth, expanded, expandedIds, editingVarId, onToggleExpand, onEditVar, groupPath, allNodes,
+  group, depth, expanded, expandedIds, editingVarId, onToggleExpand, onEditVar, groupPath, allNodes, actions,
 }: {
   group: VariableGroup;
   depth: number;
@@ -219,9 +241,9 @@ function GroupNode({
   onEditVar: (id: string | null) => void;
   groupPath: string;
   allNodes: VariableTreeNode[];
+  actions: TreeActions;
 }) {
   const t = useT();
-  const { deleteVariableNode } = useProjectStore();
   const confirmDeleteVariable = useEditorPrefsStore(s => s.confirmDeleteVariable);
   const { ask, modal: confirmModal } = useConfirm();
 
@@ -241,9 +263,9 @@ function GroupNode({
           onClick={e => {
             e.stopPropagation();
             if (confirmDeleteVariable) {
-              ask({ message: t.variables.confirmDeleteGroup(group.name), variant: 'danger' }, () => deleteVariableNode(group.id));
+              ask({ message: t.variables.confirmDeleteGroup(group.name), variant: 'danger' }, () => actions.onDeleteNode(group.id));
             } else {
-              deleteVariableNode(group.id);
+              actions.onDeleteNode(group.id);
             }
           }}
         >
@@ -262,6 +284,7 @@ function GroupNode({
             parentId={group.id}
             allNodes={allNodes}
             pathPrefix={groupPath}
+            actions={actions}
           />
         </div>
       )}
@@ -273,19 +296,19 @@ function GroupNode({
 // ─── Variable node ────────────────────────────────────────────────────────────
 
 function VariableNode({
-  variable: v, depth, expanded, onToggle, allNodes,
+  variable: v, depth, expanded, onToggle, allNodes, actions,
 }: {
   variable: Variable;
   depth: number;
   expanded: boolean;
   onToggle: () => void;
   allNodes: VariableTreeNode[];
+  actions: TreeActions;
 }) {
   const t = useT();
-  const { updateVariable, deleteVariableNode } = useProjectStore();
   const confirmDeleteVariable = useEditorPrefsStore(s => s.confirmDeleteVariable);
   const { ask, modal: confirmModal } = useConfirm();
-  const upd = (patch: Partial<Variable>) => updateVariable(v.id, patch);
+  const upd = (patch: Partial<Variable>) => actions.onUpdateVariable(v.id, patch);
 
   return (
     <div className="rounded border border-slate-700/60 overflow-hidden" style={{ marginLeft: depth * 12 }}>
@@ -304,9 +327,9 @@ function VariableNode({
           onClick={e => {
             e.stopPropagation();
             if (confirmDeleteVariable) {
-              ask({ message: t.variables.confirmDeleteVar(v.name), variant: 'danger' }, () => deleteVariableNode(v.id));
+              ask({ message: t.variables.confirmDeleteVar(v.name), variant: 'danger' }, () => actions.onDeleteNode(v.id));
             } else {
-              deleteVariableNode(v.id);
+              actions.onDeleteNode(v.id);
             }
           }}
         >
