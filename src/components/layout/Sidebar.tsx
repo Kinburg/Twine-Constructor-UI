@@ -6,6 +6,7 @@ import { CharacterManager } from '../characters/CharacterManager';
 import { VariableManager } from '../variables/VariableManager';
 import { AssetManager } from '../assets/AssetManager';
 import { WatcherManager } from '../watchers/WatcherManager';
+import { PanelEditor } from '../panel/PanelEditor';
 
 type Tab = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers';
 
@@ -69,14 +70,12 @@ export function Sidebar() {
         ))}
       </div>
 
-      {/* Tab label — hidden for 'panel' (it has its own header in the main area) */}
-      {activeSidebarTab !== 'panel' && (
-        <div className="px-3 pt-2 pb-1">
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-            {TABS.find(tab => tab.id === activeSidebarTab)?.label}
-          </span>
-        </div>
-      )}
+      {/* Tab label */}
+      <div className="px-3 pt-2 pb-1">
+        <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+          {TABS.find(tab => tab.id === activeSidebarTab)?.label}
+        </span>
+      </div>
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto">
@@ -84,6 +83,7 @@ export function Sidebar() {
         {activeSidebarTab === 'characters' && <CharacterManager />}
         {activeSidebarTab === 'variables'  && <VariableManager />}
         {activeSidebarTab === 'assets'     && <AssetManager />}
+        {activeSidebarTab === 'panel'      && <PanelEditor />}
         {activeSidebarTab === 'watchers'   && <WatcherManager />}
       </div>
 

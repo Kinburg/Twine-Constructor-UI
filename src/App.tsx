@@ -5,7 +5,7 @@ import { useEditorPrefsStore } from './store/editorPrefsStore';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { SceneEditor } from './components/scenes/SceneEditor';
-import { PanelEditor } from './components/panel/PanelEditor';
+
 import { ProjectSettingsModal } from './components/project/ProjectSettingsModal';
 import { EditorPrefsModal } from './components/editor/EditorPrefsModal';
 import { usePreviewSync } from './hooks/usePreviewSync';
@@ -14,7 +14,7 @@ import { useAutosave } from './hooks/useAutosave';
 import { Toaster } from 'sonner';
 
 export default function App() {
-  const { activeSidebarTab, fixVariableNames, undo, redo, projectDir } = useProjectStore();
+  const { fixVariableNames, undo, redo, projectDir } = useProjectStore();
   const { projectSettingsOpen, setProjectSettingsOpen, editorPrefsOpen, setEditorPrefsOpen } = useEditorStore();
   const compactMode = useEditorPrefsStore(s => s.compactMode);
   useAutosave();
@@ -52,7 +52,7 @@ export default function App() {
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <Sidebar />
-        {activeSidebarTab === 'panel' ? <PanelEditor /> : <SceneEditor />}
+        <SceneEditor />
       </div>
       {projectSettingsOpen && (
         <ProjectSettingsModal

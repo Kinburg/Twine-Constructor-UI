@@ -657,7 +657,7 @@ export const useProjectStore = create<ProjectState>()(
         project: defaultProject,
         activeSceneId: defaultProject.scenes[0].id,
         activeSidebarTab: 'scenes',
-        sidebarWidth: 288,
+        sidebarWidth: 340,
         projectDir: null,
         _history: [],
         _future: [],

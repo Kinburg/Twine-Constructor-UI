@@ -61,19 +61,14 @@ export function PanelEditor() {
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
-      {/* Top toolbar */}
-      <div className="flex items-center gap-3 px-4 py-2 border-b border-slate-700 bg-slate-900 shrink-0">
-        <span className="text-sm font-semibold text-slate-200">{t.panel.title}</span>
-      </div>
-
       {/* Tab bar */}
-      <div className="flex items-center gap-1 px-3 py-2 border-b border-slate-700 bg-slate-900/60 shrink-0 overflow-x-auto">
+      <div className="flex items-center gap-1.5 px-2 py-2 border-b border-slate-700 bg-slate-900/60 shrink-0 overflow-x-auto">
         {sidebarPanel.tabs.map((tab, idx) => (
-          <div key={tab.id} className="flex items-center gap-0.5 shrink-0">
+          <div key={tab.id} className="relative group/tab shrink-0">
             <button
               className={`px-3 py-1 rounded-t text-xs font-medium transition-colors cursor-pointer ${
                 activeTabId === tab.id
-                  ? 'bg-slate-700 text-white'
+                  ? 'bg-slate-700 text-white border-b-2 border-indigo-500'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
               }`}
               onClick={() => setActiveTabId(tab.id)}
@@ -81,12 +76,12 @@ export function PanelEditor() {
               {tab.label}
             </button>
             {activeTabId === tab.id && (
-              <div className="flex items-center">
-                <button className="text-slate-600 hover:text-slate-300 text-xs px-0.5 cursor-pointer" title={t.panel.moveLeft}
+              <div className="absolute -top-0.5 -right-0.5 flex items-center gap-0.5 bg-slate-800 border border-slate-700 rounded px-0.5 py-0.5 opacity-0 group-hover/tab:opacity-100 transition-opacity z-10 shadow-md">
+                <button className="text-slate-500 hover:text-slate-200 text-[10px] leading-none px-1 py-0.5 rounded hover:bg-slate-700 transition-colors cursor-pointer" title={t.panel.moveLeft}
                   onClick={() => moveTab(tab.id, -1)} disabled={idx === 0}>◀</button>
-                <button className="text-slate-600 hover:text-slate-300 text-xs px-0.5 cursor-pointer" title={t.panel.moveRight}
+                <button className="text-slate-500 hover:text-slate-200 text-[10px] leading-none px-1 py-0.5 rounded hover:bg-slate-700 transition-colors cursor-pointer" title={t.panel.moveRight}
                   onClick={() => moveTab(tab.id, 1)} disabled={idx === sidebarPanel.tabs.length - 1}>▶</button>
-                <button className="text-slate-600 hover:text-red-400 text-xs px-0.5 cursor-pointer" title={t.panel.deleteTab}
+                <button className="text-slate-500 hover:text-red-400 text-[10px] leading-none px-1 py-0.5 rounded hover:bg-slate-700 transition-colors cursor-pointer" title={t.panel.deleteTab}
                   onClick={() => ask(
                     { message: t.panel.confirmDeleteTab(tab.label), variant: 'danger' },
                     () => {
@@ -123,23 +118,23 @@ export function PanelEditor() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-
-        {/* ── Panel style settings ── */}
-        <PanelStyleEditor style={style} onChange={updatePanelStyle} />
+      <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-3">
 
         {!activeTab ? (
-          <p className="text-sm text-slate-600 italic">{t.panel.noTabs}</p>
+          <p className="text-xs text-slate-600 italic">{t.panel.noTabs}</p>
         ) : (
           <>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400 shrink-0">{t.panel.tabNameLabel}</label>
+            <div className="flex items-center gap-2 pb-2 border-b border-slate-700/50 mb-1">
+              <label className="text-xs text-slate-500 shrink-0">{t.panel.tabNameLabel}</label>
               <input
-                className="bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 w-48"
+                className="bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 flex-1 max-w-[200px]"
                 value={activeTab.label}
                 onChange={e => updatePanelTab(activeTab.id, { label: e.target.value })}
               />
             </div>
+
+            {/* ── Panel style settings ── */}
+            <PanelStyleEditor style={style} onChange={updatePanelStyle} />
 
             <TabRowsEditor tab={activeTab} vars={vars} imgAssets={imgAssets} />
           </>
@@ -164,15 +159,15 @@ function PanelStyleEditor({
   return (
     <div className="border border-slate-700 rounded overflow-hidden">
       <button
-        className="flex items-center gap-2 w-full px-3 py-2 bg-slate-800/60 text-xs font-semibold text-slate-300 hover:bg-slate-800 transition-colors cursor-pointer"
+        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors cursor-pointer"
         onClick={() => setOpen(v => !v)}
       >
-        <span className="text-slate-500">{open ? '▼' : '▶'}</span>
         {t.tableStyle.title}
+        <span className="text-slate-500 text-sm">{open ? '▴' : '▾'}</span>
       </button>
 
       {open && (
-        <div className="px-3 py-3 flex flex-col gap-3 bg-slate-900/40">
+        <div className="px-3 pb-3 flex flex-col gap-3">
 
           {/* Gaps row */}
           <div className="flex items-center gap-4 flex-wrap">
@@ -234,6 +229,9 @@ function TabRowsEditor({
   const t = useT();
   const { addPanelRow, updatePanelRow, deletePanelRow, addPanelCell } = useProjectStore();
   const { ask, modal: confirmModal } = useConfirm();
+  const [widthsOpenMap, setWidthsOpenMap] = useState<Record<string, boolean>>({});
+  const toggleWidths = (rowId: string) =>
+    setWidthsOpenMap(prev => ({ ...prev, [rowId]: !prev[rowId] }));
 
   return (
     <div className="flex flex-col gap-3">
@@ -248,7 +246,7 @@ function TabRowsEditor({
       {tab.rows.map((row, rowIdx) => (
         <div key={row.id} className="border border-slate-700 rounded overflow-hidden">
           {/* Row header */}
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/60 border-b border-slate-700 flex-wrap">
+          <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-800/40 border-b border-slate-700 group/row">
             <span className="text-xs text-slate-500">{t.rowsEditor.rowLabel(rowIdx + 1)}</span>
 
             {/* Row height */}
@@ -259,7 +257,7 @@ function TabRowsEditor({
                 className="w-16" />
             </label>
 
-            <button className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
+            <button className="text-slate-600 hover:text-red-400 text-xs cursor-pointer opacity-0 group-hover/row:opacity-100 transition-opacity"
               onClick={() => ask(
                 { message: t.rowsEditor.confirmDeleteRow, variant: 'danger' },
                 () => deletePanelRow(tab.id, row.id),
@@ -269,7 +267,7 @@ function TabRowsEditor({
           </div>
 
           {/* Cells preview + width inputs */}
-          <div className="p-2 flex flex-col gap-1.5">
+          <div className="p-2 flex flex-col gap-2">
 
             {/* Preview row — DragDividers between cells for width redistribution */}
             <div
@@ -300,13 +298,22 @@ function TabRowsEditor({
               )}
             </div>
 
-            {/* Width inputs under each cell */}
-            {row.cells.length > 0 && (
-              <CellWidthBar tabId={tab.id} row={row} />
+            {/* Width toggle + inputs (hidden by default for multi-cell rows) */}
+            {row.cells.length > 1 && (
+              <div className="flex flex-col gap-1">
+                <button
+                  className="text-[10px] text-slate-600 hover:text-slate-400 transition-colors cursor-pointer self-start flex items-center gap-1"
+                  onClick={() => toggleWidths(row.id)}
+                >
+                  <span>{widthsOpenMap[row.id] ? '▴' : '▾'}</span>
+                  <span>{t.rowsEditor.equalWidth}</span>
+                </button>
+                {widthsOpenMap[row.id] && <CellWidthBar tabId={tab.id} row={row} />}
+              </div>
             )}
 
             <button
-              className="text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer self-start"
+              className="text-xs text-slate-600 hover:text-indigo-400 rounded px-2 py-0.5 transition-colors cursor-pointer self-start border border-transparent hover:border-slate-700"
               onClick={() => addPanelCell(tab.id, row.id)}
             >
               {t.rowsEditor.addCell}
@@ -315,7 +322,7 @@ function TabRowsEditor({
         </div>
       ))}
       <button
-          className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
+          className="w-full text-xs text-indigo-400 hover:text-indigo-300 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600 text-center"
           onClick={() => addPanelRow(tab.id)}
       >
         {t.rowsEditor.addRow}
@@ -369,7 +376,7 @@ function CellWidthBar({
             <input
               type="number"
               min={1} max={99}
-              className="w-full text-xs bg-slate-800 text-white rounded px-1.5 py-0.5 outline-none border border-slate-700 focus:border-indigo-500 font-mono text-center"
+              className="w-full text-[10px] bg-slate-800 text-slate-300 rounded px-1 py-0.5 outline-none border border-slate-700 focus:border-indigo-500 font-mono text-center"
               value={cell.width}
               onChange={e => handleWidthChange(cell.id, Number(e.target.value))}
             />
@@ -380,11 +387,11 @@ function CellWidthBar({
 
       {/* Sum indicator + equalize button */}
       <div className="flex items-center gap-2 mt-0.5">
-        <span className={`text-xs font-mono ${offBy === 0 ? 'text-slate-600' : 'text-amber-400'}`}>
+        <span className={`text-[10px] font-mono ${offBy === 0 ? 'text-slate-600' : 'text-amber-400'}`}>
           Σ {total}%{offBy !== 0 && ` (${offBy > 0 ? '+' : ''}${offBy})`}
         </span>
         <button
-          className="text-xs text-slate-500 hover:text-slate-300 cursor-pointer hover:bg-slate-800 rounded px-1.5 py-0.5 transition-colors"
+          className="text-[10px] text-slate-500 hover:text-slate-300 cursor-pointer hover:bg-slate-700 rounded px-1 py-0.5 transition-colors"
           title={t.rowsEditor.equalWidthTitle}
           onClick={handleEqualize}
         >
@@ -472,18 +479,18 @@ function CellEditor({
 
   return (
     <div
-      className="relative flex flex-col border border-slate-600 rounded bg-slate-800/40 overflow-hidden cursor-pointer group/cell"
+      className="relative flex flex-col border border-slate-700 rounded bg-slate-800/40 overflow-hidden cursor-pointer group/cell hover:border-slate-500 transition-colors"
       style={{ flex: cell.width, minWidth: 0, overflow: 'hidden' }}
       onClick={() => setEditing(true)}
     >
       <CellPreview cell={cell} vars={vars} />
 
-      <div className="absolute inset-0 bg-slate-900/85 opacity-0 group-hover/cell:opacity-100 transition-opacity flex items-center justify-center gap-1.5 px-1.5">
+      <div className="absolute inset-0 bg-slate-900/80 opacity-0 group-hover/cell:opacity-100 transition-opacity flex items-center justify-center gap-2 px-2">
         <span className="text-xs text-slate-400 truncate min-w-0">{cellTypeLabelFromT(t, cell.content.type)}</span>
-        <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer shrink-0 hover:bg-slate-700 rounded px-1 py-0.5"
+        <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer shrink-0 bg-slate-800/60 hover:bg-slate-700 rounded px-1.5 py-0.5 border border-slate-600 hover:border-indigo-500 transition-colors"
           title={t.rowsEditor.editTitle}
           onClick={e => { e.stopPropagation(); setEditing(true); }}>✏️</button>
-        <button className="text-xs text-red-500 hover:text-red-400 cursor-pointer shrink-0 hover:bg-slate-700 rounded px-1 py-0.5"
+        <button className="text-xs text-red-500/70 hover:text-red-400 cursor-pointer shrink-0 bg-slate-800/60 hover:bg-slate-700 rounded px-1.5 py-0.5 border border-slate-600 hover:border-red-500/50 transition-colors"
           title={t.rowsEditor.deleteTitle}
           onClick={e => { e.stopPropagation(); deletePanelCell(tabId, row.id, cell.id); }}>✕</button>
       </div>
