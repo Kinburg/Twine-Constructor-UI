@@ -213,6 +213,15 @@ const en: Translations = {
     refresh:              'Refresh from disk',
   },
 
+  assetInfo: {
+    loading:    'Loading…',
+    fileSize:   'Size',
+    dimensions: 'Dimensions',
+    duration:   'Duration',
+    bitrate:    'Bitrate',
+    path:       'Path',
+  },
+
   characters: {
     defaultName:    'Character',
     confirmDelete:  (name) => `Delete character "${name}"?`,

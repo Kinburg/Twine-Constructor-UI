@@ -300,6 +300,11 @@ ipcMain.handle('fs:deleteDir', async (_e, dirPath: string) => {
   await fs.rm(dirPath, { recursive: true, force: true });
 });
 
+ipcMain.handle('fs:stat', async (_e, filePath: string) => {
+  const st = await fs.stat(filePath);
+  return { size: st.size, mtimeMs: st.mtimeMs };
+});
+
 // ─── IPC: dialogs ─────────────────────────────────────────────────────────────
 
 ipcMain.handle('dialog:openFile', async (_e, options: Electron.OpenDialogOptions) => {

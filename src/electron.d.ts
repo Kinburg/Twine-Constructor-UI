@@ -13,6 +13,7 @@ interface ElectronAPI {
   listDir(dirPath: string): Promise<{ name: string; isDir: boolean }[]>;
   deleteFile(filePath: string): Promise<void>;
   deleteDir(dirPath: string): Promise<void>;
+  stat(filePath: string): Promise<{ size: number; mtimeMs: number }>;
 
   // Dialogs
   openFileDialog(options?: {

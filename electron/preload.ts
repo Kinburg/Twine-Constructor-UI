@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   deleteDir: (dirPath: string): Promise<void> =>
     ipcRenderer.invoke('fs:deleteDir', dirPath),
 
+  stat: (filePath: string): Promise<{ size: number; mtimeMs: number }> =>
+    ipcRenderer.invoke('fs:stat', filePath),
+
   // Dialogs
   openFileDialog: (options?: Electron.OpenDialogOptions): Promise<string | null> =>
     ipcRenderer.invoke('dialog:openFile', options),

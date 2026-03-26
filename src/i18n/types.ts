@@ -233,6 +233,16 @@ export interface Translations {
     refresh: string;
   };
 
+  // ─── Asset info modal ──────────────────────────────────────────────────────
+  assetInfo: {
+    loading: string;
+    fileSize: string;
+    dimensions: string;
+    duration: string;
+    bitrate: string;
+    path: string;
+  };
+
   // ─── Characters ─────────────────────────────────────────────────────────────
   characters: {
     defaultName: string;

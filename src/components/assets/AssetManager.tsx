@@ -2,8 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import type { Asset, AssetGroup, AssetTreeNode } from '../../types';
 import { fsApi, joinPath, safeName, toLocalFileUrl } from '../../lib/fsApi';
+import { flattenAssets } from '../../utils/treeUtils';
 import { useT } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
+import { AssetInfoModal } from './AssetInfoModal';
 
 // ─── Video extensions ─────────────────────────────────────────────────────────
 
@@ -133,6 +135,7 @@ export function AssetManager() {
   } = useProjectStore();
 
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [inspectedAsset, setInspectedAsset] = useState<Asset | null>(null);
 
   // State for the inline "new group" input
   const [pendingGroup, setPendingGroup] = useState<PendingGroup | null>(null);
@@ -251,15 +254,27 @@ export function AssetManager() {
       const targetAbs = joinPath(dir, targetRel);
       await fsApi.mkdir(targetAbs);
 
+      // Collect existing relative paths to skip duplicates
+      const existing = new Set(
+        flattenAssets(useProjectStore.getState().project.assetNodes)
+          .map(a => a.relativePath),
+      );
+
       for (const srcPath of files) {
         const filename = srcPath.replace(/\\/g, '/').split('/').pop()!;
-        const destAbs  = joinPath(targetAbs, filename);
+        const relPath  = `${targetRel}/${filename}`;
+
+        // Skip if this asset is already in the tree
+        if (existing.has(relPath)) continue;
+
+        const destAbs = joinPath(targetAbs, filename);
         await fsApi.copyFile(srcPath, destAbs);
         addAsset(parentGroupId, {
           name: filename,
           assetType: getAssetType(filename),
-          relativePath: `${targetRel}/${filename}`,
+          relativePath: relPath,
         });
+        existing.add(relPath);
       }
 
       // Auto-expand parent group
@@ -361,9 +376,18 @@ export function AssetManager() {
           onStartAddGroup={startAddGroup}
           onAddFiles={handleAddFiles}
           onDelete={handleDelete}
+          onInspect={setInspectedAsset}
           projectDir={projectDir}
         />
       ))}
+
+      {inspectedAsset && projectDir && (
+        <AssetInfoModal
+          asset={inspectedAsset}
+          projectDir={projectDir}
+          onClose={() => setInspectedAsset(null)}
+        />
+      )}
     </div>
   );
 }
@@ -378,6 +402,7 @@ interface NodeViewProps {
   onStartAddGroup: (parentId: string | null, parentRelPath: string) => void;
   onAddFiles: (parentId: string | null, groupRelPath: string) => void;
   onDelete: (id: string) => void;
+  onInspect: (asset: Asset) => void;
   projectDir: string | null;
 }
 
@@ -392,7 +417,7 @@ function AssetNodeView(props: NodeViewProps) {
 
 function GroupRow({
   group, depth, expandedIds, onToggle,
-  onStartAddGroup, onAddFiles, onDelete, projectDir,
+  onStartAddGroup, onAddFiles, onDelete, onInspect, projectDir,
 }: NodeViewProps & { group: AssetGroup }) {
   const t = useT();
   const { ask, modal: confirmModal } = useConfirm();
@@ -472,6 +497,7 @@ function GroupRow({
                 onStartAddGroup={onStartAddGroup}
                 onAddFiles={onAddFiles}
                 onDelete={onDelete}
+                onInspect={onInspect}
                 projectDir={projectDir}
               />
             ))
@@ -486,7 +512,7 @@ function GroupRow({
 // ─── Asset (file) row ─────────────────────────────────────────────────────────
 
 function AssetRow({
-  asset, depth, onDelete, projectDir,
+  asset, depth, onDelete, onInspect, projectDir,
 }: NodeViewProps & { asset: Asset }) {
   const t = useT();
   const { ask, modal: confirmModal } = useConfirm();
@@ -499,8 +525,9 @@ function AssetRow({
 
   return (
     <div
-      className="flex items-center gap-1.5 rounded hover:bg-slate-800 py-1 group/row"
+      className="flex items-center gap-1.5 rounded hover:bg-slate-800 py-1 group/row cursor-pointer"
       style={{ paddingLeft: `${indent + 18}px`, paddingRight: '4px' }}
+      onDoubleClick={() => onInspect(asset)}
     >
       {/* Thumbnail / icon */}
       {isVideo ? (
@@ -528,10 +555,10 @@ function AssetRow({
       <button
         className="opacity-0 group-hover/row:opacity-100 text-slate-600 hover:text-red-400 text-xs cursor-pointer transition-opacity shrink-0 px-0.5"
         title={t.assets.removeTitle}
-        onClick={() => ask(
+        onClick={e => { e.stopPropagation(); ask(
           { message: t.assets.confirmDeleteFile(asset.name), variant: 'danger' },
           () => onDelete(asset.id),
-        )}
+        ); }}
       >
         ✕
       </button>

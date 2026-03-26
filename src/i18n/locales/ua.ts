@@ -213,6 +213,15 @@ const ua: Translations = {
     refresh:              'Оновити з диску',
   },
 
+  assetInfo: {
+    loading:    'Завантаження…',
+    fileSize:   'Розмір',
+    dimensions: 'Розміри',
+    duration:   'Тривалість',
+    bitrate:    'Бітрейт',
+    path:       'Шлях',
+  },
+
   characters: {
     defaultName:    'Персонаж',
     confirmDelete:  (name) => `Видалити персонажа "${name}"?`,

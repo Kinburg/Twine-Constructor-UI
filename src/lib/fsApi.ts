@@ -16,6 +16,7 @@ export const fsApi = {
   listDir:        (p: string)                     => api().listDir(p),
   deleteFile:     (p: string)                     => api().deleteFile(p),
   deleteDir:      (p: string)                     => api().deleteDir(p),
+  stat:           (p: string)                     => api().stat(p),
   openFileDialog: (opts?: Parameters<ElectronAPI['openFileDialog']>[0]) =>
     api().openFileDialog(opts),
   openFilesDialog: (opts?: Parameters<ElectronAPI['openFilesDialog']>[0]) =>
