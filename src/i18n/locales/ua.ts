@@ -70,6 +70,7 @@ const ua: Translations = {
     radio:            'Перемикачі',
     function:         'Функція',
     popup:            'Попап',
+    audio:            'Аудіо',
     drag:             'Перетягнути для сортування',
     copy:             'Копіювати блок у буфер',
     duplicate:        'Дублювати блок',
@@ -108,6 +109,7 @@ const ua: Translations = {
     radio:       { label: 'Перемикачі', desc: 'Одиночний вибір' },
     function:    { label: 'Функція',    desc: 'Виклик функціональної сцени' },
     popup:       { label: 'Попап',      desc: 'Відкрити діалог при завантаженні' },
+    audio:       { label: 'Аудіо',     desc: 'Фонові звуки / музика' },
   },
 
   condition: {
@@ -195,6 +197,8 @@ const ua: Translations = {
     filterMedia:          'Медіафайли',
     filterImages:         'Зображення',
     filterVideos:         'Відео',
+    filterAudio:          'Аудіо',
+    audioTitle:           'Аудіо',
     errorAddFiles:        (e) => `Помилка додавання файлів: ${e}`,
     groupNamePlaceholder: 'Назва групи…',
     addGroupTitle:        'Створити групу (папку) в корені',
@@ -339,6 +343,9 @@ const ua: Translations = {
     listEmptyTextLabel:       'Порожній текст:',
     listPrefixLabel:          'Префікс:',
     listSuffixLabel:          'Суфікс:',
+    // ── Audio volume cell fields ──
+    typeAudioVolume:          'Гучність',
+    audioVolumeMuteButton:    'Кнопка вимкнення звуку',
   },
 
   rowsEditor: {
@@ -453,6 +460,22 @@ const ua: Translations = {
     controls:         'Керування',
     autoplay:         'Авто-старт',
     loop:             'Повтор',
+  },
+
+  audioBlock: {
+    assetLabel:        'З ресурсів:',
+    selectAsset:       '— вибрати ресурс —',
+    urlLabel:          'URL / шлях:',
+    urlPlaceholder:    'assets/bgm.mp3 або https://...',
+    triggerLabel:      'Тригер:',
+    triggerImmediate:  'Одразу',
+    triggerDelay:      'Із затримкою',
+    seconds:           'с',
+    onLeaveLabel:      'При виході:',
+    onLeaveStop:       'Зупинити',
+    onLeavePersist:    'Продовжити (глобально)',
+    loop:              'Повтор',
+    volumeLabel:       'Гучність:',
   },
 
   linkBlock: {

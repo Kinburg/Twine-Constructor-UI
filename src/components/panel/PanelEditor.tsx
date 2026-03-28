@@ -4,7 +4,7 @@ import { useT } from '../../i18n';
 import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
-  CellButton, CellList, ButtonAction, ButtonStyle, VarOperator,
+  CellButton, CellList, CellAudioVolume, ButtonAction, ButtonStyle, VarOperator,
   ImageBoundMapping,
   Variable, Asset,
 } from '../../types';
@@ -518,6 +518,7 @@ function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type'
     raw:            t.cellModal.typeRaw,
     button:         t.cellModal.typeButton,
     list:           t.cellModal.typeList,
+    'audio-volume': t.cellModal.typeAudioVolume,
   };
   return m[type];
 }
@@ -593,6 +594,9 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       [{v ? `$${v.name}` : '?'}]
     </span>
   );
+  if (c.type === 'audio-volume') return (
+    <span className="text-xs text-amber-300 p-1 truncate flex-1">🔊 Volume</span>
+  );
   return null;
 }
 
@@ -614,6 +618,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'raw':          return { type: 'raw', code: '' } as CellRaw;
     case 'button':       return { type: 'button', label: '', style: { ...DEFAULT_BUTTON_STYLE }, actions: [] } as CellButton;
     case 'list':         return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
+    case 'audio-volume': return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
   }
 }
 
@@ -639,6 +644,7 @@ function CellEditModal({
     { value: 'raw',          label: t.cellModal.typeRaw },
     { value: 'button',       label: t.cellModal.typeButton },
     { value: 'list',         label: t.cellModal.typeList },
+    { value: 'audio-volume', label: t.cellModal.typeAudioVolume },
   ];
 
   const handleTypeChange = (type: CellContent['type']) => {
@@ -892,6 +898,14 @@ function CellEditModal({
               />
             </MField>
           </>
+        )}
+
+        {c.type === 'audio-volume' && (
+          <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+            <input type="checkbox" checked={c.showMuteButton}
+              onChange={e => onUpdateContent({ ...c, showMuteButton: e.target.checked })} />
+            {t.cellModal.audioVolumeMuteButton}
+          </label>
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"

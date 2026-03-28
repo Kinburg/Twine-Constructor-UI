@@ -36,6 +36,12 @@ const VIDEO_MIME: Record<string, string> = {
   avi: 'video/x-msvideo', mkv: 'video/x-matroska',
 };
 
+const AUDIO_MIME: Record<string, string> = {
+  mp3: 'audio/mpeg', wav: 'audio/wav', ogg: 'audio/ogg',
+  flac: 'audio/flac', m4a: 'audio/mp4', aac: 'audio/aac',
+  weba: 'audio/webm',
+};
+
 /**
  * Read a file via IPC as binary and return a blob: URL.
  * This bypasses the localfile:// protocol entirely —
@@ -50,9 +56,10 @@ async function createBlobUrl(absPath: string, mime: string): Promise<string> {
 export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalProps) {
   const t = useT();
   const [info, setInfo] = useState<MediaInfo | null>(null);
-  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [mediaBlobSrc, setMediaBlobSrc] = useState<string | null>(null);
 
   const isVideo = asset.assetType === 'video';
+  const isAudio = asset.assetType === 'audio';
   const absPath = joinPath(projectDir, asset.relativePath);
   const imgSrc = toLocalFileUrl(absPath);
 
@@ -63,7 +70,7 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Load metadata + video blob
+  // Load metadata + blob for video/audio
   useEffect(() => {
     let cancelled = false;
     let blobUrl: string | undefined;
@@ -78,10 +85,12 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
 
       if (cancelled) return;
 
-      if (isVideo) {
-        // Build blob URL for the video
-        const ext = asset.name.split('.').pop()?.toLowerCase() ?? 'mp4';
-        const mime = VIDEO_MIME[ext] || 'video/mp4';
+      if (isVideo || isAudio) {
+        // Build blob URL (localfile:// doesn't support video/audio streaming)
+        const ext = asset.name.split('.').pop()?.toLowerCase() ?? '';
+        const mime = isVideo
+          ? (VIDEO_MIME[ext] || 'video/mp4')
+          : (AUDIO_MIME[ext] || 'audio/mpeg');
         try {
           blobUrl = await createBlobUrl(absPath, mime);
         } catch {
@@ -89,25 +98,32 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
           return;
         }
         if (cancelled) { URL.revokeObjectURL(blobUrl); return; }
-        setVideoSrc(blobUrl);
+        setMediaBlobSrc(blobUrl);
 
-        // Probe metadata from blob
-        const video = document.createElement('video');
-        video.preload = 'metadata';
-        video.src = blobUrl;
-        video.onloadedmetadata = () => {
-          if (cancelled) return;
-          const duration = video.duration;
-          const bitrate = duration > 0 ? Math.round((size * 8) / duration / 1000) : undefined;
-          setInfo({
-            size,
-            width: video.videoWidth,
-            height: video.videoHeight,
-            duration,
-            bitrate,
-          });
-        };
-        video.onerror = () => { if (!cancelled) setInfo({ size }); };
+        if (isVideo) {
+          const video = document.createElement('video');
+          video.preload = 'metadata';
+          video.src = blobUrl;
+          video.onloadedmetadata = () => {
+            if (cancelled) return;
+            const duration = video.duration;
+            const bitrate = duration > 0 ? Math.round((size * 8) / duration / 1000) : undefined;
+            setInfo({ size, width: video.videoWidth, height: video.videoHeight, duration, bitrate });
+          };
+          video.onerror = () => { if (!cancelled) setInfo({ size }); };
+        } else {
+          // Audio — get duration only (no dimensions)
+          const audio = document.createElement('audio');
+          audio.preload = 'metadata';
+          audio.src = blobUrl;
+          audio.onloadedmetadata = () => {
+            if (cancelled) return;
+            const duration = audio.duration;
+            const bitrate = duration > 0 ? Math.round((size * 8) / duration / 1000) : undefined;
+            setInfo({ size, duration, bitrate });
+          };
+          audio.onerror = () => { if (!cancelled) setInfo({ size }); };
+        }
       } else {
         // Image — localfile:// works fine
         const img = new Image();
@@ -124,7 +140,7 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
       cancelled = true;
       if (blobUrl) URL.revokeObjectURL(blobUrl);
     };
-  }, [absPath, imgSrc, isVideo, asset.name]);
+  }, [absPath, imgSrc, isVideo, isAudio, asset.name]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -133,7 +149,7 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl flex flex-col max-w-[90vw] max-h-[90vh] min-w-[320px]">
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700">
-          <span className="text-sm">{isVideo ? '🎥' : '🖼️'}</span>
+          <span className="text-sm">{isAudio ? '🔊' : isVideo ? '🎥' : '🖼️'}</span>
           <span className="text-sm text-slate-200 font-medium truncate flex-1" title={asset.relativePath}>
             {asset.name}
           </span>
@@ -148,13 +164,19 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
         {/* Preview */}
         <div className="flex-1 overflow-auto flex items-center justify-center bg-slate-900/50 p-4 min-h-[200px]">
           {isVideo ? (
-            videoSrc ? (
+            mediaBlobSrc ? (
               <video
-                src={videoSrc}
+                src={mediaBlobSrc}
                 controls
                 className="max-w-full max-h-[60vh] rounded"
                 style={{ objectFit: 'contain' }}
               />
+            ) : (
+              <span className="text-xs text-slate-600 italic">{t.assetInfo.loading}</span>
+            )
+          ) : isAudio ? (
+            mediaBlobSrc ? (
+              <audio src={mediaBlobSrc} controls className="w-full max-w-md" />
             ) : (
               <span className="text-xs text-slate-600 italic">{t.assetInfo.loading}</span>
             )

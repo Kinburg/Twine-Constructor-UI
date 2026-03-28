@@ -24,6 +24,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'radio':        '🔵',
   'function':     'ƒ',
   'popup':        '🪟',
+  'audio':        '🔊',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -72,6 +73,7 @@ export function makeBlock(type: BlockType): Block {
       actions: [],
     };
     case 'popup':        return { id, type, targetSceneId: '' };
+    case 'audio':        return { id, type, src: '', trigger: 'immediate' as const, loop: false, onLeave: 'stop' as const, volume: 100 };
   }
 }
 
@@ -80,7 +82,7 @@ export function makeBlock(type: BlockType): Block {
 type CategoryKey = 'content' | 'interaction' | 'logic' | 'system';
 
 const BLOCK_CATEGORIES: { key: CategoryKey; types: BlockType[] }[] = [
-  { key: 'content',     types: ['text', 'dialogue', 'image', 'video', 'table', 'divider'] },
+  { key: 'content',     types: ['text', 'dialogue', 'image', 'video', 'audio', 'table', 'divider'] },
   { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio'] },
   { key: 'logic',       types: ['condition', 'variable-set', 'function', 'popup'] },
   { key: 'system',      types: ['raw', 'include', 'note'] },
@@ -111,6 +113,7 @@ function buildEntries(t: ReturnType<typeof useT>): BlockEntry[] {
     { type: 'radio',        icon: BLOCK_ICONS['radio'],        label: t.addBlock.radio.label,       desc: t.addBlock.radio.desc },
     { type: 'function',     icon: BLOCK_ICONS['function'],     label: t.addBlock.function.label,    desc: t.addBlock.function.desc },
     { type: 'popup',        icon: BLOCK_ICONS['popup'],        label: t.addBlock.popup.label,       desc: t.addBlock.popup.desc },
+    { type: 'audio',        icon: BLOCK_ICONS['audio'],        label: t.addBlock.audio.label,       desc: t.addBlock.audio.desc },
   ];
 }
 

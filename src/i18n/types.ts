@@ -74,6 +74,7 @@ export interface Translations {
     radio: string;
     function: string;
     popup: string;
+    audio: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -113,6 +114,7 @@ export interface Translations {
     radio:       { label: string; desc: string };
     function:    { label: string; desc: string };
     popup:       { label: string; desc: string };
+    audio:       { label: string; desc: string };
   };
 
   includeBlock: {
@@ -230,6 +232,8 @@ export interface Translations {
     videoTitle: string;
     removeTitle: string;
     confirmDeleteFile: (name: string) => string;
+    filterAudio: string;
+    audioTitle: string;
     refresh: string;
   };
 
@@ -364,6 +368,9 @@ export interface Translations {
     listEmptyTextLabel: string;
     listPrefixLabel: string;
     listSuffixLabel: string;
+    // ── Audio volume cell fields ──
+    typeAudioVolume: string;
+    audioVolumeMuteButton: string;
   };
 
   // ─── Shared: rows/cells editor UI (Panel + Table) ──────────────────────────
@@ -482,6 +489,22 @@ export interface Translations {
     controls: string;
     autoplay: string;
     loop: string;
+  };
+
+  audioBlock: {
+    assetLabel: string;
+    selectAsset: string;
+    urlLabel: string;
+    urlPlaceholder: string;
+    triggerLabel: string;
+    triggerImmediate: string;
+    triggerDelay: string;
+    seconds: string;
+    onLeaveLabel: string;
+    onLeaveStop: string;
+    onLeavePersist: string;
+    loop: string;
+    volumeLabel: string;
   };
 
   linkBlock: {

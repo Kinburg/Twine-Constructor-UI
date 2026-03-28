@@ -70,6 +70,7 @@ const en: Translations = {
     radio:            'Radio',
     function:         'Function',
     popup:            'Popup',
+    audio:            'Audio',
     drag:             'Drag to reorder',
     copy:             'Copy block to clipboard',
     duplicate:        'Duplicate block',
@@ -108,6 +109,7 @@ const en: Translations = {
     radio:       { label: 'Radio',      desc: 'Single selection' },
     function:    { label: 'Function',   desc: 'Call a function scene' },
     popup:       { label: 'Popup',      desc: 'Open a dialog on load' },
+    audio:       { label: 'Audio',     desc: 'Background sound / music' },
   },
 
   condition: {
@@ -195,6 +197,8 @@ const en: Translations = {
     filterMedia:          'Media files',
     filterImages:         'Images',
     filterVideos:         'Videos',
+    filterAudio:          'Audio',
+    audioTitle:           'Audio',
     errorAddFiles:        (e) => `File add error: ${e}`,
     groupNamePlaceholder: 'Group name…',
     addGroupTitle:        'Create a group (folder) in root',
@@ -339,6 +343,9 @@ const en: Translations = {
     listEmptyTextLabel:       'Empty text:',
     listPrefixLabel:          'Prefix:',
     listSuffixLabel:          'Suffix:',
+    // ── Audio volume cell fields ──
+    typeAudioVolume:          'Volume control',
+    audioVolumeMuteButton:    'Show mute button',
   },
 
   rowsEditor: {
@@ -453,6 +460,22 @@ const en: Translations = {
     controls:         'Controls',
     autoplay:         'Autoplay',
     loop:             'Loop',
+  },
+
+  audioBlock: {
+    assetLabel:        'From assets:',
+    selectAsset:       '— select asset —',
+    urlLabel:          'URL / path:',
+    urlPlaceholder:    'assets/bgm.mp3 or https://...',
+    triggerLabel:      'Trigger:',
+    triggerImmediate:  'Immediate',
+    triggerDelay:      'Delay',
+    seconds:           's',
+    onLeaveLabel:      'On leave:',
+    onLeaveStop:       'Stop',
+    onLeavePersist:    'Keep playing (global)',
+    loop:              'Loop',
+    volumeLabel:       'Volume:',
   },
 
   linkBlock: {

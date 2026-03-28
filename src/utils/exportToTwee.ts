@@ -3,7 +3,7 @@ import type {
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
   Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
   ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList,
-  Watcher, WatcherCondition,
+  Watcher, WatcherCondition, AudioBlock,
   VariableTreeNode, VariableGroup,
 } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
@@ -579,6 +579,24 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       const title = block.title ?? '';
       return `${indent}<<run Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();>>`;
     }
+
+    case 'audio': {
+      const ab = block as AudioBlock;
+      const trackId = `tga_${ab.id.replace(/-/g, '')}`;
+      const vol = Math.round(ab.volume) / 100;
+
+      const parts: string[] = [];
+      if (vol !== 1) parts.push(`volume ${vol}`);
+      if (ab.loop) parts.push('loop');
+      parts.push('play');
+      const audioMacro = `<<audio "${trackId}" ${parts.join(' ')}>>`;
+
+      // Trigger
+      if (ab.trigger === 'delay' && ab.triggerDelay && ab.triggerDelay > 0) {
+        return `${indent}<<timed ${ab.triggerDelay}s>>${audioMacro}<</timed>>`;
+      }
+      return `${indent}${audioMacro}`;
+    }
   }
 }
 
@@ -924,6 +942,27 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
     case 'list':
       inner = buildCellListSC(c as CellList, vars, nodes);
       break;
+
+    case 'audio-volume': {
+      // Static HTML + <<script>> with setTimeout(0) to set values after DOM render.
+      // This avoids quote conflicts inside <<print>>.
+      const slider = '<input id="tg-vol" type="range" min="0" max="100" value="100" style="width:100%" oninput="SugarCube.SimpleAudio.volume(this.value/100);SugarCube.State.variables.__tgMasterVol=this.value/100" />';
+      const mute = c.showMuteButton
+        ? '<button id="tg-mute" onclick="var S=SugarCube.SimpleAudio;S.mute(!S.mute());this.textContent=S.mute()?String.fromCodePoint(0x1F507):String.fromCodePoint(0x1F50A)" style="border:none;background:none;cursor:pointer;font-size:1.2em">&#x1F50A;</button>'
+        : '';
+      const initScript = [
+        '<<script>>',
+        'setTimeout(function(){',
+        '  var v=State.variables.__tgMasterVol;',
+        '  var s=document.getElementById("tg-vol");',
+        '  if(s&&v!=null)s.value=Math.round(v*100);',
+        c.showMuteButton ? '  var m=document.getElementById("tg-mute");if(m)m.textContent=SugarCube.SimpleAudio.mute()?String.fromCodePoint(0x1F507):String.fromCodePoint(0x1F50A);' : '',
+        '},0);',
+        '<</script>>',
+      ].filter(Boolean).join('');
+      inner = `<span style="display:flex;align-items:center;gap:4px;width:100%">${mute}${slider}</span>${initScript}`;
+      break;
+    }
   }
 
   return `<span class="tg-cell" style="${flex}">${inner}</span>`;
@@ -1353,6 +1392,61 @@ export function buildButtonsCSS(scenes: Scene[]): string {
   return `${base}\n\n${perBtn}`;
 }
 
+// ─── Audio helpers ──────────────────────────────────────────────────────────────
+
+/** Collect all AudioBlocks from all scenes (including nested inside conditions). */
+function collectAudioBlocks(scenes: Scene[]): { block: AudioBlock; sceneName: string }[] {
+  const result: { block: AudioBlock; sceneName: string }[] = [];
+  function walk(blocks: Block[], sceneName: string) {
+    for (const b of blocks) {
+      if (b.type === 'audio') result.push({ block: b as AudioBlock, sceneName });
+      if (b.type === 'condition') {
+        for (const br of b.branches) walk(br.blocks, sceneName);
+      }
+    }
+  }
+  for (const s of scenes) walk(s.blocks, s.name);
+  return result;
+}
+
+/** Build <<cacheaudio>> lines for StoryInit. */
+export function buildAudioCacheLines(scenes: Scene[]): string[] {
+  const entries = collectAudioBlocks(scenes);
+  if (entries.length === 0) return [];
+  return entries.map(({ block }) => {
+    const trackId = `tga_${block.id.replace(/-/g, '')}`;
+    return `<<cacheaudio "${trackId}" "${block.src}">>`;
+  });
+}
+
+/** Build the :passageleave handler for stopping audio.
+ *  Uses a static passage→trackIds map so it works reliably with back/forward navigation. */
+export function buildAudioScript(scenes: Scene[]): string {
+  const entries = collectAudioBlocks(scenes);
+  const stopEntries = entries.filter(e => e.block.onLeave === 'stop');
+  if (stopEntries.length === 0) return '';
+
+  // Build a map: sceneName → [trackId, ...]
+  const map: Record<string, string[]> = {};
+  for (const { block, sceneName } of stopEntries) {
+    const trackId = `tga_${block.id.replace(/-/g, '')}`;
+    (map[sceneName] ??= []).push(trackId);
+  }
+
+  return [
+    '// Audio: stop-on-leave — static passage→track map',
+    `var _tgAudioStopMap = ${JSON.stringify(map)};`,
+    '$(document).on(":passageleave", function(ev) {',
+    '  var ids = _tgAudioStopMap[ev.passage.title];',
+    '  if (!ids) return;',
+    '  ids.forEach(function(id) {',
+    '    var t = SimpleAudio.tracks.get(id);',
+    '    if (t) t.stop();',
+    '  });',
+    '});',
+  ].join('\n');
+}
+
 // ─── Character CSS ─────────────────────────────────────────────────────────────
 
 function buildCharacterCSS(characters: Character[]): string {
@@ -1451,6 +1545,12 @@ export function exportToTwee(project: Project): string {
     }
   }
   if (sidebarPanel.tabs.length > 0) inits.push('<<set $__tgTab to 0>>');
+  // Audio: <<cacheaudio>> lines
+  inits.push(...buildAudioCacheLines(scenes));
+  // Audio volume: init master volume variable
+  const hasAudioVolume = sidebarPanel.tabs.some(tab =>
+    tab.rows.some(r => r.cells.some(c => c.content.type === 'audio-volume')));
+  if (hasAudioVolume) inits.push('<<set $__tgMasterVol to 1>>');
   if (inits.length > 0) {
     // NOTE: StoryInit must NOT have [script] tag — its content is SugarCube
     // markup (<<set>>), not raw JavaScript. The [script] tag would cause Twine
@@ -1473,6 +1573,14 @@ export function exportToTwee(project: Project): string {
     buildInputScript(scenes),
     buildLiveScript(scenes),
     buildWatcherScript(project.watchers ?? [], variables, variableNodes),
+    buildAudioScript(scenes),
+    hasAudioVolume ? [
+      '// Audio volume: restore from saved state on load',
+      '$(document).on(":passagedisplay", function() {',
+      '  var v = State.variables.__tgMasterVol;',
+      '  if (v != null) { SimpleAudio.volume(v); }',
+      '});',
+    ].join('\n') : '',
   ].filter(Boolean).join('\n\n');
   if (storyScript) parts.push(`::StoryScript [script]\n${storyScript}\n`);
 

@@ -1,6 +1,6 @@
 import type { Project, ProjectSettings, Character } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, defaultValueLiteral, buildObjectLiteral } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript } from './exportToTwee';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -126,6 +126,12 @@ export function buildPassages(project: Project): {
     }
   }
   if (sidebarPanel.tabs.length > 0) inits.push('<<set $__tgTab to 0>>');
+  // Audio: <<cacheaudio>> lines
+  inits.push(...buildAudioCacheLines(scenes));
+  // Audio volume: init master volume variable
+  const hasAudioVolume = sidebarPanel.tabs.some(tab =>
+    tab.rows.some(r => r.cells.some(c => c.content.type === 'audio-volume')));
+  if (hasAudioVolume) inits.push('<<set $__tgMasterVol to 1>>');
   if (inits.length > 0) {
     passages.push({
       pid: pid++, name: 'StoryInit', tags: '',
@@ -177,6 +183,14 @@ export function buildPassages(project: Project): {
     buildInputScript(scenes),
     buildLiveScript(scenes),
     buildWatcherScript(project.watchers ?? [], variables, variableNodes),
+    buildAudioScript(scenes),
+    hasAudioVolume ? [
+      '// Audio volume: restore from saved state on load',
+      '$(document).on(":passagedisplay", function() {',
+      '  var v = State.variables.__tgMasterVol;',
+      '  if (v != null) { SimpleAudio.volume(v); }',
+      '});',
+    ].join('\n') : '',
   ].filter(Boolean).join('\n\n');
 
   return { passages, startPid, combinedCSS, scriptContent };

@@ -10,14 +10,18 @@ import { AssetInfoModal } from './AssetInfoModal';
 // ─── Video extensions ─────────────────────────────────────────────────────────
 
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'ogv', 'mov', 'avi', 'mkv']);
+const AUDIO_EXTS = new Set(['mp3', 'wav', 'flac', 'm4a', 'aac', 'weba']);
 const MEDIA_EXTS = new Set([
   'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif',
   'mp4', 'webm', 'ogg', 'ogv', 'mov', 'avi', 'mkv',
+  'mp3', 'wav', 'flac', 'm4a', 'aac', 'weba',
 ]);
 
-function getAssetType(filename: string): 'image' | 'video' {
+function getAssetType(filename: string): 'image' | 'video' | 'audio' {
   const ext = filename.split('.').pop()?.toLowerCase() ?? '';
-  return VIDEO_EXTS.has(ext) ? 'video' : 'image';
+  if (VIDEO_EXTS.has(ext)) return 'video';
+  if (AUDIO_EXTS.has(ext)) return 'audio';
+  return 'image';
 }
 
 function isMediaFile(filename: string): boolean {
@@ -239,10 +243,12 @@ export function AssetManager() {
           extensions: [
             'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif',
             'mp4', 'webm', 'ogg', 'ogv', 'mov',
+            'mp3', 'wav', 'flac', 'm4a', 'aac', 'weba',
           ],
         },
         { name: t.assets.filterImages, extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'avif'] },
         { name: t.assets.filterVideos, extensions: ['mp4', 'webm', 'ogg', 'ogv', 'mov'] },
+        { name: t.assets.filterAudio, extensions: ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'weba'] },
       ],
     });
     if (!files || files.length === 0) return;
@@ -518,6 +524,7 @@ function AssetRow({
   const { ask, modal: confirmModal } = useConfirm();
   const indent = depth * 14;
   const isVideo = asset.assetType === 'video';
+  const isAudio = asset.assetType === 'audio';
 
   const previewSrc = projectDir
     ? toLocalFileUrl(joinPath(projectDir, asset.relativePath))
@@ -530,7 +537,9 @@ function AssetRow({
       onDoubleClick={() => onInspect(asset)}
     >
       {/* Thumbnail / icon */}
-      {isVideo ? (
+      {isAudio ? (
+        <span className="text-sm shrink-0 select-none" title={t.assets.audioTitle}>🔊</span>
+      ) : isVideo ? (
         <span className="text-sm shrink-0 select-none" title={t.assets.videoTitle}>🎥</span>
       ) : previewSrc ? (
         <img

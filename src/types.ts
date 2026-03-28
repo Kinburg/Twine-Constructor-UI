@@ -185,6 +185,22 @@ export interface VideoBlock {
   delay?: BlockDelay;
 }
 
+// ── Audio block ──────────────────────────────────────────────────────────────
+
+export type AudioTrigger = 'immediate' | 'delay';
+export type AudioOnLeave = 'stop' | 'persist';
+
+export interface AudioBlock {
+  id: string;
+  type: 'audio';
+  src: string;
+  trigger: AudioTrigger;
+  triggerDelay?: number;   // seconds, used when trigger === 'delay'
+  loop: boolean;
+  onLeave: AudioOnLeave;  // 'stop' = stop when leaving scene; 'persist' = keep playing globally
+  volume: number;          // 0–100
+}
+
 // ── Button block ──────────────────────────────────────────────────────────────
 
 /** Visual style of a button block */
@@ -448,7 +464,8 @@ export type Block =
   | CheckboxBlock
   | RadioBlock
   | FunctionBlock
-  | PopupBlock;
+  | PopupBlock
+  | AudioBlock;
 
 export type BlockType = Block['type'];
 
@@ -547,7 +564,7 @@ export type VariableTreeNode = VariableGroup | Variable;
 
 // ─── Asset ───────────────────────────────────────────────────────────────────
 
-export type AssetType = 'image' | 'video';
+export type AssetType = 'image' | 'video' | 'audio';
 
 /** A leaf node in the asset tree — represents a single media file on disk */
 export interface Asset {
@@ -671,6 +688,12 @@ export interface CellButton {
   navigate?: CellButtonNavigate;
 }
 
+/** Master audio volume slider + optional mute button */
+export interface CellAudioVolume {
+  type: 'audio-volume';
+  showMuteButton: boolean;
+}
+
 export type CellContent =
   | CellText
   | CellVariable
@@ -679,7 +702,8 @@ export type CellContent =
   | CellImageBound
   | CellRaw
   | CellButton
-  | CellList;
+  | CellList
+  | CellAudioVolume;
 
 export interface SidebarCell {
   id: string;
