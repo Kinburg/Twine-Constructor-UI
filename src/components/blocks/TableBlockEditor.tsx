@@ -4,7 +4,7 @@ import { useT } from '../../i18n';
 import type {
   TableBlock, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
-  CellButton, CellList, ButtonAction, ButtonStyle, VarOperator,
+  CellButton, CellList, CellAudioVolume, ButtonAction, ButtonStyle, VarOperator,
   ImageBoundMapping, Variable, Asset,
 } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
@@ -22,6 +22,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'raw':          return { type: 'raw', code: '' } as CellRaw;
     case 'button':       return { type: 'button', label: '', style: { bgColor: '#3b82f6', textColor: '#ffffff', borderColor: '#2563eb', borderRadius: 4, paddingV: 4, paddingH: 10, fontSize: 9, bold: false, fullWidth: false }, actions: [] };
     case 'list':         return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' };
+    case 'audio-volume': return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
   }
 }
 
@@ -414,6 +415,7 @@ function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type'
     raw:            t.cellModal.typeRaw,
     button:         t.cellModal.typeButton,
     list:           t.cellModal.typeList,
+    'audio-volume': t.cellModal.typeAudioVolume,
   };
   return m[type];
 }
