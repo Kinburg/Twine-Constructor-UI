@@ -593,7 +593,17 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
       // Trigger
       if (ab.trigger === 'delay' && ab.triggerDelay && ab.triggerDelay > 0) {
-        return `${indent}<<timed ${ab.triggerDelay}s>>${audioMacro}<</timed>>`;
+        // Use cancellable setTimeout instead of <<timed>> so navigation away
+        // before the delay fires won't still start the audio on a different scene.
+        const ms = Math.round(ab.triggerDelay * 1000);
+        const chain = [
+          vol !== 1 ? `.volume(${vol})` : '',
+          ab.loop ? '.loop(true)' : '',
+          '.play()',
+        ].join('');
+        const jsPlay = `var _tr=SugarCube.SimpleAudio.tracks.get("${trackId}");if(_tr){_tr${chain};}`;
+        const jsTimer = `(window._tgDA=window._tgDA||[]).push(setTimeout(function(){${jsPlay}},${ms}));`;
+        return `${indent}<<script>>${jsTimer}<</script>>`;
       }
       return `${indent}${audioMacro}`;
     }
@@ -946,16 +956,16 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
     case 'audio-volume': {
       // Static HTML + <<script>> with setTimeout(0) to set values after DOM render.
       // This avoids quote conflicts inside <<print>>.
-      const slider = '<input id="tg-vol" type="range" min="0" max="100" value="100" style="width:100%" oninput="SugarCube.SimpleAudio.volume(this.value/100);SugarCube.State.variables.__tgMasterVol=this.value/100" />';
+      const slider = '<input id="tg-vol" type="range" min="0" max="100" value="100" style="width:100%" oninput="var _v=this.value/100;SugarCube.SimpleAudio.volume(_v);SugarCube.State.variables.__tgMasterVol=_v;document.querySelectorAll(\'video\').forEach(function(el){el.volume=_v;})" />';
       const mute = c.showMuteButton
-        ? '<button id="tg-mute" onclick="var S=SugarCube.SimpleAudio;S.mute(!S.mute());this.textContent=S.mute()?String.fromCodePoint(0x1F507):String.fromCodePoint(0x1F50A)" style="border:none;background:none;cursor:pointer;font-size:1.2em">&#x1F50A;</button>'
+        ? '<button id="tg-mute" onclick="var S=SugarCube.SimpleAudio;S.mute(!S.mute());this.textContent=S.mute()?String.fromCodePoint(0x1F507):String.fromCodePoint(0x1F50A);document.querySelectorAll(\'video\').forEach(function(el){el.muted=S.mute();})" style="border:none;background:none;cursor:pointer;font-size:1.2em">&#x1F50A;</button>'
         : '';
       const initScript = [
         '<<script>>',
         'setTimeout(function(){',
         '  var v=State.variables.__tgMasterVol;',
         '  var s=document.getElementById("tg-vol");',
-        '  if(s&&v!=null)s.value=Math.round(v*100);',
+        '  if(s&&v!=null){s.value=Math.round(v*100);document.querySelectorAll("video").forEach(function(el){el.volume=v;});}',
         c.showMuteButton ? '  var m=document.getElementById("tg-mute");if(m)m.textContent=SugarCube.SimpleAudio.mute()?String.fromCodePoint(0x1F507):String.fromCodePoint(0x1F50A);' : '',
         '},0);',
         '<</script>>',
@@ -1424,27 +1434,47 @@ export function buildAudioCacheLines(scenes: Scene[]): string[] {
 export function buildAudioScript(scenes: Scene[]): string {
   const entries = collectAudioBlocks(scenes);
   const stopEntries = entries.filter(e => e.block.onLeave === 'stop');
-  if (stopEntries.length === 0) return '';
+  const hasDelayed = entries.some(
+    e => e.block.trigger === 'delay' && e.block.triggerDelay && e.block.triggerDelay > 0,
+  );
 
-  // Build a map: sceneName → [trackId, ...]
-  const map: Record<string, string[]> = {};
-  for (const { block, sceneName } of stopEntries) {
-    const trackId = `tga_${block.id.replace(/-/g, '')}`;
-    (map[sceneName] ??= []).push(trackId);
+  if (stopEntries.length === 0 && !hasDelayed) return '';
+
+  const lines: string[] = ['// Audio: passageinit handler (stop-on-leave + delay cancellation)'];
+
+  if (stopEntries.length > 0) {
+    // Build a map: sceneName → [trackId, ...]
+    const map: Record<string, string[]> = {};
+    for (const { block, sceneName } of stopEntries) {
+      const trackId = `tga_${block.id.replace(/-/g, '')}`;
+      (map[sceneName] ??= []).push(trackId);
+    }
+    lines.push(`var _tgAudioStopMap = ${JSON.stringify(map)};`);
   }
 
-  return [
-    '// Audio: stop-on-leave — static passage→track map',
-    `var _tgAudioStopMap = ${JSON.stringify(map)};`,
-    '$(document).on(":passageleave", function(ev) {',
-    '  var ids = _tgAudioStopMap[ev.passage.title];',
-    '  if (!ids) return;',
-    '  ids.forEach(function(id) {',
-    '    var t = SimpleAudio.tracks.get(id);',
-    '    if (t) t.stop();',
-    '  });',
-    '});',
-  ].join('\n');
+  lines.push('$(document).on(":passageinit", function(ev) {');
+
+  if (hasDelayed) {
+    // Cancel any pending delayed-audio timers so they don't fire on a different scene.
+    lines.push('  if (window._tgDA) { window._tgDA.forEach(function(id){ clearTimeout(id); }); window._tgDA = []; }');
+  }
+
+  if (stopEntries.length > 0) {
+    lines.push(
+      '  var incoming = ev.passage.title;',
+      '  Object.keys(_tgAudioStopMap).forEach(function(passageName) {',
+      '    if (passageName === incoming) return;',
+      '    _tgAudioStopMap[passageName].forEach(function(id) {',
+      '      var t = SimpleAudio.tracks.get(id);',
+      '      if (t) t.stop();',
+      '    });',
+      '  });',
+    );
+  }
+
+  lines.push('});');
+
+  return lines.join('\n');
 }
 
 // ─── Character CSS ─────────────────────────────────────────────────────────────

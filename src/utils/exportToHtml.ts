@@ -185,10 +185,13 @@ export function buildPassages(project: Project): {
     buildWatcherScript(project.watchers ?? [], variables, variableNodes),
     buildAudioScript(scenes),
     hasAudioVolume ? [
-      '// Audio volume: restore from saved state on load',
+      '// Audio volume: restore from saved state on load (audio + video)',
       '$(document).on(":passagedisplay", function() {',
       '  var v = State.variables.__tgMasterVol;',
-      '  if (v != null) { SimpleAudio.volume(v); }',
+      '  if (v != null) {',
+      '    SimpleAudio.volume(v);',
+      '    document.querySelectorAll("video").forEach(function(el) { el.volume = v; });',
+      '  }',
       '});',
     ].join('\n') : '',
   ].filter(Boolean).join('\n\n');
