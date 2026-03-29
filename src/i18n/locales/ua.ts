@@ -475,6 +475,8 @@ const ua: Translations = {
     onLeaveStop:       'Зупинити',
     onLeavePersist:    'Продовжити (глобально)',
     loop:              'Повтор',
+    stopOthers:        'Зупинити всі інші звуки',
+    stopOthersHint:    'Зупиняє всі звуки, що грають на цей момент, до того, як цей блок почне відтворення. Щоб зупинити звуки попередньої сцени, розмістіть цей блок першим.',
     volumeLabel:       'Гучність:',
   },
 
@@ -729,6 +731,9 @@ const ua: Translations = {
     fieldStartingScenePlaceholder: 'Start',
     fieldHistoryControls:   'Показувати навігацію (назад/вперед)',
     fieldSaveLoadMenu:      'Показувати меню збереження/завантаження',
+    fieldAudioUnlockText:   'Текст кнопки запуску аудіо',
+    fieldAudioUnlockTextPlaceholder: '▶ Click to begin',
+    fieldAudioUnlockTextNote: 'Відображається поверх першої сцени, якщо браузер заблокував автовідтворення. Залиште порожнім, щоб використати текст за замовчуванням.',
     create:                 'Створити',
     save:                   'Зберегти',
     chooseFolder:           'Вибрати папку',

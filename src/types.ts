@@ -198,6 +198,7 @@ export interface AudioBlock {
   triggerDelay?: number;   // seconds, used when trigger === 'delay'
   loop: boolean;
   onLeave: AudioOnLeave;  // 'stop' = stop when leaving scene; 'persist' = keep playing globally
+  stopOthers: boolean;     // stop all currently playing audio before this block plays
   volume: number;          // 0–100
 }
 
@@ -755,6 +756,8 @@ export interface ProjectSettings {
   headerImageSrc?: string;
   /** ID of the sidebarPanel row that holds the header image */
   headerRowId?:    string;
+  /** Text shown on the click-to-begin overlay when audio autoplay is blocked */
+  audioUnlockText?: string;
 }
 
 export interface Project {

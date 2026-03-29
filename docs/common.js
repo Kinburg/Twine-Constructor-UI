@@ -55,8 +55,8 @@ function setLang(lang) {
     sub +
     '<nav>' + navHtml + '</nav>' +
     '<div class="lang-toggle">' +
-      '<button id="btn-uk" class="active" onclick="setLang(\'uk\')">UA</button>' +
-      '<button id="btn-en" onclick="setLang(\'en\')">EN</button>' +
+      '<button id="btn-uk" onclick="setLang(\'uk\')">UA</button>' +
+      '<button id="btn-en" class="active" onclick="setLang(\'en\')">EN</button>' +
     '</div>';
 
   const saved = localStorage.getItem('purl-lang');

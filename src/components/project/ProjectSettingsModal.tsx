@@ -121,6 +121,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
   const [startingScene,    setStartingScene]    = useState(existing.startingScene);
   const [historyControls,  setHistoryControls]  = useState(existing.historyControls);
   const [saveLoadMenu,     setSaveLoadMenu]      = useState(existing.saveLoadMenu);
+  const [audioUnlockText,  setAudioUnlockText]  = useState(existing.audioUnlockText ?? '');
 
   // UI
   const [appearanceOpen, setAppearanceOpen] = useState(false);
@@ -165,8 +166,9 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     if (sidebarColor.trim()) s.sidebarColor = sidebarColor.trim();
     if (titleColor.trim())   s.titleColor   = titleColor.trim();
     if (titleFont.trim())    s.titleFont    = titleFont.trim();
-    if (headerSrc)           s.headerImageSrc = headerSrc;
-    if (rowId)               s.headerRowId    = rowId;
+    if (headerSrc)                    s.headerImageSrc   = headerSrc;
+    if (rowId)                        s.headerRowId      = rowId;
+    if (audioUnlockText.trim())       s.audioUnlockText  = audioUnlockText.trim();
     return s;
   }
 
@@ -443,6 +445,16 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
 
               <ToggleField label={ps.fieldHistoryControls} value={historyControls} onChange={setHistoryControls} />
               <ToggleField label={ps.fieldSaveLoadMenu}    value={saveLoadMenu}    onChange={setSaveLoadMenu} />
+
+              <Field label={ps.fieldAudioUnlockText}>
+                <input
+                  className="w-full bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
+                  placeholder={ps.fieldAudioUnlockTextPlaceholder}
+                  value={audioUnlockText}
+                  onChange={e => setAudioUnlockText(e.target.value)}
+                />
+                <p className="text-xs text-slate-500 mt-1">{ps.fieldAudioUnlockTextNote}</p>
+              </Field>
             </div>
           </CollapsibleSection>
 

@@ -504,6 +504,8 @@ export interface Translations {
     onLeaveStop: string;
     onLeavePersist: string;
     loop: string;
+    stopOthers: string;
+    stopOthersHint: string;
     volumeLabel: string;
   };
 
@@ -752,6 +754,9 @@ export interface Translations {
     fieldStartingScenePlaceholder: string;
     fieldHistoryControls:   string;
     fieldSaveLoadMenu:      string;
+    fieldAudioUnlockText:      string;
+    fieldAudioUnlockTextPlaceholder: string;
+    fieldAudioUnlockTextNote:  string;
     create:                 string;
     save:                   string;
     chooseFolder:           string;

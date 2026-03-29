@@ -126,8 +126,10 @@ export function buildPassages(project: Project): {
     }
   }
   if (sidebarPanel.tabs.length > 0) inits.push('<<set $__tgTab to 0>>');
-  // Audio: <<cacheaudio>> lines
-  inits.push(...buildAudioCacheLines(scenes));
+  // Audio: <<cacheaudio>> lines + <<waitforaudio>> to block start until loaded
+  const audioCacheLines = buildAudioCacheLines(scenes);
+  inits.push(...audioCacheLines);
+  if (audioCacheLines.length > 0) inits.push('<<waitforaudio>>');
   // Audio volume: init master volume variable
   const hasAudioVolume = sidebarPanel.tabs.some(tab =>
     tab.rows.some(r => r.cells.some(c => c.content.type === 'audio-volume')));
@@ -183,7 +185,7 @@ export function buildPassages(project: Project): {
     buildInputScript(scenes),
     buildLiveScript(scenes),
     buildWatcherScript(project.watchers ?? [], variables, variableNodes),
-    buildAudioScript(scenes),
+    buildAudioScript(scenes, project.settings?.audioUnlockText),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load (audio + video)',
       '$(document).on(":passagedisplay", function() {',

@@ -112,8 +112,8 @@ export function AudioBlockEditor({
         </div>
       </div>
 
-      {/* Checkboxes: loop */}
-      <div className="flex items-center gap-4">
+      {/* Checkboxes: loop + stopOthers */}
+      <div className="flex flex-col gap-1.5">
         <label className="flex items-center gap-1.5 cursor-pointer">
           <input
             type="checkbox"
@@ -123,6 +123,20 @@ export function AudioBlockEditor({
           />
           <span className="text-xs text-slate-300">{t.audioBlock.loop}</span>
         </label>
+        <div className="flex flex-col gap-0.5">
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              className="accent-indigo-500"
+              checked={block.stopOthers}
+              onChange={e => update({ stopOthers: e.target.checked })}
+            />
+            <span className="text-xs text-slate-300">{t.audioBlock.stopOthers}</span>
+          </label>
+          {block.stopOthers && (
+            <p className="text-xs text-slate-500 ml-5">{t.audioBlock.stopOthersHint}</p>
+          )}
+        </div>
       </div>
 
       {/* Volume */}

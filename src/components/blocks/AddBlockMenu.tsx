@@ -73,7 +73,7 @@ export function makeBlock(type: BlockType): Block {
       actions: [],
     };
     case 'popup':        return { id, type, targetSceneId: '' };
-    case 'audio':        return { id, type, src: '', trigger: 'immediate' as const, loop: false, onLeave: 'stop' as const, volume: 100 };
+    case 'audio':        return { id, type, src: '', trigger: 'immediate' as const, loop: false, onLeave: 'stop' as const, stopOthers: false, volume: 100 };
   }
 }
 

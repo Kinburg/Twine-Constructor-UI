@@ -475,6 +475,8 @@ const en: Translations = {
     onLeaveStop:       'Stop',
     onLeavePersist:    'Keep playing (global)',
     loop:              'Loop',
+    stopOthers:        'Stop all other sounds',
+    stopOthersHint:    'Stops all currently playing audio before this block plays. Place this block first in the scene if you want it to stop audio from a previous scene.',
     volumeLabel:       'Volume:',
   },
 
@@ -729,6 +731,9 @@ const en: Translations = {
     fieldStartingScenePlaceholder: 'Start',
     fieldHistoryControls:   'Show history navigation (back/forward)',
     fieldSaveLoadMenu:      'Show save/load menu',
+    fieldAudioUnlockText:   'Audio unlock prompt',
+    fieldAudioUnlockTextPlaceholder: '▶ Click to begin',
+    fieldAudioUnlockTextNote: 'Shown as a click-to-start overlay when the browser blocks audio autoplay. Leave empty to use the default text.',
     create:                 'Create',
     save:                   'Save',
     chooseFolder:           'Choose folder',

@@ -585,6 +585,13 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       const trackId = `tga_${ab.id.replace(/-/g, '')}`;
       const vol = Math.round(ab.volume) / 100;
 
+      const stopAllMacro = ab.stopOthers ? `<<audio ":all" stop>>` : '';
+
+      // No source — only stop others (if requested), nothing to play.
+      if (!ab.src) {
+        return stopAllMacro ? `${indent}${stopAllMacro}` : '';
+      }
+
       const parts: string[] = [];
       if (vol !== 1) parts.push(`volume ${vol}`);
       if (ab.loop) parts.push('loop');
@@ -593,6 +600,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
       // Trigger
       if (ab.trigger === 'delay' && ab.triggerDelay && ab.triggerDelay > 0) {
+        // stopOthers fires immediately; the new audio starts after the delay.
         // Use cancellable setTimeout instead of <<timed>> so navigation away
         // before the delay fires won't still start the audio on a different scene.
         const ms = Math.round(ab.triggerDelay * 1000);
@@ -603,9 +611,15 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         ].join('');
         const jsPlay = `var _tr=SugarCube.SimpleAudio.tracks.get("${trackId}");if(_tr){_tr${chain};}`;
         const jsTimer = `(window._tgDA=window._tgDA||[]).push(setTimeout(function(){${jsPlay}},${ms}));`;
-        return `${indent}<<script>>${jsTimer}<</script>>`;
+        const timerMacro = `<<script>>${jsTimer}<</script>>`;
+        return stopAllMacro
+          ? `${indent}${stopAllMacro}\n${indent}${timerMacro}`
+          : `${indent}${timerMacro}`;
       }
-      return `${indent}${audioMacro}`;
+
+      return stopAllMacro
+        ? `${indent}${stopAllMacro}\n${indent}${audioMacro}`
+        : `${indent}${audioMacro}`;
     }
   }
 }
@@ -1421,7 +1435,7 @@ function collectAudioBlocks(scenes: Scene[]): { block: AudioBlock; sceneName: st
 
 /** Build <<cacheaudio>> lines for StoryInit. */
 export function buildAudioCacheLines(scenes: Scene[]): string[] {
-  const entries = collectAudioBlocks(scenes);
+  const entries = collectAudioBlocks(scenes).filter(e => e.block.src);
   if (entries.length === 0) return [];
   return entries.map(({ block }) => {
     const trackId = `tga_${block.id.replace(/-/g, '')}`;
@@ -1431,19 +1445,35 @@ export function buildAudioCacheLines(scenes: Scene[]): string[] {
 
 /** Build the :passageleave handler for stopping audio.
  *  Uses a static passage→trackIds map so it works reliably with back/forward navigation. */
-export function buildAudioScript(scenes: Scene[]): string {
-  const entries = collectAudioBlocks(scenes);
+export function buildAudioScript(scenes: Scene[], unlockText?: string): string {
+  const allEntries = collectAudioBlocks(scenes);
+  if (allEntries.length === 0) return '';
+
+  // Only entries with a source file matter for track operations.
+  const entries    = allEntries.filter(e => e.block.src);
   const stopEntries = entries.filter(e => e.block.onLeave === 'stop');
-  const hasDelayed = entries.some(
+  const hasDelayed  = entries.some(
     e => e.block.trigger === 'delay' && e.block.triggerDelay && e.block.triggerDelay > 0,
   );
+  // Immediate-trigger tracks — used to detect and recover from autoplay blocking.
+  const immediateEntries = entries.filter(e => e.block.trigger === 'immediate');
 
-  if (stopEntries.length === 0 && !hasDelayed) return '';
+  const lines: string[] = ['// Audio: passageinit handler + autoplay unlock'];
 
-  const lines: string[] = ['// Audio: passageinit handler (stop-on-leave + delay cancellation)'];
+  // ── _tgAudioPlayMap: passage → [{id, volume, loop}] for immediate tracks ──────
+  // Used by the autoplay-unlock overlay to replay blocked tracks on first click.
+  if (immediateEntries.length > 0) {
+    const playMap: Record<string, { id: string; volume: number; loop: boolean }[]> = {};
+    for (const { block, sceneName } of immediateEntries) {
+      const trackId = `tga_${block.id.replace(/-/g, '')}`;
+      const vol     = Math.round(block.volume) / 100;
+      (playMap[sceneName] ??= []).push({ id: trackId, volume: vol, loop: block.loop });
+    }
+    lines.push(`var _tgAudioPlayMap = ${JSON.stringify(playMap)};`);
+  }
 
+  // ── _tgAudioStopMap: passage → [trackId] for stop-on-leave tracks ─────────────
   if (stopEntries.length > 0) {
-    // Build a map: sceneName → [trackId, ...]
     const map: Record<string, string[]> = {};
     for (const { block, sceneName } of stopEntries) {
       const trackId = `tga_${block.id.replace(/-/g, '')}`;
@@ -1452,27 +1482,68 @@ export function buildAudioScript(scenes: Scene[]): string {
     lines.push(`var _tgAudioStopMap = ${JSON.stringify(map)};`);
   }
 
-  lines.push('$(document).on(":passageinit", function(ev) {');
-
-  if (hasDelayed) {
-    // Cancel any pending delayed-audio timers so they don't fire on a different scene.
-    lines.push('  if (window._tgDA) { window._tgDA.forEach(function(id){ clearTimeout(id); }); window._tgDA = []; }');
+  // ── :passageinit handler ───────────────────────────────────────────────────────
+  if (stopEntries.length > 0 || hasDelayed) {
+    lines.push('$(document).on(":passageinit", function(ev) {');
+    if (hasDelayed) {
+      // Cancel pending delayed-audio timers so they don't fire on a different scene.
+      lines.push('  if (window._tgDA) { window._tgDA.forEach(function(id){ clearTimeout(id); }); window._tgDA = []; }');
+    }
+    if (stopEntries.length > 0) {
+      lines.push(
+        '  var incoming = ev.passage.title;',
+        '  Object.keys(_tgAudioStopMap).forEach(function(passageName) {',
+        '    if (passageName === incoming) return;',
+        '    _tgAudioStopMap[passageName].forEach(function(id) {',
+        '      var t = SimpleAudio.tracks.get(id);',
+        '      if (t) t.stop();',
+        '    });',
+        '  });',
+      );
+    }
+    lines.push('});');
   }
 
-  if (stopEntries.length > 0) {
+  // ── Autoplay-unlock overlay ────────────────────────────────────────────────────
+  // Modern browsers block audio until the user interacts with the page.
+  // After :passageend we check if immediate-trigger tracks are actually playing.
+  // If any are blocked, we show a click-to-begin overlay. The click counts as a
+  // user gesture, which unlocks the AudioContext so tracks can start.
+  if (immediateEntries.length > 0) {
+    // Sanitize user-supplied text: HTML-escape special chars, then escape single
+    // quotes so the string is safe to embed inside a JS single-quoted literal.
+    const rawText = (unlockText ?? '').trim() || '▶ Click to begin';
+    const safeText = rawText
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/'/g, "\\'");
     lines.push(
-      '  var incoming = ev.passage.title;',
-      '  Object.keys(_tgAudioStopMap).forEach(function(passageName) {',
-      '    if (passageName === incoming) return;',
-      '    _tgAudioStopMap[passageName].forEach(function(id) {',
-      '      var t = SimpleAudio.tracks.get(id);',
-      '      if (t) t.stop();',
-      '    });',
+      '$(document).one(":passageend", function() {',
+      '  if (typeof _tgAudioPlayMap === "undefined") return;',
+      '  var ts = _tgAudioPlayMap[State.passage];',
+      '  if (!ts || !ts.length) return;',
+      '  var blocked = ts.some(function(t) {',
+      '    var tr = SimpleAudio.tracks.get(t.id);',
+      '    return tr && !tr.isPlaying();',
       '  });',
+      '  if (!blocked) return;',
+      '  var ov = document.createElement("div");',
+      '  ov.id = "tg-audio-unlock";',
+      '  ov.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);cursor:pointer";',
+      `  ov.innerHTML = '<div style="pointer-events:none;color:#fff;font-size:1.4em;text-align:center;line-height:1.6">${safeText}</div>';`,
+      '  ov.addEventListener("click", function() {',
+      '    ov.remove();',
+      '    var ts2 = _tgAudioPlayMap[State.passage];',
+      '    if (ts2) ts2.forEach(function(t) {',
+      '      var tr = SimpleAudio.tracks.get(t.id);',
+      '      if (tr && !tr.isPlaying()) tr.volume(t.volume).loop(t.loop).play();',
+      '    });',
+      '  }, { once: true });',
+      '  document.body.appendChild(ov);',
+      '});',
     );
   }
-
-  lines.push('});');
 
   return lines.join('\n');
 }
@@ -1575,8 +1646,10 @@ export function exportToTwee(project: Project): string {
     }
   }
   if (sidebarPanel.tabs.length > 0) inits.push('<<set $__tgTab to 0>>');
-  // Audio: <<cacheaudio>> lines
-  inits.push(...buildAudioCacheLines(scenes));
+  // Audio: <<cacheaudio>> lines + <<waitforaudio>> to block start until loaded
+  const audioCacheLines = buildAudioCacheLines(scenes);
+  inits.push(...audioCacheLines);
+  if (audioCacheLines.length > 0) inits.push('<<waitforaudio>>');
   // Audio volume: init master volume variable
   const hasAudioVolume = sidebarPanel.tabs.some(tab =>
     tab.rows.some(r => r.cells.some(c => c.content.type === 'audio-volume')));
@@ -1603,7 +1676,7 @@ export function exportToTwee(project: Project): string {
     buildInputScript(scenes),
     buildLiveScript(scenes),
     buildWatcherScript(project.watchers ?? [], variables, variableNodes),
-    buildAudioScript(scenes),
+    buildAudioScript(scenes, project.settings?.audioUnlockText),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load',
       '$(document).on(":passagedisplay", function() {',
