@@ -129,7 +129,7 @@ export function Header() {
   const handleOpenProject = async () => {
     const filePath = await fsApi.openFileDialog({
       title: t.header.open,
-      filters: [{ name: 'Purl Project', extensions: [PURL_EXT, 'tgproject', 'json'] }],
+      filters: [{ name: 'Purl Project', extensions: [PURL_EXT] }],
     });
     if (!filePath) return;
     try {

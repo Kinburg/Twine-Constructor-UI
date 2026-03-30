@@ -34,7 +34,7 @@ The core of Purl is its intuitive scene editor, where you build your story using
 - **Variables**: Manage number, string, and boolean variables with types and default values.
 - **Media Assets**: Organize images and video files, with support for variable bindings.
 - **Sidebar Panel (StoryCaption)**: A visual editor for the StoryCaption area, allowing you to display text, variables, progress bars, images, or raw code.
-- **Export**: Projects are saved in a `.tgproject` JSON format and can be exported as a playable `index.html` file (with assets) or as standard `.twee` source code.
+- **Export**: Projects are saved in a `.purl` JSON format and can be exported as a playable `index.html` file (with assets) or as standard `.twee` source code.
 
 ### Tools
 - **Scene Graph**: An interactive node-based map visualizing transitions between passages, with drag-and-drop nodes (separate window).
