@@ -49,13 +49,13 @@ export function WorkspaceLayout() {
             }
           }}
         >
-          <Panel id="main-panel" minSize={25} className="flex flex-col min-h-0">
+          <Panel id="main-panel" minSize={250} className="flex flex-col min-h-0">
             <SceneEditor />
           </Panel>
 
           <ResizeHandle orientation="vertical" />
 
-          <Panel id="right-panel" minSize={15} className="flex flex-col min-h-0">
+          <Panel id="right-panel" minSize={250} className="flex flex-col min-h-0">
             {previewVisible && graphVisible ? (
               <Group
                 orientation="vertical"
@@ -68,11 +68,11 @@ export function WorkspaceLayout() {
                   }
                 }}
               >
-                <Panel id="preview-panel" minSize={15} className="flex flex-col min-h-0">
+                <Panel id="preview-panel" minSize={150} className="flex flex-col min-h-0">
                   <PreviewPanel />
                 </Panel>
                 <ResizeHandle orientation="horizontal" />
-                <Panel id="graph-panel" minSize={15} className="flex flex-col min-h-0">
+                <Panel id="graph-panel" minSize={150} className="flex flex-col min-h-0">
                   <SceneGraphPanel />
                 </Panel>
               </Group>
