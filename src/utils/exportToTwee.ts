@@ -1034,6 +1034,18 @@ export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes
   return lines.join('\n');
 }
 
+export function buildPurlSignatureScript(): string {
+  return [
+    '// Purl signature',
+    '$(document).one(":storyready", function() {',
+    '  var sig = document.createElement("div");',
+    '  sig.style.cssText = "position:fixed;bottom:4px;left:0;width:var(--ui-bar-width,17.5em);text-align:center;font-size:0.65em;opacity:0.45;pointer-events:auto;z-index:50;";',
+    '  sig.innerHTML = \'Made via <a href="https://purl.pp.ua" target="_blank" rel="noopener" style="color:inherit;">Purl</a>\';',
+    '  document.body.appendChild(sig);',
+    '});',
+  ].join('\n');
+}
+
 export function buildPanelCSS(panel: SidebarPanel): string {
   if (panel.tabs.length === 0) return '';
   const s: PanelStyle = panel.style ?? DEFAULT_PANEL_STYLE;
@@ -1684,6 +1696,7 @@ export function exportToTwee(project: Project): string {
       '  if (v != null) { SimpleAudio.volume(v); }',
       '});',
     ].join('\n') : '',
+    buildPurlSignatureScript(),
   ].filter(Boolean).join('\n\n');
   if (storyScript) parts.push(`::StoryScript [script]\n${storyScript}\n`);
 
