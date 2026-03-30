@@ -1,5 +1,5 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, protocol, net, Menu, screen } from 'electron';
-import { fileURLToPath } from 'node:url';
+import {app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, shell} from 'electron';
+import {fileURLToPath} from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
@@ -266,6 +266,7 @@ function createGraphWindow(hidden = false) {
     minWidth: MIN.minWidth,
     minHeight: MIN.minHeight,
     show: !hidden,
+    minimizable: false,
     title: 'Scene Graph — Purl',
     backgroundColor: '#1e1e2e',
     webPreferences: {
@@ -317,6 +318,7 @@ function createPreviewWindow(hidden = false) {
     minWidth: MIN.minWidth,
     minHeight: MIN.minHeight,
     show: !hidden,
+    minimizable: false,
     title: 'Code Preview — Purl',
     backgroundColor: '#1e1e2e',
     webPreferences: {
@@ -383,6 +385,15 @@ function createWindow() {
 
   if (restored?.isMaximized) win.maximize();
   trackWindowBounds(win, 'main');
+
+  // Bring child windows to front when main window is focused (e.g. from taskbar)
+  win.on('focus', () => {
+    if (previewWin && !previewWin.isDestroyed() && !previewWin.isMinimized()) previewWin.moveTop();
+    if (graphWin   && !graphWin.isDestroyed()   && !graphWin.isMinimized())   graphWin.moveTop();
+    // Re-focus main so it stays in front of children
+    win?.moveTop();
+    win?.focus();
+  });
 
   if (frameless) {
     // Forward maximize/unmaximize events to renderer
@@ -647,14 +658,14 @@ ipcMain.handle('shell:openPath', async (_e, filePath: string) => {
 
 // ─── IPC: window controls ─────────────────────────────────────────────────────
 
-ipcMain.handle('window:minimize',    (e) => { e.sender.getOwnerBrowserWindow()?.minimize(); });
+ipcMain.handle('window:minimize',    (e) => { BrowserWindow.fromWebContents(e.sender)?.minimize(); });
 ipcMain.handle('window:maximize',    (e) => {
-  const bw = e.sender.getOwnerBrowserWindow();
+  const bw = BrowserWindow.fromWebContents(e.sender);
   if (!bw) return;
   if (bw.isMaximized()) bw.unmaximize(); else bw.maximize();
 });
 ipcMain.handle('window:close',       (e) => { BrowserWindow.fromWebContents(e.sender)?.close(); });
-ipcMain.handle('window:isMaximized', (e) => e.sender.getOwnerBrowserWindow()?.isMaximized() ?? false);
+ipcMain.handle('window:isMaximized', (e) => BrowserWindow.fromWebContents(e.sender)?.isMaximized() ?? false);
 
 // ─── IPC: app config ──────────────────────────────────────────────────────────
 
@@ -697,8 +708,7 @@ ipcMain.handle('config:saveWorkspacePreset', (_e, name: string) => {
     layout.graph = boundsToRel(graphWin.getBounds(), graphWin.isMaximized());
   }
   const preset: WorkspacePreset = { id: crypto.randomUUID(), name, layout };
-  const presets = [...(appConfig.workspacePresets ?? []), preset];
-  appConfig.workspacePresets = presets;
+  appConfig.workspacePresets = [...(appConfig.workspacePresets ?? []), preset];
   saveAppConfig({});
   return preset;
 });
