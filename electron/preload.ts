@@ -141,4 +141,32 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   confirmClose: (): void => { ipcRenderer.send('app:close-confirm'); },
   cancelClose:  (): void => { ipcRenderer.send('app:close-cancel');  },
+
+  // Window layout / workspace presets
+  getOpenWindows: (): Promise<{ previewOpen: boolean; graphOpen: boolean }> =>
+    ipcRenderer.invoke('config:getOpenWindows'),
+
+  getWindowLayout: (): Promise<{
+    workspacePresets: { id: string; name: string; builtIn: boolean }[];
+    activePresetId: string | null;
+  }> => ipcRenderer.invoke('config:getWindowLayout'),
+
+  saveWorkspacePreset: (name: string): Promise<{ id: string; name: string; builtIn: boolean }> =>
+    ipcRenderer.invoke('config:saveWorkspacePreset', name),
+
+  overwriteWorkspacePreset: (id: string): Promise<void> =>
+    ipcRenderer.invoke('config:overwriteWorkspacePreset', id),
+
+  deleteWorkspacePreset: (id: string): Promise<void> =>
+    ipcRenderer.invoke('config:deleteWorkspacePreset', id),
+
+  renameWorkspacePreset: (id: string, name: string): Promise<void> =>
+    ipcRenderer.invoke('config:renameWorkspacePreset', id, name),
+
+  applyWorkspacePreset: (id: string): Promise<void> =>
+    ipcRenderer.invoke('config:applyWorkspacePreset', id),
+
+  onWindowsOpenState: (callback: (state: { previewOpen: boolean; graphOpen: boolean }) => void): void => {
+    ipcRenderer.on('windows:openState', (_e, state: { previewOpen: boolean; graphOpen: boolean }) => callback(state));
+  },
 });

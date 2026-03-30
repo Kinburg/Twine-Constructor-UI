@@ -737,6 +737,19 @@ export interface Translations {
     titleBarStyleNative: string;
     titleBarStyleRestartNote: string;
     saveOnExitLabel: string;
+    sectionWindowLayout: string;
+    workspacePresets: string;
+    saveCurrentLayout: string;
+    presetNamePlaceholder: string;
+    applyPreset: string;
+    deletePreset: string;
+    activePresetLabel: string;
+    customLayout: string;
+    overwritePreset: string;
+    noPresetsSaved: string;
+    presetSaved: string;
+    builtInPresets: string;
+    userPresets: string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────

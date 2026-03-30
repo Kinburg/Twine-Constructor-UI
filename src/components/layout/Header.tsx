@@ -53,6 +53,21 @@ export function Header() {
     api.onWindowMaximized?.(v => setIsMaximized(v));
   }, []);
 
+  // Query initial open state of child windows (e.g. restored from previous session)
+  // and listen for state changes when a workspace preset is applied
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.getOpenWindows) return;
+    api.getOpenWindows().then(({ previewOpen: p, graphOpen: g }) => {
+      setPreviewOpen(p);
+      setGraphOpen(g);
+    });
+    api.onWindowsOpenState?.(({ previewOpen: p, graphOpen: g }) => {
+      setPreviewOpen(p);
+      setGraphOpen(g);
+    });
+  }, []);
+
   // Sync button state when user closes the preview window via its × button
   useEffect(() => {
     const api = window.electronAPI;

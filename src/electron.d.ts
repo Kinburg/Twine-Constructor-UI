@@ -79,6 +79,25 @@ interface ElectronAPI {
   onCloseRequested(callback: () => void): void;
   confirmClose(): void;
   cancelClose(): void;
+
+  // Window layout / workspace presets
+  getOpenWindows(): Promise<{ previewOpen: boolean; graphOpen: boolean }>;
+  getWindowLayout(): Promise<{
+    workspacePresets: WorkspacePresetInfo[];
+    activePresetId: string | null;
+  }>;
+  saveWorkspacePreset(name: string): Promise<WorkspacePresetInfo>;
+  overwriteWorkspacePreset(id: string): Promise<void>;
+  deleteWorkspacePreset(id: string): Promise<void>;
+  renameWorkspacePreset(id: string, name: string): Promise<void>;
+  applyWorkspacePreset(id: string): Promise<void>;
+  onWindowsOpenState(callback: (state: { previewOpen: boolean; graphOpen: boolean }) => void): void;
+}
+
+interface WorkspacePresetInfo {
+  id: string;
+  name: string;
+  builtIn: boolean;
 }
 
 declare interface Window {
