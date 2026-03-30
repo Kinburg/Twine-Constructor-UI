@@ -22,7 +22,7 @@ export function Header() {
     undo, redo, canUndo, canRedo,
   } = useProjectStore();
   const { locale, setLocale } = useLocaleStore();
-  const { searchQuery, setSearchQuery, setProjectSettingsOpen, setEditorPrefsOpen } = useEditorStore();
+  const { setProjectSettingsOpen, setEditorPrefsOpen } = useEditorStore();
   const { confirmOpenFolderAfterExport } = useEditorPrefsStore();
   const t = useT();
 
@@ -324,26 +324,6 @@ export function Header() {
           ↪
         </button>
 
-        <div className="relative w-full max-w-xs">
-          <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none select-none">
-            🔍
-          </span>
-          <input
-            className="w-full bg-slate-800 text-white text-xs pl-7 pr-6 py-1.5 rounded border border-slate-600 outline-none focus:border-indigo-500 placeholder-slate-500 transition-colors"
-            placeholder={t.header.searchPlaceholder}
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-          {searchQuery && (
-            <button
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-200 cursor-pointer text-sm leading-none"
-              onClick={() => setSearchQuery('')}
-              title={t.header.clearSearch}
-            >
-              ×
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Right: actions */}
