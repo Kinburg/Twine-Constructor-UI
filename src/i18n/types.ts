@@ -201,6 +201,11 @@ export interface Translations {
     menuSectionFile: string;
     menuSectionSettings: string;
     newDesc: string;
+    closeConfirmTitle: string;
+    closeConfirmMessage: string;
+    closeConfirmSaveMessage: string;
+    closeConfirmSaveAndExit: string;
+    closeConfirmExit: string;
     projectSettings: string;
     projectSettingsDesc: string;
     editorPrefs: string;
@@ -727,6 +732,11 @@ export interface Translations {
     deleteGroupWithScenes: string;
     sectionExport: string;
     confirmOpenFolderAfterExport: string;
+    titleBarStyleLabel: string;
+    titleBarStyleCustom: string;
+    titleBarStyleNative: string;
+    titleBarStyleRestartNote: string;
+    saveOnExitLabel: string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────

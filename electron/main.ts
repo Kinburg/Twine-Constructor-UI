@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, protocol, net } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, protocol, net, Menu } from 'electron';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import fs from 'node:fs/promises';
@@ -27,20 +27,44 @@ if (process.argv.includes('--disable-gpu')) {
   app.disableHardwareAcceleration();
 }
 
-// Fallback: if GPU crashes while the app is running, relaunch with full GPU disabled.
-// Guard prevents relaunch when GPU process is killed during normal shutdown.
 let isQuitting = false;
 app.on('before-quit', () => { isQuitting = true; });
 
+// When the GPU process crashes (e.g. during child-window resource cleanup on Windows),
+// do NOT quit — the sandbox flags isolate the crash so the main process survives.
+// Schedule a relaunch with --disable-gpu so the *next* exit uses software rendering.
+// Calling app.quit() here was causing the whole app to close whenever a child window
+// was closed on machines with certain GPU drivers.
 app.on('child-process-gone', (_event, details) => {
   if (!isQuitting && details.type === 'GPU' && details.reason !== 'clean-exit') {
     app.relaunch({ args: process.argv.slice(1).concat(['--disable-gpu']) });
-    app.quit();
+    // intentionally no app.quit() — let the app keep running
   }
 });
 
 // Projects stored in ~/Documents/Purl/Projects/
 const PROJECTS_DIR = path.join(app.getPath('documents'), 'Purl', 'Projects');
+
+// ─── App config (title bar style) ────────────────────────────────────────────
+
+type TitleBarStyle = 'custom' | 'native';
+interface AppConfig { titleBarStyle: TitleBarStyle }
+
+let appConfig: AppConfig = { titleBarStyle: 'custom' };
+let appConfigPath = '';
+
+async function loadAppConfig(): Promise<void> {
+  appConfigPath = path.join(app.getPath('userData'), 'purl-config.json');
+  try {
+    const raw = await fs.readFile(appConfigPath, 'utf-8');
+    appConfig = { titleBarStyle: 'custom', ...JSON.parse(raw) };
+  } catch { /* first run — defaults apply */ }
+}
+
+async function saveAppConfig(patch: Partial<AppConfig>): Promise<void> {
+  appConfig = { ...appConfig, ...patch };
+  await fs.writeFile(appConfigPath, JSON.stringify(appConfig, null, 2), 'utf-8');
+}
 
 let win: BrowserWindow | null;
 let previewWin: BrowserWindow | null = null;
@@ -48,6 +72,7 @@ let graphWin: BrowserWindow | null = null;
 let splashWin: BrowserWindow | null = null;
 let splashStart = 0;
 let lastGraphData: unknown = null;
+let lastPreviewCode: string | null = null;
 
 // ─── Splash window ────────────────────────────────────────────────────────────
 
@@ -75,6 +100,7 @@ function createGraphWindow() {
     minWidth: 500,
     minHeight: 400,
     title: 'Scene Graph — Purl',
+    backgroundColor: '#1e1e2e',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
@@ -105,6 +131,7 @@ function createPreviewWindow() {
     minWidth: 400,
     minHeight: 300,
     title: 'Code Preview — Purl',
+    backgroundColor: '#1e1e2e',
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
       contextIsolation: true,
@@ -130,6 +157,7 @@ function createPreviewWindow() {
 
 function createWindow() {
   const iconPath = path.join(process.env.VITE_PUBLIC!, 'Icon.ico');
+  const frameless = appConfig.titleBarStyle === 'custom';
 
   win = new BrowserWindow({
     width: 1400,
@@ -138,6 +166,8 @@ function createWindow() {
     minHeight: 600,
     title: 'Purl',
     show: false,
+    frame: !frameless,
+    backgroundColor: '#0f172a',
     icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.mjs'),
@@ -146,11 +176,42 @@ function createWindow() {
     },
   });
 
+  if (frameless) {
+    // Forward maximize/unmaximize events to renderer
+    win.on('maximize',   () => win?.webContents.send('window:maximized', true));
+    win.on('unmaximize', () => win?.webContents.send('window:maximized', false));
+  }
+
+  // Intercept close to allow renderer to confirm / save first
+  let closeConfirmed = false;
+  win.on('close', (e) => {
+    if (!closeConfirmed) {
+      e.preventDefault();
+      win?.webContents.send('app:close-requested');
+    }
+  });
+
+  ipcMain.removeAllListeners('app:close-confirm');
+  ipcMain.removeAllListeners('app:close-cancel');
+
+  ipcMain.on('app:close-confirm', () => {
+    closeConfirmed = true;
+    win?.close();
+  });
+  ipcMain.on('app:close-cancel', () => { /* do nothing — close already prevented */ });
+
   if (VITE_DEV_SERVER_URL) {
     win.loadURL(VITE_DEV_SERVER_URL);
   } else {
     win.loadFile(path.join(RENDERER_DIST, 'index.html'));
   }
+
+  win.on('closed', () => {
+    // Destroy child windows so they don't linger after the main window is gone
+    if (previewWin && !previewWin.isDestroyed()) { previewWin.destroy(); previewWin = null; }
+    if (graphWin   && !graphWin.isDestroyed())   { graphWin.destroy();   graphWin   = null; }
+    win = null;
+  });
 
   win.once('ready-to-show', () => {
     const elapsed = Date.now() - splashStart;
@@ -175,7 +236,13 @@ function createWindow() {
 // ─── Custom protocol for local asset display ──────────────────────────────────
 // <img src="localfile:///abs/path/to/file.jpg"> works in renderer
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await loadAppConfig();
+
+  if (appConfig.titleBarStyle === 'custom') {
+    Menu.setApplicationMenu(null);
+  }
+
   protocol.handle('localfile', (request) => {
     const filePath = decodeURIComponent(request.url.replace('localfile://', ''));
     return net.fetch('file://' + filePath);
@@ -202,8 +269,16 @@ ipcMain.handle('preview:toggle', () => {
 });
 
 ipcMain.handle('preview:update', (_e, code: string) => {
+  lastPreviewCode = code;
   if (previewWin && !previewWin.isDestroyed()) {
     previewWin.webContents.send('preview:code', code);
+  }
+});
+
+// Preview window signals it's ready → send cached code immediately
+ipcMain.handle('preview:ready', (e) => {
+  if (lastPreviewCode !== null) {
+    e.sender.send('preview:code', lastPreviewCode);
   }
 });
 
@@ -337,12 +412,35 @@ ipcMain.handle('shell:openPath', async (_e, filePath: string) => {
   await shell.openPath(filePath);
 });
 
+// ─── IPC: window controls ─────────────────────────────────────────────────────
+
+ipcMain.handle('window:minimize',    (e) => { e.sender.getOwnerBrowserWindow()?.minimize(); });
+ipcMain.handle('window:maximize',    (e) => {
+  const bw = e.sender.getOwnerBrowserWindow();
+  if (!bw) return;
+  if (bw.isMaximized()) bw.unmaximize(); else bw.maximize();
+});
+ipcMain.handle('window:close',       (e) => { BrowserWindow.fromWebContents(e.sender)?.close(); });
+ipcMain.handle('window:isMaximized', (e) => e.sender.getOwnerBrowserWindow()?.isMaximized() ?? false);
+
+// ─── IPC: app config ──────────────────────────────────────────────────────────
+
+ipcMain.handle('config:getTitleBarStyle', () => appConfig.titleBarStyle);
+ipcMain.on('config:getTitleBarStyleSync', (e) => { e.returnValue = appConfig.titleBarStyle; });
+
+ipcMain.handle('config:setTitleBarStyle', async (_e, style: TitleBarStyle) => {
+  await saveAppConfig({ titleBarStyle: style });
+  app.relaunch();
+  app.exit(0);
+});
+
 // ─── App lifecycle ────────────────────────────────────────────────────────────
 
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  // Only quit when the main window has actually been closed (win is null).
+  // Child windows closing must not terminate the whole app.
+  if (process.platform !== 'darwin' && win === null) {
     app.quit();
-    win = null;
   }
 });
 

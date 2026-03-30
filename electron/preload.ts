@@ -1,6 +1,9 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+const titleBarStyle = ipcRenderer.sendSync('config:getTitleBarStyleSync') as 'custom' | 'native';
+
 contextBridge.exposeInMainWorld('electronAPI', {
+  titleBarStyle,
   // Paths
   getProjectsDir: (): Promise<string> =>
     ipcRenderer.invoke('fs:getProjectsDir'),
@@ -71,6 +74,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('preview:closed', callback);
   },
 
+  /** Preview window: signals renderer is ready, requests initial code */
+  previewReady: (): Promise<void> =>
+    ipcRenderer.invoke('preview:ready'),
+
   // Scene graph window
   toggleGraph: (): Promise<boolean> =>
     ipcRenderer.invoke('graph:toggle'),
@@ -110,4 +117,28 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Graph window: signals renderer is mounted, requests initial data */
   graphReady: (): Promise<void> =>
     ipcRenderer.invoke('graph:ready'),
+
+  // Window controls (custom title bar)
+  minimizeWindow:    (): Promise<void>    => ipcRenderer.invoke('window:minimize'),
+  maximizeWindow:    (): Promise<void>    => ipcRenderer.invoke('window:maximize'),
+  closeWindow:       (): Promise<void>    => ipcRenderer.invoke('window:close'),
+  isWindowMaximized: (): Promise<boolean> => ipcRenderer.invoke('window:isMaximized'),
+
+  onWindowMaximized: (callback: (maximized: boolean) => void): void => {
+    ipcRenderer.on('window:maximized', (_e, maximized: boolean) => callback(maximized));
+  },
+
+  // App config
+  getTitleBarStyle: (): Promise<'custom' | 'native'> =>
+    ipcRenderer.invoke('config:getTitleBarStyle'),
+
+  setTitleBarStyle: (style: 'custom' | 'native'): Promise<void> =>
+    ipcRenderer.invoke('config:setTitleBarStyle', style),
+
+  // Close confirmation
+  onCloseRequested: (callback: () => void): void => {
+    ipcRenderer.on('app:close-requested', callback);
+  },
+  confirmClose: (): void => { ipcRenderer.send('app:close-confirm'); },
+  cancelClose:  (): void => { ipcRenderer.send('app:close-cancel');  },
 });

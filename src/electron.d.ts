@@ -1,4 +1,7 @@
 interface ElectronAPI {
+  // Title bar style (resolved synchronously at preload time)
+  titleBarStyle: 'custom' | 'native';
+
   // Paths
   getProjectsDir(): Promise<string>;
 
@@ -47,6 +50,8 @@ interface ElectronAPI {
   onPreviewCode(callback: (code: string) => void): void;
   /** Called in the main window when the user closes the preview window. */
   onPreviewClosed(callback: () => void): void;
+  /** Preview window: signals renderer is ready, requests initial code. */
+  previewReady?(): Promise<void>;
 
   // Scene graph window
   toggleGraph(): Promise<boolean>;
@@ -58,6 +63,22 @@ interface ElectronAPI {
   onGraphNavigate(callback: (sceneId: string) => void): void;
   onGraphClosed(callback: () => void): void;
   graphReady?(): Promise<void>;
+
+  // Window controls (custom title bar)
+  minimizeWindow(): Promise<void>;
+  maximizeWindow(): Promise<void>;
+  closeWindow(): Promise<void>;
+  isWindowMaximized(): Promise<boolean>;
+  onWindowMaximized(callback: (maximized: boolean) => void): void;
+
+  // App config
+  getTitleBarStyle(): Promise<'custom' | 'native'>;
+  setTitleBarStyle(style: 'custom' | 'native'): Promise<void>;
+
+  // Close confirmation
+  onCloseRequested(callback: () => void): void;
+  confirmClose(): void;
+  cancelClose(): void;
 }
 
 declare interface Window {

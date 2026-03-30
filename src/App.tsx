@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useProjectStore } from './store/projectStore';
 import { useEditorStore } from './store/editorStore';
 import { useEditorPrefsStore } from './store/editorPrefsStore';
@@ -12,11 +12,16 @@ import { usePreviewSync } from './hooks/usePreviewSync';
 import { useGraphBridge } from './hooks/useGraphBridge';
 import { useAutosave } from './hooks/useAutosave';
 import { Toaster } from 'sonner';
+import { useT } from './i18n';
+import { fsApi, joinPath, safeName } from './lib/fsApi';
 
 export default function App() {
-  const { fixVariableNames, undo, redo, projectDir } = useProjectStore();
+  const { fixVariableNames, undo, redo, projectDir, project, setProjectDir } = useProjectStore();
   const { projectSettingsOpen, setProjectSettingsOpen, editorPrefsOpen, setEditorPrefsOpen } = useEditorStore();
-  const compactMode = useEditorPrefsStore(s => s.compactMode);
+  const { compactMode, saveOnExit } = useEditorPrefsStore();
+  const t = useT();
+  const [closeModalOpen, setCloseModalOpen] = useState(false);
+  const [savingOnExit, setSavingOnExit]     = useState(false);
   useAutosave();
 
   // Keeps the code preview window in sync with the active scene
@@ -34,6 +39,43 @@ export default function App() {
       setProjectSettingsOpen(true);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Listen for close-requested from Electron
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.onCloseRequested) return;
+    api.onCloseRequested(() => setCloseModalOpen(true));
+  }, []);
+
+  async function handleSaveAndExit() {
+    setSavingOnExit(true);
+    try {
+      let dir = projectDir;
+      if (!dir) {
+        dir = await fsApi.openFolderDialog();
+        if (!dir) { setSavingOnExit(false); return; }
+        setProjectDir(dir);
+      }
+      await fsApi.mkdir(joinPath(dir, 'assets'));
+      await fsApi.writeFile(joinPath(dir, `${safeName(project.title)}.purl`), JSON.stringify(project, null, 2));
+    } catch { /* proceed with exit even if save fails */ }
+    window.electronAPI?.confirmClose();
+  }
+
+  function handleExitWithoutSaving() {
+    setCloseModalOpen(false);
+    window.electronAPI?.confirmClose();
+  }
+
+  function handleCancelClose() {
+    setCloseModalOpen(false);
+    window.electronAPI?.cancelClose();
+  }
+
+  // When saveOnExit is on: auto-save then just confirm directly
+  async function handleCloseWithSaveOnExit() {
+    await handleSaveAndExit();
+  }
 
   // Global keyboard shortcuts: Ctrl+Z = undo, Ctrl+Shift+Z / Ctrl+Y = redo
   useEffect(() => {
@@ -63,6 +105,43 @@ export default function App() {
       {editorPrefsOpen && (
         <EditorPrefsModal onClose={() => setEditorPrefsOpen(false)} />
       )}
+
+      {/* Close confirmation modal */}
+      {closeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-[380px] p-5 flex flex-col gap-4">
+            <h2 className="text-sm font-semibold text-white">{t.header.closeConfirmTitle}</h2>
+            <p className="text-xs text-slate-400">
+              {saveOnExit ? t.header.closeConfirmSaveMessage : t.header.closeConfirmMessage}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                className="px-3 py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors cursor-pointer"
+                onClick={handleCancelClose}
+              >
+                {t.common.cancel}
+              </button>
+              {!saveOnExit && (
+                <button
+                  className="px-3 py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 transition-colors cursor-pointer"
+                  onClick={handleExitWithoutSaving}
+                >
+                  {t.header.closeConfirmExit}
+                </button>
+              )}
+              <button
+                className="px-3 py-1.5 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white transition-colors cursor-pointer disabled:opacity-50"
+                onClick={saveOnExit ? handleCloseWithSaveOnExit : handleSaveAndExit}
+                disabled={savingOnExit}
+              >
+                {saveOnExit ? t.header.closeConfirmExit : t.header.closeConfirmSaveAndExit}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <Toaster
         position="bottom-right"
         theme="dark"

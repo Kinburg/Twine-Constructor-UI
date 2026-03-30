@@ -399,6 +399,7 @@ export function SceneGraphView() {
   return (
     <ActiveCtx.Provider value={ctxValue}>
       <div style={{ width: '100vw', height: '100vh', background: '#1e1e2e' }}>
+        <div style={{ width: '100%', height: '100%', position: 'relative' }}>
 
         <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
           <defs>
@@ -448,6 +449,7 @@ export function SceneGraphView() {
             maskColor="rgba(30,30,46,0.6)"
           />
         </ReactFlow>
+        </div>
       </div>
     </ActiveCtx.Provider>
   );

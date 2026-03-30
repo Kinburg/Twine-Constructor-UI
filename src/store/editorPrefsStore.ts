@@ -6,6 +6,7 @@ export interface EditorPrefs {
   // ── Autosave ──────────────────────────────────────────────────────────────
   autosave:         boolean;
   autosaveInterval: number;   // minutes: 1 | 5 | 10 | 30
+  saveOnExit:       boolean;
 
   // ── Appearance ────────────────────────────────────────────────────────────
   compactMode: boolean;
@@ -32,6 +33,7 @@ export interface EditorPrefs {
 const DEFAULTS: EditorPrefs = {
   autosave:         false,
   autosaveInterval: 5,
+  saveOnExit:       false,
 
   compactMode: false,
 

@@ -27,6 +27,16 @@ textarea {
 .drag-handle { cursor: grab; }
 .drag-handle:active { cursor: grabbing; }
 
+/* Electron custom title bar drag region */
+.drag-region { -webkit-app-region: drag; }
+.drag-region button,
+.drag-region input,
+.drag-region select,
+.drag-region a,
+.drag-region label,
+.drag-region [role="button"],
+.drag-region .no-drag { -webkit-app-region: no-drag; }
+
 /* Compact mode */
 .compact .block-header { padding: 2px 8px; }
 .compact .block-body   { padding: 6px 8px; }

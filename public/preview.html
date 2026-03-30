@@ -24,17 +24,16 @@
       border-bottom: 1px solid #313244;
       padding: 6px 12px;
       display: flex;
-      align-items: center;
+      align-items: stretch;
       gap: 8px;
       flex-shrink: 0;
-      -webkit-app-region: drag;
       user-select: none;
     }
 
     #toolbar-icon {
       font-size: 14px;
       opacity: 0.6;
-      -webkit-app-region: no-drag;
+      align-self: center;
     }
 
     #toolbar-title {
@@ -44,6 +43,7 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      align-self: center;
     }
 
     #copy-btn {
@@ -55,8 +55,8 @@
       font-size: 11px;
       cursor: pointer;
       transition: background 0.15s, color 0.15s;
-      -webkit-app-region: no-drag;
       font-family: inherit;
+      align-self: center;
     }
     #copy-btn:hover  { background: #45475a; }
     #copy-btn.copied { background: #40a02b; color: #fff; }
@@ -256,7 +256,12 @@
     // ── IPC: receive code from main window ───────────────────────
     if (window.electronAPI && typeof window.electronAPI.onPreviewCode === 'function') {
       window.electronAPI.onPreviewCode(updateCode);
+      // Request cached code so the window opens pre-filled
+      if (typeof window.electronAPI.previewReady === 'function') {
+        window.electronAPI.previewReady();
+      }
     }
+
   </script>
 
 </body>

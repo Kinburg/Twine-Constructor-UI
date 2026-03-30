@@ -35,11 +35,22 @@ export function Header() {
   const [busy, setBusy]                     = useState(false);
   const [previewOpen, setPreviewOpen]       = useState(false);
   const [graphOpen, setGraphOpen]           = useState(false);
+  const [isMaximized, setIsMaximized]       = useState(false);
   const { ask, modal: confirmModal } = useConfirm();
+
+  const isCustomTitleBar = typeof window !== 'undefined' && window.electronAPI?.titleBarStyle === 'custom';
 
   useEffect(() => {
     setScReady(hasSCTemplate());
     setScVersion(getSCVersion());
+  }, []);
+
+  // Initialize and sync window maximize state
+  useEffect(() => {
+    const api = window.electronAPI;
+    if (!api?.isWindowMaximized) return;
+    api.isWindowMaximized().then(v => setIsMaximized(v));
+    api.onWindowMaximized?.(v => setIsMaximized(v));
   }, []);
 
   // Sync button state when user closes the preview window via its × button
@@ -275,9 +286,11 @@ export function Header() {
   const locales = getLocales();
 
   return (
-    <header className="flex items-center px-4 py-2 bg-slate-900 border-b border-slate-700 shrink-0 gap-4">
+    <header
+      className={`flex items-stretch pl-4 gap-4 bg-slate-900 border-b border-slate-700 shrink-0${isCustomTitleBar ? ' drag-region' : ' pr-4'}`}
+    >
       {/* Left: logo + title */}
-      <div className="flex items-center gap-3 shrink-0">
+      <div className="flex items-center gap-3 shrink-0 py-2">
         <span className="text-indigo-400 font-bold text-sm tracking-wider uppercase select-none">
           Purl
         </span>
@@ -306,7 +319,7 @@ export function Header() {
 
         {projectDir && (
           <span
-            className="text-xs text-slate-500 hover:text-slate-400 cursor-pointer transition-colors"
+            className="no-drag text-xs text-slate-500 hover:text-slate-400 cursor-pointer transition-colors"
             title={projectDir}
             onClick={handleOpenProjectFolder}
           >
@@ -316,7 +329,7 @@ export function Header() {
       </div>
 
       {/* Center: undo/redo + search */}
-      <div className="flex-1 flex items-center justify-center gap-2">
+      <div className="flex-1 flex items-center justify-center gap-2 py-2">
         {/* Undo / Redo buttons */}
         <button
           className="text-slate-400 hover:text-white disabled:text-slate-700 disabled:cursor-not-allowed transition-colors cursor-pointer text-base leading-none px-1"
@@ -358,7 +371,7 @@ export function Header() {
       </div>
 
       {/* Right: actions */}
-      <div className="flex items-center gap-2 flex-wrap justify-end shrink-0">
+      <div className="flex items-center gap-2 flex-wrap justify-end shrink-0 py-2">
 
         {/* Code preview window toggle */}
         {window.electronAPI?.togglePreview && (
@@ -395,7 +408,7 @@ export function Header() {
         {/* SugarCube runtime setup */}
         {scReady ? (
           <span
-            className="text-xs text-emerald-400 px-2 py-1 rounded bg-emerald-900/30 border border-emerald-800 cursor-pointer"
+            className="no-drag text-xs text-emerald-400 px-2 py-1 rounded bg-emerald-900/30 border border-emerald-800 cursor-pointer"
             title={t.header.scLoaded(scVersion ?? '')}
             onClick={handleClearSC}
           >
@@ -541,6 +554,48 @@ export function Header() {
           )}
         </div>
       </div>
+
+      {/* Custom window controls */}
+      {isCustomTitleBar && (
+        <div className="flex items-stretch shrink-0">
+          <button
+            className="w-11 flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-700/60 transition-colors"
+            onClick={() => window.electronAPI?.minimizeWindow()}
+            title="Minimise"
+          >
+            <svg width="10" height="1" viewBox="0 0 10 1" fill="none">
+              <line x1="0" y1="0.5" x2="10" y2="0.5" stroke="currentColor" strokeWidth="1.2"/>
+            </svg>
+          </button>
+          <button
+            className="w-11 flex items-center justify-center text-slate-500 hover:text-slate-200 hover:bg-slate-700/60 transition-colors"
+            onClick={() => window.electronAPI?.maximizeWindow()}
+            title={isMaximized ? 'Restore' : 'Maximise'}
+          >
+            {isMaximized ? (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <rect x="2.5" y="0.5" width="7" height="7" stroke="currentColor" strokeWidth="1"/>
+                <rect x="0.5" y="2.5" width="7" height="7" fill="#0f172a" stroke="currentColor" strokeWidth="1"/>
+              </svg>
+            ) : (
+              <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+                <rect x="0.5" y="0.5" width="9" height="9" stroke="currentColor" strokeWidth="1"/>
+              </svg>
+            )}
+          </button>
+          <button
+            className="w-11 flex items-center justify-center text-slate-500 hover:text-white hover:bg-red-600 transition-colors"
+            onClick={() => window.electronAPI?.closeWindow()}
+            title="Close"
+          >
+            <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+              <line x1="0.5" y1="0.5" x2="9.5" y2="9.5" stroke="currentColor" strokeWidth="1.2"/>
+              <line x1="9.5" y1="0.5" x2="0.5" y2="9.5" stroke="currentColor" strokeWidth="1.2"/>
+            </svg>
+          </button>
+        </div>
+      )}
+
       {confirmModal}
     </header>
   );

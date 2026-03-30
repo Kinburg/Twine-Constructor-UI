@@ -189,6 +189,11 @@ const ua: Translations = {
     successSave:            'Проєкт збережено',
     successExportHtml:      'HTML успішно експортовано',
     successExportTwee:      'Twee успішно експортовано',
+    closeConfirmTitle:      'Вийти з Purl?',
+    closeConfirmMessage:    'Можливо, є незбережені зміни.',
+    closeConfirmSaveMessage:'Проєкт буде збережено автоматично.',
+    closeConfirmSaveAndExit:'Зберегти та вийти',
+    closeConfirmExit:       'Вийти',
   },
 
   assets: {
@@ -705,6 +710,11 @@ const ua: Translations = {
     deleteGroupWithScenes:        'Видалити групу разом зі сценами',
     sectionExport:                'Експорт',
     confirmOpenFolderAfterExport: 'Запитувати про відкриття папки після HTML-експорту',
+    titleBarStyleLabel:           'Рядок заголовка вікна',
+    titleBarStyleCustom:          'Кастомний (стиль застосунку)',
+    titleBarStyleNative:          'Нативний (системний стиль)',
+    titleBarStyleRestartNote:     'Застосунок перезапуститься',
+    saveOnExitLabel:              'Завжди зберігати проєкт при виході',
   },
 
   projectSettings: {

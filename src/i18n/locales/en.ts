@@ -189,6 +189,11 @@ const en: Translations = {
     successSave:            'Project saved',
     successExportHtml:      'HTML exported successfully',
     successExportTwee:      'Twee exported successfully',
+    closeConfirmTitle:      'Exit Purl?',
+    closeConfirmMessage:    'You may have unsaved changes.',
+    closeConfirmSaveMessage:'Your project will be saved automatically.',
+    closeConfirmSaveAndExit:'Save & Exit',
+    closeConfirmExit:       'Exit',
   },
 
   assets: {
@@ -705,6 +710,11 @@ const en: Translations = {
     deleteGroupWithScenes:        'Delete group and all scenes inside',
     sectionExport:                'Export',
     confirmOpenFolderAfterExport: 'Ask to open folder after HTML export',
+    titleBarStyleLabel:           'Window title bar',
+    titleBarStyleCustom:          'Custom (app style)',
+    titleBarStyleNative:          'Native (system style)',
+    titleBarStyleRestartNote:     'App will restart to apply',
+    saveOnExitLabel:              'Always save project on exit',
   },
 
   projectSettings: {
