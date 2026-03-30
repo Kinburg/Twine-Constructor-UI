@@ -37,6 +37,20 @@ textarea {
 .drag-region [role="button"],
 .drag-region .no-drag { -webkit-app-region: no-drag; }
 
+/* Preview panel — syntax highlighting */
+.hl-passage-dbl  { color: #6c7086; }
+.hl-passage-name { color: #cba6f7; font-weight: bold; }
+.hl-passage-tag  { color: #89b4fa; }
+.hl-macro        { color: #89dceb; }
+.hl-var          { color: #a6e3a1; }
+.hl-string       { color: #f9e2af; }
+.hl-htmltag      { color: #fab387; opacity: 0.85; }
+
+.preview-scrollbar::-webkit-scrollbar       { width: 8px; height: 8px; }
+.preview-scrollbar::-webkit-scrollbar-track { background: #1e1e2e; }
+.preview-scrollbar::-webkit-scrollbar-thumb { background: #45475a; border-radius: 4px; }
+.preview-scrollbar::-webkit-scrollbar-thumb:hover { background: #585b70; }
+
 /* Compact mode */
 .compact .block-header { padding: 2px 8px; }
 .compact .block-body   { padding: 6px 8px; }

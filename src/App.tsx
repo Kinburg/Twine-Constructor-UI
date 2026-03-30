@@ -3,13 +3,10 @@ import { useProjectStore } from './store/projectStore';
 import { useEditorStore } from './store/editorStore';
 import { useEditorPrefsStore } from './store/editorPrefsStore';
 import { Header } from './components/layout/Header';
-import { Sidebar } from './components/layout/Sidebar';
-import { SceneEditor } from './components/scenes/SceneEditor';
+import { WorkspaceLayout } from './components/layout/WorkspaceLayout';
 
 import { ProjectSettingsModal } from './components/project/ProjectSettingsModal';
 import { EditorPrefsModal } from './components/editor/EditorPrefsModal';
-import { usePreviewSync } from './hooks/usePreviewSync';
-import { useGraphBridge } from './hooks/useGraphBridge';
 import { useAutosave } from './hooks/useAutosave';
 import { Toaster } from 'sonner';
 import { useT } from './i18n';
@@ -23,11 +20,6 @@ export default function App() {
   const [closeModalOpen, setCloseModalOpen] = useState(false);
   const [savingOnExit, setSavingOnExit]     = useState(false);
   useAutosave();
-
-  // Keeps the code preview window in sync with the active scene
-  usePreviewSync();
-  // Two-way bridge with the scene graph window
-  useGraphBridge();
 
   // Migrate any legacy Cyrillic variable names to ASCII on every mount.
   // This covers HMR reloads where onRehydrateStorage doesn't re-run.
@@ -92,10 +84,7 @@ export default function App() {
   return (
     <div className={`flex flex-col h-screen overflow-hidden${compactMode ? ' compact' : ''}`}>
       <Header />
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar />
-        <SceneEditor />
-      </div>
+      <WorkspaceLayout />
       {projectSettingsOpen && (
         <ProjectSettingsModal
           mode={projectDir ? 'edit' : 'create'}

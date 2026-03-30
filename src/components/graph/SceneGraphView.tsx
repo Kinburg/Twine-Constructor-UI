@@ -351,7 +351,13 @@ function toFlowEdges(data: GraphData): Edge[] {
 
 // ─── Graph view ───────────────────────────────────────────────────────────────
 
-export function SceneGraphView() {
+interface SceneGraphViewProps {
+  graphData:      GraphData;
+  onNodeDragStop: (nodeId: string, x: number, y: number) => void;
+  onNodeNavigate: (nodeId: string) => void;
+}
+
+export function SceneGraphView({ graphData, onNodeDragStop, onNodeNavigate }: SceneGraphViewProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
   const isDragging = useRef(false);
@@ -359,31 +365,26 @@ export function SceneGraphView() {
   const [activeEdgeId, setActiveEdgeId] = useState<string | null>(null);
   const [activeNodeId, setActiveNodeId] = useState<string | null>(null);
 
+  // Update nodes/edges when graphData changes (skip during drag)
   useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.onGraphProject) return;
-    api.onGraphProject((raw: unknown) => {
-      if (isDragging.current) return;
-      const data = raw as GraphData;
-      setNodes(toFlowNodes(data));
-      setEdges(toFlowEdges(data));
-    });
-    api.graphReady?.();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (isDragging.current) return;
+    setNodes(toFlowNodes(graphData));
+    setEdges(toFlowEdges(graphData));
+  }, [graphData, setNodes, setEdges]);
 
-  const onNodeDragStart: OnNodeDrag = useCallback(() => {
+  const handleNodeDragStart: OnNodeDrag = useCallback(() => {
     isDragging.current = true;
   }, []);
 
-  const onNodeDragStop: OnNodeDrag = useCallback((_evt, node) => {
+  const handleNodeDragStop: OnNodeDrag = useCallback((_evt, node) => {
     isDragging.current = false;
-    window.electronAPI?.graphMove?.(node.id, node.position.x, node.position.y);
-  }, []);
+    onNodeDragStop(node.id, node.position.x, node.position.y);
+  }, [onNodeDragStop]);
 
   // Double-click navigates to the scene in the editor
-  const onNodeDoubleClick: NodeMouseHandler = useCallback((_evt, node) => {
-    window.electronAPI?.graphNavigate?.(node.id);
-  }, []);
+  const handleNodeDoubleClick: NodeMouseHandler = useCallback((_evt, node) => {
+    onNodeNavigate(node.id);
+  }, [onNodeNavigate]);
 
   // Single click / deselect — track active edge & node for highlight/dim logic
   const onSelectionChange = useCallback(
@@ -398,7 +399,7 @@ export function SceneGraphView() {
 
   return (
     <ActiveCtx.Provider value={ctxValue}>
-      <div style={{ width: '100vw', height: '100vh', background: '#1e1e2e' }}>
+      <div style={{ width: '100%', height: '100%', background: '#1e1e2e' }}>
         <div style={{ width: '100%', height: '100%', position: 'relative' }}>
 
         <svg style={{ position: 'absolute', width: 0, height: 0, overflow: 'hidden' }}>
@@ -420,9 +421,9 @@ export function SceneGraphView() {
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDragStop={onNodeDragStop}
-          onNodeDoubleClick={onNodeDoubleClick}
+          onNodeDragStart={handleNodeDragStart}
+          onNodeDragStop={handleNodeDragStop}
+          onNodeDoubleClick={handleNodeDoubleClick}
           onSelectionChange={onSelectionChange}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}

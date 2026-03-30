@@ -26,6 +26,8 @@ export function Header() {
   const { confirmOpenFolderAfterExport } = useEditorPrefsStore();
   const t = useT();
 
+  const { panelLayout, togglePreviewPanel, toggleGraphPanel } = useEditorPrefsStore();
+
   const [editingTitle, setEditingTitle]     = useState(false);
   const [titleDraft, setTitleDraft]         = useState('');
   const [scReady, setScReady]               = useState(hasSCTemplate());
@@ -33,8 +35,6 @@ export function Header() {
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [menuOpen, setMenuOpen]             = useState(false);
   const [busy, setBusy]                     = useState(false);
-  const [previewOpen, setPreviewOpen]       = useState(false);
-  const [graphOpen, setGraphOpen]           = useState(false);
   const [isMaximized, setIsMaximized]       = useState(false);
   const { ask, modal: confirmModal } = useConfirm();
 
@@ -53,34 +53,6 @@ export function Header() {
     api.onWindowMaximized?.(v => setIsMaximized(v));
   }, []);
 
-  // Query initial open state of child windows (e.g. restored from previous session)
-  // and listen for state changes when a workspace preset is applied
-  useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.getOpenWindows) return;
-    api.getOpenWindows().then(({ previewOpen: p, graphOpen: g }) => {
-      setPreviewOpen(p);
-      setGraphOpen(g);
-    });
-    api.onWindowsOpenState?.(({ previewOpen: p, graphOpen: g }) => {
-      setPreviewOpen(p);
-      setGraphOpen(g);
-    });
-  }, []);
-
-  // Sync button state when user closes the preview window via its × button
-  useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.onPreviewClosed) return;
-    api.onPreviewClosed(() => setPreviewOpen(false));
-  }, []);
-
-  // Sync button state when user closes the graph window via its × button
-  useEffect(() => {
-    const api = window.electronAPI;
-    if (!api?.onGraphClosed) return;
-    api.onGraphClosed(() => setGraphOpen(false));
-  }, []);
 
   // ─── Title ────────────────────────────────────────────────────────────────
 
@@ -182,21 +154,10 @@ export function Header() {
     if (projectDir) await fsApi.openPath(projectDir);
   };
 
-  // ─── Code preview window ──────────────────────────────────────────────────
+  // ─── Panel toggles ─────────────────────────────────────────────────────────
 
-  const handleTogglePreview = async () => {
-    const api = window.electronAPI;
-    if (!api?.togglePreview) return;
-    const isNowOpen = await api.togglePreview();
-    setPreviewOpen(isNowOpen);
-  };
-
-  const handleToggleGraph = async () => {
-    const api = window.electronAPI;
-    if (!api?.toggleGraph) return;
-    const isNowOpen = await api.toggleGraph();
-    setGraphOpen(isNowOpen);
-  };
+  const handleTogglePreview = () => togglePreviewPanel();
+  const handleToggleGraph   = () => toggleGraphPanel();
 
   // ─── SC Runtime ───────────────────────────────────────────────────────────
 
@@ -388,35 +349,31 @@ export function Header() {
       {/* Right: actions */}
       <div className="flex items-center gap-2 flex-wrap justify-end shrink-0 py-2">
 
-        {/* Code preview window toggle */}
-        {window.electronAPI?.togglePreview && (
-          <button
-            className={`px-2.5 py-1.5 rounded text-sm font-mono font-medium transition-colors cursor-pointer whitespace-nowrap ${
-              previewOpen
-                ? 'bg-indigo-700 hover:bg-indigo-600 text-indigo-100'
-                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-            }`}
-            onClick={handleTogglePreview}
-            title={previewOpen ? t.header.previewCodeClose : t.header.previewCodeTitle}
-          >
-            {t.header.previewCode}
-          </button>
-        )}
+        {/* Code preview panel toggle */}
+        <button
+          className={`px-2.5 py-1.5 rounded text-sm font-mono font-medium transition-colors cursor-pointer whitespace-nowrap ${
+            panelLayout.previewVisible
+              ? 'bg-indigo-700 hover:bg-indigo-600 text-indigo-100'
+              : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+          }`}
+          onClick={handleTogglePreview}
+          title={panelLayout.previewVisible ? t.header.previewCodeClose : t.header.previewCodeTitle}
+        >
+          {t.header.previewCode}
+        </button>
 
-        {/* Scene graph window toggle */}
-        {window.electronAPI?.toggleGraph && (
-          <button
-            className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
-              graphOpen
-                ? 'bg-violet-700 hover:bg-violet-600 text-violet-100'
-                : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
-            }`}
-            onClick={handleToggleGraph}
-            title={graphOpen ? t.header.graphClose : t.header.graphTitle}
-          >
-            {t.header.graph}
-          </button>
-        )}
+        {/* Scene graph panel toggle */}
+        <button
+          className={`px-2.5 py-1.5 rounded text-sm font-medium transition-colors cursor-pointer whitespace-nowrap ${
+            panelLayout.graphVisible
+              ? 'bg-violet-700 hover:bg-violet-600 text-violet-100'
+              : 'bg-slate-700 hover:bg-slate-600 text-slate-300'
+          }`}
+          onClick={handleToggleGraph}
+          title={panelLayout.graphVisible ? t.header.graphClose : t.header.graphTitle}
+        >
+          {t.header.graph}
+        </button>
 
         <span className="text-slate-700 select-none hidden sm:inline">|</span>
 

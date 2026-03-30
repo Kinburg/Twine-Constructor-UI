@@ -41,29 +41,6 @@ interface ElectronAPI {
   // Shell
   openPath(filePath: string): Promise<void>;
 
-  // Code preview window
-  /** Open preview if closed, close if open. Returns new open state. */
-  togglePreview(): Promise<boolean>;
-  /** Send twee code to the preview window (no-op if closed). */
-  updatePreview(code: string): Promise<void>;
-  /** Called inside the preview window to receive code updates. */
-  onPreviewCode(callback: (code: string) => void): void;
-  /** Called in the main window when the user closes the preview window. */
-  onPreviewClosed(callback: () => void): void;
-  /** Preview window: signals renderer is ready, requests initial code. */
-  previewReady?(): Promise<void>;
-
-  // Scene graph window
-  toggleGraph(): Promise<boolean>;
-  updateGraph(data: unknown): Promise<void>;
-  onGraphProject(callback: (data: unknown) => void): void;
-  graphMove(sceneId: string, x: number, y: number): Promise<void>;
-  onGraphMove(callback: (sceneId: string, x: number, y: number) => void): void;
-  graphNavigate(sceneId: string): Promise<void>;
-  onGraphNavigate(callback: (sceneId: string) => void): void;
-  onGraphClosed(callback: () => void): void;
-  graphReady?(): Promise<void>;
-
   // Window controls (custom title bar)
   minimizeWindow(): Promise<void>;
   maximizeWindow(): Promise<void>;
@@ -79,25 +56,6 @@ interface ElectronAPI {
   onCloseRequested(callback: () => void): void;
   confirmClose(): void;
   cancelClose(): void;
-
-  // Window layout / workspace presets
-  getOpenWindows(): Promise<{ previewOpen: boolean; graphOpen: boolean }>;
-  getWindowLayout(): Promise<{
-    workspacePresets: WorkspacePresetInfo[];
-    activePresetId: string | null;
-  }>;
-  saveWorkspacePreset(name: string): Promise<WorkspacePresetInfo>;
-  overwriteWorkspacePreset(id: string): Promise<void>;
-  deleteWorkspacePreset(id: string): Promise<void>;
-  renameWorkspacePreset(id: string, name: string): Promise<void>;
-  applyWorkspacePreset(id: string): Promise<void>;
-  onWindowsOpenState(callback: (state: { previewOpen: boolean; graphOpen: boolean }) => void): void;
-}
-
-interface WorkspacePresetInfo {
-  id: string;
-  name: string;
-  builtIn: boolean;
 }
 
 declare interface Window {
