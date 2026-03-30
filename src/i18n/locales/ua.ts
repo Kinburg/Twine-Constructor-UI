@@ -47,7 +47,10 @@ const ua: Translations = {
     groupNameTaken:     'Група з такою назвою вже існує.',
     groupNameEmpty:     'Назва групи не може бути порожньою.',
     groupConfirmDelete: (name) => `Видалити групу "${name}"? Сцени всередині стануть негрупованими.`,
+    groupCannotDeleteStart: 'Неможливо видалити цю групу, оскільки вона містить стартову сцену.',
     groupUngrouped:     'Без групи',
+    makeStart:          'Зробити стартовою',
+    startTagHint:       'Тег "start" зарезервований. Використовуйте кнопку "Зробити стартовою" для зміни стартової сцени.',
   },
 
   block: {
@@ -750,8 +753,6 @@ const ua: Translations = {
     fieldTitleFont:         'Шрифт назви',
     fieldTitleFontPlaceholder: 'напр. Georgia, serif',
     sectionAdvanced:        'Додатково',
-    fieldStartingScene:     'Назва стартової сцени',
-    fieldStartingScenePlaceholder: 'Start',
     fieldHistoryControls:   'Показувати навігацію (назад/вперед)',
     fieldSaveLoadMenu:      'Показувати меню збереження/завантаження',
     fieldAudioUnlockText:   'Текст кнопки запуску аудіо',

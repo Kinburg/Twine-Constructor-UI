@@ -118,7 +118,6 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
   const [titleFont,    setTitleFont]    = useState(existing.titleFont     ?? '');
 
   // Advanced
-  const [startingScene,    setStartingScene]    = useState(existing.startingScene);
   const [historyControls,  setHistoryControls]  = useState(existing.historyControls);
   const [saveLoadMenu,     setSaveLoadMenu]      = useState(existing.saveLoadMenu);
   const [audioUnlockText,  setAudioUnlockText]  = useState(existing.audioUnlockText ?? '');
@@ -158,7 +157,6 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
 
   function buildSettings(headerSrc: string | null, rowId: string | null): ProjectSettings {
     const s: ProjectSettings = {
-      startingScene:   startingScene.trim() || DEFAULT_PROJECT_SETTINGS.startingScene,
       historyControls,
       saveLoadMenu,
     };
@@ -243,8 +241,6 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
         headerSrc = await copyHeaderImage(folder, headerPendingPath);
       }
 
-      const startScene = startingScene.trim() || DEFAULT_PROJECT_SETTINGS.startingScene;
-
       // Build a fresh project
       const newProject = {
         id:    crypto.randomUUID(),
@@ -253,7 +249,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
         author:      author.trim()      || undefined,
         description: description.trim() || undefined,
         settings:    buildSettings(null, null),  // rowId assigned below
-        scenes:      [{ id: crypto.randomUUID(), name: startScene, tags: [], blocks: [] }],
+        scenes:      [{ id: crypto.randomUUID(), name: 'Start', tags: ['start'], blocks: [] }],
         sceneGroups:  [],
         characters:   [],
         variableNodes: [],
@@ -434,15 +430,6 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
             onToggle={() => setAdvancedOpen(v => !v)}
           >
             <div className="flex flex-col gap-3 pt-1">
-              <Field label={ps.fieldStartingScene}>
-                <input
-                  className="w-full bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
-                  placeholder={ps.fieldStartingScenePlaceholder}
-                  value={startingScene}
-                  onChange={e => setStartingScene(e.target.value)}
-                />
-              </Field>
-
               <ToggleField label={ps.fieldHistoryControls} value={historyControls} onChange={setHistoryControls} />
               <ToggleField label={ps.fieldSaveLoadMenu}    value={saveLoadMenu}    onChange={setSaveLoadMenu} />
 

@@ -6,6 +6,7 @@ import type {
   Watcher, WatcherCondition, AudioBlock,
   VariableTreeNode, VariableGroup,
 } from '../types';
+import { START_TAG } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables, getVariablePath, hasLeafVariables } from './treeUtils';
 
@@ -1632,7 +1633,7 @@ export function exportToTwee(project: Project): string {
   const variableNodes = project.variableNodes;
   const variables = flattenVariables(variableNodes);
   const { title, ifid, scenes, characters, sidebarPanel } = project;
-  const startScene = scenes[0]?.name ?? 'Start';
+  const startScene = scenes.find(s => s.tags.includes(START_TAG))?.name ?? scenes[0]?.name ?? 'Start';
   const parts: string[] = [];
 
   // StoryTitle
@@ -1706,7 +1707,8 @@ export function exportToTwee(project: Project): string {
 
   // Scene passages
   for (const scene of scenes) {
-    const tags = scene.tags.length > 0 ? ` [${scene.tags.join(' ')}]` : '';
+    const exportTags = scene.tags.filter(t => t !== START_TAG);
+    const tags = exportTags.length > 0 ? ` [${exportTags.join(' ')}]` : '';
     const body = scene.blocks
       .map(b => blockToSC(b, characters, variables, variableNodes))
       .filter(Boolean)

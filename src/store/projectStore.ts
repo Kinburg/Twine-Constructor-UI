@@ -9,6 +9,7 @@ import type {
   AvatarConfig, AvatarMode,
   Watcher,
 } from '../types';
+import { START_TAG } from '../types';
 import { flattenVariables, flattenAssets, hasSiblingNameConflict } from '../utils/treeUtils';
 
 export { flattenVariables, flattenAssets };
@@ -32,7 +33,6 @@ export const DEFAULT_PANEL_STYLE: PanelStyle = {
 const DEFAULT_PANEL: SidebarPanel = { tabs: [], liveUpdate: false, style: DEFAULT_PANEL_STYLE };
 
 export const DEFAULT_PROJECT_SETTINGS: ProjectSettings = {
-  startingScene:   'Start',
   historyControls: true,
   saveLoadMenu:    true,
 };
@@ -43,7 +43,7 @@ function makeDefaultProject(): Project {
     title: 'New Project',
     ifid: generateIfid(),
     settings: { ...DEFAULT_PROJECT_SETTINGS },
-    scenes: [{ id: uuid(), name: 'Start', tags: [], blocks: [] }],
+    scenes: [{ id: uuid(), name: 'Start', tags: ['start'], blocks: [] }],
     sceneGroups: [],
     characters: [],
     variableNodes: [],
@@ -470,7 +470,6 @@ function migrateProject(raw: any): Project {
   if (!p.watchers) p.watchers = [];
   if (!p.sceneGroups) p.sceneGroups = [];
   if (!p.settings) p.settings = { ...DEFAULT_PROJECT_SETTINGS };
-  if (p.settings.startingScene === undefined) p.settings.startingScene = DEFAULT_PROJECT_SETTINGS.startingScene;
   if (p.settings.historyControls === undefined) p.settings.historyControls = DEFAULT_PROJECT_SETTINGS.historyControls;
   if (p.settings.saveLoadMenu === undefined) p.settings.saveLoadMenu = DEFAULT_PROJECT_SETTINGS.saveLoadMenu;
 
@@ -526,6 +525,7 @@ interface ProjectState {
   updateSceneSettings: (id: string, data: { name: string; tags: string[]; notes?: string }) => void;
   reorderScenes: (scenes: Scene[]) => void;
   duplicateScene: (sceneId: string) => void;
+  makeStartScene: (sceneId: string) => void;
 
   // Scene groups
   addSceneGroup: (data: { name: string; notes?: string }) => void;
@@ -796,12 +796,30 @@ export const useProjectStore = create<ProjectState>()(
 
         updateSceneTags: (id, tags) => {
           get().saveSnapshot();
-          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, tags })) }));
+          // Protect start tag: preserve it if scene had it, strip it if scene didn't
+          set(s => {
+            const scene = s.project.scenes.find(sc => sc.id === id);
+            if (!scene) return s;
+            const hadStart = scene.tags.includes(START_TAG);
+            const safeTags = hadStart
+              ? (tags.includes(START_TAG) ? tags : [START_TAG, ...tags])
+              : tags.filter(t => t !== START_TAG);
+            return { project: updateScene(s.project, id, sc => ({ ...sc, tags: safeTags })) };
+          });
         },
 
         updateSceneSettings: (id, { name, tags, notes }) => {
           get().saveSnapshot();
-          set(s => ({ project: updateScene(s.project, id, sc => ({ ...sc, name, tags, notes: notes || undefined })) }));
+          // Protect start tag: preserve it if scene had it, strip it if scene didn't
+          set(s => {
+            const scene = s.project.scenes.find(sc => sc.id === id);
+            if (!scene) return s;
+            const hadStart = scene.tags.includes(START_TAG);
+            const safeTags = hadStart
+              ? (tags.includes(START_TAG) ? tags : [START_TAG, ...tags])
+              : tags.filter(t => t !== START_TAG);
+            return { project: updateScene(s.project, id, sc => ({ ...sc, name, tags: safeTags, notes: notes || undefined })) };
+          });
         },
 
         reorderScenes: (scenes) => {
@@ -818,6 +836,7 @@ export const useProjectStore = create<ProjectState>()(
               ...original,
               id: uuid(),
               name: `${original.name} (copy)`,
+              tags: original.tags.filter(t => t !== START_TAG),
               blocks: original.blocks.map(deepCloneBlock),
             };
             const idx = s.project.scenes.findIndex(sc => sc.id === sceneId);
@@ -828,6 +847,21 @@ export const useProjectStore = create<ProjectState>()(
               activeSceneId: clone.id,
             };
           });
+        },
+
+        makeStartScene: (sceneId) => {
+          get().saveSnapshot();
+          set(s => ({
+            project: {
+              ...s.project,
+              scenes: s.project.scenes.map(sc => {
+                const hasStart = sc.tags.includes(START_TAG);
+                if (sc.id === sceneId && !hasStart) return { ...sc, tags: [START_TAG, ...sc.tags] };
+                if (sc.id !== sceneId && hasStart) return { ...sc, tags: sc.tags.filter(t => t !== START_TAG) };
+                return sc;
+              }),
+            },
+          }));
         },
 
         // ── Scene groups ─────────────────────────────────────────────────────
@@ -863,6 +897,9 @@ export const useProjectStore = create<ProjectState>()(
         },
 
         deleteSceneGroupWithScenes: (id) => {
+          // Prevent deletion if the group contains the start scene
+          const hasStart = get().project.scenes.some(sc => sc.groupId === id && sc.tags.includes(START_TAG));
+          if (hasStart) return;
           get().saveSnapshot();
           set(s => {
             const remaining = s.project.scenes.filter(sc => sc.groupId !== id);

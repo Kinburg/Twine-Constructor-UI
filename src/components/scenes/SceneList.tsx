@@ -20,7 +20,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { sceneMatchesQuery } from '../../utils/searchUtils';
 import { useT } from '../../i18n';
-import { SYSTEM_TAGS, SYSTEM_TAG_COLORS } from '../../types';
+import { SYSTEM_TAGS, SYSTEM_TAG_COLORS, START_TAG, START_TAG_COLOR } from '../../types';
 import type { Scene, SceneGroup, SystemTag } from '../../types';
 import { useConfirm } from '../shared/ConfirmModal';
 import { SceneModal } from './SceneModal';
@@ -49,7 +49,8 @@ function SceneItemRow({
   const systemTag = scene.tags.find(tag =>
     (SYSTEM_TAGS as readonly string[]).includes(tag),
   ) as SystemTag | undefined;
-  const dotColor = systemTag ? SYSTEM_TAG_COLORS[systemTag] : null;
+  const isStart = scene.tags.includes(START_TAG);
+  const dotColor = systemTag ? SYSTEM_TAG_COLORS[systemTag] : isStart ? START_TAG_COLOR : null;
 
   return (
     <div
@@ -268,7 +269,7 @@ export function SceneList() {
 
   const allTags = useMemo(() => {
     const tags = new Set<string>();
-    for (const sc of project.scenes) for (const tag of sc.tags) tags.add(tag);
+    for (const sc of project.scenes) for (const tag of sc.tags) if (tag !== START_TAG) tags.add(tag);
     return [...tags].sort();
   }, [project.scenes]);
 
@@ -348,7 +349,7 @@ export function SceneList() {
 
   const itemCallbacks = (scene: Scene) => ({
     isActive:    scene.id === activeSceneId,
-    canDelete:   project.scenes.length > 1,
+    canDelete:   project.scenes.length > 1 && !scene.tags.includes(START_TAG),
     onSelect:    () => setActiveScene(scene.id),
     onEdit:      () => setSceneModal({ mode: 'edit', scene }),
     onDuplicate: () => duplicateScene(scene.id),
@@ -475,6 +476,14 @@ export function SceneList() {
                   onToggle={() => updateSceneGroup(group.id, { collapsed: !group.collapsed })}
                   onEdit={() => setGroupModal({ mode: 'edit', group })}
                   onDelete={() => {
+                    // Block deletion if group contains the start scene and mode is "delete with scenes"
+                    if (deleteGroupWithScenes) {
+                      const hasStart = groupScenes.some(sc => sc.tags.includes(START_TAG));
+                      if (hasStart) {
+                        ask({ message: t.scene.groupCannotDeleteStart, confirmLabel: 'OK', variant: 'default' }, () => {});
+                        return;
+                      }
+                    }
                     const doDelete = () => deleteGroupWithScenes
                       ? deleteSceneGroupWithScenes(group.id)
                       : deleteSceneGroup(group.id);
@@ -523,6 +532,7 @@ export function SceneList() {
             ? takenSceneNames()
             : takenSceneNames(sceneModal.scene.id)
           }
+          sceneId={sceneModal.mode === 'edit' ? sceneModal.scene.id : undefined}
           onSave={data => {
             if (sceneModal.mode === 'create') addSceneWithData(data);
             else updateSceneSettings(sceneModal.scene.id, data);

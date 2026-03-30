@@ -17,7 +17,7 @@ import { useT } from '../../i18n';
 import { BlockItem } from '../blocks/BlockItem';
 import { InsertZone } from '../blocks/InsertZone';
 import { SceneModal } from './SceneModal';
-import { SYSTEM_TAGS, SYSTEM_TAG_COLORS } from '../../types';
+import { SYSTEM_TAGS, SYSTEM_TAG_COLORS, START_TAG, START_TAG_COLOR } from '../../types';
 import type { Block, SystemTag } from '../../types';
 
 export function SceneEditor() {
@@ -53,6 +53,7 @@ export function SceneEditor() {
           mode="edit"
           initial={{ name: scene.name, tags: scene.tags, notes: scene.notes }}
           takenNames={project.scenes.filter(s => s.id !== scene.id).map(s => s.name)}
+          sceneId={scene.id}
           onSave={data => updateSceneSettings(scene.id, data)}
           onClose={() => setSettingsOpen(false)}
         />
@@ -70,12 +71,13 @@ export function SceneEditor() {
             {scene.tags.length > 0
               ? scene.tags.map(tag => {
                   const isSystem = (SYSTEM_TAGS as readonly string[]).includes(tag);
-                  const color = isSystem ? SYSTEM_TAG_COLORS[tag as SystemTag] : undefined;
+                  const isStart = tag === START_TAG;
+                  const color = isStart ? START_TAG_COLOR : isSystem ? SYSTEM_TAG_COLORS[tag as SystemTag] : undefined;
                   return (
                     <span
                       key={tag}
                       className="inline-block rounded px-1.5 py-0.5 text-xs"
-                      style={isSystem
+                      style={color
                         ? { background: color + '33', border: `1px solid ${color}`, color: color }
                         : { background: 'rgb(51 65 85)', color: 'rgb(203 213 225)' }
                       }

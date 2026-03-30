@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
-import { SYSTEM_TAGS, SYSTEM_TAG_COLORS } from '../../types';
+import { SYSTEM_TAGS, SYSTEM_TAG_COLORS, START_TAG, START_TAG_COLOR } from '../../types';
 import type { SystemTag } from '../../types';
 
 interface SceneData {
@@ -16,16 +16,19 @@ interface Props {
   takenNames: string[];
   onSave: (data: SceneData) => void;
   onClose: () => void;
+  /** Scene ID — required in edit mode for "Make starting scene" */
+  sceneId?: string;
 }
 
-export function SceneModal({ mode, initial, takenNames, onSave, onClose }: Props) {
+export function SceneModal({ mode, initial, takenNames, onSave, onClose, sceneId }: Props) {
   const t = useT();
-  const { project } = useProjectStore();
+  const { project, makeStartScene } = useProjectStore();
 
   const [name, setName] = useState(initial.name);
   const [tags, setTags] = useState<string[]>(initial.tags);
   const [notes, setNotes] = useState(initial.notes ?? '');
   const [newTagInput, setNewTagInput] = useState('');
+  const [startTagHint, setStartTagHint] = useState(false);
 
   const trimmedName = name.trim();
   const nameError = trimmedName === ''
@@ -40,21 +43,36 @@ export function SceneModal({ mode, initial, takenNames, onSave, onClose }: Props
     onClose();
   };
 
+  const isStartScene = tags.includes(START_TAG);
+
   const toggleTag = (tag: string) => {
+    if (tag === START_TAG) return; // start tag cannot be toggled
     setTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
   };
 
   const addCustomTag = () => {
     const tag = newTagInput.trim().toLowerCase().replace(/\s+/g, '-');
-    if (!tag || tags.includes(tag)) { setNewTagInput(''); return; }
+    if (!tag) { setNewTagInput(''); return; }
+    if (tag === START_TAG) {
+      setStartTagHint(true);
+      setNewTagInput('');
+      return;
+    }
+    if (tags.includes(tag)) { setNewTagInput(''); return; }
+    setStartTagHint(false);
     setTags(prev => [...prev, tag]);
     setNewTagInput('');
   };
 
-  const allCustomTags = [...new Set(
-    project.scenes
-      .flatMap(s => s.tags)
-      .filter(tag => !(SYSTEM_TAGS as readonly string[]).includes(tag)),
+  const handleMakeStart = () => {
+    if (sceneId) makeStartScene(sceneId);
+    onClose();
+  };
+
+  const allCustomTags = [...new Set([
+    ...project.scenes.flatMap(s => s.tags),
+    ...tags,
+  ].filter(tag => !(SYSTEM_TAGS as readonly string[]).includes(tag) && tag !== START_TAG),
   )].sort();
 
   return (
@@ -100,6 +118,18 @@ export function SceneModal({ mode, initial, takenNames, onSave, onClose }: Props
               {t.sceneSettings.tagsLabel}
             </div>
 
+            {/* Start tag (read-only) */}
+            {isStartScene && (
+              <div className="flex flex-wrap gap-1.5">
+                <span
+                  className="px-2.5 py-1 rounded text-xs font-medium border"
+                  style={{ background: START_TAG_COLOR, borderColor: START_TAG_COLOR, color: '#fff' }}
+                >
+                  {START_TAG}
+                </span>
+              </div>
+            )}
+
             {/* System tags */}
             <div className="flex flex-wrap gap-1.5">
               {SYSTEM_TAGS.map(tag => {
@@ -144,20 +174,25 @@ export function SceneModal({ mode, initial, takenNames, onSave, onClose }: Props
             )}
 
             {/* New tag input */}
-            <div className="flex gap-1.5">
-              <input
-                className="flex-1 bg-slate-700 text-xs text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none"
-                placeholder={t.sceneSettings.addTagPlaceholder}
-                value={newTagInput}
-                onChange={e => setNewTagInput(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') addCustomTag(); }}
-              />
-              <button
-                onClick={addCustomTag}
-                className="text-xs text-indigo-400 hover:text-indigo-300 px-2.5 py-1 rounded border border-slate-600 hover:border-indigo-500 transition-colors cursor-pointer"
-              >
-                +
-              </button>
+            <div className="flex flex-col gap-1">
+              <div className="flex gap-1.5">
+                <input
+                  className="flex-1 bg-slate-700 text-xs text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none"
+                  placeholder={t.sceneSettings.addTagPlaceholder}
+                  value={newTagInput}
+                  onChange={e => { setNewTagInput(e.target.value); setStartTagHint(false); }}
+                  onKeyDown={e => { if (e.key === 'Enter') addCustomTag(); }}
+                />
+                <button
+                  onClick={addCustomTag}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 px-2.5 py-1 rounded border border-slate-600 hover:border-indigo-500 transition-colors cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+              {startTagHint && (
+                <span className="text-xs text-amber-400">{t.scene.startTagHint}</span>
+              )}
             </div>
           </div>
 
@@ -177,7 +212,18 @@ export function SceneModal({ mode, initial, takenNames, onSave, onClose }: Props
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-slate-700 shrink-0">
+        <div className="px-4 py-3 border-t border-slate-700 shrink-0 flex flex-col gap-2">
+          {mode === 'edit' && !isStartScene && (
+            <button
+              onClick={handleMakeStart}
+              className="w-full py-1.5 text-xs rounded transition-colors cursor-pointer border text-white"
+              style={{ borderColor: START_TAG_COLOR, background: 'transparent', color: START_TAG_COLOR }}
+              onMouseEnter={e => { e.currentTarget.style.background = START_TAG_COLOR; e.currentTarget.style.color = '#fff'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = START_TAG_COLOR; }}
+            >
+              {t.scene.makeStart}
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={!!nameError}

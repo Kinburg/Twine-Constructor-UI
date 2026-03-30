@@ -47,7 +47,10 @@ const en: Translations = {
     groupNameTaken:     'A group with this name already exists.',
     groupNameEmpty:     'Group name cannot be empty.',
     groupConfirmDelete: (name) => `Delete group "${name}"? Scenes inside will become ungrouped.`,
+    groupCannotDeleteStart: 'Cannot delete this group because it contains the starting scene.',
     groupUngrouped:     'Ungrouped',
+    makeStart:          'Make starting scene',
+    startTagHint:       'The "start" tag is reserved. Use "Make starting scene" to change the starting scene.',
   },
 
   block: {
@@ -750,8 +753,6 @@ const en: Translations = {
     fieldTitleFont:         'Title font',
     fieldTitleFontPlaceholder: 'e.g. Georgia, serif',
     sectionAdvanced:        'Advanced',
-    fieldStartingScene:     'Starting scene name',
-    fieldStartingScenePlaceholder: 'Start',
     fieldHistoryControls:   'Show history navigation (back/forward)',
     fieldSaveLoadMenu:      'Show save/load menu',
     fieldAudioUnlockText:   'Audio unlock prompt',

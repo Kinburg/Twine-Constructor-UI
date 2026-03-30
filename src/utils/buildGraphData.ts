@@ -1,5 +1,5 @@
 import type { Project, Block } from '../types';
-import { SYSTEM_TAGS } from '../types';
+import { SYSTEM_TAGS, START_TAG } from '../types';
 
 // ─── Shared types (used by both main app and graph window) ───────────────────
 
@@ -66,12 +66,12 @@ export function buildGraphData(project: Project, activeSceneId: string | null): 
   const nameToId = new Map(project.scenes.map(s => [s.name, s.id]));
   const sceneSet = new Set(project.scenes.map(s => s.id));
 
-  const scenes: GraphScene[] = project.scenes.map((s, i) => ({
+  const scenes: GraphScene[] = project.scenes.map(s => ({
     id:            s.id,
     name:          s.name,
     tags:          s.tags,
     graphPosition: s.graphPosition,
-    isStart:       i === 0,
+    isStart:       s.tags.includes(START_TAG),
   }));
 
   // System-tagged scenes are isolated — no navigation arrows to/from them

@@ -50,7 +50,10 @@ export interface Translations {
     groupNameTaken: string;
     groupNameEmpty: string;
     groupConfirmDelete: (name: string) => string;
+    groupCannotDeleteStart: string;
     groupUngrouped: string;
+    makeStart: string;
+    startTagHint: string;
   };
 
   block: {
@@ -773,8 +776,6 @@ export interface Translations {
     fieldTitleFont:         string;
     fieldTitleFontPlaceholder: string;
     sectionAdvanced:        string;
-    fieldStartingScene:     string;
-    fieldStartingScenePlaceholder: string;
     fieldHistoryControls:   string;
     fieldSaveLoadMenu:      string;
     fieldAudioUnlockText:      string;

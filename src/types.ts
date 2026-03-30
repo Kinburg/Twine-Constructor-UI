@@ -417,6 +417,10 @@ export const SYSTEM_TAG_COLORS: Record<SystemTag, string> = {
   popup: '#3b82f6',  // blue
 };
 
+/** Editor-only tag that marks the starting scene. Not exported to Twee/HTML. */
+export const START_TAG = 'start' as const;
+export const START_TAG_COLOR = '#22c55e'; // green
+
 /**
  * Auto-opens a SugarCube Dialog with a popup-tagged scene when the passage renders.
  * The dialog is created via Dialog.setup() / Dialog.wiki() / Dialog.open().
@@ -745,7 +749,6 @@ export interface SidebarPanel {
 // ─── Project ─────────────────────────────────────────────────────────────────
 
 export interface ProjectSettings {
-  startingScene:   string;   // name of the first scene, default 'Start'
   historyControls: boolean;  // show browser back/forward buttons
   saveLoadMenu:    boolean;  // show SugarCube save/load menu
   bgColor?:        string;   // story background color

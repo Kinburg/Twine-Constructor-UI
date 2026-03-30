@@ -1,4 +1,5 @@
 import type { Project, ProjectSettings, Character } from '../types';
+import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
 import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript } from './exportToTwee';
 
@@ -150,8 +151,7 @@ export function buildPassages(project: Project): {
     });
   }
 
-  // Scene passages — track PID for startingScene
-  const startSceneName = project.settings?.startingScene || 'Start';
+  // Scene passages — track PID for start-tagged scene
   let startPid = pid; // fallback to first scene
 
   scenes.forEach((scene, idx) => {
@@ -160,11 +160,12 @@ export function buildPassages(project: Project): {
       .filter(Boolean)
       .join('\n');
     const scenePid = pid++;
-    if (scene.name === startSceneName) startPid = scenePid;
+    if (scene.tags.includes(START_TAG)) startPid = scenePid;
+    const exportTags = scene.tags.filter(t => t !== START_TAG);
     passages.push({
       pid: scenePid,
       name: scene.name,
-      tags: scene.tags.join(' '),
+      tags: exportTags.join(' '),
       content: body || '',
       x: colW * (idx % 5 + 1),
       y: 100 + rowH * (Math.floor(idx / 5) + 1),
