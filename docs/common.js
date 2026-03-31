@@ -1,10 +1,10 @@
 // ── Language toggle ───────────────────────────────────────────
 function setLang(lang) {
   // CSS body-class approach (index.html uses [lang-content] visibility)
-  if (lang === 'en') {
-    document.body.classList.add('lang-en');
+  if (lang === 'uk') {
+    document.body.classList.add('lang-uk');
   } else {
-    document.body.classList.remove('lang-en');
+    document.body.classList.remove('lang-uk');
   }
 
   // .lang-uk / .lang-en hidden-attribute approach (legal.html)
@@ -40,7 +40,7 @@ function setLang(lang) {
   ];
 
   const navHtml = navLinks
-    .map(([href, uk, en]) => `<a href="${href}" data-uk="${uk}" data-en="${en}">${uk}</a>`)
+    .map(([href, uk, en]) => `<a href="${href}" data-uk="${uk}" data-en="${en}">${en}</a>`)
     .join('');
 
   const sub = isLegal
@@ -60,5 +60,5 @@ function setLang(lang) {
     '</div>';
 
   const saved = localStorage.getItem('purl-lang');
-  if (saved && saved !== 'uk') setLang(saved);
+  if (saved && saved !== 'en') setLang(saved);
 }());

@@ -116,9 +116,9 @@ nav a:hover { color: var(--accent2); }
 }
 
 /* ── Language content visibility ─────────────────────────────── */
-body [lang-content="en"] { display: none; }
-body.lang-en [lang-content="uk"] { display: none; }
-body.lang-en [lang-content="en"] { display: revert; }
+body [lang-content="uk"] { display: none; }
+body.lang-uk [lang-content="en"] { display: none; }
+body.lang-uk [lang-content="uk"] { display: revert; }
 
 /* ── Mobile header ───────────────────────────────────────────── */
 @media (max-width: 640px) {
