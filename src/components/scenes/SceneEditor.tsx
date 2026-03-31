@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useCallback, useState } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -24,6 +24,15 @@ export function SceneEditor() {
   const { project, activeSceneId, reorderBlocks, updateSceneSettings } = useProjectStore();
   const t = useT();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [collapsedBlocks, setCollapsedBlocks] = useState<Set<string>>(new Set());
+
+  const toggleBlock = useCallback((blockId: string) => {
+    setCollapsedBlocks(prev => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId); else next.add(blockId);
+      return next;
+    });
+  }, []);
 
   const scene = project.scenes.find(s => s.id === activeSceneId);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
@@ -35,6 +44,16 @@ export function SceneEditor() {
       </div>
     );
   }
+
+  const allCollapsed = scene.blocks.length > 0 && scene.blocks.every((b: Block) => collapsedBlocks.has(b.id));
+
+  const toggleAll = () => {
+    if (allCollapsed) {
+      setCollapsedBlocks(new Set());
+    } else {
+      setCollapsedBlocks(new Set(scene.blocks.map((b: Block) => b.id)));
+    }
+  };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
@@ -89,6 +108,15 @@ export function SceneEditor() {
               : <span className="text-slate-600 italic text-xs">{t.scene.noTags}</span>
             }
           </div>
+          {scene.blocks.length > 0 && (
+            <button
+              className="text-slate-500 hover:text-indigo-300 transition-colors cursor-pointer text-sm shrink-0 ml-1"
+              title={allCollapsed ? t.scene.expandAll : t.scene.collapseAll}
+              onClick={toggleAll}
+            >
+              {allCollapsed ? '▸' : '▾'}
+            </button>
+          )}
           <button
             className="text-slate-500 hover:text-indigo-300 transition-colors cursor-pointer text-sm shrink-0 ml-1"
             title={t.scene.editTagsTitle}
@@ -112,7 +140,12 @@ export function SceneEditor() {
                   <InsertZone sceneId={scene.id} insertIndex={0} />
                   {scene.blocks.map((block: Block, i: number) => (
                     <Fragment key={block.id}>
-                      <BlockItem block={block} sceneId={scene.id} />
+                      <BlockItem
+                        block={block}
+                        sceneId={scene.id}
+                        collapsed={collapsedBlocks.has(block.id)}
+                        onToggleCollapse={() => toggleBlock(block.id)}
+                      />
                       <InsertZone
                         sceneId={scene.id}
                         insertIndex={i + 1}

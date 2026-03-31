@@ -53,9 +53,11 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
 interface Props {
   block: Block;
   sceneId: string;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
 }
 
-export function BlockItem({ block, sceneId }: Props) {
+export function BlockItem({ block, sceneId, collapsed, onToggleCollapse }: Props) {
   const { deleteBlock, duplicateBlock } = useProjectStore();
   const { copyToClipboard } = useEditorStore();
   const confirmDeleteBlock = useEditorPrefsStore(s => s.confirmDeleteBlock);
@@ -96,6 +98,13 @@ export function BlockItem({ block, sceneId }: Props) {
         <div className="flex items-center gap-1">
           <button
             className="text-slate-600 hover:text-slate-300 text-sm transition-colors cursor-pointer"
+            title={collapsed ? t.block.expand : t.block.collapse}
+            onClick={onToggleCollapse}
+          >
+            {collapsed ? '▸' : '▾'}
+          </button>
+          <button
+            className="text-slate-600 hover:text-slate-300 text-sm transition-colors cursor-pointer"
             title={t.block.copy}
             onClick={() => copyToClipboard(block)}
           >
@@ -125,7 +134,7 @@ export function BlockItem({ block, sceneId }: Props) {
       </div>
 
       {/* Block body */}
-      <div className="block-body p-3">
+      {!collapsed && <div className="block-body p-3">
         {block.type === 'text'         && <TextBlockEditor        block={block} sceneId={sceneId} />}
         {block.type === 'dialogue'     && <DialogueBlockEditor    block={block} sceneId={sceneId} />}
         {block.type === 'choice'       && <ChoiceBlockEditor      block={block} sceneId={sceneId} />}
@@ -146,7 +155,7 @@ export function BlockItem({ block, sceneId }: Props) {
         {block.type === 'function'     && <FunctionBlockEditor    block={block} sceneId={sceneId} />}
         {block.type === 'popup'        && <PopupBlockEditor       block={block} sceneId={sceneId} />}
         {block.type === 'audio'        && <AudioBlockEditor       block={block} sceneId={sceneId} />}
-      </div>
+      </div>}
     </div>
     {confirmModal}
     </>

@@ -33,6 +33,8 @@ export interface Translations {
     noTags: string;
     tagsPlaceholder: string;
     editTagsTitle: string;
+    collapseAll: string;
+    expandAll: string;
     empty: string;
     selectPrompt: string;
     note: string;
@@ -83,6 +85,8 @@ export interface Translations {
     copy: string;
     duplicate: string;
     delete: string;
+    collapse: string;
+    expand: string;
     paste: (typeName: string) => string;
     unsupportedNested: string;
   };
