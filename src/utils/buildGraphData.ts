@@ -26,33 +26,28 @@ export interface GraphData {
 
 // ─── Edge collection ─────────────────────────────────────────────────────────
 
-// NOTE: ChoiceOption.targetSceneId stores the scene NAME (for twee export),
-// not the scene UUID. We resolve it to an ID via nameToId before storing.
+// ChoiceOption.targetSceneId stores the scene UUID.
 function collectEdges(
   sourceId: string,
   blocks: Block[],
-  nameToId: Map<string, string>,
 ): GraphEdge[] {
   const result: GraphEdge[] = [];
   for (const block of blocks) {
     if (block.type === 'choice') {
       for (const opt of block.options) {
         if (opt.targetSceneId) {
-          const targetId = nameToId.get(opt.targetSceneId);
-          if (targetId) {
-            result.push({
-              edgeId:   `${sourceId}-${opt.id}`,
-              sourceId,
-              targetId,
-              label:    opt.label,
-            });
-          }
+          result.push({
+            edgeId:   `${sourceId}-${opt.id}`,
+            sourceId,
+            targetId: opt.targetSceneId,
+            label:    opt.label,
+          });
         }
       }
     }
     if (block.type === 'condition') {
       for (const branch of block.branches) {
-        result.push(...collectEdges(sourceId, branch.blocks, nameToId));
+        result.push(...collectEdges(sourceId, branch.blocks));
       }
     }
   }
@@ -62,8 +57,6 @@ function collectEdges(
 // ─── Main builder ─────────────────────────────────────────────────────────────
 
 export function buildGraphData(project: Project, activeSceneId: string | null): GraphData {
-  // targetSceneId stores scene names → build a name→id lookup
-  const nameToId = new Map(project.scenes.map(s => [s.name, s.id]));
   const sceneSet = new Set(project.scenes.map(s => s.id));
 
   const scenes: GraphScene[] = project.scenes.map(s => ({
@@ -81,7 +74,7 @@ export function buildGraphData(project: Project, activeSceneId: string | null): 
   };
 
   const edges: GraphEdge[] = project.scenes
-    .flatMap(s => collectEdges(s.id, s.blocks, nameToId))
+    .flatMap(s => collectEdges(s.id, s.blocks))
     .filter(e => sceneSet.has(e.targetId) && !isSystemTagged(e.sourceId) && !isSystemTagged(e.targetId));
 
   return { scenes, edges, activeSceneId };

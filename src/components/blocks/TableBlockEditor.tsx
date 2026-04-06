@@ -964,7 +964,7 @@ function TCellButtonEditor({
               onChange={e => onUpdateContent({ ...c, navigate: { type: 'scene', sceneId: e.target.value } })}
             >
               <option value="">{t.linkBlock.noScene}</option>
-              {scenes.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+              {scenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </TMField>
         )}
@@ -1008,7 +1008,7 @@ function TCellButtonEditor({
                       onChange={e => patchAction(a.id, { targetSceneId: e.target.value } as Partial<ButtonAction>)}
                     >
                       <option value="">— select —</option>
-                      {popupScenes.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   )}
                   <button className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"

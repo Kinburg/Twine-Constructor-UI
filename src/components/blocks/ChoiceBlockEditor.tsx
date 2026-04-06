@@ -112,7 +112,7 @@ export function ChoiceBlockEditor({
             >
               <option value="">{t.choiceBlock.noScene}</option>
               {scenes.map(sc => (
-                <option key={sc.id} value={sc.name}>{sc.name}</option>
+                <option key={sc.id} value={sc.id}>{sc.name}</option>
               ))}
             </select>
           </div>

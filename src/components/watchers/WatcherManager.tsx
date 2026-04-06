@@ -381,7 +381,7 @@ function WatcherCard({
                 >
                   <option value="">— scene —</option>
                   {scenes.map(s => (
-                    <option key={s.id} value={s.name}>{s.name}</option>
+                    <option key={s.id} value={s.id}>{s.name}</option>
                   ))}
                 </select>
               )}

@@ -94,9 +94,10 @@ export function PreviewPanel() {
     if (!scene) return { code: '', sceneName: '' };
 
     const vars = flattenVariables(project.variableNodes);
+    const idToName = new Map(project.scenes.map(s => [s.id, s.name]));
     const tags = scene.tags.length > 0 ? ` [${scene.tags.join(' ')}]` : '';
     const body = scene.blocks
-      .map(b => blockToSC(b, project.characters, vars, project.variableNodes))
+      .map(b => blockToSC(b, project.characters, vars, project.variableNodes, '', idToName))
       .filter(Boolean)
       .join('\n');
 

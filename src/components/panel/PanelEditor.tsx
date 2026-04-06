@@ -1163,7 +1163,7 @@ function CellButtonEditor({
             >
               <option value="">{t.cellModal.buttonNoScene}</option>
               {scenes.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           </MField>
@@ -1210,7 +1210,7 @@ function CellButtonEditor({
                       onChange={e => patchAction(a.id, { targetSceneId: e.target.value } as Partial<ButtonAction>)}
                     >
                       <option value="">— select —</option>
-                      {popupScenes.map(s => <option key={s.id} value={s.name}>{s.name}</option>)}
+                      {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   )}
                   <button className="text-slate-600 hover:text-red-400 text-sm cursor-pointer shrink-0"

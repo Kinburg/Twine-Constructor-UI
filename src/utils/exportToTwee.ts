@@ -68,9 +68,9 @@ function varRefWithAccessor(path: string, accessor: ArrayAccessor | undefined, v
 }
 
 /** Convert a single ButtonAction to SugarCube macro, handling array operators. */
-function actionToSC(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[], lineIndent: string): string {
+function actionToSC(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[], lineIndent: string, idToName?: Map<string, string>): string {
   if (a.type === 'open-popup') {
-    const name = a.targetSceneId || '???';
+    const name = (idToName?.get(a.targetSceneId) ?? a.targetSceneId) || '???';
     const title = a.title ?? '';
     return `${lineIndent}<<run Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();>>`;
   }
@@ -154,14 +154,14 @@ function wrapBlockEffects(
   return result;
 }
 
-export function blockToSC(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = ''): string {
-  const raw = blockToSCInner(block, chars, vars, nodes, indent);
+export function blockToSC(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>): string {
+  const raw = blockToSCInner(block, chars, vars, nodes, indent, idToName);
   if (!raw || block.type === 'condition' || block.type === 'note') return raw;
   const b = block as { delay?: BlockDelay; typewriter?: BlockTypewriter };
   return wrapBlockEffects(raw, b.delay, b.typewriter, indent, block.id);
 }
 
-function blockToSCInner(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = ''): string {
+function blockToSCInner(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>): string {
   switch (block.type) {
     case 'text':
       if (block.live) {
@@ -221,7 +221,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
       // Inner blocks rendered inside the dialogue bubble after the main text
       const innerBlocksHtml = (block.innerBlocks ?? [])
-        .map(b => blockToSC(b, chars, vars, nodes, ''))
+        .map(b => blockToSC(b, chars, vars, nodes, '', idToName))
         .filter(Boolean)
         .join('');
 
@@ -266,7 +266,8 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       if (block.options.length === 0) return '';
       const lines = block.options.map(opt => {
         const cond = opt.condition.trim();
-        const link = `<<link "${opt.label}" "${opt.targetSceneId || 'Start'}">><</link>>`;
+        const target = (idToName?.get(opt.targetSceneId) ?? opt.targetSceneId) || 'Start';
+        const link = `<<link "${opt.label}" "${target}">><</link>>`;
         if (cond) return `${indent}<<if ${cond}>>${link}<</if>>`;
         return `${indent}${link}`;
       });
@@ -276,7 +277,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     case 'condition': {
       if (block.branches.length === 0) return '';
       return block.branches
-        .map((branch, i) => branchToSC(branch, chars, vars, nodes, indent, i === 0))
+        .map((branch, i) => branchToSC(branch, chars, vars, nodes, indent, i === 0, idToName))
         .join('\n') + `\n${indent}<</if>>`;
     }
 
@@ -428,7 +429,8 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       return block.code.split('\n').map(line => `${indent}${line}`).join('\n');
 
     case 'include': {
-      const name = (block as IncludeBlock).passageName.trim();
+      const raw = (block as IncludeBlock).passageName.trim();
+      const name = (idToName?.get(raw) ?? raw);
       if (!name) return '';
 
       const include = `<<include "${name}">>`;
@@ -464,12 +466,12 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       return '';
 
     case 'table':
-      return tableBlockToSC(block, vars, nodes, indent);
+      return tableBlockToSC(block, vars, nodes, indent, idToName);
 
     case 'button': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
       const actionLines = block.actions
-        .map(a => actionToSC(a, vars, nodes, `${indent}  `))
+        .map(a => actionToSC(a, vars, nodes, `${indent}  `, idToName))
         .filter(Boolean);
       if (block.refreshScene) {
         actionLines.push(`${indent}  <<run Engine.show()>>`);
@@ -489,13 +491,13 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     case 'link': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
       const actionLines = block.actions
-        .map(a => actionToSC(a, vars, nodes, `${indent}  `))
+        .map(a => actionToSC(a, vars, nodes, `${indent}  `, idToName))
         .filter(Boolean);
-      // targetSceneId stores the scene NAME (same convention as ChoiceOption.targetSceneId)
       if (block.target === 'back') {
         actionLines.push(`${indent}  <<run Engine.backward()>>`);
       } else {
-        actionLines.push(`${indent}  <<goto "${block.targetSceneId ?? ''}">>`);
+        const linkTarget = (idToName?.get(block.targetSceneId ?? '') ?? block.targetSceneId) ?? '';
+        actionLines.push(`${indent}  <<goto "${linkTarget}">>`);
       }
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
@@ -508,9 +510,9 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     case 'function': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
       const actionLines = block.actions
-        .map(a => actionToSC(a, vars, nodes, `${indent}  `))
+        .map(a => actionToSC(a, vars, nodes, `${indent}  `, idToName))
         .filter(Boolean);
-      const sceneName = block.targetSceneId || '???';
+      const sceneName = (idToName?.get(block.targetSceneId) ?? block.targetSceneId) || '???';
       actionLines.push(`${indent}  <<include "${sceneName}">>`);
       actionLines.push(`${indent}  <<run $('.tg-live[data-wiki]').each(function(){$(this).empty().wiki($(this).attr('data-wiki'));})>>`);
       actionLines.push(`${indent}  <<run window._tgCheckWatchers && window._tgCheckWatchers()>>`);
@@ -576,7 +578,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     }
 
     case 'popup': {
-      const name = block.targetSceneId || '???';
+      const name = (idToName?.get(block.targetSceneId) ?? block.targetSceneId) || '???';
       const title = block.title ?? '';
       return `${indent}<<run Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();>>`;
     }
@@ -632,9 +634,10 @@ function branchToSC(
   nodes: VariableTreeNode[],
   indent: string,
   isFirst: boolean,
+  idToName?: Map<string, string>,
 ): string {
   const innerLines = branch.blocks
-    .map(b => blockToSC(b, chars, vars, nodes, indent + '  '))
+    .map(b => blockToSC(b, chars, vars, nodes, indent + '  ', idToName))
     .join('\n');
 
   if (branch.branchType === 'else') {
@@ -761,12 +764,12 @@ function buildCellBtnStyleStr(s: ButtonStyle): string {
  * Behavior via SugarCube macros; inline styles applied immediately via <<script>>+setTimeout
  * so they override any SugarCube CSS regardless of specificity.
  */
-function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[], nodes: VariableTreeNode[]): string {
+function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
   const domId = `tgcb${cellId.replace(/-/g, '').substring(0, 12)}`;
   const styleStr = buildCellBtnStyleStr(c.style);
 
   const macros: string[] = c.actions
-    .map(a => actionToSC(a, vars, nodes, ''))
+    .map(a => actionToSC(a, vars, nodes, '', idToName))
     .filter(Boolean);
 
   macros.push('<<run window._tgCheckWatchers && window._tgCheckWatchers()>>');
@@ -774,7 +777,8 @@ function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[], node
   if (c.navigate?.type === 'back') {
     macros.push('<<run Engine.backward()>>');
   } else if (c.navigate?.type === 'scene' && c.navigate.sceneId) {
-    macros.push(`<<goto "${c.navigate.sceneId}">>`);
+    const navTarget = idToName?.get(c.navigate.sceneId) ?? c.navigate.sceneId;
+    macros.push(`<<goto "${navTarget}">>`);
   }
 
   const label = c.label || '';
@@ -810,7 +814,7 @@ function buildCellListSC(c: CellList, vars: Variable[], nodes: VariableTreeNode[
 
 // ─── Table block → inline HTML (fully self-contained, no class deps) ──────────
 
-function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]): string {
+function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
   const c = cell.content;
   switch (c.type) {
     case 'text': return c.value;
@@ -852,7 +856,7 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: Variable
     case 'raw': return c.code;
 
     case 'button':
-      return buildCellButtonSC(c, cell.id, vars, nodes);
+      return buildCellButtonSC(c, cell.id, vars, nodes, idToName);
 
     case 'list':
       return buildCellListSC(c as CellList, vars, nodes);
@@ -861,7 +865,7 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: Variable
   }
 }
 
-function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTreeNode[], indent = ''): string {
+function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>): string {
   if (block.rows.length === 0) return '';
   const s = block.style;
 
@@ -889,7 +893,7 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
       if (s.showCellBorders && ci > 0) {
         cellParts.push(`border-left:${s.borderWidth}px solid ${s.borderColor}`);
       }
-      return `<span style="${cellParts.join(';')}">${tableCellInnerToSC(cell, vars, nodes)}</span>`;
+      return `<span style="${cellParts.join(';')}">${tableCellInnerToSC(cell, vars, nodes, idToName)}</span>`;
     }).join('');
     return `<div style="${rowParts.join(';')}">${cellsHTML}</div>`;
   }).filter(Boolean).join('');
@@ -900,7 +904,7 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
 
 // ─── Panel → StoryCaption markup ──────────────────────────────────────────────
 
-function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]): string {
+function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
   const c = cell.content;
   // Use flex: N (proportional) so CSS gap is respected without overflow.
   // cell.width is a percentage (e.g. 40), flex: 40 gives the same 40:60 ratio.
@@ -961,7 +965,7 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
       const wrapFlex = c.style.fullWidth
         ? `${flex};display:flex;align-items:center`
         : flex;
-      return `<span class="tg-cell" style="${wrapFlex}">${buildCellButtonSC(c, cell.id, vars, nodes)}</span>`;
+      return `<span class="tg-cell" style="${wrapFlex}">${buildCellButtonSC(c, cell.id, vars, nodes, idToName)}</span>`;
     }
 
     case 'list':
@@ -993,16 +997,16 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
   return `<span class="tg-cell" style="${flex}">${inner}</span>`;
 }
 
-function rowToSC(row: SidebarRow, vars: Variable[], nodes: VariableTreeNode[], style: PanelStyle): string {
+function rowToSC(row: SidebarRow, vars: Variable[], nodes: VariableTreeNode[], style: PanelStyle, idToName?: Map<string, string>): string {
   if (row.cells.length === 0) return '';
-  const cells = row.cells.map(c => cellToSC(c, vars, nodes)).join('');
+  const cells = row.cells.map(c => cellToSC(c, vars, nodes, idToName)).join('');
   const borderStyle = style.showCellBorders
     ? ` border: ${style.borderWidth}px solid ${style.borderColor};`
     : '';
   return `<div class="tg-row" style="height: ${row.height}px;${borderStyle}">${cells}</div>`;
 }
 
-export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes: VariableTreeNode[]): string {
+export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
   if (panel.tabs.length === 0) return '';
 
   const style: PanelStyle = panel.style ?? DEFAULT_PANEL_STYLE;
@@ -1026,7 +1030,7 @@ export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes
     lines.push(`${kw} $__tgTab eq ${i}>>`);
     // Concatenate rows WITHOUT \n between them — SugarCube's wiki parser converts
     // \n between block-level elements into <p></p> tags (adding 1em vertical space).
-    const rowsHTML = tab.rows.map(r => rowToSC(r, vars, nodes, style)).filter(Boolean).join('');
+    const rowsHTML = tab.rows.map(r => rowToSC(r, vars, nodes, style, idToName)).filter(Boolean).join('');
     lines.push(outerOpen + rowsHTML + '</div>');
   });
 
@@ -1189,9 +1193,9 @@ function conditionToJS(cond: WatcherCondition, vars: Variable[], nodes: Variable
 }
 
 /** Convert a single ButtonAction to a JS statement for use in the watcher script. */
-function actionToJS(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[]): string {
+function actionToJS(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
   if (a.type === 'open-popup') {
-    const name = a.targetSceneId || '???';
+    const name = (idToName?.get(a.targetSceneId) ?? a.targetSceneId) || '???';
     const title = a.title ?? '';
     return `Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();`;
   }
@@ -1240,7 +1244,7 @@ function actionToJS(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[]
  * so watchers react to variable changes even without Engine.show().
  * Only included when the project has at least one enabled watcher.
  */
-export function buildWatcherScript(watchers: Watcher[], vars: Variable[], nodes: VariableTreeNode[]): string {
+export function buildWatcherScript(watchers: Watcher[], vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
   const active = watchers.filter(w => w.enabled);
   if (active.length === 0) return '';
 
@@ -1252,11 +1256,12 @@ export function buildWatcherScript(watchers: Watcher[], vars: Variable[], nodes:
 
   for (const w of active) {
     const label = w.label ? ` // ${w.label}` : '';
-    const actionLines = w.actions.map(a => actionToJS(a, vars, nodes)).filter(Boolean);
+    const actionLines = w.actions.map(a => actionToJS(a, vars, nodes, idToName)).filter(Boolean);
 
     let navLine = '';
     if (w.navigate?.type === 'scene' && w.navigate.sceneId) {
-      navLine = `    Engine.play(${JSON.stringify(w.navigate.sceneId)});`;
+      const navTarget = idToName?.get(w.navigate.sceneId) ?? w.navigate.sceneId;
+      navLine = `    Engine.play(${JSON.stringify(navTarget)});`;
     } else if (w.navigate?.type === 'back') {
       navLine = '    Engine.backward();';
     }
@@ -1604,23 +1609,24 @@ function buildCharacterCSS(characters: Character[]): string {
  * draw passage connections in its graph view (it scans for [[...]] by regex,
  * while SugarCube never executes the content under `<<if false>>`).
  */
-function collectSceneTargets(blocks: Block[]): string[] {
+function collectSceneTargets(blocks: Block[], idToName?: Map<string, string>): string[] {
+  const resolve = (v: string) => idToName?.get(v) ?? v;
   const targets: string[] = [];
   for (const b of blocks) {
     if (b.type === 'choice') {
       for (const opt of b.options) {
-        if (opt.targetSceneId) targets.push(opt.targetSceneId);
+        if (opt.targetSceneId) targets.push(resolve(opt.targetSceneId));
       }
     } else if (b.type === 'link') {
-      if (b.target === 'scene' && b.targetSceneId) targets.push(b.targetSceneId);
+      if (b.target === 'scene' && b.targetSceneId) targets.push(resolve(b.targetSceneId));
     } else if (b.type === 'function') {
-      if (b.targetSceneId) targets.push(b.targetSceneId);
+      if (b.targetSceneId) targets.push(resolve(b.targetSceneId));
     } else if (b.type === 'condition') {
       for (const branch of b.branches) {
-        targets.push(...collectSceneTargets(branch.blocks));
+        targets.push(...collectSceneTargets(branch.blocks, idToName));
       }
     } else if (b.type === 'dialogue' && b.innerBlocks?.length) {
-      targets.push(...collectSceneTargets(b.innerBlocks));
+      targets.push(...collectSceneTargets(b.innerBlocks, idToName));
     }
   }
   // deduplicate
@@ -1633,6 +1639,7 @@ export function exportToTwee(project: Project): string {
   const variableNodes = project.variableNodes;
   const variables = flattenVariables(variableNodes);
   const { title, ifid, scenes, characters, sidebarPanel } = project;
+  const idToName = new Map(scenes.map(s => [s.id, s.name]));
   const startScene = scenes.find(s => s.tags.includes(START_TAG))?.name ?? scenes[0]?.name ?? 'Start';
   const parts: string[] = [];
 
@@ -1688,7 +1695,7 @@ export function exportToTwee(project: Project): string {
     buildPanelScript(sidebarPanel),
     buildInputScript(scenes),
     buildLiveScript(scenes),
-    buildWatcherScript(project.watchers ?? [], variables, variableNodes),
+    buildWatcherScript(project.watchers ?? [], variables, variableNodes, idToName),
     buildAudioScript(scenes, project.settings?.audioUnlockText),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load',
@@ -1702,7 +1709,7 @@ export function exportToTwee(project: Project): string {
   if (storyScript) parts.push(`::StoryScript [script]\n${storyScript}\n`);
 
   // StoryCaption
-  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes);
+  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName);
   if (captionSC) parts.push(`::StoryCaption\n${captionSC}\n`);
 
   // Scene passages
@@ -1710,14 +1717,14 @@ export function exportToTwee(project: Project): string {
     const exportTags = scene.tags.filter(t => t !== START_TAG);
     const tags = exportTags.length > 0 ? ` [${exportTags.join(' ')}]` : '';
     const body = scene.blocks
-      .map(b => blockToSC(b, characters, variables, variableNodes))
+      .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName))
       .filter(Boolean)
       .join('\n');
 
     // Graph hint: <<if false>>[[Target1]][[Target2]]<</if>>
     // Twine's editor finds [[...]] by regex to draw connections.
     // SugarCube never executes content inside a false <<if>> condition.
-    const navTargets = collectSceneTargets(scene.blocks);
+    const navTargets = collectSceneTargets(scene.blocks, idToName);
     const graphHint = navTargets.length > 0
       ? `\n<<if false>>${navTargets.map(t => `[[${t}]]`).join('')}<</if>>`
       : '';

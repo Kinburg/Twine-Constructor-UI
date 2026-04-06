@@ -16,9 +16,9 @@ export function IncludeBlockEditor({
   const t = useT();
   const update = onUpdate ?? ((p: Partial<IncludeBlock>) => updateBlock(sceneId, block.id, p as never));
 
-  const datalistId = `inc-scenes-${block.id}`;
-
   const inputCls = 'bg-slate-800 text-slate-200 text-xs rounded px-2 py-0.5 border border-slate-600 outline-none focus:border-indigo-500';
+
+  const availableScenes = project.scenes.filter(s => s.id !== sceneId);
 
   return (
     <div className="flex flex-col gap-2">
@@ -26,19 +26,16 @@ export function IncludeBlockEditor({
       {/* ── Passage name ──────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
         <span className="text-xs text-slate-400 shrink-0">{t.includeBlock.passageLabel}</span>
-        <input
-          list={datalistId}
-          className={`flex-1 ${inputCls} font-mono`}
-          placeholder={t.includeBlock.passagePlaceholder}
+        <select
+          className={`flex-1 ${inputCls} cursor-pointer`}
           value={block.passageName}
-          onFocus={saveSnapshot}
           onChange={e => update({ passageName: e.target.value })}
-        />
-        <datalist id={datalistId}>
-          {project.scenes
-            .filter(s => s.id !== sceneId)
-            .map(s => <option key={s.id} value={s.name} />)}
-        </datalist>
+        >
+          <option value="">— select —</option>
+          {availableScenes.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* ── Wrapper styling ───────────────────────────────────────────────── */}
