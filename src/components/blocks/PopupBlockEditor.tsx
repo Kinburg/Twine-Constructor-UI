@@ -33,7 +33,7 @@ export function PopupBlockEditor({
             >
               <option value="">— select —</option>
               {popupScenes.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           )}

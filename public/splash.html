@@ -6,24 +6,74 @@
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
       width: 100%; height: 100%;
-      background: #0f172a;
+      background: transparent;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       overflow: hidden;
       user-select: none;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .logo-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
     }
     img {
-      max-width: 100%;
-      max-height: 100%;
+      max-width: 600px;
+      max-height: 280px;
       object-fit: contain;
       opacity: 0;
       animation: fadeIn 0.5s ease 0.1s forwards;
+    }
+    #version {
+      margin-top: -20px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 16px;
+      font-weight: 500;
+      letter-spacing: 1px;
+      opacity: 0;
+      animation: fadeIn 0.2s ease 0.1s forwards;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      z-index: 10;
+    }
+    .progress-container {
+      width: 300px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+      margin-top: -40px;
+      overflow: hidden;
+      opacity: 0;
+      animation: fadeIn 0.5s ease 0.6s forwards;
+    }
+    #progress-bar {
+      width: 0%;
+      height: 100%;
+      background: #3b82f6;
+      box-shadow: 0 0 10px rgba(59, 130, 246, 0.5);
+      transition: width 0.4s ease-out;
     }
     @keyframes fadeIn { to { opacity: 1; } }
   </style>
 </head>
 <body>
-  <img src="./Logo.png" alt="Purl">
+  <div class="logo-container">
+    <img src="./Logo.png" alt="Purl">
+    <div id="version"></div>
+    <div class="progress-container">
+      <div id="progress-bar"></div>
+    </div>
+  </div>
+
+  <script>
+    setTimeout(() => {
+      const bar = document.getElementById('progress-bar');
+      if (bar) bar.style.width = '70%';
+    }, 800);
+  </script>
 </body>
 </html>

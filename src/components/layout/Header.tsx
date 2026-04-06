@@ -12,6 +12,7 @@ import {
 } from '../../utils/scRuntime';
 import { fsApi, joinPath, safeName } from '../../lib/fsApi';
 import { toast } from 'sonner';
+import pkg from '../../../package.json' with { type: 'json' };
 
 const PURL_EXT = 'purl';
 
@@ -34,6 +35,7 @@ export function Header() {
   const [scVersion, setScVersion]           = useState(getSCVersion());
   const [exportMenuOpen, setExportMenuOpen] = useState(false);
   const [menuOpen, setMenuOpen]             = useState(false);
+  const [aboutOpen, setAboutOpen]           = useState(false);
   const [busy, setBusy]                     = useState(false);
   const [isMaximized, setIsMaximized]       = useState(false);
   const { ask, modal: confirmModal } = useConfirm();
@@ -498,6 +500,9 @@ export function Header() {
                 onClick={() => { setMenuOpen(false); setProjectSettingsOpen(true); }} />
               <MenuItem icon="🛠" label={t.header.editorPrefs} desc={t.header.editorPrefsDesc}
                 onClick={() => { setMenuOpen(false); setEditorPrefsOpen(true); }} />
+              <div className="h-px bg-slate-700/80 mx-2 my-1" />
+              <MenuItem icon="ℹ️" label={t.header.about} desc={t.header.aboutDesc}
+                onClick={() => { setMenuOpen(false); setAboutOpen(true); }} />
             </div>
           )}
 
@@ -549,6 +554,40 @@ export function Header() {
       )}
 
       {confirmModal}
+
+      {/* About Modal */}
+      {aboutOpen && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-sm overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-6 text-center">
+              <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hidden">
+                <img src="/Icon.PNG" alt="Purl" className="w-full h-full object-contain p-2" />
+              </div>
+              <h2 className="text-xl font-bold text-white mb-1">Purl</h2>
+              <p className="text-slate-400 text-sm mb-4">
+                {t.header.aboutVersion(pkg.version)}
+              </p>
+              <div className="h-px bg-slate-700/50 mb-4" />
+              <button
+                className="text-indigo-400 hover:text-indigo-300 transition-colors text-sm font-medium flex items-center justify-center gap-1.5 mx-auto"
+                onClick={() => window.electronAPI?.openPath('https://purl.pp.ua')}
+              >
+                purl.pp.ua
+                <span className="text-xs">↗</span>
+              </button>
+            </div>
+            <div className="bg-slate-900/50 p-3 flex justify-center border-t border-slate-700">
+              <button
+                className="px-4 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded text-sm font-medium transition-colors"
+                onClick={() => setAboutOpen(false)}
+              >
+                {t.common.confirm}
+              </button>
+            </div>
+          </div>
+          <div className="absolute inset-0 -z-10" onClick={() => setAboutOpen(false)} />
+        </div>
+      )}
     </header>
   );
 }

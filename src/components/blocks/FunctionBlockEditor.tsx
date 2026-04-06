@@ -188,7 +188,7 @@ function ActionRow({
             >
               <option value="">— select —</option>
               {popupScenes.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           )}
@@ -384,7 +384,7 @@ export function FunctionBlockEditor({
             >
               <option value="">— select —</option>
               {funcScenes.map(s => (
-                <option key={s.id} value={s.name}>{s.name}</option>
+                <option key={s.id} value={s.id}>{s.name}</option>
               ))}
             </select>
           )}

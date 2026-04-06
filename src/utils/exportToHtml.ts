@@ -105,6 +105,7 @@ export function buildPassages(project: Project): {
 } {
   const variables = flattenVariables(project.variableNodes);
   const { scenes, characters, sidebarPanel } = project;
+  const idToName = new Map(scenes.map(s => [s.id, s.name]));
   let pid = 1;
   const passages: PassageEntry[] = [];
   const colW = 180, rowH = 120;
@@ -143,7 +144,7 @@ export function buildPassages(project: Project): {
   }
 
   // StoryCaption (sidebar panel)
-  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes);
+  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName);
   if (captionSC) {
     passages.push({
       pid: pid++, name: 'StoryCaption', tags: '',
@@ -156,7 +157,7 @@ export function buildPassages(project: Project): {
 
   scenes.forEach((scene, idx) => {
     const body = scene.blocks
-      .map(b => blockToSC(b, characters, variables, variableNodes))
+      .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName))
       .filter(Boolean)
       .join('\n');
     const scenePid = pid++;
@@ -185,7 +186,7 @@ export function buildPassages(project: Project): {
     buildPanelScript(sidebarPanel),
     buildInputScript(scenes),
     buildLiveScript(scenes),
-    buildWatcherScript(project.watchers ?? [], variables, variableNodes),
+    buildWatcherScript(project.watchers ?? [], variables, variableNodes, idToName),
     buildAudioScript(scenes, project.settings?.audioUnlockText),
     buildPurlSignatureScript(),
     hasAudioVolume ? [

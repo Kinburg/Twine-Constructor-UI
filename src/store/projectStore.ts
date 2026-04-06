@@ -421,6 +421,96 @@ function migrateCharacterAvatarConfig(p: Project): Project {
   return { ...p, characters };
 }
 
+/**
+ * Convert all targetSceneId / navigate.sceneId values from scene names to scene UUIDs.
+ * Runs once per project load; already-migrated projects (values are UUIDs) are unaffected
+ * because a UUID will never match a scene name in the nameToId map.
+ */
+function migrateSceneLinks(p: Project): Project {
+  const nameToId = new Map(p.scenes.map(s => [s.name, s.id]));
+  const idSet = new Set(p.scenes.map(s => s.id));
+  const resolve = (v: string | undefined): string => {
+    if (!v) return v ?? '';
+    if (idSet.has(v)) return v; // already an ID
+    return nameToId.get(v) ?? v; // resolve name → ID, or keep as-is
+  };
+
+  const migrateActions = (actions: any[]) => {
+    for (const a of actions) {
+      if (a.type === 'open-popup' && a.targetSceneId) {
+        a.targetSceneId = resolve(a.targetSceneId);
+      }
+    }
+  };
+
+  const migrateNav = (nav: any) => {
+    if (nav?.type === 'scene' && nav.sceneId) {
+      nav.sceneId = resolve(nav.sceneId);
+    }
+  };
+
+  const migrateBlocks = (blocks: any[]) => {
+    for (const b of blocks) {
+      if (b.type === 'choice') {
+        for (const opt of b.options ?? []) {
+          if (opt.targetSceneId) opt.targetSceneId = resolve(opt.targetSceneId);
+        }
+      } else if (b.type === 'link') {
+        if (b.targetSceneId) b.targetSceneId = resolve(b.targetSceneId);
+        if (b.actions) migrateActions(b.actions);
+      } else if (b.type === 'function') {
+        if (b.targetSceneId) b.targetSceneId = resolve(b.targetSceneId);
+        if (b.actions) migrateActions(b.actions);
+      } else if (b.type === 'popup') {
+        if (b.targetSceneId) b.targetSceneId = resolve(b.targetSceneId);
+      } else if (b.type === 'button') {
+        if (b.actions) migrateActions(b.actions);
+      } else if (b.type === 'condition') {
+        for (const branch of b.branches ?? []) {
+          migrateBlocks(branch.blocks ?? []);
+        }
+      } else if (b.type === 'include') {
+        if (b.passageName) b.passageName = resolve(b.passageName);
+      } else if (b.type === 'dialogue' && b.innerBlocks?.length) {
+        migrateBlocks(b.innerBlocks);
+      } else if (b.type === 'table') {
+        for (const row of b.rows ?? []) {
+          for (const cell of row.cells ?? []) {
+            if (cell.content?.type === 'button') {
+              if (cell.content.actions) migrateActions(cell.content.actions);
+              migrateNav(cell.content.navigate);
+            }
+          }
+        }
+      }
+    }
+  };
+
+  for (const scene of p.scenes) {
+    migrateBlocks(scene.blocks);
+  }
+
+  // Sidebar panel cells
+  for (const tab of p.sidebarPanel?.tabs ?? []) {
+    for (const row of tab.rows ?? []) {
+      for (const cell of row.cells ?? []) {
+        if (cell.content?.type === 'button') {
+          if ((cell.content as any).actions) migrateActions((cell.content as any).actions);
+          migrateNav((cell.content as any).navigate);
+        }
+      }
+    }
+  }
+
+  // Watchers
+  for (const w of p.watchers ?? []) {
+    if (w.actions) migrateActions(w.actions);
+    migrateNav(w.navigate);
+  }
+
+  return p;
+}
+
 function migrateProject(raw: any): Project {
   let p = { ...raw };
 
@@ -472,6 +562,9 @@ function migrateProject(raw: any): Project {
   if (!p.settings) p.settings = { ...DEFAULT_PROJECT_SETTINGS };
   if (p.settings.historyControls === undefined) p.settings.historyControls = DEFAULT_PROJECT_SETTINGS.historyControls;
   if (p.settings.saveLoadMenu === undefined) p.settings.saveLoadMenu = DEFAULT_PROJECT_SETTINGS.saveLoadMenu;
+
+  // Migrate targetSceneId / navigate.sceneId from scene NAMES → scene IDs
+  p = migrateSceneLinks(p as Project);
 
   return p as Project;
 }
