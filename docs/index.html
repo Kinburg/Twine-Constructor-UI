@@ -541,10 +541,8 @@
     </div>
     <div class="feature-card">
       <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M6 10 C7 5 14 3 20 7 C25 10 27 16 24 21" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" fill="none"/>
-        <path d="M3 7 L6 10 L9 7" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M26 22 C25 27 18 29 12 25" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" fill="none" opacity=".5"/>
-        <path d="M29 25 L26 22 L23 25" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
+        <path d="M8 14 A10 10 0 1 1 8 22" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+        <path d="M6 10 L 8 14 L 13 14" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
       <h3>Undo / Redo</h3>
       <p lang-content="uk">Повна історія дій до 100 кроків. Ctrl+Z / Ctrl+Shift+Z або кнопки в панелі інструментів.</p>
@@ -987,6 +985,57 @@
       <h3 lang-content="en">Background Styles</h3>
       <p lang-content="uk">Іменовані стилі фону для сцен та бокової панелі: колір, зображення з бібліотеки ассетів, прив'язка до змінних для динамічної зміни.</p>
       <p lang-content="en">Named background styles for scenes and sidebar panel: color, image from asset library, variable binding for dynamic changes.</p>
+    </div>
+    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="6" width="24" height="20" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <rect x="8" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".5"/>
+        <rect x="8" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".35"/>
+        <rect x="17" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".3"/>
+        <rect x="17" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".2"/>
+        <path d="M8 8 H24" stroke="var(--accent)" stroke-width="1.2" opacity=".4"/>
+      </svg>
+      <h3 lang-content="uk">Система інвентарю</h3>
+      <h3 lang-content="en">Inventory System</h3>
+      <p lang-content="uk">Вбудована система інвентарю: прив'язка до персонажів, відображення на екрані, редагування в готовій історії та механіки магазинів.</p>
+      <p lang-content="en">Built-in inventory system: bind to characters, display on screen, edit in published stories, and build shop mechanics.</p>
+    </div>
+    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="12" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <text x="8" y="14" font-size="7" font-weight="700" fill="var(--accent)" opacity=".7" font-family="sans-serif">UA</text>
+        <text x="15" y="24" font-size="7" font-weight="700" fill="var(--accent)" opacity=".4" font-family="sans-serif">EN</text>
+        <path d="M12 17 L20 11" stroke="var(--accent)" stroke-width="1.2" opacity=".3"/>
+      </svg>
+      <h3 lang-content="uk">Експорт для перекладу</h3>
+      <h3 lang-content="en">Localization Export</h3>
+      <p lang-content="uk">Вивантаження всіх текстів у .json / .csv для перекладу та імпорт назад як новий проєкт або мовний пакет.</p>
+      <p lang-content="en">Export all text strings to .json / .csv for translation, and import back as a new project or language pack.</p>
+    </div>
+    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="4" width="22" height="24" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <path d="M10 12 H22 M10 16 H18 M10 20 H20" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" opacity=".4"/>
+        <circle cx="24" cy="24" r="6" fill="var(--accent)" fill-opacity=".2" stroke="var(--accent)" stroke-width="1.4"/>
+        <path d="M22 24 L24 22 L26 25" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
+      </svg>
+      <h3 lang-content="uk">AI-асистент (текст)</h3>
+      <h3 lang-content="en">AI Assistant (Text)</h3>
+      <p lang-content="uk">Інтеграція з локальними LLM (koboldcpp) для генерації описів, діалогів та сцен прямо в редакторі.</p>
+      <p lang-content="en">Local LLM integration (koboldcpp) for generating descriptions, dialogues, and scenes right in the editor.</p>
+    </div>
+    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="4" width="24" height="24" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <circle cx="12" cy="20" r="3" fill="var(--accent)" opacity=".3"/>
+        <path d="M8 14 L14 8 L20 12 L28 6" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
+        <circle cx="24" cy="24" r="6" fill="var(--accent)" fill-opacity=".2" stroke="var(--accent)" stroke-width="1.4"/>
+        <path d="M22 24 L24 22 L26 25" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
+      </svg>
+      <h3 lang-content="uk">AI-асистент (зображення)</h3>
+      <h3 lang-content="en">AI Assistant (Image)</h3>
+      <p lang-content="uk">Інтеграція з ComfyUI для генерації зображень до поточної сцени — локально, без хмарних сервісів.</p>
+      <p lang-content="en">ComfyUI integration for generating scene images locally, without cloud services.</p>
     </div>
     <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
       <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
