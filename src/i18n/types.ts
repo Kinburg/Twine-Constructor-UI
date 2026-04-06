@@ -217,6 +217,9 @@ export interface Translations {
     projectSettingsDesc: string;
     editorPrefs: string;
     editorPrefsDesc: string;
+    about: string;
+    aboutDesc: string;
+    aboutVersion: (v: string) => string;
     successSave: string;
     successExportHtml: string;
     successExportTwee: string;
