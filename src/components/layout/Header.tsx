@@ -6,6 +6,7 @@ import { useT, useLocaleStore, getLocales } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
 import { generateStandaloneHtml } from '../../utils/exportToHtml';
 import { exportToTwee } from '../../utils/exportToTwee';
+import { extractProjectStrings, applyTranslations, type TranslationMap } from '../../utils/i18nUtils';
 import {
   hasSCTemplate, getSCTemplate, getSCVersion,
   parseSCFormatJs, storeSCTemplate, clearSCTemplate,
@@ -259,6 +260,77 @@ export function Header() {
     }
   };
 
+  const handleExportTranslations = async () => {
+    setMenuOpen(false);
+    const strings = extractProjectStrings(project);
+    const defaultName = `${safeName(project.title)}.lang.json`;
+    const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
+    
+    const filePath = await fsApi.saveFileDialog({
+      title: 'Export strings for translation',
+      defaultPath,
+      filters: [{ name: 'JSON Language File', extensions: ['json'] }],
+    });
+
+    if (!filePath) return;
+    setBusy(true);
+    try {
+      await fsApi.writeFile(filePath, JSON.stringify(strings, null, 2));
+      toast.success('Strings exported successfully');
+    } catch (e) {
+      alert('Export error: ' + String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleExportWithTranslation = async () => {
+    setExportMenuOpen(false);
+    
+    // 1. Load the translation file
+    const filePath = await fsApi.openFileDialog({
+      title: 'Select translation file (.json)',
+      filters: [{ name: 'JSON Language File', extensions: ['json'] }],
+    });
+    if (!filePath) return;
+
+    try {
+      const content = await fsApi.readFile(filePath);
+      const translationMap = JSON.parse(content) as TranslationMap;
+      
+      // 2. Apply to a clone of the project
+      const translatedProject = applyTranslations(project, translationMap);
+      
+      // 3. Export as HTML
+      const template = getSCTemplate();
+      if (!template) {
+        alert(t.header.scLoadTitle);
+        return;
+      }
+
+      const langCode = filePath.split(/[/\\]/).pop()?.split('.')[0] || 'translated';
+      const defaultName = `${safeName(project.title)}_${langCode}.html`;
+      const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
+
+      const savePath = await fsApi.saveFileDialog({
+        title: 'Save translated HTML',
+        defaultPath,
+        filters: [{ name: 'HTML File', extensions: ['html'] }],
+      });
+
+      if (!savePath) return;
+      setBusy(true);
+
+      const html = generateStandaloneHtml(translatedProject, template);
+      await fsApi.writeFile(savePath, html);
+      toast.success(`Exported ${langCode} version successfully!`);
+    } catch (e) {
+      alert('Error during translated export: ' + String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   // ─── Render ───────────────────────────────────────────────────────────────
 
   const locales = getLocales();
@@ -416,6 +488,14 @@ export function Header() {
                 <div className="border-t border-slate-700" />
                 <button
                   className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
+                  onClick={handleExportWithTranslation}
+                >
+                  <div className="font-medium">Export with translation...</div>
+                  <div className="text-xs text-slate-400 mt-0.5">Load .json and save translated HTML</div>
+                </button>
+                <div className="border-t border-slate-700" />
+                <button
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
                   onClick={handleExportTwee}
                   title={t.header.exportTweeTitle}
                   disabled={busy}
@@ -491,6 +571,18 @@ export function Header() {
                 onClick={() => { setMenuOpen(false); handleOpenProject(); }} disabled={busy} />
               <MenuItem icon="📄" label={t.header.new} desc={t.header.newDesc}
                 onClick={() => { setMenuOpen(false); handleNewProject(); }} disabled={busy} />
+
+              <div className="h-px bg-slate-700/80 mx-2 my-1" />
+
+              {/* i18n section */}
+              <MenuSection label="Localization" />
+              <MenuItem
+                icon="🌐"
+                label="Export strings"
+                desc="Export all project text to JSON"
+                onClick={handleExportTranslations} 
+                disabled={busy}
+              />
 
               <div className="h-px bg-slate-700/80 mx-2 my-1" />
 
