@@ -148,6 +148,28 @@ let win: BrowserWindow | null;
 let splashWin: BrowserWindow | null = null;
 let splashStart = 0;
 
+// ─── Animation Helper ─────────────────────────────────────────────────────────
+
+async function fadeWindow(bw: BrowserWindow, from: number, to: number, duration: number): Promise<void> {
+  const start = Date.now();
+  return new Promise((resolve) => {
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - start;
+      const progress = Math.min(elapsed / duration, 1);
+      const currentOpacity = from + (to - from) * progress;
+      
+      if (!bw.isDestroyed()) {
+        bw.setOpacity(currentOpacity);
+      }
+
+      if (progress >= 1) {
+        clearInterval(timer);
+        resolve();
+      }
+    }, 16); // ~60fps
+  });
+}
+
 // ─── Splash window ────────────────────────────────────────────────────────────
 
 function createSplashWindow() {
@@ -155,14 +177,21 @@ function createSplashWindow() {
     width: 704,
     height: 384,
     frame: false,
-    backgroundColor: '#0f172a',
+    transparent: true,
+    backgroundColor: '#00000000',
     resizable: false,
     center: true,
     alwaysOnTop: true,
     skipTaskbar: true,
+    show: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
   splashWin.loadFile(path.join(process.env.VITE_PUBLIC!, 'splash.html'));
+  splashWin.once('ready-to-show', () => {
+    splashWin?.setOpacity(0);
+    splashWin?.show();
+    fadeWindow(splashWin!, 0, 1, 200);
+  });
 }
 
 // ─── Window ───────────────────────────────────────────────────────────────────
@@ -182,6 +211,7 @@ function createWindow() {
     minHeight: MIN.minHeight,
     title: 'Purl',
     show: false,
+    opacity: 0, // Start fully transparent
     frame: !frameless,
     backgroundColor: '#0f172a',
     icon: iconPath,
@@ -192,8 +222,6 @@ function createWindow() {
     },
   });
 
-  // Maximize by default on first run, or restore saved state
-  if (restored?.isMaximized !== false) win.maximize();
   trackWindowBounds(win, 'main');
 
   if (frameless) {
@@ -239,16 +267,31 @@ function createWindow() {
   win.once('ready-to-show', () => {
     const elapsed = Date.now() - splashStart;
     const delay = Math.max(0, 2000 - elapsed);
-    setTimeout(() => {
-      win?.show();
+    
+    setTimeout(async () => {
+      // 1. Fade out splash
       if (splashWin && !splashWin.isDestroyed()) {
+        await fadeWindow(splashWin, 1, 0, 200);
         splashWin.hide();
-        setTimeout(() => {
-          if (splashWin && !splashWin.isDestroyed()) {
-            splashWin.destroy();
-            splashWin = null;
-          }
-        }, 1000);
+      }
+
+      // 2. Short pause (0.2s for cleaner transition)
+      await new Promise(r => setTimeout(r, 200));
+
+      // 3. Show and Fade in main window
+      if (win && !win.isDestroyed()) {
+        if (restored?.isMaximized !== false) {
+          win.maximize();
+        } else {
+          win.show();
+        }
+        await fadeWindow(win, 0, 1, 200);
+      }
+
+      // Cleanup splash
+      if (splashWin && !splashWin.isDestroyed()) {
+        splashWin.destroy();
+        splashWin = null;
       }
     }, delay);
   });
