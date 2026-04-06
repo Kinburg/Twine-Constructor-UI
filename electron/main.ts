@@ -175,7 +175,7 @@ async function fadeWindow(bw: BrowserWindow, from: number, to: number, duration:
 function createSplashWindow() {
   splashWin = new BrowserWindow({
     width: 704,
-    height: 384,
+    height: 480,
     frame: false,
     transparent: true,
     backgroundColor: '#00000000',
@@ -186,7 +186,17 @@ function createSplashWindow() {
     show: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
+  
   splashWin.loadFile(path.join(process.env.VITE_PUBLIC!, 'splash.html'));
+
+  splashWin.webContents.on('dom-ready', () => {
+    const version = app.getVersion();
+    splashWin?.webContents.executeJavaScript(`
+      const el = document.getElementById('version');
+      if (el) el.innerText = 'v${version}';
+    `).catch(() => {});
+  });
+
   splashWin.once('ready-to-show', () => {
     splashWin?.setOpacity(0);
     splashWin?.show();
@@ -269,16 +279,25 @@ function createWindow() {
     const delay = Math.max(0, 2000 - elapsed);
     
     setTimeout(async () => {
-      // 1. Fade out splash
+      // 1. Fill progress bar to 100%
       if (splashWin && !splashWin.isDestroyed()) {
+        splashWin.webContents.executeJavaScript(`
+          const bar = document.getElementById('progress-bar');
+          if (bar) { bar.style.transition = 'width 0.2s ease-in'; bar.style.width = '100%'; }
+        `).catch(() => {});
+        
+        // Wait for bar animation to finish
+        await new Promise(r => setTimeout(r, 200));
+
+        // 2. Fade out splash
         await fadeWindow(splashWin, 1, 0, 200);
         splashWin.hide();
       }
 
-      // 2. Short pause (0.2s for cleaner transition)
+      // 3. Short pause for cleaner transition
       await new Promise(r => setTimeout(r, 200));
 
-      // 3. Show and Fade in main window
+      // 4. Show and Fade in main window
       if (win && !win.isDestroyed()) {
         if (restored?.isMaximized !== false) {
           win.maximize();
