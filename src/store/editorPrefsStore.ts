@@ -56,6 +56,13 @@ export interface EditorPrefs {
   panelLayout: PanelLayout;
   panelPresets: PanelLayoutPreset[];       // user-defined presets
   activePanelPresetId: string | null;
+
+  // ── LLM (KoboldCPP) ───────────────────────────────────────────────────────
+  llmEnabled:      boolean;
+  llmUrl:          string;
+  llmMaxTokens:    number;
+  llmTemperature:  number;
+  llmSystemPrompt: string;
 }
 
 const DEFAULTS: EditorPrefs = {
@@ -81,6 +88,12 @@ const DEFAULTS: EditorPrefs = {
   panelLayout: { previewVisible: false, graphVisible: false, mainSizePct: 100, previewSizePct: 50 },
   panelPresets: [],
   activePanelPresetId: null,
+
+  llmEnabled:      false,
+  llmUrl:          'http://localhost:5001/api/v1/generate',
+  llmMaxTokens:    200,
+  llmTemperature:  0.7,
+  llmSystemPrompt: 'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.',
 };
 
 const MAX_RECENT = 5;

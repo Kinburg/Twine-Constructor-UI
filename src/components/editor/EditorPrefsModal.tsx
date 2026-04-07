@@ -190,6 +190,13 @@ export function EditorPrefsModal({ onClose }: Props) {
             </Row>
           </Section>
 
+          {/* ── LLM (KoboldCPP) ─────────────────────────────────────────── */}
+          <Section title={ep.sectionLLM}>
+            <Row label={ep.llmEnabled}>
+              <Toggle value={prefs.llmEnabled} onChange={() => toggle('llmEnabled')} />
+            </Row>
+          </Section>
+
           {/* ── Panel Layout ────────────────────────────────────────────── */}
           <Section title={ep.sectionWindowLayout}>
             {/* Active indicator */}

@@ -7,6 +7,7 @@ import { WorkspaceLayout } from './components/layout/WorkspaceLayout';
 
 import { ProjectSettingsModal } from './components/project/ProjectSettingsModal';
 import { EditorPrefsModal } from './components/editor/EditorPrefsModal';
+import { LLMSettingsModal } from './components/editor/LLMSettingsModal';
 import { useAutosave } from './hooks/useAutosave';
 import { Toaster } from 'sonner';
 import { useT } from './i18n';
@@ -14,7 +15,11 @@ import { fsApi, joinPath, safeName } from './lib/fsApi';
 
 export default function App() {
   const { fixVariableNames, undo, redo, projectDir, project, setProjectDir } = useProjectStore();
-  const { projectSettingsOpen, setProjectSettingsOpen, editorPrefsOpen, setEditorPrefsOpen } = useEditorStore();
+  const {
+    projectSettingsOpen, setProjectSettingsOpen,
+    editorPrefsOpen, setEditorPrefsOpen,
+    llmSettingsOpen, setLLMSettingsOpen,
+  } = useEditorStore();
   const { compactMode, saveOnExit } = useEditorPrefsStore();
   const t = useT();
   const [closeModalOpen, setCloseModalOpen] = useState(false);
@@ -93,6 +98,9 @@ export default function App() {
       )}
       {editorPrefsOpen && (
         <EditorPrefsModal onClose={() => setEditorPrefsOpen(false)} />
+      )}
+      {llmSettingsOpen && (
+        <LLMSettingsModal onClose={() => setLLMSettingsOpen(false)} />
       )}
 
       {/* Close confirmation modal */}

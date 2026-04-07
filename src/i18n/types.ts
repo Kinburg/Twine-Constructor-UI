@@ -217,6 +217,8 @@ export interface Translations {
     projectSettingsDesc: string;
     editorPrefs: string;
     editorPrefsDesc: string;
+    llmSettings: string;
+    llmSettingsDesc: string;
     about: string;
     aboutDesc: string;
     aboutVersion: (v: string) => string;
@@ -760,6 +762,19 @@ export interface Translations {
     presetSaved: string;
     builtInPresets: string;
     userPresets: string;
+
+    sectionLLM: string;
+    llmEnabled: string;
+  };
+
+  // ─── LLM Settings modal ─────────────────────────────────────────────────────
+  llmSettingsModal: {
+    title: string;
+    urlLabel: string;
+    maxTokensLabel: string;
+    temperatureLabel: string;
+    systemPromptLabel: string;
+    systemPromptPlaceholder: string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────

@@ -193,6 +193,8 @@ const ua: Translations = {
     projectSettingsDesc:    'Редагувати назву, автора, кольори та параметри',
     editorPrefs:            'Налаштування редактора',
     editorPrefsDesc:        'Автозбереження, компактний режим, підтвердження видалення',
+    llmSettings:            'Налаштування LLM',
+    llmSettingsDesc:        'Налаштувати KoboldCPP, системний промпт та параметри',
     about:                  'Про застосунок',
     aboutDesc:              'Версія та сайт проєкту',
     aboutVersion:           (v) => `Версія ${v}`,
@@ -279,7 +281,7 @@ const ua: Translations = {
   variables: {
     groupNamePlaceholder:     'Назва групи',
     addVariable:              '+ Змінна',
-    addGroup:                 '+ Група',
+    addGroup:                 '+ Группа',
     empty:                    'Немає змінних',
     confirmDeleteGroup:       (name) => `Видалити групу "${name}" і всі її змінні?`,
     confirmDeleteVar:         (name) => `Видалити змінну "$${name}"?`,
@@ -738,6 +740,18 @@ const ua: Translations = {
     presetSaved:                  'Пресет збережено',
     builtInPresets:               'Вбудовані',
     userPresets:                  'Користувацькі',
+
+    sectionLLM:                   'LLM (KoboldCPP)',
+    llmEnabled:                   'Увімкнути допомогу LLM',
+  },
+
+  llmSettingsModal: {
+    title:                   'Налаштування LLM',
+    urlLabel:                'KoboldCPP API URL',
+    maxTokensLabel:          'Макс. токенів',
+    temperatureLabel:        'Температура',
+    systemPromptLabel:       'Системний промпт (інструкції)',
+    systemPromptPlaceholder: 'Вкажіть роль, жанр чи особливості стилю...',
   },
 
   projectSettings: {

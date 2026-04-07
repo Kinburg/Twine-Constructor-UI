@@ -193,6 +193,8 @@ const en: Translations = {
     projectSettingsDesc:    'Edit title, author, colors and story options',
     editorPrefs:            'Editor Preferences',
     editorPrefsDesc:        'Autosave, compact mode, delete confirmations',
+    llmSettings:            'LLM Settings',
+    llmSettingsDesc:        'Configure KoboldCPP, system prompt and parameters',
     about:                  'About',
     aboutDesc:              'Application version and website',
     aboutVersion:           (v) => `Version ${v}`,
@@ -631,6 +633,7 @@ const en: Translations = {
     randomLengthSuffix:   'chars [a-z0-9]',
   },
 
+  // ─── Array accessor UI ──────────────────────────────────────────────────────
   arrayAccessor: {
     label:            'Access:',
     whole:            'whole array',
@@ -738,6 +741,18 @@ const en: Translations = {
     presetSaved:                  'Preset saved',
     builtInPresets:               'Built-in',
     userPresets:                  'Custom',
+
+    sectionLLM:                   'LLM (KoboldCPP)',
+    llmEnabled:                   'Enable LLM help',
+  },
+
+  llmSettingsModal: {
+    title:                   'LLM Settings',
+    urlLabel:                'KoboldCPP API URL',
+    maxTokensLabel:          'Max tokens',
+    temperatureLabel:        'Temperature',
+    systemPromptLabel:       'System prompt (instructions)',
+    systemPromptPlaceholder: 'Define the AI role, genre, or style...',
   },
 
   projectSettings: {

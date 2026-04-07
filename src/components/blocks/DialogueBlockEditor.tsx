@@ -24,6 +24,7 @@ import { TableBlockEditor } from './TableBlockEditor';
 import { NoteBlockEditor } from './NoteBlockEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { TextInsertToolbar } from '../shared/TextInsertToolbar';
+import { LLMGenerateButton } from '../shared/LLMGenerateButton';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
 
 /**
@@ -360,7 +361,13 @@ export function DialogueBlockEditor({
               {selectedChar.name}{block.nameSuffix ? ` (${block.nameSuffix})` : ''}
             </span>
           )}
-          <div className={`absolute top-0.5 z-10 ${isRight ? 'left-0.5' : 'right-0.5'}`}>
+          <div className={`absolute top-0.5 z-10 flex gap-0.5 ${isRight ? 'left-0.5' : 'right-0.5'}`}>
+            <LLMGenerateButton
+              sceneId={sceneId}
+              blockId={block.id}
+              currentValue={block.text}
+              onGenerated={text => update({ text: block.text + text })}
+            />
             <TextInsertToolbar
               targetRef={dialogueRef}
               value={block.text}
@@ -373,7 +380,7 @@ export function DialogueBlockEditor({
           </div>
           <textarea
             ref={dialogueRef}
-            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-24' : 'pr-24'}`}
+            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-28' : 'pr-28'}`}
             style={{ color: selectedChar ? (selectedChar.textColor ?? '#e2e8f0') : undefined }}
             placeholder={t.dialogueBlock.linePlaceholder}
             value={block.text}

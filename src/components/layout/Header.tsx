@@ -24,8 +24,12 @@ export function Header() {
     undo, redo, canUndo, canRedo,
   } = useProjectStore();
   const { locale, setLocale } = useLocaleStore();
-  const { setProjectSettingsOpen, setEditorPrefsOpen } = useEditorStore();
-  const { confirmOpenFolderAfterExport } = useEditorPrefsStore();
+  const { setProjectSettingsOpen, setEditorPrefsOpen, setLLMSettingsOpen } = useEditorStore();
+  
+  // Explicitly select llmEnabled to ensure reactivity
+  const confirmOpenFolderAfterExport = useEditorPrefsStore(s => s.confirmOpenFolderAfterExport);
+  const llmEnabled = useEditorPrefsStore(s => s.llmEnabled);
+
   const t = useT();
 
   const { panelLayout, togglePreviewPanel, toggleGraphPanel } = useEditorPrefsStore();
@@ -42,6 +46,11 @@ export function Header() {
   const { ask, modal: confirmModal } = useConfirm();
 
   const isCustomTitleBar = typeof window !== 'undefined' && window.electronAPI?.titleBarStyle === 'custom';
+
+  // Debugging log
+  useEffect(() => {
+    console.log('Header: llmEnabled is', llmEnabled);
+  }, [llmEnabled]);
 
   useEffect(() => {
     setScReady(hasSCTemplate());
@@ -447,7 +456,7 @@ export function Header() {
           </Btn>
         )}
 
-{/* HTML export — split button */}
+        {/* HTML export — split button */}
         {scReady && (
           <div className="relative">
             <div className="flex">
@@ -592,6 +601,10 @@ export function Header() {
                 onClick={() => { setMenuOpen(false); setProjectSettingsOpen(true); }} />
               <MenuItem icon="🛠" label={t.header.editorPrefs} desc={t.header.editorPrefsDesc}
                 onClick={() => { setMenuOpen(false); setEditorPrefsOpen(true); }} />
+              {llmEnabled && ( // Conditionally render LLM settings button
+                <MenuItem icon="🧠" label={t.header.llmSettings} desc={t.header.llmSettingsDesc}
+                  onClick={() => { setMenuOpen(false); setLLMSettingsOpen(true); }} />
+              )}
               <div className="h-px bg-slate-700/80 mx-2 my-1" />
               <MenuItem icon="ℹ️" label={t.header.about} desc={t.header.aboutDesc}
                 onClick={() => { setMenuOpen(false); setAboutOpen(true); }} />

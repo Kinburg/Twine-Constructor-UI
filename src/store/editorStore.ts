@@ -21,6 +21,10 @@ interface EditorState {
   /** Whether the Editor Preferences modal is open. */
   editorPrefsOpen: boolean;
   setEditorPrefsOpen: (open: boolean) => void;
+
+  /** Whether the LLM Settings modal is open. */
+  llmSettingsOpen: boolean;
+  setLLMSettingsOpen: (open: boolean) => void;
 }
 
 export const useEditorStore = create<EditorState>()((set) => ({
@@ -36,4 +40,7 @@ export const useEditorStore = create<EditorState>()((set) => ({
 
   editorPrefsOpen: false,
   setEditorPrefsOpen: (open) => set({ editorPrefsOpen: open }),
+
+  llmSettingsOpen: false,
+  setLLMSettingsOpen: (open) => set({ llmSettingsOpen: open }),
 }));

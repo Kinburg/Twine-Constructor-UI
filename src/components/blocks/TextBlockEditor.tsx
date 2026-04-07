@@ -4,6 +4,7 @@ import { useT } from '../../i18n';
 import type { TextBlock } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { TextInsertToolbar } from '../shared/TextInsertToolbar';
+import { LLMGenerateButton } from '../shared/LLMGenerateButton';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
 
 export function TextBlockEditor({
@@ -25,7 +26,13 @@ export function TextBlockEditor({
   return (
     <div className="flex flex-col gap-1.5">
       <div className="relative">
-        <div className="absolute top-1 right-1 z-10">
+        <div className="absolute top-1 right-1 z-10 flex gap-0.5">
+          <LLMGenerateButton
+            sceneId={sceneId}
+            blockId={block.id}
+            currentValue={block.content}
+            onGenerated={text => update({ content: block.content + text })}
+          />
           <TextInsertToolbar
             targetRef={textareaRef}
             value={block.content}
@@ -38,7 +45,7 @@ export function TextBlockEditor({
         </div>
         <textarea
           ref={textareaRef}
-          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-24 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
+          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-28 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
           placeholder={t.textBlock.placeholder}
           value={block.content}
           onFocus={saveSnapshot}
