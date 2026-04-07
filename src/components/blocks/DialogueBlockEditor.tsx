@@ -366,7 +366,7 @@ export function DialogueBlockEditor({
               sceneId={sceneId}
               blockId={block.id}
               currentValue={block.text}
-              onGenerated={text => update({ text: block.text + text })}
+              onGenerated={text => update({ text })}
             />
             <TextInsertToolbar
               targetRef={dialogueRef}

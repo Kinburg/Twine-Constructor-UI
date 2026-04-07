@@ -168,7 +168,7 @@ interface CharVarBuildResult {
  */
 function buildCharVarNodes(
   charName: string,
-  colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig },
+  colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig; llm_descr?: string },
 ): CharVarBuildResult {
   const nameVarId         = uuid();
   const bgColorVarId      = uuid();
@@ -176,6 +176,7 @@ function buildCharVarNodes(
   const nameColorVarId    = uuid();
   const textColorVarId    = uuid();
   const avatarVarId       = uuid();
+  const llmDescrVarId     = uuid();
   const stylesGroupId     = uuid();
   const groupId           = uuid();
 
@@ -227,10 +228,18 @@ function buildCharVarNodes(
     description: `Avatar URL for character "${charName}" (empty = hidden)`,
   };
 
+  const llmDescrVar: Variable = {
+    kind: 'variable', id: llmDescrVarId,
+    name: 'llm_descr',
+    varType: 'string',
+    defaultValue: colors.llm_descr ?? '',
+    description: `LLM personality description for "${charName}"`,
+  };
+
   const stylesGroup: VariableGroup = {
     kind: 'group', id: stylesGroupId,
     name: 'styles',
-    children: [bgColorVar, borderColorVar, nameColorVar, textColorVar, avatarVar],
+    children: [bgColorVar, borderColorVar, nameColorVar, textColorVar, avatarVar, llmDescrVar],
   };
 
   const group: VariableGroup = {
@@ -241,7 +250,7 @@ function buildCharVarNodes(
 
   return {
     group,
-    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, textColorVarId, avatarVarId },
+    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, textColorVarId, avatarVarId, llmDescrVarId },
   };
 }
 
@@ -390,6 +399,44 @@ function migrateCharacterTextColorVar(p: Project): Project {
     ) as VariableTreeNode[];
 
     const updatedVarIds: CharacterVarIds = { ...char.varIds, textColorVarId };
+    characters = characters.map((c, idx) => idx === i ? { ...c, varIds: updatedVarIds } : c);
+    changed = true;
+  }
+
+  return changed ? { ...p, variableNodes, characters } : p;
+}
+
+/**
+ * Add $prefix_llm_descr variable to characters that were created before it existed.
+ * Runs idempotently (skips if llmDescrVarId already present).
+ */
+function migrateCharacterLlmDescrVar(p: Project): Project {
+  let variableNodes = p.variableNodes;
+  let characters = p.characters;
+  let changed = false;
+
+  for (let i = 0; i < characters.length; i++) {
+    const char = characters[i];
+    if (!char.varIds || char.varIds.llmDescrVarId) continue;
+
+    const prefix = charToVarPrefix(char.name);
+    const llmDescrVarId = uuid();
+
+    const llmDescrVar: Variable = {
+      kind: 'variable', id: llmDescrVarId,
+      name: `${prefix}_llm_descr`,
+      varType: 'string',
+      defaultValue: char.llm_descr ?? '',
+      description: `LLM personality description for "${char.name}"`,
+    };
+
+    variableNodes = addNode(
+      variableNodes as AnyNode[],
+      char.varIds.stylesGroupId,
+      llmDescrVar as AnyNode,
+    ) as VariableTreeNode[];
+
+    const updatedVarIds: CharacterVarIds = { ...char.varIds, llmDescrVarId };
     characters = characters.map((c, idx) => idx === i ? { ...c, varIds: updatedVarIds } : c);
     changed = true;
   }
@@ -556,6 +603,8 @@ function migrateProject(raw: any): Project {
   p = migrateCharacterAvatarConfig(p as Project);
   // Add $prefix_textColor variable to characters that predate this feature
   p = migrateCharacterTextColorVar(p as Project);
+  // Add $prefix_llm_descr variable to characters that predate this feature
+  p = migrateCharacterLlmDescrVar(p as Project);
 
   if (!p.watchers) p.watchers = [];
   if (!p.sceneGroups) p.sceneGroups = [];
@@ -590,7 +639,7 @@ interface ProjectState {
 
   setProjectDir: (dir: string | null) => void;
   setProjectTitle: (title: string) => void;
-  updateProjectMeta: (patch: Partial<Pick<Project, 'title' | 'author' | 'description' | 'settings' | 'sidebarPanel'>>) => void;
+  updateProjectMeta: (patch: Partial<Pick<Project, 'title' | 'author' | 'description' | 'lore' | 'settings' | 'sidebarPanel'>>) => void;
   loadProject: (project: Project, dir?: string) => void;
   resetProject: () => void;
   setSidebarTab: (tab: SidebarTabId) => void;
@@ -795,7 +844,9 @@ export const useProjectStore = create<ProjectState>()(
             const step1 = migrateCharacterVarNames(s.project);
             const step2 = migrateCharacterAvatarVar(step1);
             const step3 = migrateCharacterAvatarConfig(step2);
-            return step3 === s.project ? s : { project: step3 };
+            const step4 = migrateCharacterTextColorVar(step3);
+            const step5 = migrateCharacterLlmDescrVar(step4);
+            return step5 === s.project ? s : { project: step5 };
           }),
 
         // ── History / Undo / Redo ────────────────────────────────────────────
@@ -1382,6 +1433,7 @@ export const useProjectStore = create<ProjectState>()(
               nameColor: char.nameColor,
               textColor: char.textColor ?? '#e2e8f0',
               avatarConfig: char.avatarConfig,
+              llm_descr: char.llm_descr,
             });
             const character: Character = { ...char, id: charId, varIds };
             return {
@@ -1418,6 +1470,11 @@ export const useProjectStore = create<ProjectState>()(
                     description: `Avatar URL for character "${patch.name}" (empty = hidden)`,
                   });
                 }
+                if (varIds.llmDescrVarId) {
+                  variableNodes = updateVarInTree(variableNodes, varIds.llmDescrVarId, {
+                    description: `LLM personality description for "${patch.name}"`,
+                  });
+                }
               }
 
               // Color changes → sync defaultValues
@@ -1437,6 +1494,10 @@ export const useProjectStore = create<ProjectState>()(
               if (patch.avatarConfig !== undefined && varIds.avatarVarId) {
                 const defaultValue = patch.avatarConfig.mode === 'static' ? patch.avatarConfig.src : '';
                 variableNodes = updateVarInTree(variableNodes, varIds.avatarVarId, { defaultValue });
+              }
+              // LLM description change → sync $prefix_llm_descr defaultValue
+              if (patch.llm_descr !== undefined && varIds.llmDescrVarId) {
+                variableNodes = updateVarInTree(variableNodes, varIds.llmDescrVarId, { defaultValue: patch.llm_descr });
               }
             }
 

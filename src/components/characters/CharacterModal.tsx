@@ -89,6 +89,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
   const [bgColor, setBgColor] = useState(initial.bgColor);
   const [borderColor, setBorderColor] = useState(initial.borderColor);
   const [avatarCfg, setAvatarCfg] = useState<AvatarConfig>(initial.avatarConfig ?? defaultAvatarConfig());
+  const [llmDescr, setLlmDescr] = useState(initial.llm_descr ?? '');
 
   // In edit mode: read live user nodes from the char's variable group (excluding auto-managed ones)
   const liveChar = mode === 'edit' && charId
@@ -101,7 +102,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
   // In create mode: track pending nodes locally until save
   const [pendingNodes, setPendingNodes] = useState<VariableTreeNode[]>([]);
 
-  const draft: Omit<Character, 'id'> = { name, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg };
+  const draft: Omit<Character, 'id'> = { name, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr };
 
   const trimmedName = name.trim();
   const nameError = trimmedName === ''
@@ -181,6 +182,17 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
                 <span className="text-xs text-red-400">{nameError}</span>
               )}
             </div>
+          </Field>
+
+          {/* LLM Description */}
+          <Field label="LLM Description">
+            <textarea
+              className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-none placeholder-slate-500"
+              rows={3}
+              placeholder="Personality, speech patterns, appearance..."
+              value={llmDescr}
+              onChange={e => setLlmDescr(e.target.value)}
+            />
           </Field>
 
           {/* Name color */}

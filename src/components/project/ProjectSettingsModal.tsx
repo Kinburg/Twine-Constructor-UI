@@ -4,7 +4,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { useT } from '../../i18n';
 import { fsApi, joinPath, safeName, toLocalFileUrl } from '../../lib/fsApi';
 import { toast } from 'sonner';
-import type { ProjectSettings, SidebarPanel, SidebarTab, SidebarRow } from '../../types';
+import type { Project, ProjectSettings, SidebarPanel, SidebarTab, SidebarRow } from '../../types';
 
 // ─── Header image helpers ──────────────────────────────────────────────────────
 
@@ -89,6 +89,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
   const [title, setTitle]               = useState(mode === 'edit' ? project.title : '');
   const [author, setAuthor]             = useState(mode === 'edit' ? (project.author ?? '') : '');
   const [description, setDescription]  = useState(mode === 'edit' ? (project.description ?? '') : '');
+  const [lore, setLore]                 = useState(mode === 'edit' ? (project.lore ?? '') : '');
 
   // Header image
   const [headerPendingPath, setHeaderPendingPath] = useState<string | null>(null);
@@ -209,6 +210,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
         title:       trimmedTitle,
         author:      author.trim() || undefined,
         description: description.trim() || undefined,
+        lore:        lore.trim() || undefined,
         settings:    buildSettings(headerSrc, newRowId),
         sidebarPanel: updatedPanel,
       });
@@ -242,12 +244,13 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
       }
 
       // Build a fresh project
-      const newProject = {
+      const newProject: Project = {
         id:    crypto.randomUUID(),
         title: trimmedTitle,
         ifid:  (crypto.randomUUID()).toUpperCase(),
         author:      author.trim()      || undefined,
         description: description.trim() || undefined,
+        lore:        lore.trim()        || undefined,
         settings:    buildSettings(null, null),  // rowId assigned below
         scenes:      [{ id: crypto.randomUUID(), name: 'Start', tags: ['start'], blocks: [] }],
         sceneGroups:  [],
@@ -338,10 +341,21 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
           <Field label={ps.fieldDescription}>
             <textarea
               className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-none placeholder-slate-500"
-              rows={3}
+              rows={2}
               placeholder={ps.fieldDescPlaceholder}
               value={description}
               onChange={e => setDescription(e.target.value)}
+            />
+          </Field>
+
+          {/* Lore */}
+          <Field label="Lore / Story Context" note="Extra context for LLM generation">
+            <textarea
+              className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-none placeholder-slate-500"
+              rows={3}
+              placeholder="Describe the world, plot, and key facts..."
+              value={lore}
+              onChange={e => setLore(e.target.value)}
             />
           </Field>
 

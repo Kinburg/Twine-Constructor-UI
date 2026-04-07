@@ -512,6 +512,7 @@ export interface CharacterVarIds {
   nameColorVarId: string;   // $prefix_nameColor variable id
   avatarVarId: string;      // $prefix_avatar variable id (URL string, empty = hidden)
   textColorVarId?: string;  // $prefix_textColor variable id (added in v1.7)
+  llmDescrVarId?: string;   // $prefix_llm_descr variable id (added in v1.8)
 }
 
 export type AvatarMode = 'static' | 'bound';
@@ -537,6 +538,8 @@ export interface Character {
   textColor?: string;   // color for dialogue text body (added in v1.7)
   bgColor: string;      // dialogue box background
   borderColor: string;  // left border accent
+  /** LLM description for generating dialogue/text for this character. */
+  llm_descr?: string;
   /** @deprecated Use avatarConfig instead. Kept for migration from pre-v1.4 saves. */
   avatarUrl?: string;
   /** Avatar settings (static URL or variable-bound). Added in v1.4. */
@@ -769,6 +772,8 @@ export interface Project {
   ifid: string;
   author?: string;
   description?: string;
+  /** Story lore/context for LLM generation. */
+  lore?: string;
   settings: ProjectSettings;
   scenes: Scene[];
   sceneGroups: SceneGroup[];

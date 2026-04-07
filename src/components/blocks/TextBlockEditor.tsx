@@ -31,7 +31,7 @@ export function TextBlockEditor({
             sceneId={sceneId}
             blockId={block.id}
             currentValue={block.content}
-            onGenerated={text => update({ content: block.content + text })}
+            onGenerated={text => update({ content: text })}
           />
           <TextInsertToolbar
             targetRef={textareaRef}
