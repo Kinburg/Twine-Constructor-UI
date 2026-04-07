@@ -38,6 +38,25 @@ export function buildSceneContext(scene: Scene, characters: Character[], targetB
 }
 
 /**
+ * Sends a stop/abort request to KoboldCPP.
+ */
+export async function abortGeneration(genUrl: string) {
+    try {
+        const url = new URL(genUrl);
+        // KoboldCPP abort endpoint: /api/extra/abort
+        const abortUrl = `${url.protocol}//${url.host}/api/extra/abort`;
+        
+        await fetch(abortUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        });
+    } catch (e) {
+        console.error("Failed to send abort request to KoboldCPP:", e);
+    }
+}
+
+/**
  * Calls KoboldCPP API to generate text based on the context.
  */
 export async function generateText(
@@ -48,7 +67,8 @@ export async function generateText(
     blockId: string,
     currentValue: string,
     params: { maxTokens: number; temperature: number },
-    mode: LLMMode = 'continue'
+    mode: LLMMode = 'continue',
+    signal?: AbortSignal
 ): Promise<string> {
     const context = buildSceneContext(scene, project.characters, blockId);
     const targetBlock = scene.blocks.find(b => b.id === blockId);
@@ -212,6 +232,7 @@ export async function generateText(
                 'Content-Type': 'application/json',
             },
             body: JSON.stringify(requestBody),
+            signal
         });
 
         if (!response.ok) {
@@ -224,6 +245,9 @@ export async function generateText(
         }
         return data.results[0]?.text || "";
     } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+            return "";
+        }
         console.error("Failed to generate text:", error);
         throw error;
     }

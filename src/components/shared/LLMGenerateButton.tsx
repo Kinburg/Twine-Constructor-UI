@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useProjectStore } from '../../store/projectStore';
-import { generateText, type LLMMode } from '../../utils/llmApi';
+import { generateText, abortGeneration, type LLMMode } from '../../utils/llmApi';
 import { toast } from 'sonner';
 
 interface Props {
@@ -13,8 +13,69 @@ interface Props {
 
 export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated }: Props) {
   const { llmEnabled, llmUrl, llmMaxTokens, llmTemperature, llmSystemPrompt } = useEditorPrefsStore();
-  const { project } = useProjectStore();
+  const { project, saveSnapshot } = useProjectStore();
   const [loading, setLoading] = useState<LLMMode | null>(null);
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const toggle = useCallback(() => {
+    if (loading) {
+      // 1. Abort the local fetch request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      // 2. Send explicit abort request to KoboldCPP backend
+      abortGeneration(llmUrl);
+      
+      setLoading(null);
+      toast.info("Generation stopped");
+      return;
+    }
+
+    if (open) {
+      setOpen(false);
+      return;
+    }
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const left = Math.min(rect.right - 220, window.innerWidth - 228);
+      setPos({ top: rect.bottom + 2, left: Math.max(4, left) });
+    }
+    setOpen(true);
+  }, [open, loading, llmUrl]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (buttonRef.current?.contains(e.target as Node) || menuRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: Event) => {
+      if (menuRef.current?.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+    window.addEventListener('scroll', handler, true);
+    return () => window.removeEventListener('scroll', handler, true);
+  }, [open]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   if (!llmEnabled) return null;
 
@@ -22,7 +83,12 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
     const scene = project.scenes.find(s => s.id === sceneId);
     if (!scene) return;
 
+    setOpen(false);
     setLoading(mode);
+    
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     try {
       const result = await generateText(
         llmUrl,
@@ -35,71 +101,118 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
           maxTokens: llmMaxTokens,
           temperature: llmTemperature,
         },
-        mode
+        mode,
+        controller.signal
       );
 
       if (result) {
+        saveSnapshot();
         onGenerated(result.trim());
       }
     } catch (error) {
-      toast.error("Failed to generate text. Check your LLM settings and connection.");
+      if (error instanceof Error && error.name === 'AbortError') {
+        // Just stopped by user
+      } else {
+        toast.error("Failed to generate text. Check your LLM settings and connection.");
+      }
     } finally {
-      setLoading(null);
+      if (abortControllerRef.current === controller) {
+        setLoading(null);
+        abortControllerRef.current = null;
+      }
     }
   };
 
   return (
-    <div className="flex items-center gap-0.5">
-      {/* Continue Generation */}
+    <>
       <button
-        onClick={() => handleGenerate('continue')}
-        disabled={!!loading}
-        className={`p-1 rounded transition-colors flex items-center justify-center ${
-          loading === 'continue'
-            ? 'text-indigo-400 bg-slate-700/50 cursor-wait' 
-            : 'text-slate-400 hover:text-indigo-400 hover:bg-slate-700 cursor-pointer'
+        ref={buttonRef}
+        type="button"
+        onClick={toggle}
+        className={`px-1.5 py-0.5 text-xs border rounded cursor-pointer transition-colors leading-none flex items-center justify-center ${
+          open || loading
+            ? 'text-indigo-400 bg-slate-700 border-indigo-500'
+            : 'text-slate-500 hover:text-indigo-400 bg-slate-800 border-slate-600 hover:border-indigo-500'
         }`}
-        title="Continue generation"
+        title={loading ? "Stop generation" : "AI Generation Tools"}
       >
-        {loading === 'continue' ? <LoadingIcon /> : <GenerateIcon />}
+        {loading ? <StopLoadingIcon /> : <SparklesIcon />}
       </button>
 
-      {/* Rephrase / Improve */}
-      <button
-        onClick={() => handleGenerate('rephrase')}
-        disabled={!!loading || !currentValue.trim()}
-        className={`p-1 rounded transition-colors flex items-center justify-center ${
-          loading === 'rephrase'
-            ? 'text-emerald-400 bg-slate-700/50 cursor-wait' 
-            : 'text-slate-400 hover:text-emerald-400 hover:bg-slate-700 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed'
-        }`}
-        title="Rephrase and improve text"
-      >
-        {loading === 'rephrase' ? <LoadingIcon /> : <RephraseIcon />}
-      </button>
+      {open && pos && (
+        <div
+          ref={menuRef}
+          className="fixed z-[9999] bg-slate-800 border border-slate-600 rounded shadow-lg overflow-hidden py-1"
+          style={{ top: pos.top, left: pos.left, width: 220 }}
+        >
+          <MenuOption
+            icon={<GenerateIcon />}
+            label="Continue generation"
+            onClick={() => handleGenerate('continue')}
+            colorClass="text-indigo-400"
+          />
+          <MenuOption
+            icon={<RephraseIcon />}
+            label="Rephrase and improve"
+            disabled={!currentValue.trim()}
+            onClick={() => handleGenerate('rephrase')}
+            colorClass="text-emerald-400"
+          />
+          <MenuOption
+            icon={<HintIcon />}
+            label="Generate from hint"
+            disabled={!currentValue.trim()}
+            onClick={() => handleGenerate('hint')}
+            colorClass="text-amber-400"
+          />
+        </div>
+      )}
+    </>
+  );
+}
 
-      {/* Generate from Hint */}
-      <button
-        onClick={() => handleGenerate('hint')}
-        disabled={!!loading || !currentValue.trim()}
-        className={`p-1 rounded transition-colors flex items-center justify-center ${
-          loading === 'hint'
-            ? 'text-amber-400 bg-slate-700/50 cursor-wait' 
-            : 'text-slate-400 hover:text-amber-400 hover:bg-slate-700 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed'
-        }`}
-        title="Generate based on this hint/instruction"
-      >
-        {loading === 'hint' ? <LoadingIcon /> : <HintIcon />}
-      </button>
+function MenuOption({ 
+  icon, 
+  label, 
+  onClick, 
+  disabled, 
+  colorClass 
+}: { 
+  icon: React.ReactNode; 
+  label: string; 
+  onClick: () => void; 
+  disabled?: boolean;
+  colorClass: string;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white cursor-pointer transition-colors disabled:opacity-30 disabled:cursor-not-allowed"
+      onClick={onClick}
+    >
+      <span className={`shrink-0 ${colorClass}`}>{icon}</span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function StopLoadingIcon() {
+  return (
+    <div className="relative h-4 w-4 flex items-center justify-center">
+      <svg className="animate-spin h-4 w-4 absolute" viewBox="0 0 24 24">
+        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+      </svg>
+      <div className="h-1.5 w-1.5 bg-indigo-400 rounded-sm" />
     </div>
   );
 }
 
-function LoadingIcon() {
+function SparklesIcon() {
   return (
-    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
     </svg>
   );
 }

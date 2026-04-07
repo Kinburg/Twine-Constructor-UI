@@ -380,7 +380,7 @@ export function DialogueBlockEditor({
           </div>
           <textarea
             ref={dialogueRef}
-            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-28' : 'pr-28'}`}
+            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-20' : 'pr-20'}`}
             style={{ color: selectedChar ? (selectedChar.textColor ?? '#e2e8f0') : undefined }}
             placeholder={t.dialogueBlock.linePlaceholder}
             value={block.text}

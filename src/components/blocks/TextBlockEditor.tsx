@@ -45,7 +45,7 @@ export function TextBlockEditor({
         </div>
         <textarea
           ref={textareaRef}
-          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-28 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
+          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-20 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
           placeholder={t.textBlock.placeholder}
           value={block.content}
           onFocus={saveSnapshot}
