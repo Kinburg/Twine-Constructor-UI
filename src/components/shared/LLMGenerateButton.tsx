@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useProjectStore } from '../../store/projectStore';
-import { generateText, abortGeneration, type LLMMode } from '../../utils/llmApi';
+import { generateText, abortGeneration, type LLMMode } from '../../utils/llm';
 import { toast } from 'sonner';
 
 interface Props {
@@ -12,7 +12,16 @@ interface Props {
 }
 
 export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated }: Props) {
-  const { llmEnabled, llmUrl, llmMaxTokens, llmTemperature, llmSystemPrompt } = useEditorPrefsStore();
+  const { 
+    llmEnabled, 
+    llmProvider,
+    llmUrl, 
+    llmGeminiModel,
+    llmMaxTokens, 
+    llmTemperature, 
+    llmSystemPrompt,
+    llmFilterThought
+  } = useEditorPrefsStore();
   const { project, saveSnapshot } = useProjectStore();
   const [loading, setLoading] = useState<LLMMode | null>(null);
   const [open, setOpen] = useState(false);
@@ -28,8 +37,8 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
-      // 2. Send explicit abort request to KoboldCPP backend
-      abortGeneration(llmUrl);
+      // 2. Send explicit abort request to backend if needed
+      abortGeneration(llmProvider, llmUrl);
       
       setLoading(null);
       toast.info("Generation stopped");
@@ -46,7 +55,7 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
       setPos({ top: rect.bottom + 2, left: Math.max(4, left) });
     }
     setOpen(true);
-  }, [open, loading, llmUrl]);
+  }, [open, loading, llmUrl, llmProvider]);
 
   useEffect(() => {
     if (!open) return;
@@ -91,7 +100,9 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
 
     try {
       const result = await generateText(
+        llmProvider,
         llmUrl,
+        llmGeminiModel,
         llmSystemPrompt,
         project,
         scene,
@@ -100,6 +111,7 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
         {
           maxTokens: llmMaxTokens,
           temperature: llmTemperature,
+          filterThought: llmFilterThought
         },
         mode,
         controller.signal
@@ -113,7 +125,7 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
       if (error instanceof Error && error.name === 'AbortError') {
         // Just stopped by user
       } else {
-        toast.error("Failed to generate text. Check your LLM settings and connection.");
+        toast.error(`Failed to generate text. Check your ${llmProvider} settings and connection.`);
       }
     } finally {
       if (abortControllerRef.current === controller) {

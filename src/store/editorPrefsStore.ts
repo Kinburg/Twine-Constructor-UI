@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { BlockType } from '../types';
+import type { LLMProvider } from '../utils/llm';
 
 // ── Panel layout (single-window split panels) ──────────────────────────────
 
@@ -57,12 +58,16 @@ export interface EditorPrefs {
   panelPresets: PanelLayoutPreset[];       // user-defined presets
   activePanelPresetId: string | null;
 
-  // ── LLM (KoboldCPP) ───────────────────────────────────────────────────────
-  llmEnabled:      boolean;
-  llmUrl:          string;
-  llmMaxTokens:    number;
-  llmTemperature:  number;
-  llmSystemPrompt: string;
+  // ── LLM (KoboldCPP / Gemini) ──────────────────────────────────────────────
+  llmEnabled:          boolean;
+  llmProvider:         LLMProvider;
+  llmUrl:              string; // Also used for Gemini API Key if provider is Gemini
+  llmGeminiModel:      string;
+  llmGeminiModelsList: string[]; // Cache for fetched Gemini models
+  llmMaxTokens:        number;
+  llmTemperature:      number;
+  llmSystemPrompt:     string;
+  llmFilterThought:    boolean; // Filter <thought> blocks
 }
 
 const DEFAULTS: EditorPrefs = {
@@ -89,11 +94,15 @@ const DEFAULTS: EditorPrefs = {
   panelPresets: [],
   activePanelPresetId: null,
 
-  llmEnabled:      false,
-  llmUrl:          'http://localhost:5001/api/v1/generate',
-  llmMaxTokens:    200,
-  llmTemperature:  0.7,
-  llmSystemPrompt: 'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.',
+  llmEnabled:          false,
+  llmProvider:         'koboldcpp',
+  llmUrl:              'http://localhost:5001/api/v1/generate',
+  llmGeminiModel:      'models/gemini-1.5-flash',
+  llmGeminiModelsList: ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-1.0-pro'],
+  llmMaxTokens:        200,
+  llmTemperature:      0.7,
+  llmSystemPrompt:     'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.',
+  llmFilterThought:    true,
 };
 
 const MAX_RECENT = 5;

@@ -231,6 +231,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+  // win.webContents.openDevTools();
 
   trackWindowBounds(win, 'main');
 
