@@ -12,17 +12,21 @@ export function LLMSettingsModal({ onClose }: Props) {
   const t = useT();
   const llm = t.llmSettingsModal;
   const ep = t.editorPrefs;
-  const { 
-    setPrefs, 
-    llmEnabled, 
+  const {
+    setPrefs,
+    llmEnabled,
     llmProvider,
-    llmUrl, 
+    llmUrl,
     llmGeminiModel,
     llmGeminiModelsList,
-    llmMaxTokens, 
-    llmTemperature, 
+    llmOpenaiUrl,
+    llmOpenaiApiKey,
+    llmOpenaiModel,
+    llmMaxTokens,
+    llmTemperature,
     llmSystemPrompt,
-    llmFilterThought
+    llmFilterThought,
+    llmGenerationHistory
   } = useEditorPrefsStore();
 
   // Local state for fetching status
@@ -62,10 +66,10 @@ export function LLMSettingsModal({ onClose }: Props) {
     try {
       const models = await fetchGeminiModels(llmUrl);
       const modelNames = models.map(m => m.name);
-      
+
       setPrefs({ llmGeminiModelsList: modelNames });
       toast.success(`Fetched ${modelNames.length} models`);
-      
+
       if (modelNames.includes(llmGeminiModel)) {
         setIsCustomModel(false);
       }
@@ -105,7 +109,7 @@ export function LLMSettingsModal({ onClose }: Props) {
           </div>
 
           <div className={`flex flex-col gap-5 transition-opacity duration-200 ${llmEnabled ? 'opacity-100' : 'opacity-40 pointer-events-none'}`}>
-            
+
             {/* Provider Selector */}
             <div className="flex flex-col gap-1">
               <label className="text-xs text-slate-300">LLM Provider</label>
@@ -116,60 +120,113 @@ export function LLMSettingsModal({ onClose }: Props) {
               >
                 <option value="koboldcpp">KoboldCPP (Local)</option>
                 <option value="gemini">Google Gemini (Cloud)</option>
+                <option value="openai">OpenAI Compatible</option>
               </select>
             </div>
 
-            {/* URL or API Key Field */}
-            <div className="flex flex-col gap-1">
-              <label className="text-xs text-slate-300">
-                {llmProvider === 'koboldcpp' ? 'API URL (KoboldCPP)' : 'API Key (Gemini)'}
-              </label>
-              <input
-                type={llmProvider === 'gemini' ? "password" : "text"}
-                value={llmUrl}
-                onChange={e => setPrefs({ llmUrl: e.target.value })}
-                placeholder={llmProvider === 'koboldcpp' ? "http://localhost:5001/api/v1/generate" : "Enter your Gemini API Key"}
-                className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            {/* Gemini Model Selection */}
-            {llmProvider === 'gemini' && (
+            {/* KoboldCPP Settings */}
+            {llmProvider === 'koboldcpp' && (
               <div className="flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs text-slate-300">Gemini Model</label>
-                  <button 
-                    onClick={handleRefreshModels}
-                    disabled={fetchingModels}
-                    className="text-[10px] text-indigo-400 hover:text-indigo-300 disabled:opacity-50 transition-colors flex items-center gap-1 cursor-pointer"
-                  >
-                    {fetchingModels ? 'Fetching...' : 'Refresh Models'}
-                  </button>
-                </div>
-                <div className="flex flex-col gap-2">
-                  <select
-                    value={isCustomModel ? 'custom' : llmGeminiModel}
-                    onChange={e => handleModelChange(e.target.value)}
-                    className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
-                  >
-                    {llmGeminiModelsList.map(m => (
-                      <option key={m} value={m}>{m.replace('models/', '')}</option>
-                    ))}
-                    <option value="custom">-- Custom model name --</option>
-                  </select>
-
-                  {isCustomModel && (
-                    <input
-                      type="text"
-                      value={llmGeminiModel}
-                      onChange={e => setPrefs({ llmGeminiModel: e.target.value })}
-                      placeholder="Enter custom model name (e.g. models/gemini-2.0-preview)"
-                      className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500 animate-in fade-in slide-in-from-top-1 duration-200"
-                      autoFocus
-                    />
-                  )}
-                </div>
+                <label className="text-xs text-slate-300">API URL (KoboldCPP)</label>
+                <input
+                  type="text"
+                  value={llmUrl}
+                  onChange={e => setPrefs({ llmUrl: e.target.value })}
+                  placeholder="http://localhost:5001/api/v1/generate"
+                  className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                />
               </div>
+            )}
+
+            {/* Gemini Settings */}
+            {llmProvider === 'gemini' && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-300">API Key (Gemini)</label>
+                  <input
+                    type="password"
+                    value={llmUrl}
+                    onChange={e => setPrefs({ llmUrl: e.target.value })}
+                    placeholder="Enter your Gemini API Key"
+                    className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs text-slate-300">Gemini Model</label>
+                    <button
+                      onClick={handleRefreshModels}
+                      disabled={fetchingModels}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 disabled:opacity-50 transition-colors flex items-center gap-1 cursor-pointer"
+                    >
+                      {fetchingModels ? 'Fetching...' : 'Refresh Models'}
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <select
+                      value={isCustomModel ? 'custom' : llmGeminiModel}
+                      onChange={e => handleModelChange(e.target.value)}
+                      className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                    >
+                      {llmGeminiModelsList.map(m => (
+                        <option key={m} value={m}>{m.replace('models/', '')}</option>
+                      ))}
+                      <option value="custom">-- Custom model name --</option>
+                    </select>
+
+                    {isCustomModel && (
+                      <input
+                        type="text"
+                        value={llmGeminiModel}
+                        onChange={e => setPrefs({ llmGeminiModel: e.target.value })}
+                        placeholder="Enter custom model name (e.g. models/gemini-2.0-preview)"
+                        className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500 animate-in fade-in slide-in-from-top-1 duration-200"
+                        autoFocus
+                      />
+                    )}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* OpenAI Compatible Settings */}
+            {llmProvider === 'openai' && (
+              <>
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-300">Endpoint URL</label>
+                  <input
+                    type="text"
+                    value={llmOpenaiUrl}
+                    onChange={e => setPrefs({ llmOpenaiUrl: e.target.value })}
+                    placeholder="https://api.openai.com/v1/chat/completions"
+                    className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  />
+                  <span className="text-[10px] text-slate-500">Works with OpenAI, Ollama, LM Studio, text-generation-webui, etc.</span>
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-300">API Key (optional for local servers)</label>
+                  <input
+                    type="password"
+                    value={llmOpenaiApiKey}
+                    onChange={e => setPrefs({ llmOpenaiApiKey: e.target.value })}
+                    placeholder="sk-..."
+                    className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1">
+                  <label className="text-xs text-slate-300">Model Name</label>
+                  <input
+                    type="text"
+                    value={llmOpenaiModel}
+                    onChange={e => setPrefs({ llmOpenaiModel: e.target.value })}
+                    placeholder="gpt-4o-mini"
+                    className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </>
             )}
 
             {/* Filter Thought Toggle */}
@@ -212,6 +269,20 @@ export function LLMSettingsModal({ onClose }: Props) {
                 placeholder={llm.systemPromptPlaceholder}
                 className="w-full bg-slate-700 text-slate-200 text-xs rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[100px]"
               />
+            </div>
+
+            {/* Generation History */}
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-300">Generation History Storage</label>
+              <select
+                value={llmGenerationHistory}
+                onChange={e => setPrefs({ llmGenerationHistory: e.target.value as 'memory' | 'project' | 'disabled' })}
+                className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+              >
+                <option value="memory">In memory (lost on reload)</option>
+                <option value="project">In project file (persistent)</option>
+                <option value="disabled">Disabled</option>
+              </select>
             </div>
           </div>
 

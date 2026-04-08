@@ -168,17 +168,18 @@ interface CharVarBuildResult {
  */
 function buildCharVarNodes(
   charName: string,
-  colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig; llm_descr?: string },
+  colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig; llm_descr?: string; llm_temperature?: number },
 ): CharVarBuildResult {
-  const nameVarId         = uuid();
-  const bgColorVarId      = uuid();
-  const borderColorVarId  = uuid();
-  const nameColorVarId    = uuid();
-  const textColorVarId    = uuid();
-  const avatarVarId       = uuid();
-  const llmDescrVarId     = uuid();
-  const stylesGroupId     = uuid();
-  const groupId           = uuid();
+  const nameVarId            = uuid();
+  const bgColorVarId         = uuid();
+  const borderColorVarId     = uuid();
+  const nameColorVarId       = uuid();
+  const textColorVarId       = uuid();
+  const avatarVarId          = uuid();
+  const llmDescrVarId        = uuid();
+  const llmTemperatureVarId  = uuid();
+  const stylesGroupId        = uuid();
+  const groupId              = uuid();
 
   const nameVar: Variable = {
     kind: 'variable', id: nameVarId,
@@ -236,10 +237,18 @@ function buildCharVarNodes(
     description: `LLM personality description for "${charName}"`,
   };
 
+  const llmTemperatureVar: Variable = {
+    kind: 'variable', id: llmTemperatureVarId,
+    name: 'llm_temperature',
+    varType: 'number',
+    defaultValue: colors.llm_temperature !== undefined ? String(colors.llm_temperature) : '',
+    description: `LLM temperature for "${charName}" (empty = use global)`,
+  };
+
   const stylesGroup: VariableGroup = {
     kind: 'group', id: stylesGroupId,
     name: 'styles',
-    children: [bgColorVar, borderColorVar, nameColorVar, textColorVar, avatarVar, llmDescrVar],
+    children: [bgColorVar, borderColorVar, nameColorVar, textColorVar, avatarVar, llmDescrVar, llmTemperatureVar],
   };
 
   const group: VariableGroup = {
@@ -250,7 +259,7 @@ function buildCharVarNodes(
 
   return {
     group,
-    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, textColorVarId, avatarVarId, llmDescrVarId },
+    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, textColorVarId, avatarVarId, llmDescrVarId, llmTemperatureVarId },
   };
 }
 
@@ -445,6 +454,44 @@ function migrateCharacterLlmDescrVar(p: Project): Project {
 }
 
 /**
+ * Add $prefix_llm_temperature variable to characters that were created before it existed.
+ * Runs idempotently (skips if llmTemperatureVarId already present).
+ */
+function migrateCharacterLlmTemperatureVar(p: Project): Project {
+  let variableNodes = p.variableNodes;
+  let characters = p.characters;
+  let changed = false;
+
+  for (let i = 0; i < characters.length; i++) {
+    const char = characters[i];
+    if (!char.varIds || char.varIds.llmTemperatureVarId) continue;
+
+    const prefix = charToVarPrefix(char.name);
+    const llmTemperatureVarId = uuid();
+
+    const llmTemperatureVar: Variable = {
+      kind: 'variable', id: llmTemperatureVarId,
+      name: `${prefix}_llm_temperature`,
+      varType: 'number',
+      defaultValue: char.llm_temperature !== undefined ? String(char.llm_temperature) : '',
+      description: `LLM temperature for "${char.name}" (empty = use global)`,
+    };
+
+    variableNodes = addNode(
+      variableNodes as AnyNode[],
+      char.varIds.stylesGroupId,
+      llmTemperatureVar as AnyNode,
+    ) as VariableTreeNode[];
+
+    const updatedVarIds: CharacterVarIds = { ...char.varIds, llmTemperatureVarId };
+    characters = characters.map((c, idx) => idx === i ? { ...c, varIds: updatedVarIds } : c);
+    changed = true;
+  }
+
+  return changed ? { ...p, variableNodes, characters } : p;
+}
+
+/**
  * Add avatarConfig to characters created before AvatarConfig was introduced.
  * Converts legacy avatarUrl → avatarConfig { mode: 'static', src: avatarUrl }.
  * Runs idempotently (skips characters that already have avatarConfig).
@@ -605,6 +652,7 @@ function migrateProject(raw: any): Project {
   p = migrateCharacterTextColorVar(p as Project);
   // Add $prefix_llm_descr variable to characters that predate this feature
   p = migrateCharacterLlmDescrVar(p as Project);
+  p = migrateCharacterLlmTemperatureVar(p as Project);
 
   if (!p.watchers) p.watchers = [];
   if (!p.sceneGroups) p.sceneGroups = [];
@@ -846,7 +894,8 @@ export const useProjectStore = create<ProjectState>()(
             const step3 = migrateCharacterAvatarConfig(step2);
             const step4 = migrateCharacterTextColorVar(step3);
             const step5 = migrateCharacterLlmDescrVar(step4);
-            return step5 === s.project ? s : { project: step5 };
+            const step6 = migrateCharacterLlmTemperatureVar(step5);
+            return step6 === s.project ? s : { project: step6 };
           }),
 
         // ── History / Undo / Redo ────────────────────────────────────────────
@@ -1434,6 +1483,7 @@ export const useProjectStore = create<ProjectState>()(
               textColor: char.textColor ?? '#e2e8f0',
               avatarConfig: char.avatarConfig,
               llm_descr: char.llm_descr,
+              llm_temperature: char.llm_temperature,
             });
             const character: Character = { ...char, id: charId, varIds };
             return {
@@ -1498,6 +1548,10 @@ export const useProjectStore = create<ProjectState>()(
               // LLM description change → sync $prefix_llm_descr defaultValue
               if (patch.llm_descr !== undefined && varIds.llmDescrVarId) {
                 variableNodes = updateVarInTree(variableNodes, varIds.llmDescrVarId, { defaultValue: patch.llm_descr });
+              }
+              // LLM temperature change → sync $prefix_llm_temperature defaultValue
+              if (patch.llm_temperature !== undefined && varIds.llmTemperatureVarId) {
+                variableNodes = updateVarInTree(variableNodes, varIds.llmTemperatureVarId, { defaultValue: String(patch.llm_temperature) });
               }
             }
 

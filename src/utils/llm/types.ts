@@ -3,7 +3,7 @@ import type {Scene, Project} from '../../types';
 // --- Shared Types ---
 
 export type LLMMode = 'continue' | 'rephrase' | 'hint';
-export type LLMProvider = 'koboldcpp' | 'gemini';
+export type LLMProvider = 'koboldcpp' | 'gemini' | 'openai';
 
 export interface GeminiModel {
     name: string;
@@ -45,7 +45,8 @@ export interface LLMProviderImpl {
         currentValue: string,
         params: GenerationParams,
         mode: LLMMode,
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        onChunk?: (accumulated: string) => void
     ): Promise<string>;
 
     abort(config: ProviderConfig): Promise<void>;

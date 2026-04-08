@@ -15,6 +15,14 @@ export interface BlockTypewriter {
   speed: number;  // ms per character (e.g. 40)
 }
 
+// ─── Generation history ──────────────────────────────────────────────────────
+
+export interface GenerationHistoryEntry {
+  text: string;
+  mode: 'continue' | 'rephrase' | 'hint';
+  timestamp: number;
+}
+
 // ─── Block types ────────────────────────────────────────────────────────────
 
 export interface TextBlock {
@@ -24,6 +32,7 @@ export interface TextBlock {
   live?: boolean;          // wrap in <<live 200>> on export for auto-refresh
   delay?: BlockDelay;
   typewriter?: BlockTypewriter;
+  generationHistory?: GenerationHistoryEntry[];
 }
 
 export interface DialogueBlock {
@@ -37,6 +46,7 @@ export interface DialogueBlock {
   innerBlocks?: Block[];      // blocks rendered inside the dialogue bubble after the text
   delay?: BlockDelay;
   typewriter?: BlockTypewriter;
+  generationHistory?: GenerationHistoryEntry[];
 }
 
 export interface ChoiceOption {
@@ -513,6 +523,7 @@ export interface CharacterVarIds {
   avatarVarId: string;      // $prefix_avatar variable id (URL string, empty = hidden)
   textColorVarId?: string;  // $prefix_textColor variable id (added in v1.7)
   llmDescrVarId?: string;   // $prefix_llm_descr variable id (added in v1.8)
+  llmTemperatureVarId?: string; // $prefix_llm_temperature variable id
 }
 
 export type AvatarMode = 'static' | 'bound';
@@ -540,6 +551,8 @@ export interface Character {
   borderColor: string;  // left border accent
   /** LLM description for generating dialogue/text for this character. */
   llm_descr?: string;
+  /** Per-character LLM temperature (0-2). undefined = use global setting. */
+  llm_temperature?: number;
   /** @deprecated Use avatarConfig instead. Kept for migration from pre-v1.4 saves. */
   avatarUrl?: string;
   /** Avatar settings (static URL or variable-bound). Added in v1.4. */

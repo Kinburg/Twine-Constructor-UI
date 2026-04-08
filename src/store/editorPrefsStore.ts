@@ -58,16 +58,20 @@ export interface EditorPrefs {
   panelPresets: PanelLayoutPreset[];       // user-defined presets
   activePanelPresetId: string | null;
 
-  // ── LLM (KoboldCPP / Gemini) ──────────────────────────────────────────────
+  // ── LLM ────────────────────────────────────────────────────────────────────
   llmEnabled:          boolean;
   llmProvider:         LLMProvider;
-  llmUrl:              string; // Also used for Gemini API Key if provider is Gemini
+  llmUrl:              string; // KoboldCPP URL or Gemini API Key
   llmGeminiModel:      string;
   llmGeminiModelsList: string[]; // Cache for fetched Gemini models
+  llmOpenaiUrl:        string; // OpenAI-compatible endpoint URL
+  llmOpenaiApiKey:     string; // OpenAI-compatible API key
+  llmOpenaiModel:      string; // OpenAI-compatible model name
   llmMaxTokens:        number;
   llmTemperature:      number;
   llmSystemPrompt:     string;
   llmFilterThought:    boolean; // Filter <thought> blocks
+  llmGenerationHistory: 'memory' | 'project' | 'disabled';
 }
 
 const DEFAULTS: EditorPrefs = {
@@ -99,10 +103,14 @@ const DEFAULTS: EditorPrefs = {
   llmUrl:              'http://localhost:5001/api/v1/generate',
   llmGeminiModel:      'models/gemini-1.5-flash',
   llmGeminiModelsList: ['models/gemini-1.5-flash', 'models/gemini-1.5-pro', 'models/gemini-1.0-pro'],
+  llmOpenaiUrl:        'https://api.openai.com/v1/chat/completions',
+  llmOpenaiApiKey:     '',
+  llmOpenaiModel:      'gpt-4o-mini',
   llmMaxTokens:        200,
   llmTemperature:      0.7,
   llmSystemPrompt:     'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.',
   llmFilterThought:    true,
+  llmGenerationHistory: 'memory',
 };
 
 const MAX_RECENT = 5;

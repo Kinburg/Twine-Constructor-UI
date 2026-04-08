@@ -32,6 +32,7 @@ export function TextBlockEditor({
             blockId={block.id}
             currentValue={block.content}
             onGenerated={text => update({ content: text })}
+            onStreaming={text => update({ content: text })}
           />
           <TextInsertToolbar
             targetRef={textareaRef}

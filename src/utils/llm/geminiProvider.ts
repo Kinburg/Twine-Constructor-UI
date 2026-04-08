@@ -4,24 +4,6 @@ import type {LLMProviderImpl, ProviderConfig, GenerationParams, LLMMode, GeminiM
 import {constructGenerationPrompt} from './promptBuilder';
 import {filterThought} from './utils';
 
-/**
- * Wraps a promise with AbortSignal support.
- * Rejects with AbortError if the signal fires before the promise resolves.
- */
-function withAbortSignal<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
-    if (!signal) return promise;
-    if (signal.aborted) return Promise.reject(new DOMException('Aborted', 'AbortError'));
-
-    return new Promise<T>((resolve, reject) => {
-        const onAbort = () => reject(new DOMException('Aborted', 'AbortError'));
-        signal.addEventListener('abort', onAbort, {once: true});
-        promise
-            .then(resolve)
-            .catch(reject)
-            .finally(() => signal.removeEventListener('abort', onAbort));
-    });
-}
-
 export const geminiProvider: LLMProviderImpl = {
     async generate(
         config: ProviderConfig,
@@ -32,7 +14,8 @@ export const geminiProvider: LLMProviderImpl = {
         currentValue: string,
         params: GenerationParams,
         mode: LLMMode,
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        onChunk?: (accumulated: string) => void
     ): Promise<string> {
         const structured = constructGenerationPrompt(systemPrompt, project, scene, blockId, currentValue, mode);
 
@@ -44,37 +27,51 @@ export const geminiProvider: LLMProviderImpl = {
             ? {includeThoughts: false, thinkingLevel: ThinkingLevel.MINIMAL}
             : {includeThoughts: false, thinkingBudget: 0};
 
-        const response = await withAbortSignal(
-            ai.models.generateContent({
-                model: modelName,
-                contents: structured.userPrompt,
-                config: {
-                    systemInstruction: structured.systemInstruction,
-                    maxOutputTokens: params.maxTokens,
-                    temperature: params.temperature,
-                    topP: 0.95,
-                    topK: 40,
-                    thinkingConfig,
-                },
-            }),
-            signal
-        );
+        const requestConfig = {
+            model: modelName,
+            contents: structured.userPrompt,
+            config: {
+                systemInstruction: structured.systemInstruction,
+                maxOutputTokens: params.maxTokens,
+                temperature: params.temperature,
+                topP: 0.95,
+                topK: 40,
+                thinkingConfig,
+            },
+        };
 
-        let generatedText = response.text ?? '';
+        try {
+            const prefix = mode === 'continue' ? currentValue.trim() : '';
+            let accumulated = '';
 
-        if (params.filterThought) {
-            generatedText = filterThought(generatedText);
+            const stream = await ai.models.generateContentStream(requestConfig);
+
+            for await (const chunk of stream) {
+                if (signal?.aborted) {
+                    throw new DOMException('Aborted', 'AbortError');
+                }
+                const text = chunk.text ?? '';
+                accumulated += text;
+                onChunk?.(prefix + accumulated);
+            }
+
+            let generatedText = accumulated;
+
+            if (params.filterThought) {
+                generatedText = filterThought(generatedText);
+            }
+
+            return prefix ? prefix + " " + generatedText : generatedText;
+        } catch (error) {
+            if (error instanceof Error && error.name === 'AbortError') {
+                return "";
+            }
+            console.error("Failed to generate text from Gemini:", error);
+            throw error;
         }
-
-        if (mode === "continue") {
-            return `${currentValue.trim()}${generatedText}`;
-        }
-        return generatedText;
     },
 
     async abort(_config: ProviderConfig): Promise<void> {
-        // Gemini API does not have a direct abort endpoint.
-        // Aborting is handled by the AbortController on the fetch side.
         console.log("Abort request for Gemini is handled by AbortController.");
     }
 };

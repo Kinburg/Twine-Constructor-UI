@@ -1,28 +1,38 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useProjectStore } from '../../store/projectStore';
+import { useGenerationHistoryStore } from '../../store/generationHistoryStore';
 import { generateText, abortGeneration, type LLMMode } from '../../utils/llm';
+import type { GenerationHistoryEntry } from '../../types';
 import { toast } from 'sonner';
+
+const MAX_PROJECT_HISTORY = 10;
 
 interface Props {
   sceneId: string;
   blockId: string;
   currentValue: string;
   onGenerated: (text: string) => void;
+  onStreaming?: (text: string) => void;
 }
 
-export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated }: Props) {
-  const { 
-    llmEnabled, 
+export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated, onStreaming }: Props) {
+  const {
+    llmEnabled,
     llmProvider,
-    llmUrl, 
+    llmUrl,
     llmGeminiModel,
-    llmMaxTokens, 
-    llmTemperature, 
+    llmOpenaiUrl,
+    llmOpenaiApiKey,
+    llmOpenaiModel,
+    llmMaxTokens,
+    llmTemperature,
     llmSystemPrompt,
-    llmFilterThought
+    llmFilterThought,
+    llmGenerationHistory
   } = useEditorPrefsStore();
-  const { project, saveSnapshot } = useProjectStore();
+  const { project, saveSnapshot, updateBlock } = useProjectStore();
+  const memHistory = useGenerationHistoryStore();
   const [loading, setLoading] = useState<LLMMode | null>(null);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
@@ -30,16 +40,33 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
   const menuRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
+  // History navigation state
+  const entries = llmGenerationHistory === 'memory'
+    ? memHistory.getEntries(blockId)
+    : llmGenerationHistory === 'project'
+      ? getProjectHistory(project, sceneId, blockId)
+      : [];
+  const histIndex = llmGenerationHistory === 'memory'
+    ? memHistory.getIndex(blockId)
+    : -1; // for project mode, we don't track index (always at latest)
+  const [projHistIndex, setProjHistIndex] = useState(-1);
+  const activeIndex = llmGenerationHistory === 'memory' ? histIndex : projHistIndex;
+  const hasHistory = entries.length > 0;
+
+  // Reset project history index when entries change
+  useEffect(() => {
+    if (llmGenerationHistory === 'project' && entries.length > 0) {
+      setProjHistIndex(entries.length - 1);
+    }
+  }, [entries.length, llmGenerationHistory]);
+
   const toggle = useCallback(() => {
     if (loading) {
-      // 1. Abort the local fetch request
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;
       }
-      // 2. Send explicit abort request to backend if needed
       abortGeneration(llmProvider, llmUrl);
-      
       setLoading(null);
       toast.info("Generation stopped");
       return;
@@ -77,7 +104,6 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
     return () => window.removeEventListener('scroll', handler, true);
   }, [open]);
 
-  // Clean up on unmount
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -88,21 +114,81 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
 
   if (!llmEnabled) return null;
 
+  const addToHistory = (text: string, mode: LLMMode) => {
+    if (llmGenerationHistory === 'disabled') return;
+
+    const entry: GenerationHistoryEntry = {
+      text,
+      mode,
+      timestamp: Date.now(),
+    };
+
+    if (llmGenerationHistory === 'memory') {
+      memHistory.addEntry(blockId, entry);
+    } else if (llmGenerationHistory === 'project') {
+      const scene = project.scenes.find(s => s.id === sceneId);
+      const block = scene?.blocks.find(b => b.id === blockId);
+      if (block && (block.type === 'text' || block.type === 'dialogue')) {
+        const existing = (block as any).generationHistory ?? [];
+        const updated = [...existing, entry].slice(-MAX_PROJECT_HISTORY);
+        updateBlock(sceneId, blockId, { generationHistory: updated });
+      }
+    }
+  };
+
+  const navigateHistory = (direction: -1 | 1) => {
+    if (llmGenerationHistory === 'disabled' || entries.length === 0) return;
+
+    let targetEntry: GenerationHistoryEntry | null = null;
+
+    if (llmGenerationHistory === 'memory') {
+      targetEntry = memHistory.navigate(blockId, direction);
+    } else {
+      const next = projHistIndex + direction;
+      if (next >= 0 && next < entries.length) {
+        setProjHistIndex(next);
+        targetEntry = entries[next];
+      }
+    }
+
+    if (targetEntry) {
+      saveSnapshot();
+      onGenerated(targetEntry.text);
+    }
+  };
+
   const handleGenerate = async (mode: LLMMode) => {
     const scene = project.scenes.find(s => s.id === sceneId);
     if (!scene) return;
 
     setOpen(false);
     setLoading(mode);
-    
+
     const controller = new AbortController();
     abortControllerRef.current = controller;
 
     try {
+      let urlOrApiKey = llmUrl;
+      let model = llmGeminiModel;
+      if (llmProvider === 'openai') {
+        urlOrApiKey = llmOpenaiUrl;
+        model = llmOpenaiModel;
+      }
+
+      let temperature = llmTemperature;
+      const targetBlock = scene.blocks.find(b => b.id === blockId);
+      if (targetBlock?.type === 'dialogue') {
+        const char = project.characters.find(c => c.id === (targetBlock as any).characterId);
+        if (char?.llm_temperature !== undefined) {
+          temperature = char.llm_temperature;
+        }
+      }
+
+      saveSnapshot();
       const result = await generateText(
         llmProvider,
-        llmUrl,
-        llmGeminiModel,
+        urlOrApiKey,
+        model,
         llmSystemPrompt,
         project,
         scene,
@@ -110,20 +196,23 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
         currentValue,
         {
           maxTokens: llmMaxTokens,
-          temperature: llmTemperature,
+          temperature,
           filterThought: llmFilterThought
         },
         mode,
-        controller.signal
+        controller.signal,
+        onStreaming,
+        llmProvider === 'openai' ? llmOpenaiApiKey : undefined
       );
 
       if (result) {
-        saveSnapshot();
-        onGenerated(result.trim());
+        const trimmed = result.trim();
+        onGenerated(trimmed);
+        addToHistory(trimmed, mode);
       }
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
-        // Just stopped by user
+        // Stopped by user
       } else {
         toast.error(`Failed to generate text. Check your ${llmProvider} settings and connection.`);
       }
@@ -135,8 +224,39 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
     }
   };
 
+  const canGoBack = hasHistory && activeIndex > 0;
+  const canGoForward = hasHistory && activeIndex < entries.length - 1;
+
   return (
     <>
+      {/* History navigation arrows */}
+      {hasHistory && llmGenerationHistory !== 'disabled' && (
+        <>
+          <button
+            type="button"
+            disabled={!canGoBack}
+            onClick={() => navigateHistory(-1)}
+            className="px-0.5 py-0.5 text-xs border rounded cursor-pointer transition-colors leading-none flex items-center justify-center text-slate-500 hover:text-indigo-400 bg-slate-800 border-slate-600 hover:border-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Previous generation"
+          >
+            <ChevronLeftIcon />
+          </button>
+          <span className="text-[9px] text-slate-500 tabular-nums leading-none flex items-center">
+            {activeIndex + 1}/{entries.length}
+          </span>
+          <button
+            type="button"
+            disabled={!canGoForward}
+            onClick={() => navigateHistory(1)}
+            className="px-0.5 py-0.5 text-xs border rounded cursor-pointer transition-colors leading-none flex items-center justify-center text-slate-500 hover:text-indigo-400 bg-slate-800 border-slate-600 hover:border-indigo-500 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Next generation"
+          >
+            <ChevronRightIcon />
+          </button>
+        </>
+      )}
+
+      {/* Generate button */}
       <button
         ref={buttonRef}
         type="button"
@@ -183,16 +303,26 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated 
   );
 }
 
-function MenuOption({ 
-  icon, 
-  label, 
-  onClick, 
-  disabled, 
-  colorClass 
-}: { 
-  icon: React.ReactNode; 
-  label: string; 
-  onClick: () => void; 
+// --- Helper: read project-stored history ---
+
+function getProjectHistory(project: any, sceneId: string, blockId: string): GenerationHistoryEntry[] {
+  const scene = project.scenes?.find((s: any) => s.id === sceneId);
+  const block = scene?.blocks?.find((b: any) => b.id === blockId);
+  return block?.generationHistory ?? [];
+}
+
+// --- Sub-components ---
+
+function MenuOption({
+  icon,
+  label,
+  onClick,
+  disabled,
+  colorClass
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
   disabled?: boolean;
   colorClass: string;
 }) {
@@ -249,6 +379,22 @@ function HintIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+    </svg>
+  );
+}
+
+function ChevronLeftIcon() {
+  return (
+    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
     </svg>
   );
 }

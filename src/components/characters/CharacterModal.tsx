@@ -90,6 +90,9 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
   const [borderColor, setBorderColor] = useState(initial.borderColor);
   const [avatarCfg, setAvatarCfg] = useState<AvatarConfig>(initial.avatarConfig ?? defaultAvatarConfig());
   const [llmDescr, setLlmDescr] = useState(initial.llm_descr ?? '');
+  const [llmTemperature, setLlmTemperature] = useState<string>(
+    initial.llm_temperature !== undefined ? String(initial.llm_temperature) : ''
+  );
 
   // In edit mode: read live user nodes from the char's variable group (excluding auto-managed ones)
   const liveChar = mode === 'edit' && charId
@@ -102,7 +105,8 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
   // In create mode: track pending nodes locally until save
   const [pendingNodes, setPendingNodes] = useState<VariableTreeNode[]>([]);
 
-  const draft: Omit<Character, 'id'> = { name, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr };
+  const parsedTemp = llmTemperature !== '' ? parseFloat(llmTemperature) : undefined;
+  const draft: Omit<Character, 'id'> = { name, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr, llm_temperature: parsedTemp };
 
   const trimmedName = name.trim();
   const nameError = trimmedName === ''
@@ -192,6 +196,20 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
               placeholder="Personality, speech patterns, appearance..."
               value={llmDescr}
               onChange={e => setLlmDescr(e.target.value)}
+            />
+          </Field>
+
+          {/* LLM Temperature */}
+          <Field label="LLM Temperature">
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="2"
+              className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 placeholder-slate-500"
+              placeholder="Use global setting"
+              value={llmTemperature}
+              onChange={e => setLlmTemperature(e.target.value)}
             />
           </Field>
 

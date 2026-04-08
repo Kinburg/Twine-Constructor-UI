@@ -16,6 +16,46 @@ interface KoboldGenerateResponse {
     results: { text: string }[];
 }
 
+/**
+ * Parses KoboldCPP SSE stream and yields tokens.
+ * KoboldCPP with stream:true sends `data: {"token": "..."}` lines.
+ */
+async function* parseSSEStream(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    signal?: AbortSignal
+): AsyncGenerator<string> {
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    try {
+        while (true) {
+            if (signal?.aborted) break;
+            const {done, value} = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, {stream: true});
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const payload = line.slice(6).trim();
+                if (!payload) continue;
+                try {
+                    const data = JSON.parse(payload);
+                    if (data.token !== undefined) {
+                        yield data.token;
+                    }
+                } catch {
+                    // skip malformed JSON chunks
+                }
+            }
+        }
+    } finally {
+        reader.releaseLock();
+    }
+}
+
 export const koboldcppProvider: LLMProviderImpl = {
     async generate(
         config: ProviderConfig,
@@ -26,12 +66,12 @@ export const koboldcppProvider: LLMProviderImpl = {
         currentValue: string,
         params: GenerationParams,
         mode: LLMMode,
-        signal?: AbortSignal
+        signal?: AbortSignal,
+        onChunk?: (accumulated: string) => void
     ): Promise<string> {
         const structured = constructGenerationPrompt(systemPrompt, project, scene, blockId, currentValue, mode);
 
         // KoboldCPP is a completion model — concatenate everything into a flat prompt.
-        // For continue mode, append the raw text as continuation prefix so the model completes from it.
         let fullPrompt = `${structured.systemInstruction}\n\n${structured.userPrompt}`;
         if (mode === 'continue') {
             fullPrompt += structured.continuationPrefix;
@@ -133,9 +173,7 @@ export const koboldcppProvider: LLMProviderImpl = {
         try {
             const response = await fetch(config.url, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(requestBody),
                 signal
             });
@@ -144,17 +182,29 @@ export const koboldcppProvider: LLMProviderImpl = {
                 throw new Error(`KoboldCPP API error: ${response.statusText}`);
             }
 
-            const data: KoboldGenerateResponse = await response.json();
-            let generatedText = data.results[0]?.text || "";
+            const prefix = mode === 'continue' ? currentValue.trim() : '';
+            let accumulated = '';
+
+            // Try streaming if body is available
+            if (response.body && onChunk) {
+                const reader = response.body.getReader();
+                for await (const token of parseSSEStream(reader, signal)) {
+                    accumulated += token;
+                    onChunk(prefix + accumulated);
+                }
+            } else {
+                // Fallback: read as JSON (non-streaming)
+                const data: KoboldGenerateResponse = await response.json();
+                accumulated = data.results[0]?.text || "";
+            }
+
+            let generatedText = accumulated;
 
             if (params.filterThought) {
                 generatedText = filterThought(generatedText);
             }
 
-            if (mode === "continue") {
-                return `${currentValue.trim()}${generatedText}`;
-            }
-            return generatedText;
+            return prefix ? prefix + generatedText : generatedText;
         } catch (error) {
             if (error instanceof Error && error.name === 'AbortError') {
                 return "";

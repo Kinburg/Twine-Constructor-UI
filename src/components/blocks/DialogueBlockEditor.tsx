@@ -367,6 +367,7 @@ export function DialogueBlockEditor({
               blockId={block.id}
               currentValue={block.text}
               onGenerated={text => update({ text })}
+              onStreaming={text => update({ text })}
             />
             <TextInsertToolbar
               targetRef={dialogueRef}
