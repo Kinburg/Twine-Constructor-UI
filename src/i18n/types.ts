@@ -272,6 +272,11 @@ export interface Translations {
     add: string;
     noName: string;
     fieldName: string;
+    fieldVarName: string;
+    varNameHint: string;
+    varNameInvalid: string;
+    varNameTaken: string;
+    varNameEmpty: string;
     fieldNameColor: string;
     fieldDialogBg: string;
     fieldAccent: string;

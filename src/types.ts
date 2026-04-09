@@ -545,6 +545,8 @@ export interface AvatarConfig {
 export interface Character {
   id: string;
   name: string;
+  /** Explicit variable prefix (ASCII-only). Falls back to charToVarPrefix(name) when absent. */
+  varName?: string;
   nameColor: string;    // color for character name label
   textColor?: string;   // color for dialogue text body (added in v1.7)
   bgColor: string;      // dialogue box background

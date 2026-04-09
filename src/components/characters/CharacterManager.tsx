@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useProjectStore } from '../../store/projectStore';
+import { useProjectStore, charToVarPrefix } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import type { Character, VariableTreeNode, VariableGroup } from '../../types';
 import { useT } from '../../i18n';
@@ -105,6 +105,9 @@ export function CharacterManager() {
           takenNames={characters
             .filter(c => modalState.mode !== 'edit' || c.id !== modalState.char.id)
             .map(c => c.name)}
+          takenVarNames={characters
+            .filter(c => modalState.mode !== 'edit' || c.id !== modalState.char.id)
+            .map(c => c.varName || charToVarPrefix(c.name))}
           onSave={(data, pendingNodes: VariableTreeNode[]) => {
             if (modalState.mode === 'create') {
               const newId = addCharacter(data);

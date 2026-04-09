@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useProjectStore, flattenAssets } from '../../store/projectStore';
+import { useProjectStore, flattenAssets, charToVarPrefix } from '../../store/projectStore';
 import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
@@ -74,16 +74,28 @@ interface Props {
   charId?: string;
   initial: Omit<Character, 'id'>;
   takenNames: string[];
+  takenVarNames: string[];
   onSave: (data: Omit<Character, 'id'>, pendingNodes: VariableTreeNode[]) => void;
   onClose: () => void;
 }
 
-export function CharacterModal({ mode, charId, initial, takenNames, onSave, onClose }: Props) {
+export function CharacterModal({ mode, charId, initial, takenNames, takenVarNames, onSave, onClose }: Props) {
   const t = useT();
   const { project, addVariable, addVariableGroup, updateVariable, deleteVariableNode } = useProjectStore();
   const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
 
   const [name, setName] = useState(initial.name);
+  // In edit mode, prefer the actual group name from the variable tree as the source of truth
+  const initialVarName = (() => {
+    if (initial.varName) return initial.varName;
+    if (mode === 'edit' && (initial as Character).varIds?.groupId) {
+      const grp = findGroup(project.variableNodes, (initial as Character).varIds!.groupId);
+      if (grp) return grp.name;
+    }
+    return charToVarPrefix(initial.name);
+  })();
+  const [varName, setVarName] = useState(initialVarName);
+  const [varNameTouched, setVarNameTouched] = useState(mode === 'edit');
   const [nameColor, setNameColor] = useState(initial.nameColor);
   const [textColor, setTextColor] = useState(initial.textColor ?? '#e2e8f0');
   const [bgColor, setBgColor] = useState(initial.bgColor);
@@ -93,6 +105,16 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
   const [llmTemperature, setLlmTemperature] = useState<string>(
     initial.llm_temperature !== undefined ? String(initial.llm_temperature) : ''
   );
+
+  const handleNameChange = (v: string) => {
+    setName(v);
+    if (!varNameTouched) setVarName(charToVarPrefix(v));
+  };
+
+  const handleVarNameChange = (v: string) => {
+    setVarNameTouched(true);
+    setVarName(v.toLowerCase().replace(/[^a-z0-9_]/g, ''));
+  };
 
   // In edit mode: read live user nodes from the char's variable group (excluding auto-managed ones)
   const liveChar = mode === 'edit' && charId
@@ -106,7 +128,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
   const [pendingNodes, setPendingNodes] = useState<VariableTreeNode[]>([]);
 
   const parsedTemp = llmTemperature !== '' ? parseFloat(llmTemperature) : undefined;
-  const draft: Omit<Character, 'id'> = { name, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr, llm_temperature: parsedTemp };
+  const draft: Omit<Character, 'id'> = { name, varName, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr, llm_temperature: parsedTemp };
 
   const trimmedName = name.trim();
   const nameError = trimmedName === ''
@@ -115,9 +137,18 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
       ? t.characters.nameTaken
       : null;
 
+  const trimmedVarName = varName.trim().replace(/^[\d_]+/, '').replace(/_+$/g, '');
+  const varNameError = trimmedVarName === ''
+    ? t.characters.varNameEmpty
+    : !/^[a-z][a-z0-9_]*$/.test(trimmedVarName)
+      ? t.characters.varNameInvalid
+      : takenVarNames.includes(trimmedVarName)
+        ? t.characters.varNameTaken
+        : null;
+
   const handleSave = () => {
-    if (nameError) return;
-    onSave({ ...draft, name: trimmedName }, pendingNodes);
+    if (nameError || varNameError) return;
+    onSave({ ...draft, name: trimmedName, varName: trimmedVarName }, pendingNodes);
     onClose();
   };
 
@@ -172,18 +203,42 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
           {/* Live preview */}
           <CharacterPreview char={draft} avatarCfg={avatarCfg} />
 
-          {/* Name */}
+          {/* Display name */}
           <Field label={t.characters.fieldName}>
             <div className="flex flex-col gap-1">
               <input
                 autoFocus
                 className={`w-full bg-slate-700 text-xs text-white rounded px-2 py-1 outline-none border ${nameError ? 'border-red-500 focus:border-red-400' : 'border-slate-600 focus:border-indigo-500'}`}
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={e => handleNameChange(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') handleSave(); }}
               />
               {nameError && (
                 <span className="text-xs text-red-400">{nameError}</span>
+              )}
+            </div>
+          </Field>
+
+          {/* Variable name */}
+          <Field label={t.characters.fieldVarName}>
+            <div className="flex flex-col gap-1">
+              <input
+                className={`w-full text-xs rounded px-2 py-1 outline-none border font-mono ${
+                  mode === 'edit'
+                    ? 'bg-slate-800 text-slate-500 border-slate-700 cursor-not-allowed'
+                    : varNameError
+                      ? 'bg-slate-700 text-white border-red-500 focus:border-red-400'
+                      : 'bg-slate-700 text-white border-slate-600 focus:border-indigo-500'
+                }`}
+                value={varName}
+                onChange={e => handleVarNameChange(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSave(); }}
+                placeholder="gg, wife, npc_01..."
+                readOnly={mode === 'edit'}
+              />
+              {mode !== 'edit' && (varNameError
+                ? <span className="text-xs text-red-400">{varNameError}</span>
+                : <span className="text-[10px] text-slate-500">{t.characters.varNameHint}</span>
               )}
             </div>
           </Field>
@@ -285,7 +340,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, onSave, onCl
         <div className="px-4 py-3 border-t border-slate-700 shrink-0">
           <button
             onClick={handleSave}
-            disabled={!!nameError}
+            disabled={!!nameError || !!varNameError}
             className="w-full py-1.5 text-xs rounded transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-indigo-600 hover:bg-indigo-500 disabled:hover:bg-indigo-600 text-white"
           >
             {t.characters.save}

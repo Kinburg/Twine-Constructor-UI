@@ -132,7 +132,7 @@ function transliterate(s: string): string {
  * strips non-ASCII and leading digits/underscores.
  * Examples: "John Doe" → "john_doe", "Дима" → "dima", "Поля" → "polya"
  */
-function charToVarPrefix(name: string): string {
+export function charToVarPrefix(name: string): string {
   const s = transliterate(name.trim().toLowerCase())
     .replace(/\s+/g, '_')
     .replace(/[^a-z0-9_]/g, '')   // keep only ASCII letters, digits, underscores
@@ -168,6 +168,7 @@ interface CharVarBuildResult {
  */
 function buildCharVarNodes(
   charName: string,
+  varName: string,
   colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig; llm_descr?: string; llm_temperature?: number },
 ): CharVarBuildResult {
   const nameVarId            = uuid();
@@ -253,7 +254,7 @@ function buildCharVarNodes(
 
   const group: VariableGroup = {
     kind: 'group', id: groupId,
-    name: charName,
+    name: varName,
     children: [nameVar, stylesGroup],
   };
 
@@ -1476,7 +1477,7 @@ export const useProjectStore = create<ProjectState>()(
           get().saveSnapshot();
           const charId = uuid();
           set(s => {
-            const { group, varIds } = buildCharVarNodes(char.name, {
+            const { group, varIds } = buildCharVarNodes(char.name, char.varName || charToVarPrefix(char.name), {
               bgColor: char.bgColor,
               borderColor: char.borderColor,
               nameColor: char.nameColor,
@@ -1508,9 +1509,8 @@ export const useProjectStore = create<ProjectState>()(
             if (oldChar.varIds) {
               const { varIds } = oldChar;
 
-              // Name changed → rename group + update name var's defaultValue
+              // Display name changed → update name var's defaultValue + descriptions
               if (patch.name !== undefined && patch.name !== oldChar.name) {
-                variableNodes = updateGroupNameInTree(variableNodes, varIds.groupId, charToVarPrefix(patch.name));
                 variableNodes = updateVarInTree(variableNodes, varIds.nameVarId, {
                   defaultValue: patch.name,
                   description: `Character name "${patch.name}"`,
@@ -1524,6 +1524,14 @@ export const useProjectStore = create<ProjectState>()(
                   variableNodes = updateVarInTree(variableNodes, varIds.llmDescrVarId, {
                     description: `LLM personality description for "${patch.name}"`,
                   });
+                }
+              }
+
+              // Variable name changed → rename group
+              if (patch.varName !== undefined) {
+                const oldVarName = oldChar.varName || charToVarPrefix(oldChar.name);
+                if (patch.varName !== oldVarName) {
+                  variableNodes = updateGroupNameInTree(variableNodes, varIds.groupId, patch.varName);
                 }
               }
 
