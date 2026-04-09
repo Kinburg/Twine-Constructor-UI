@@ -538,6 +538,14 @@ export interface Translations {
     widthPlaceholder: string;
     altLabel: string;
     altPlaceholder: string;
+    genWidthLabel: string;
+    genWidthPlaceholder: string;
+    genHeightLabel: string;
+    genHeightPlaceholder: string;
+    genSizeLabel: string;
+    cancelGeneration: string;
+    clearHistory: string;
+    clearHistoryConfirm: string;
     errorNoProjectDir: string;
     errorNoWorkflow: string;
     errorNoPrompt: string;
@@ -824,6 +832,10 @@ export interface Translations {
     temperatureLabel: string;
     systemPromptLabel: string;
     systemPromptPlaceholder: string;
+    comfyUiWorkflowsDirLabel: string;
+    comfyUiWorkflowsDirPlaceholder: string;
+    comfyUiWorkflowsDirHint: string;
+    comfyUiWorkflowsDirBrowse: string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────

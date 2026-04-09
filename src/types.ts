@@ -211,7 +211,9 @@ export interface ImageGenBlock {
   negativePrompt?: string;
   seedMode: ImageGenSeedMode;
   seed?: number;
-  width: number;                    // 0 = auto
+  width: number;                    // 0 = auto (display width in HTML output)
+  genWidth?: number;                // generation resolution width, 0 = auto
+  genHeight?: number;               // generation resolution height, 0 = auto
   alt: string;
   src: string;                      // currently selected generated image (relative path)
   history?: ImageGenHistoryEntry[]; // previous generations for this block

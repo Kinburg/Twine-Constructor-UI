@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
@@ -6,7 +6,7 @@ import type { ImageGenBlock } from '../../types';
 import { fsApi, joinPath, toLocalFileUrl } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
-import { generateImageWithProvider } from '../../utils/imageGen/providers';
+import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
 import { generateImagePromptWithLlm } from '../../utils/imageGen/llmPrompt';
 
 async function collectWorkflowFiles(absDir: string, relDir: string): Promise<string[]> {
@@ -38,6 +38,14 @@ function randomSeed(): number {
   return Math.floor(Math.random() * 4294967295);
 }
 
+const ASPECT_RATIOS = [
+  { label: '1:1',  w: 1, h: 1 },
+  { label: '4:3',  w: 4, h: 3 },
+  { label: '3:4',  w: 3, h: 4 },
+  { label: '16:9', w: 16, h: 9 },
+  { label: '9:16', w: 9, h: 16 },
+] as const;
+
 export function ImageGenBlockEditor({
   block,
   sceneId,
@@ -48,6 +56,7 @@ export function ImageGenBlockEditor({
   onUpdate?: (patch: Partial<ImageGenBlock>) => void;
 }) {
   const t = useT();
+  const ig = t.imageGenBlock;
   const { project, projectDir, updateBlock, addAsset, saveSnapshot } = useProjectStore();
   const {
     llmEnabled,
@@ -60,29 +69,68 @@ export function ImageGenBlockEditor({
     llmMaxTokens,
     llmTemperature,
     llmSystemPrompt,
+    comfyUiWorkflowsDir,
   } = useEditorPrefsStore();
 
   const update = onUpdate ?? ((p: Partial<ImageGenBlock>) => updateBlock(sceneId, block.id, p as never));
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [busyImage, setBusyImage] = useState(false);
   const [busyPrompt, setBusyPrompt] = useState(false);
+  const [genProgress, setGenProgress] = useState<ComfyProgress | null>(null);
+  const [clearConfirm, setClearConfirm] = useState(false);
+  const clearConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const seedMode = block.seedMode ?? 'random';
 
+  // Load workflow list from global dir (if set) or project dir.
   useEffect(() => {
     let alive = true;
     async function run() {
-      if (!projectDir) return;
-      const root = joinPath(projectDir, 'comfyUI_workflows');
+      const useGlobal = comfyUiWorkflowsDir.trim() !== '';
+      let root: string;
+      let relPrefix: string;
+
+      if (useGlobal) {
+        root = comfyUiWorkflowsDir.trim();
+        relPrefix = '';
+      } else {
+        if (!projectDir) return;
+        root = joinPath(projectDir, 'comfyUI_workflows');
+        relPrefix = 'comfyUI_workflows';
+      }
+
       if (!await fsApi.exists(root)) {
         if (alive) setWorkflows([]);
         return;
       }
-      const list = await collectWorkflowFiles(root, 'comfyUI_workflows');
+      const list = await collectWorkflowFiles(root, relPrefix);
       if (alive) setWorkflows(list.sort((a, b) => a.localeCompare(b)));
     }
     run().catch(() => {});
     return () => { alive = false; };
-  }, [projectDir]);
+  }, [projectDir, comfyUiWorkflowsDir]);
+
+  const refreshWorkflows = async () => {
+    const useGlobal = comfyUiWorkflowsDir.trim() !== '';
+    let root: string;
+    let relPrefix: string;
+
+    if (useGlobal) {
+      root = comfyUiWorkflowsDir.trim();
+      relPrefix = '';
+    } else {
+      if (!projectDir) return;
+      root = joinPath(projectDir, 'comfyUI_workflows');
+      relPrefix = 'comfyUI_workflows';
+    }
+
+    if (!await fsApi.exists(root)) {
+      setWorkflows([]);
+      return;
+    }
+    const list = await collectWorkflowFiles(root, relPrefix);
+    setWorkflows(list.sort((a, b) => a.localeCompare(b)));
+  };
 
   const history = block.history ?? [];
   const imageAssets = useMemo(() => new Set(flattenAssets(project.assetNodes).map(a => a.relativePath)), [project.assetNodes]);
@@ -112,23 +160,33 @@ export function ImageGenBlockEditor({
       );
       if (prompt) update({ prompt });
     } catch {
-      toast.error(t.imageGenBlock.errorGeneratePrompt);
+      toast.error(ig.errorGeneratePrompt);
     } finally {
       setBusyPrompt(false);
     }
   };
 
   const generateImage = async () => {
-    if (!projectDir) return toast.error(t.imageGenBlock.errorNoProjectDir);
-    if (block.provider === 'comfyui' && !block.workflowFile) return toast.error(t.imageGenBlock.errorNoWorkflow);
-    if (!block.prompt.trim()) return toast.error(t.imageGenBlock.errorNoPrompt);
+    if (!projectDir) return toast.error(ig.errorNoProjectDir);
+    if (block.provider === 'comfyui' && !block.workflowFile) return toast.error(ig.errorNoWorkflow);
+    if (!block.prompt.trim()) return toast.error(ig.errorNoPrompt);
 
     saveSnapshot();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setBusyImage(true);
+    setGenProgress(null);
     try {
-      const workflowJson = block.provider === 'comfyui' && block.workflowFile
-        ? JSON.parse(await fsApi.readFile(joinPath(projectDir, block.workflowFile)))
-        : {};
+      // Resolve workflow JSON: global dir or project dir.
+      let workflowJson = {};
+      if (block.provider === 'comfyui' && block.workflowFile) {
+        const useGlobal = comfyUiWorkflowsDir.trim() !== '';
+        const wfPath = useGlobal
+          ? joinPath(comfyUiWorkflowsDir.trim(), block.workflowFile)
+          : joinPath(projectDir, block.workflowFile);
+        workflowJson = JSON.parse(await fsApi.readFile(wfPath));
+      }
+
       const usedSeed = seedMode === 'random' ? randomSeed() : (Number.isFinite(block.seed) ? block.seed : 0);
       const generated = await generateImageWithProvider(block.provider, {
         baseUrl: block.providerUrl,
@@ -138,8 +196,10 @@ export function ImageGenBlockEditor({
         seed: usedSeed,
         pollinationsModel: block.pollinationsModel,
         pollinationsToken: block.pollinationsToken,
-        width: block.width,
-      });
+        genWidth: block.genWidth,
+        genHeight: block.genHeight,
+        onProgress: block.provider === 'comfyui' ? setGenProgress : undefined,
+      }, controller.signal);
       // Keep the last used seed visible in editor.
       if (seedMode === 'random') update({ seed: usedSeed });
 
@@ -179,32 +239,62 @@ export function ImageGenBlockEditor({
         },
       ];
       update({ src: relPath, history: nextHistory });
-    } catch (err) {
-      console.error('[ImageGen] generation failed:', err);
-      toast.error(t.imageGenBlock.errorGenerateImage);
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        // Cancelled by user — no toast needed.
+      } else {
+        console.error('[ImageGen] generation failed:', err);
+        toast.error(ig.errorGenerateImage);
+      }
     } finally {
+      abortRef.current = null;
       setBusyImage(false);
+      setGenProgress(null);
     }
+  };
+
+  const cancelGeneration = () => {
+    abortRef.current?.abort();
+  };
+
+  const handleClearHistory = () => {
+    if (!clearConfirm) {
+      setClearConfirm(true);
+      clearConfirmTimerRef.current = setTimeout(() => setClearConfirm(false), 3000);
+      return;
+    }
+    // Confirmed — keep only the currently selected entry.
+    if (clearConfirmTimerRef.current) clearTimeout(clearConfirmTimerRef.current);
+    setClearConfirm(false);
+    const kept = history.filter(h => h.src === block.src);
+    update({ history: kept });
+  };
+
+  const applyAspectRatio = (wRatio: number, hRatio: number) => {
+    const base = block.genWidth && block.genWidth > 0 ? block.genWidth : 1024;
+    const newWidth = base;
+    const newHeight = Math.round(base * hRatio / wRatio);
+    update({ genWidth: newWidth, genHeight: newHeight });
   };
 
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.providerLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.providerLabel}</label>
         <select
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
           value={block.provider}
           onChange={e => update({ provider: e.target.value as ImageGenBlock['provider'] })}
         >
-          <option value="comfyui">{t.imageGenBlock.providerComfyui}</option>
-          <option value="pollinations">{t.imageGenBlock.providerPollinations}</option>
+          <option value="comfyui">{ig.providerComfyui}</option>
+          <option value="pollinations">{ig.providerPollinations}</option>
         </select>
       </div>
 
       {block.provider === 'comfyui' && (
         <>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.providerUrlLabel}</label>
+            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.providerUrlLabel}</label>
             <input
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
               value={block.providerUrl}
@@ -213,26 +303,21 @@ export function ImageGenBlockEditor({
           </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.workflowLabel}</label>
+            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.workflowLabel}</label>
             <select
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
               value={block.workflowFile}
               onChange={e => update({ workflowFile: e.target.value })}
             >
-              <option value="">{t.imageGenBlock.workflowNone}</option>
+              <option value="">{ig.workflowNone}</option>
               {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
             </select>
             <button
               type="button"
               className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
-              onClick={async () => {
-                if (!projectDir) return;
-                const root = joinPath(projectDir, 'comfyUI_workflows');
-                const list = await collectWorkflowFiles(root, 'comfyUI_workflows');
-                setWorkflows(list.sort((a, b) => a.localeCompare(b)));
-              }}
+              onClick={refreshWorkflows}
             >
-              {t.imageGenBlock.workflowRefresh}
+              {ig.workflowRefresh}
             </button>
           </div>
         </>
@@ -241,20 +326,20 @@ export function ImageGenBlockEditor({
       {block.provider === 'pollinations' && (
         <>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.pollinationsModelLabel}</label>
+            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.pollinationsModelLabel}</label>
             <input
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder={t.imageGenBlock.pollinationsModelPlaceholder}
+              placeholder={ig.pollinationsModelPlaceholder}
               value={block.pollinationsModel ?? ''}
               onChange={e => update({ pollinationsModel: e.target.value })}
             />
           </div>
           <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.pollinationsTokenLabel}</label>
+            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.pollinationsTokenLabel}</label>
             <input
               type="password"
               className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder={t.imageGenBlock.pollinationsTokenPlaceholder}
+              placeholder={ig.pollinationsTokenPlaceholder}
               value={block.pollinationsToken ?? ''}
               onChange={e => update({ pollinationsToken: e.target.value })}
             />
@@ -263,11 +348,11 @@ export function ImageGenBlockEditor({
       )}
 
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.promptModeLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.promptModeLabel}</label>
         <div className="flex gap-1">
           {([
-            ['manual', t.imageGenBlock.promptModeManual],
-            ['llm', t.imageGenBlock.promptModeLlm],
+            ['manual', ig.promptModeManual],
+            ['llm', ig.promptModeLlm],
           ] as const).map(([mode, label]) => (
             <button
               key={mode}
@@ -284,11 +369,11 @@ export function ImageGenBlockEditor({
       </div>
 
       <div className="flex items-start gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0 pt-2">{t.imageGenBlock.promptLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0 pt-2">{ig.promptLabel}</label>
         <div className="flex-1 flex flex-col gap-1.5">
           <textarea
             className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[70px]"
-            placeholder={t.imageGenBlock.promptPlaceholder}
+            placeholder={ig.promptPlaceholder}
             value={block.prompt}
             onChange={e => update({ prompt: e.target.value })}
           />
@@ -299,28 +384,28 @@ export function ImageGenBlockEditor({
               className="self-start px-2.5 py-1 text-xs rounded bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white cursor-pointer"
               onClick={generatePrompt}
             >
-              {busyPrompt ? t.imageGenBlock.llmGenerating : t.imageGenBlock.llmGeneratePrompt}
+              {busyPrompt ? ig.llmGenerating : ig.llmGeneratePrompt}
             </button>
           )}
         </div>
       </div>
 
       <div className="flex items-start gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0 pt-2">{t.imageGenBlock.negativePromptLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0 pt-2">{ig.negativePromptLabel}</label>
         <textarea
           className="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[50px]"
-          placeholder={t.imageGenBlock.negativePromptPlaceholder}
+          placeholder={ig.negativePromptPlaceholder}
           value={block.negativePrompt ?? ''}
           onChange={e => update({ negativePrompt: e.target.value })}
         />
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.seedModeLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.seedModeLabel}</label>
         <div className="flex gap-1">
           {([
-            ['manual', t.imageGenBlock.seedModeManual],
-            ['random', t.imageGenBlock.seedModeRandom],
+            ['manual', ig.seedModeManual],
+            ['random', ig.seedModeRandom],
           ] as const).map(([mode, label]) => (
             <button
               key={mode}
@@ -337,17 +422,53 @@ export function ImageGenBlockEditor({
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.seedLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.seedLabel}</label>
         <input
           type="number"
           min={0}
           max={4294967295}
           disabled={seedMode !== 'manual'}
           className="w-48 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 disabled:opacity-50"
-          placeholder={t.imageGenBlock.seedPlaceholder}
+          placeholder={ig.seedPlaceholder}
           value={block.seed ?? ''}
           onChange={e => update({ seed: parseInt(e.target.value, 10) || 0 })}
         />
+      </div>
+
+      {/* Generation size */}
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.genSizeLabel}</label>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <input
+            type="number"
+            min={0}
+            className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+            placeholder={ig.genWidthPlaceholder}
+            value={block.genWidth || ''}
+            onChange={e => update({ genWidth: parseInt(e.target.value, 10) || 0 })}
+          />
+          <span className="text-xs text-slate-500">×</span>
+          <input
+            type="number"
+            min={0}
+            className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+            placeholder={ig.genHeightPlaceholder}
+            value={block.genHeight || ''}
+            onChange={e => update({ genHeight: parseInt(e.target.value, 10) || 0 })}
+          />
+          <div className="flex gap-0.5">
+            {ASPECT_RATIOS.map(({ label, w, h }) => (
+              <button
+                key={label}
+                type="button"
+                className="px-1.5 py-0.5 text-[10px] rounded bg-slate-700 hover:bg-slate-600 text-slate-300 cursor-pointer"
+                onClick={() => applyAspectRatio(w, h)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
       <div className="flex items-center gap-2">
@@ -357,43 +478,73 @@ export function ImageGenBlockEditor({
           className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer"
           onClick={generateImage}
         >
-          {busyImage ? t.imageGenBlock.generatingImage : t.imageGenBlock.generateImage}
+          {busyImage ? ig.generatingImage : ig.generateImage}
         </button>
+        {busyImage && (
+          <>
+            <button
+              type="button"
+              className="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white cursor-pointer"
+              onClick={cancelGeneration}
+            >
+              {ig.cancelGeneration}
+            </button>
+            {genProgress && (
+              <span className="text-[10px] text-slate-400">
+                {genProgress.current}/{genProgress.total}
+              </span>
+            )}
+          </>
+        )}
       </div>
 
+      {/* History */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.historyLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.historyLabel}</label>
         <select
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
           value={block.src}
           onChange={e => update({ src: e.target.value })}
         >
-          <option value="">{t.imageGenBlock.historyEmpty}</option>
+          <option value="">{ig.historyEmpty}</option>
           {[...history].reverse().map(h => (
             <option key={h.id} value={h.src}>
               {new Date(h.createdAt).toLocaleString()} · {h.id.slice(0, 8)}{h.seed !== undefined ? ` · seed ${h.seed}` : ''}
             </option>
           ))}
         </select>
+        {history.length > 0 && (
+          <button
+            type="button"
+            className={`px-2 py-1 text-xs rounded cursor-pointer transition-colors ${
+              clearConfirm
+                ? 'bg-red-700 hover:bg-red-600 text-white'
+                : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+            }`}
+            onClick={handleClearHistory}
+          >
+            {clearConfirm ? ig.clearHistoryConfirm : ig.clearHistory}
+          </button>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.altLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.altLabel}</label>
         <input
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-          placeholder={t.imageGenBlock.altPlaceholder}
+          placeholder={ig.altPlaceholder}
           value={block.alt}
           onChange={e => update({ alt: e.target.value })}
         />
       </div>
 
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.widthLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.widthLabel}</label>
         <input
           type="number"
           min={0}
           className="w-24 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-          placeholder={t.imageGenBlock.widthPlaceholder}
+          placeholder={ig.widthPlaceholder}
           value={block.width || ''}
           onChange={e => update({ width: parseInt(e.target.value, 10) || 0 })}
         />

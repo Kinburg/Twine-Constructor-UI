@@ -72,6 +72,10 @@ export interface EditorPrefs {
   llmSystemPrompt:     string;
   llmFilterThought:    boolean; // Filter <thought> blocks
   llmGenerationHistory: 'memory' | 'project' | 'disabled';
+
+  // ── ComfyUI ───────────────────────────────────────────────────────────────
+  /** Global ComfyUI workflows folder. Empty = use comfyUI_workflows/ inside each project. */
+  comfyUiWorkflowsDir: string;
 }
 
 const DEFAULTS: EditorPrefs = {
@@ -111,6 +115,8 @@ const DEFAULTS: EditorPrefs = {
   llmSystemPrompt:     'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.',
   llmFilterThought:    true,
   llmGenerationHistory: 'memory',
+
+  comfyUiWorkflowsDir: '',
 };
 
 const MAX_RECENT = 5;

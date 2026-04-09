@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT } from '../../i18n';
 import { type LLMProvider, fetchGeminiModels } from '../../utils/llm';
+import { fsApi } from '../../lib/fsApi';
 import { toast } from 'sonner';
 
 interface Props {
@@ -26,7 +27,8 @@ export function LLMSettingsModal({ onClose }: Props) {
     llmTemperature,
     llmSystemPrompt,
     llmFilterThought,
-    llmGenerationHistory
+    llmGenerationHistory,
+    comfyUiWorkflowsDir,
   } = useEditorPrefsStore();
 
   // Local state for fetching status
@@ -283,6 +285,31 @@ export function LLMSettingsModal({ onClose }: Props) {
                 <option value="project">In project file (persistent)</option>
                 <option value="disabled">Disabled</option>
               </select>
+            </div>
+
+            {/* ComfyUI Workflows Folder */}
+            <div className="flex flex-col gap-1 pt-1 border-t border-slate-700">
+              <label className="text-xs text-slate-300">{llm.comfyUiWorkflowsDirLabel}</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={comfyUiWorkflowsDir}
+                  onChange={e => setPrefs({ comfyUiWorkflowsDir: e.target.value })}
+                  placeholder={llm.comfyUiWorkflowsDirPlaceholder}
+                  className="flex-1 px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-xs text-slate-200 focus:outline-none focus:border-indigo-500"
+                />
+                <button
+                  type="button"
+                  className="px-2 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-slate-200 transition-colors cursor-pointer shrink-0"
+                  onClick={async () => {
+                    const dir = await fsApi.openFolderDialog();
+                    if (dir) setPrefs({ comfyUiWorkflowsDir: dir });
+                  }}
+                >
+                  {llm.comfyUiWorkflowsDirBrowse}
+                </button>
+              </div>
+              <span className="text-[10px] text-slate-500">{llm.comfyUiWorkflowsDirHint}</span>
             </div>
           </div>
 
