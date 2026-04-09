@@ -14,6 +14,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'link':         '🔗',
   'input-field':  '✏️',
   'image':        '🖼️',
+  'image-gen':    '🧠',
   'video':        '🎥',
   'raw':          '🧩',
   'note':         '🗒️',
@@ -36,6 +37,20 @@ export function makeBlock(type: BlockType): Block {
     case 'condition':    return { id, type, branches: [] };
     case 'variable-set': return { id, type, variableId: '', operator: '=', value: '' };
     case 'image':        return { id, type, src: '', alt: '', width: 0 };
+    case 'image-gen':    return {
+      id,
+      type,
+      provider: 'comfyui',
+      providerUrl: 'http://127.0.0.1:8188',
+      workflowFile: '',
+      promptMode: 'manual' as const,
+      prompt: '',
+      negativePrompt: '',
+      width: 0,
+      alt: '',
+      src: '',
+      history: [],
+    };
     case 'video':        return { id, type, src: '', autoplay: false, loop: false, controls: true, width: 0 };
     case 'input-field':  return { id, type, label: '', variableId: '', placeholder: '' };
     case 'button':       return {
@@ -82,7 +97,7 @@ export function makeBlock(type: BlockType): Block {
 type CategoryKey = 'content' | 'interaction' | 'logic' | 'system';
 
 const BLOCK_CATEGORIES: { key: CategoryKey; types: BlockType[] }[] = [
-  { key: 'content',     types: ['text', 'dialogue', 'image', 'video', 'audio', 'table', 'divider'] },
+  { key: 'content',     types: ['text', 'dialogue', 'image', 'image-gen', 'video', 'audio', 'table', 'divider'] },
   { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio'] },
   { key: 'logic',       types: ['condition', 'variable-set', 'function', 'popup'] },
   { key: 'system',      types: ['raw', 'include', 'note'] },
@@ -103,6 +118,7 @@ function buildEntries(t: ReturnType<typeof useT>): BlockEntry[] {
     { type: 'link',         icon: BLOCK_ICONS['link'],         label: t.addBlock.link.label,        desc: t.addBlock.link.desc },
     { type: 'input-field',  icon: BLOCK_ICONS['input-field'],  label: t.addBlock.inputField.label,  desc: t.addBlock.inputField.desc },
     { type: 'image',        icon: BLOCK_ICONS['image'],        label: t.addBlock.image.label,       desc: t.addBlock.image.desc },
+    { type: 'image-gen',    icon: BLOCK_ICONS['image-gen'],    label: t.addBlock.imageGen.label,    desc: t.addBlock.imageGen.desc },
     { type: 'video',        icon: BLOCK_ICONS['video'],        label: t.addBlock.video.label,       desc: t.addBlock.video.desc },
     { type: 'raw',          icon: BLOCK_ICONS['raw'],          label: t.addBlock.raw.label,         desc: t.addBlock.raw.desc },
     { type: 'note',         icon: BLOCK_ICONS['note'],         label: t.addBlock.note.label,        desc: t.addBlock.note.desc },

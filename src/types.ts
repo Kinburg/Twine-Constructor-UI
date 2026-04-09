@@ -184,6 +184,33 @@ export interface ImageBlock {
   defaultSrc?: string;   // fallback when no mapping matches
 }
 
+export interface ImageGenHistoryEntry {
+  id: string;
+  src: string;          // relative path in assets/
+  prompt: string;
+  createdAt: number;
+  provider: string;
+}
+
+export type ImageGenPromptMode = 'manual' | 'llm';
+export type ImageGenProvider = 'comfyui';
+
+export interface ImageGenBlock {
+  id: string;
+  type: 'image-gen';
+  delay?: BlockDelay;
+  provider: ImageGenProvider;
+  providerUrl: string;
+  workflowFile: string;             // project-relative path to workflow JSON
+  promptMode: ImageGenPromptMode;
+  prompt: string;
+  negativePrompt?: string;
+  width: number;                    // 0 = auto
+  alt: string;
+  src: string;                      // currently selected generated image (relative path)
+  history?: ImageGenHistoryEntry[]; // previous generations for this block
+}
+
 export interface VideoBlock {
   id: string;
   type: 'video';
@@ -467,6 +494,7 @@ export type Block =
   | ConditionBlock
   | VariableSetBlock
   | ImageBlock
+  | ImageGenBlock
   | VideoBlock
   | ButtonBlock
   | LinkBlock

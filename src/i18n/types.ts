@@ -69,6 +69,7 @@ export interface Translations {
     link: string;
     inputField: string;
     image: string;
+    imageGen: string;
     video: string;
     raw: string;
     note: string;
@@ -111,6 +112,7 @@ export interface Translations {
     link:        { label: string; desc: string };
     inputField:  { label: string; desc: string };
     image:       { label: string; desc: string };
+    imageGen:    { label: string; desc: string };
     video:       { label: string; desc: string };
     raw:         { label: string; desc: string };
     note:        { label: string; desc: string };
@@ -499,6 +501,38 @@ export interface Translations {
     altPlaceholder: string;
     widthLabel: string;
     widthPlaceholder: string;
+  };
+
+  imageGenBlock: {
+    providerLabel: string;
+    providerComfyui: string;
+    providerUrlLabel: string;
+    workflowLabel: string;
+    workflowNone: string;
+    workflowRefresh: string;
+    promptModeLabel: string;
+    promptModeManual: string;
+    promptModeLlm: string;
+    promptLabel: string;
+    promptPlaceholder: string;
+    negativePromptLabel: string;
+    negativePromptPlaceholder: string;
+    llmGeneratePrompt: string;
+    llmGenerating: string;
+    generateImage: string;
+    generatingImage: string;
+    historyLabel: string;
+    historyEmpty: string;
+    currentImageLabel: string;
+    widthLabel: string;
+    widthPlaceholder: string;
+    altLabel: string;
+    altPlaceholder: string;
+    errorNoProjectDir: string;
+    errorNoWorkflow: string;
+    errorNoPrompt: string;
+    errorGeneratePrompt: string;
+    errorGenerateImage: string;
   };
 
   videoBlock: {

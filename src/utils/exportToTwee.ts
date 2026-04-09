@@ -396,6 +396,12 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       return `${indent}${imgTag(block.src)}`;
     }
 
+    case 'image-gen': {
+      const w   = block.width > 0 ? ` width="${block.width}"` : '';
+      const alt = block.alt ? ` alt="${block.alt}"` : '';
+      return `${indent}<img src="${block.src}"${alt}${w} />`;
+    }
+
     case 'video': {
       const attrs = [
         block.controls ? 'controls' : '',

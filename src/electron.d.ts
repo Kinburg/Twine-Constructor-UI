@@ -9,6 +9,7 @@ interface ElectronAPI {
   readFile(filePath: string): Promise<string>;
   readFileBinary(filePath: string): Promise<number[]>;
   writeFile(filePath: string, content: string): Promise<void>;
+  writeFileBinary(filePath: string, bytes: number[]): Promise<void>;
   copyFile(src: string, dest: string): Promise<void>;
   mkdir(dirPath: string): Promise<void>;
   exists(filePath: string): Promise<boolean>;

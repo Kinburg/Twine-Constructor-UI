@@ -39,6 +39,7 @@ export function blockTypeLabel(t: Translations, type: Block['type']): string {
     'link':         t.block.link,
     'input-field':  t.block.inputField,
     'image':        t.block.image,
+    'image-gen':    t.block.imageGen,
     'video':        t.block.video,
     'raw':          t.block.raw,
     'note':         t.block.note,

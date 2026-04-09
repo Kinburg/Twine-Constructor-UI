@@ -12,6 +12,7 @@ import { ChoiceBlockEditor } from './ChoiceBlockEditor';
 import { ConditionBlockEditor } from './ConditionBlockEditor';
 import { VariableSetBlockEditor } from './VariableSetBlockEditor';
 import { ImageBlockEditor } from './ImageBlockEditor';
+import { ImageGenBlockEditor } from './ImageGenBlockEditor';
 import { VideoBlockEditor } from './VideoBlockEditor';
 import { ButtonBlockEditor } from './ButtonBlockEditor';
 import { LinkBlockEditor } from './LinkBlockEditor';
@@ -37,6 +38,7 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'link':         'bg-emerald-900/40',
   'input-field':  'bg-teal-900/40',
   'image':        'bg-pink-900/40',
+  'image-gen':    'bg-fuchsia-900/30',
   'video':        'bg-red-900/40',
   'raw':          'bg-zinc-700/60',
   'note':         'bg-amber-950/60',
@@ -141,6 +143,7 @@ export function BlockItem({ block, sceneId, collapsed, onToggleCollapse }: Props
         {block.type === 'condition'    && <ConditionBlockEditor   block={block} sceneId={sceneId} />}
         {block.type === 'variable-set' && <VariableSetBlockEditor block={block} sceneId={sceneId} />}
         {block.type === 'image'        && <ImageBlockEditor       block={block} sceneId={sceneId} />}
+        {block.type === 'image-gen'    && <ImageGenBlockEditor    block={block} sceneId={sceneId} />}
         {block.type === 'video'        && <VideoBlockEditor       block={block} sceneId={sceneId} />}
         {block.type === 'button'       && <ButtonBlockEditor      block={block} sceneId={sceneId} />}
         {block.type === 'link'         && <LinkBlockEditor        block={block} sceneId={sceneId} />}

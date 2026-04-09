@@ -9,6 +9,7 @@ export const fsApi = {
   readFile:       (p: string)                     => api().readFile(p),
   readFileBinary: (p: string)                     => api().readFileBinary(p),
   writeFile:      (p: string, content: string)    => api().writeFile(p, content),
+  writeFileBinary:(p: string, bytes: number[])    => api().writeFileBinary(p, bytes),
   copyFile:       (src: string, dest: string)     => api().copyFile(src, dest),
   mkdir:          (p: string)                     => api().mkdir(p),
   exists:         (p: string)                     => api().exists(p),

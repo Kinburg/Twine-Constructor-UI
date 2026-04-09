@@ -356,6 +356,11 @@ ipcMain.handle('fs:writeFile', async (_e, filePath: string, content: string) => 
   await fs.writeFile(filePath, content, 'utf-8');
 });
 
+ipcMain.handle('fs:writeFileBinary', async (_e, filePath: string, bytes: number[]) => {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, Buffer.from(bytes));
+});
+
 ipcMain.handle('fs:copyFile', async (_e, src: string, dest: string) => {
   await fs.mkdir(path.dirname(dest), { recursive: true });
   await fs.copyFile(src, dest);
