@@ -62,6 +62,20 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openPath: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('shell:openPath', filePath),
 
+  // HTTP proxy (avoids renderer CORS for local APIs)
+  httpRequest: (req: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }): Promise<{ status: number; headers: Record<string, string>; text: string }> =>
+    ipcRenderer.invoke('http:request', req),
+
+  httpRequestBinary: (req: {
+    url: string;
+  }): Promise<{ status: number; headers: Record<string, string>; bytes: number[] }> =>
+    ipcRenderer.invoke('http:requestBinary', req),
+
   // Window controls (custom title bar)
   minimizeWindow:    (): Promise<void>    => ipcRenderer.invoke('window:minimize'),
   maximizeWindow:    (): Promise<void>    => ipcRenderer.invoke('window:maximize'),

@@ -26,6 +26,10 @@ export const fsApi = {
   saveFileDialog: (opts?: Parameters<ElectronAPI['saveFileDialog']>[0]) =>
     api().saveFileDialog(opts),
   openPath:       (p: string)                     => api().openPath(p),
+  httpRequest:    (req: Parameters<ElectronAPI['httpRequest']>[0]) =>
+    api().httpRequest(req),
+  httpRequestBinary: (req: Parameters<ElectronAPI['httpRequestBinary']>[0]) =>
+    api().httpRequestBinary(req),
 };
 
 // ─── Path helpers (no Node.js — pure string manipulation) ────────────────────

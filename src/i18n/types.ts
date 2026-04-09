@@ -517,6 +517,11 @@ export interface Translations {
     promptPlaceholder: string;
     negativePromptLabel: string;
     negativePromptPlaceholder: string;
+    seedModeLabel: string;
+    seedModeManual: string;
+    seedModeRandom: string;
+    seedLabel: string;
+    seedPlaceholder: string;
     llmGeneratePrompt: string;
     llmGenerating: string;
     generateImage: string;

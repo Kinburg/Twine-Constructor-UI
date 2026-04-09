@@ -231,7 +231,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  // win.webContents.openDevTools();
+  win.webContents.openDevTools();
 
   trackWindowBounds(win, 'main');
 
@@ -428,6 +428,33 @@ ipcMain.handle('dialog:saveFile', async (_e, options: Electron.SaveDialogOptions
 
 ipcMain.handle('shell:openPath', async (_e, filePath: string) => {
   await shell.openPath(filePath);
+});
+
+// ─── IPC: HTTP proxy (for local services like ComfyUI) ───────────────────────
+
+ipcMain.handle('http:request', async (_e, req: {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+}) => {
+  const res = await fetch(req.url, {
+    method: req.method ?? 'GET',
+    headers: req.headers,
+    body: req.body,
+  });
+  const text = await res.text();
+  const headers: Record<string, string> = {};
+  res.headers.forEach((value, key) => { headers[key] = value; });
+  return { status: res.status, headers, text };
+});
+
+ipcMain.handle('http:requestBinary', async (_e, req: { url: string }) => {
+  const res = await fetch(req.url);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const headers: Record<string, string> = {};
+  res.headers.forEach((value, key) => { headers[key] = value; });
+  return { status: res.status, headers, bytes: Array.from(buf) };
 });
 
 // ─── IPC: window controls ─────────────────────────────────────────────────────

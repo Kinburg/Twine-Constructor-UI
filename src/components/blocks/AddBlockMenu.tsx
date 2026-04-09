@@ -46,6 +46,8 @@ export function makeBlock(type: BlockType): Block {
       promptMode: 'manual' as const,
       prompt: '',
       negativePrompt: '',
+      seedMode: 'random' as const,
+      seed: 0,
       width: 0,
       alt: '',
       src: '',

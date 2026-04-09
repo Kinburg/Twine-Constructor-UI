@@ -5,20 +5,52 @@ export interface ImageGenerateParams {
   workflow: Record<string, any>;
   prompt: string;
   negativePrompt?: string;
+  seed?: number;
 }
 
 export interface ImageGenerateResult {
   imageUrl: string;
 }
 
+async function requestJson(url: string, init?: {
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+  signal?: AbortSignal;
+}): Promise<{ status: number; json: any }> {
+  if (typeof window !== 'undefined' && window.electronAPI?.httpRequest) {
+    const res = await window.electronAPI.httpRequest({
+      url,
+      method: init?.method,
+      headers: init?.headers,
+      body: init?.body,
+    });
+    let json: any = null;
+    try { json = JSON.parse(res.text); } catch { json = null; }
+    return { status: res.status, json };
+  }
+  const res = await fetch(url, init);
+  return { status: res.status, json: await res.json() };
+}
+
 function normalizeBaseUrl(url: string): string {
   return url.replace(/\/+$/, '');
 }
 
-function withPromptInjected(
+function replaceTemplateTokens(value: string, prompt: string, negativePrompt?: string, seed?: number): string {
+  const neg = negativePrompt ?? '';
+  const seedText = Number.isFinite(seed) ? String(seed) : '';
+  return value
+    .replaceAll('${prompt}', prompt)
+    .replaceAll('${negative_prompt}', neg)
+    .replaceAll('${seed}', seedText);
+}
+
+function withTemplateInjected(
   workflow: Record<string, any>,
   prompt: string,
   negativePrompt?: string,
+  seed?: number,
 ): Record<string, any> {
   const clone = JSON.parse(JSON.stringify(workflow));
 
@@ -26,12 +58,17 @@ function withPromptInjected(
     if (!node || typeof node !== 'object' || typeof node.inputs !== 'object') continue;
     const inputs = node.inputs as Record<string, any>;
 
-    if (typeof inputs.text === 'string') {
-      const cls = String(node.class_type ?? '').toLowerCase();
-      if (cls.includes('negative')) {
-        inputs.text = negativePrompt ?? inputs.text;
-      } else {
-        inputs.text = prompt;
+    // Token-based prompt injection.
+    // Use `${prompt}` and `${negative_prompt}` directly in workflow text fields.
+    for (const [key, val] of Object.entries(inputs)) {
+      if (typeof val === 'string' && (val.includes('${prompt}') || val.includes('${negative_prompt}') || val.includes('${seed}'))) {
+        const replaced = replaceTemplateTokens(val, prompt, negativePrompt, seed);
+        // Preserve numeric type for fields like seed when token-only template is used.
+        if (val.trim() === '${seed}' && Number.isFinite(seed)) {
+          inputs[key] = seed;
+        } else {
+          inputs[key] = replaced;
+        }
       }
     }
   }
@@ -42,9 +79,8 @@ function withPromptInjected(
 async function pollComfyHistory(baseUrl: string, promptId: string, signal?: AbortSignal): Promise<any> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < 120000) {
-    const res = await fetch(`${baseUrl}/history/${encodeURIComponent(promptId)}`, { signal });
-    if (!res.ok) throw new Error(`ComfyUI history failed: ${res.status}`);
-    const json = await res.json();
+    const { status, json } = await requestJson(`${baseUrl}/history/${encodeURIComponent(promptId)}`, { signal });
+    if (status < 200 || status >= 300) throw new Error(`ComfyUI history failed: ${status}`);
     const entry = json?.[promptId];
     const outputs = entry?.outputs;
     if (outputs && typeof outputs === 'object') return outputs;
@@ -66,16 +102,15 @@ function extractFirstImage(outputs: Record<string, any>): { filename: string; su
 
 async function generateWithComfy(params: ImageGenerateParams, signal?: AbortSignal): Promise<ImageGenerateResult> {
   const baseUrl = normalizeBaseUrl(params.baseUrl || 'http://127.0.0.1:8188');
-  const promptWorkflow = withPromptInjected(params.workflow, params.prompt, params.negativePrompt);
+  const promptWorkflow = withTemplateInjected(params.workflow, params.prompt, params.negativePrompt, params.seed);
 
-  const submitRes = await fetch(`${baseUrl}/prompt`, {
+  const { status, json: submitJson } = await requestJson(`${baseUrl}/prompt`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ prompt: promptWorkflow }),
     signal,
   });
-  if (!submitRes.ok) throw new Error(`ComfyUI request failed: ${submitRes.status}`);
-  const submitJson = await submitRes.json();
+  if (status < 200 || status >= 300) throw new Error(`ComfyUI request failed: ${status}`);
   const promptId = submitJson?.prompt_id;
   if (!promptId) throw new Error('ComfyUI did not return prompt_id');
 

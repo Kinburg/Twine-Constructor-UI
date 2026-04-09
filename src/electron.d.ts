@@ -42,6 +42,17 @@ interface ElectronAPI {
   // Shell
   openPath(filePath: string): Promise<void>;
 
+  // HTTP proxy (main process)
+  httpRequest(req: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }): Promise<{ status: number; headers: Record<string, string>; text: string }>;
+  httpRequestBinary(req: {
+    url: string;
+  }): Promise<{ status: number; headers: Record<string, string>; bytes: number[] }>;
+
   // Window controls (custom title bar)
   minimizeWindow(): Promise<void>;
   maximizeWindow(): Promise<void>;

@@ -33,6 +33,11 @@ function detectExt(imageUrl: string, contentType: string | null): string {
   return byUrl || 'png';
 }
 
+function randomSeed(): number {
+  // Keep within safe integer range for JS and common ComfyUI setups.
+  return Math.floor(Math.random() * 4294967295);
+}
+
 export function ImageGenBlockEditor({
   block,
   sceneId,
@@ -61,6 +66,7 @@ export function ImageGenBlockEditor({
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [busyImage, setBusyImage] = useState(false);
   const [busyPrompt, setBusyPrompt] = useState(false);
+  const seedMode = block.seedMode ?? 'random';
 
   useEffect(() => {
     let alive = true;
@@ -122,17 +128,21 @@ export function ImageGenBlockEditor({
     try {
       const workflowAbs = joinPath(projectDir, block.workflowFile);
       const workflowJson = JSON.parse(await fsApi.readFile(workflowAbs));
+      const usedSeed = seedMode === 'random' ? randomSeed() : (Number.isFinite(block.seed) ? block.seed : 0);
       const generated = await generateImageWithProvider(block.provider, {
         baseUrl: block.providerUrl,
         workflow: workflowJson,
         prompt: block.prompt,
         negativePrompt: block.negativePrompt,
+        seed: usedSeed,
       });
+      // Keep the last used seed visible in editor.
+      if (seedMode === 'random') update({ seed: usedSeed });
 
-      const imgRes = await fetch(generated.imageUrl);
-      if (!imgRes.ok) throw new Error(`Image download failed: ${imgRes.status}`);
-      const bytes = Array.from(new Uint8Array(await imgRes.arrayBuffer()));
-      const ext = detectExt(generated.imageUrl, imgRes.headers.get('content-type'));
+      const imgRes = await fsApi.httpRequestBinary({ url: generated.imageUrl });
+      if (imgRes.status < 200 || imgRes.status >= 300) throw new Error(`Image download failed: ${imgRes.status}`);
+      const bytes = imgRes.bytes;
+      const ext = detectExt(generated.imageUrl, imgRes.headers['content-type'] ?? null);
       const genId = crypto.randomUUID();
       const relPath = `assets/history/${block.id}/${genId}.${ext}`;
       const absPath = joinPath(projectDir, relPath);
@@ -152,6 +162,7 @@ export function ImageGenBlockEditor({
           id: genId,
           src: relPath,
           prompt: block.prompt,
+          seed: usedSeed,
           createdAt: Date.now(),
           provider: block.provider,
         },
@@ -264,6 +275,41 @@ export function ImageGenBlockEditor({
       </div>
 
       <div className="flex items-center gap-2">
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.seedModeLabel}</label>
+        <div className="flex gap-1">
+          {([
+            ['manual', t.imageGenBlock.seedModeManual],
+            ['random', t.imageGenBlock.seedModeRandom],
+          ] as const).map(([mode, label]) => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => update({ seedMode: mode })}
+              className={`px-2 py-0.5 text-xs rounded cursor-pointer transition-colors ${
+                seedMode === mode ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.seedLabel}</label>
+        <input
+          type="number"
+          min={0}
+          max={4294967295}
+          disabled={seedMode !== 'manual'}
+          className="w-48 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 disabled:opacity-50"
+          placeholder={t.imageGenBlock.seedPlaceholder}
+          value={block.seed ?? ''}
+          onChange={e => update({ seed: parseInt(e.target.value, 10) || 0 })}
+        />
+      </div>
+
+      <div className="flex items-center gap-2">
         <button
           type="button"
           disabled={busyImage}
@@ -284,7 +330,7 @@ export function ImageGenBlockEditor({
           <option value="">{t.imageGenBlock.historyEmpty}</option>
           {[...history].reverse().map(h => (
             <option key={h.id} value={h.src}>
-              {new Date(h.createdAt).toLocaleString()} · {h.id.slice(0, 8)}
+              {new Date(h.createdAt).toLocaleString()} · {h.id.slice(0, 8)}{h.seed !== undefined ? ` · seed ${h.seed}` : ''}
             </option>
           ))}
         </select>

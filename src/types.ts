@@ -188,12 +188,14 @@ export interface ImageGenHistoryEntry {
   id: string;
   src: string;          // relative path in assets/
   prompt: string;
+  seed?: number;
   createdAt: number;
   provider: string;
 }
 
 export type ImageGenPromptMode = 'manual' | 'llm';
 export type ImageGenProvider = 'comfyui';
+export type ImageGenSeedMode = 'manual' | 'random';
 
 export interface ImageGenBlock {
   id: string;
@@ -205,6 +207,8 @@ export interface ImageGenBlock {
   promptMode: ImageGenPromptMode;
   prompt: string;
   negativePrompt?: string;
+  seedMode: ImageGenSeedMode;
+  seed?: number;
   width: number;                    // 0 = auto
   alt: string;
   src: string;                      // currently selected generated image (relative path)
