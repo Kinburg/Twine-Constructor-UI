@@ -51,6 +51,9 @@ interface ElectronAPI {
   }): Promise<{ status: number; headers: Record<string, string>; text: string }>;
   httpRequestBinary(req: {
     url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
   }): Promise<{ status: number; headers: Record<string, string>; bytes: number[] }>;
 
   // Window controls (custom title bar)

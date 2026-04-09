@@ -477,7 +477,12 @@ const en: Translations = {
   imageGenBlock: {
     providerLabel: 'Provider:',
     providerComfyui: 'ComfyUI',
+    providerPollinations: 'Pollinations.AI (free)',
     providerUrlLabel: 'Provider URL:',
+    pollinationsModelLabel: 'Model:',
+    pollinationsModelPlaceholder: 'flux (default), turbo, flux-realism…',
+    pollinationsTokenLabel: 'Token:',
+    pollinationsTokenPlaceholder: 'pollinations.ai token (required)',
     workflowLabel: 'Workflow:',
     workflowNone: '— select workflow —',
     workflowRefresh: 'Refresh',

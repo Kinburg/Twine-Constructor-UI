@@ -73,6 +73,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   httpRequestBinary: (req: {
     url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
   }): Promise<{ status: number; headers: Record<string, string>; bytes: number[] }> =>
     ipcRenderer.invoke('http:requestBinary', req),
 

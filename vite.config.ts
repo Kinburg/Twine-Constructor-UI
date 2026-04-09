@@ -5,6 +5,15 @@ import electron from 'vite-plugin-electron/simple';
 
 // https://vite.dev/config/
 export default defineConfig({
+  server: {
+    proxy: {
+      '/pollinations': {
+        target: 'https://gen.pollinations.ai',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/pollinations/, ''),
+      },
+    },
+  },
   plugins: [
     react(),
     tailwindcss(),

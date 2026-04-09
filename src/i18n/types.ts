@@ -506,7 +506,12 @@ export interface Translations {
   imageGenBlock: {
     providerLabel: string;
     providerComfyui: string;
+    providerPollinations: string;
     providerUrlLabel: string;
+    pollinationsModelLabel: string;
+    pollinationsModelPlaceholder: string;
+    pollinationsTokenLabel: string;
+    pollinationsTokenPlaceholder: string;
     workflowLabel: string;
     workflowNone: string;
     workflowRefresh: string;

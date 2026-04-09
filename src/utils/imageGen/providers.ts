@@ -6,10 +6,16 @@ export interface ImageGenerateParams {
   prompt: string;
   negativePrompt?: string;
   seed?: number;
+  // Pollinations specific
+  pollinationsModel?: string;
+  pollinationsToken?: string;
+  width?: number;
 }
 
 export interface ImageGenerateResult {
-  imageUrl: string;
+  imageUrl?: string;    // URL to download image (ComfyUI)
+  bytes?: number[];     // Raw image bytes (HuggingFace)
+  contentType?: string; // MIME type when bytes are present
 }
 
 async function requestJson(url: string, init?: {
@@ -126,11 +132,47 @@ async function generateWithComfy(params: ImageGenerateParams, signal?: AbortSign
   return { imageUrl: `${baseUrl}/view?${paramsView.toString()}` };
 }
 
+async function generateWithPollinations(params: ImageGenerateParams, signal?: AbortSignal): Promise<ImageGenerateResult> {
+  const model = params.pollinationsModel?.trim() || 'flux';
+  const width = params.width && params.width > 0 ? params.width : 1024;
+
+  const urlParams = new URLSearchParams({ model, width: String(width), height: String(width) });
+  if (Number.isFinite(params.seed)) urlParams.set('seed', String(params.seed));
+
+  // In Electron: use direct URL via main process (no CORS). In browser dev: use Vite proxy.
+  const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.httpRequestBinary;
+  const baseUrl = isElectron ? 'https://gen.pollinations.ai' : '/pollinations';
+  const url = `${baseUrl}/image/${encodeURIComponent(params.prompt)}?${urlParams}`;
+
+  const fetchHeaders: Record<string, string> = {};
+  if (params.pollinationsToken?.trim()) fetchHeaders['Authorization'] = `Bearer ${params.pollinationsToken.trim()}`;
+
+  if (isElectron) {
+    const res = await window.electronAPI!.httpRequestBinary({ url, headers: fetchHeaders });
+    if (res.status < 200 || res.status >= 300) throw new Error(`Pollinations API error: ${res.status}`);
+    return { bytes: res.bytes, contentType: res.headers['content-type'] ?? 'image/jpeg' };
+  }
+
+  const res = await fetch(url, { signal, headers: fetchHeaders });
+  if (!res.ok) {
+    const ct = res.headers.get('content-type') ?? '';
+    const errText = ct.includes('json') || ct.includes('text')
+      ? await res.text().catch(() => '')
+      : `(binary body, content-type: ${ct})`;
+    throw new Error(`Pollinations API error: ${res.status} — ${errText}`);
+  }
+
+  const contentType = res.headers.get('content-type') ?? 'image/jpeg';
+  const bytes = Array.from(new Uint8Array(await res.arrayBuffer()));
+  return { bytes, contentType };
+}
+
 export async function generateImageWithProvider(
   provider: ImageGenProvider,
   params: ImageGenerateParams,
   signal?: AbortSignal,
 ): Promise<ImageGenerateResult> {
   if (provider === 'comfyui') return generateWithComfy(params, signal);
+  if (provider === 'pollinations') return generateWithPollinations(params, signal);
   throw new Error(`Unsupported image provider: ${provider}`);
 }

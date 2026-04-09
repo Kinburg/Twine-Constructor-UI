@@ -194,7 +194,7 @@ export interface ImageGenHistoryEntry {
 }
 
 export type ImageGenPromptMode = 'manual' | 'llm';
-export type ImageGenProvider = 'comfyui';
+export type ImageGenProvider = 'comfyui' | 'pollinations';
 export type ImageGenSeedMode = 'manual' | 'random';
 
 export interface ImageGenBlock {
@@ -203,7 +203,9 @@ export interface ImageGenBlock {
   delay?: BlockDelay;
   provider: ImageGenProvider;
   providerUrl: string;
-  workflowFile: string;             // project-relative path to workflow JSON
+  workflowFile: string;             // project-relative path to workflow JSON (ComfyUI only)
+  pollinationsModel?: string;        // Pollinations.AI model (flux, turbo, flux-realism…)
+  pollinationsToken?: string;        // Pollinations.AI API token
   promptMode: ImageGenPromptMode;
   prompt: string;
   negativePrompt?: string;

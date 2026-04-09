@@ -477,7 +477,12 @@ const ua: Translations = {
   imageGenBlock: {
     providerLabel: 'Провайдер:',
     providerComfyui: 'ComfyUI',
+    providerPollinations: 'Pollinations.AI (безкоштовно)',
     providerUrlLabel: 'URL провайдера:',
+    pollinationsModelLabel: 'Модель:',
+    pollinationsModelPlaceholder: 'flux (за замовч.), turbo, flux-realism…',
+    pollinationsTokenLabel: 'Токен:',
+    pollinationsTokenPlaceholder: 'токен pollinations.ai (обов\'язково)',
     workflowLabel: 'Workflow:',
     workflowNone: '— оберіть workflow —',
     workflowRefresh: 'Оновити',

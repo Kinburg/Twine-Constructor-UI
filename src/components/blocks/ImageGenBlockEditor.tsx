@@ -120,14 +120,15 @@ export function ImageGenBlockEditor({
 
   const generateImage = async () => {
     if (!projectDir) return toast.error(t.imageGenBlock.errorNoProjectDir);
-    if (!block.workflowFile) return toast.error(t.imageGenBlock.errorNoWorkflow);
+    if (block.provider === 'comfyui' && !block.workflowFile) return toast.error(t.imageGenBlock.errorNoWorkflow);
     if (!block.prompt.trim()) return toast.error(t.imageGenBlock.errorNoPrompt);
 
     saveSnapshot();
     setBusyImage(true);
     try {
-      const workflowAbs = joinPath(projectDir, block.workflowFile);
-      const workflowJson = JSON.parse(await fsApi.readFile(workflowAbs));
+      const workflowJson = block.provider === 'comfyui' && block.workflowFile
+        ? JSON.parse(await fsApi.readFile(joinPath(projectDir, block.workflowFile)))
+        : {};
       const usedSeed = seedMode === 'random' ? randomSeed() : (Number.isFinite(block.seed) ? block.seed : 0);
       const generated = await generateImageWithProvider(block.provider, {
         baseUrl: block.providerUrl,
@@ -135,14 +136,24 @@ export function ImageGenBlockEditor({
         prompt: block.prompt,
         negativePrompt: block.negativePrompt,
         seed: usedSeed,
+        pollinationsModel: block.pollinationsModel,
+        pollinationsToken: block.pollinationsToken,
+        width: block.width,
       });
       // Keep the last used seed visible in editor.
       if (seedMode === 'random') update({ seed: usedSeed });
 
-      const imgRes = await fsApi.httpRequestBinary({ url: generated.imageUrl });
-      if (imgRes.status < 200 || imgRes.status >= 300) throw new Error(`Image download failed: ${imgRes.status}`);
-      const bytes = imgRes.bytes;
-      const ext = detectExt(generated.imageUrl, imgRes.headers['content-type'] ?? null);
+      let bytes: number[];
+      let ext: string;
+      if (generated.bytes) {
+        bytes = generated.bytes;
+        ext = detectExt('', generated.contentType ?? null);
+      } else {
+        const imgRes = await fsApi.httpRequestBinary({ url: generated.imageUrl! });
+        if (imgRes.status < 200 || imgRes.status >= 300) throw new Error(`Image download failed: ${imgRes.status}`);
+        bytes = imgRes.bytes;
+        ext = detectExt(generated.imageUrl!, imgRes.headers['content-type'] ?? null);
+      }
       const genId = crypto.randomUUID();
       const relPath = `assets/history/${block.id}/${genId}.${ext}`;
       const absPath = joinPath(projectDir, relPath);
@@ -168,7 +179,8 @@ export function ImageGenBlockEditor({
         },
       ];
       update({ src: relPath, history: nextHistory });
-    } catch {
+    } catch (err) {
+      console.error('[ImageGen] generation failed:', err);
       toast.error(t.imageGenBlock.errorGenerateImage);
     } finally {
       setBusyImage(false);
@@ -185,41 +197,70 @@ export function ImageGenBlockEditor({
           onChange={e => update({ provider: e.target.value as ImageGenBlock['provider'] })}
         >
           <option value="comfyui">{t.imageGenBlock.providerComfyui}</option>
+          <option value="pollinations">{t.imageGenBlock.providerPollinations}</option>
         </select>
       </div>
 
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.providerUrlLabel}</label>
-        <input
-          className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-          value={block.providerUrl}
-          onChange={e => update({ providerUrl: e.target.value })}
-        />
-      </div>
+      {block.provider === 'comfyui' && (
+        <>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.providerUrlLabel}</label>
+            <input
+              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+              value={block.providerUrl}
+              onChange={e => update({ providerUrl: e.target.value })}
+            />
+          </div>
 
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.workflowLabel}</label>
-        <select
-          className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={block.workflowFile}
-          onChange={e => update({ workflowFile: e.target.value })}
-        >
-          <option value="">{t.imageGenBlock.workflowNone}</option>
-          {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
-        </select>
-        <button
-          type="button"
-          className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
-          onClick={async () => {
-            if (!projectDir) return;
-            const root = joinPath(projectDir, 'comfyUI_workflows');
-            const list = await collectWorkflowFiles(root, 'comfyUI_workflows');
-            setWorkflows(list.sort((a, b) => a.localeCompare(b)));
-          }}
-        >
-          {t.imageGenBlock.workflowRefresh}
-        </button>
-      </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.workflowLabel}</label>
+            <select
+              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+              value={block.workflowFile}
+              onChange={e => update({ workflowFile: e.target.value })}
+            >
+              <option value="">{t.imageGenBlock.workflowNone}</option>
+              {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+            </select>
+            <button
+              type="button"
+              className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
+              onClick={async () => {
+                if (!projectDir) return;
+                const root = joinPath(projectDir, 'comfyUI_workflows');
+                const list = await collectWorkflowFiles(root, 'comfyUI_workflows');
+                setWorkflows(list.sort((a, b) => a.localeCompare(b)));
+              }}
+            >
+              {t.imageGenBlock.workflowRefresh}
+            </button>
+          </div>
+        </>
+      )}
+
+      {block.provider === 'pollinations' && (
+        <>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.pollinationsModelLabel}</label>
+            <input
+              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+              placeholder={t.imageGenBlock.pollinationsModelPlaceholder}
+              value={block.pollinationsModel ?? ''}
+              onChange={e => update({ pollinationsModel: e.target.value })}
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.pollinationsTokenLabel}</label>
+            <input
+              type="password"
+              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+              placeholder={t.imageGenBlock.pollinationsTokenPlaceholder}
+              value={block.pollinationsToken ?? ''}
+              onChange={e => update({ pollinationsToken: e.target.value })}
+            />
+          </div>
+        </>
+      )}
 
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageGenBlock.promptModeLabel}</label>
