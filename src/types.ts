@@ -595,6 +595,7 @@ export interface AvatarGenSlotData {
   slotId: string;           // mapping.id | 'static' | 'default'
   prompt: string;
   negativePrompt?: string;
+  hint?: string;            // short hint for variant slots (emotion/state), used with reference prompt
   history: AvatarGenHistoryEntry[];
   currentSrc: string;       // currently selected path (history/ or assets/)
 }

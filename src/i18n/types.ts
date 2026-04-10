@@ -621,6 +621,10 @@ export interface Translations {
     seedRandomize: string;
     refImageCheckbox: string;
     refImageTooltip: string;
+    hintLabel: string;
+    hintPlaceholder: string;
+    generateFromHintBtn: string;
+    generateFromHintNoRef: string;
     errorNoProjectDir: string;
     errorNoWorkflow: string;
     errorNoPrompt: string;

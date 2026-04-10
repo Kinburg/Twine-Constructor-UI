@@ -125,10 +125,12 @@ export async function generateImagePromptWithLlm(
  * Generates a text-to-image prompt for a character avatar using an LLM.
  * Uses character name + description + world setting as context.
  *
- * @param llmMode  - 'continue' = generate from scratch (or continue if prompt non-empty)
- *                   'rephrase' = improve / rephrase the existing prompt
- *                   'hint'     = use the current prompt as a creative hint
- * @param styleHints - selected style tags; when non-empty, LLM is told NOT to include style
+ * @param llmMode        - 'continue' = generate from scratch (or continue if prompt non-empty)
+ *                         'rephrase' = improve / rephrase the existing prompt
+ *                         'hint'     = use the current prompt as a creative hint
+ * @param _styleHints    - reserved (style tags are appended by the user after generation)
+ * @param referencePrompt - default slot's generated prompt; when provided the LLM keeps all
+ *                          physical descriptors identical and only applies the hint on top
  */
 export async function generateAvatarPromptWithLlm(
   options: LlmOptions,
@@ -140,7 +142,10 @@ export async function generateAvatarPromptWithLlm(
   llmMode: LLMMode = 'hint',
   _styleHints: string[] = [],
   signal?: AbortSignal,
+  referencePrompt?: string,
 ): Promise<string> {
+  const isDefaultOrStatic = !slotLabel || slotLabel === 'default' || slotLabel === 'static';
+
   const sysParts: string[] = [
     'You are an expert at writing text-to-image prompts for character portraits in visual novels.',
     'Write a prompt for a portrait illustration (head and upper body) suitable as a character avatar.',
@@ -160,7 +165,19 @@ export async function generateAvatarPromptWithLlm(
     sysParts.push(`Character description: ${charDescr.trim()}`);
   }
 
-  if (slotLabel && slotLabel !== 'static' && slotLabel !== 'default') {
+  if (isDefaultOrStatic) {
+    // Default/static portrait — always neutral so it can serve as a reference for variants
+    sysParts.push('This is the reference/default portrait. The character must have a neutral, expressionless face: mouth closed, lips together and relaxed, jaw unclenched, eyes open and calm. Stoic, blank reference pose — no smile, no raised eyebrows, no emotional expression of any kind.');
+  } else {
+    if (referencePrompt?.trim()) {
+      // Variant slot: anchor physical appearance to the reference prompt
+      sysParts.push(
+        'This is a variant portrait of the same character.\n' +
+        'Keep ALL physical descriptors IDENTICAL to the reference (face shape, hair, skin, clothing, body).\n' +
+        'Only change what the hint specifies — typically the facial expression, eye state, or emotional cues.\n' +
+        `Reference portrait:\n${referencePrompt.trim()}`,
+      );
+    }
     sysParts.push(`Avatar variant / emotional state: ${slotLabel}`);
   }
 

@@ -74,6 +74,7 @@ interface ModalSlotState {
   label: string;
   prompt: string;
   negativePrompt: string;
+  hint: string;             // short emotion/state hint for variant slots
   history: AvatarGenHistoryEntry[];
   currentSrc: string;
   llmMode: 'hint' | 'rephrase' | 'continue';
@@ -93,6 +94,7 @@ function initSlots(cfg: AvatarConfig, staticLabel: string, defaultLabel: string)
       label: staticLabel,
       prompt: s?.prompt ?? '',
       negativePrompt: s?.negativePrompt ?? '',
+      hint: '',
       history: s?.history ?? [],
       currentSrc: s?.currentSrc ?? '',
       llmMode: 'hint',
@@ -102,13 +104,14 @@ function initSlots(cfg: AvatarConfig, staticLabel: string, defaultLabel: string)
     }];
   }
 
-  // Dynamic mode: default slot goes FIRST so user generates the reference image first
+  // Dynamic mode: default slot goes FIRST so user generates the reference portrait first
   const def = find('default');
   const defaultSlot: ModalSlotState = {
     slotId: 'default',
     label: defaultLabel,
     prompt: def?.prompt ?? '',
     negativePrompt: def?.negativePrompt ?? '',
+    hint: '',
     history: def?.history ?? [],
     currentSrc: def?.currentSrc ?? '',
     llmMode: 'hint',
@@ -127,6 +130,7 @@ function initSlots(cfg: AvatarConfig, staticLabel: string, defaultLabel: string)
       label,
       prompt: s?.prompt ?? '',
       negativePrompt: s?.negativePrompt ?? '',
+      hint: s?.hint ?? '',
       history: s?.history ?? [],
       currentSrc: s?.currentSrc ?? '',
       llmMode: 'hint',
@@ -246,6 +250,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
       slotId: s.slotId,
       prompt: s.prompt,
       negativePrompt: s.negativePrompt || undefined,
+      hint: s.hint || undefined,
       history: s.history,
       currentSrc: s.currentSrc,
     } satisfies AvatarGenSlotData)),
@@ -375,9 +380,19 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
     const slot = slots.find(s => s.slotId === slotId);
     if (!slot) return;
     updateSlot(slotId, { busyPrompt: true, llmMode });
+
+    const isVariant = slotId !== 'default' && slotId !== 'static';
+
     try {
       const urlOrApiKey = llmProvider === 'openai' ? llmOpenaiUrl : llmUrl;
       const model = llmProvider === 'openai' ? llmOpenaiModel : llmGeminiModel;
+
+      // Variant slots: use hint as creative direction + default prompt as reference
+      const currentPromptArg = isVariant ? slot.hint : slot.prompt;
+      const referencePrompt = isVariant
+        ? slots.find(s => s.slotId === 'default')?.prompt
+        : undefined;
+
       const prompt = await generateAvatarPromptWithLlm(
         {
           provider: llmProvider,
@@ -392,9 +407,11 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         charName,
         charLlmDescr,
         slot.label,
-        slot.prompt,
-        llmMode,
+        currentPromptArg,
+        isVariant ? 'hint' : llmMode,
         [],
+        undefined,
+        referencePrompt,
       );
       if (prompt) updateSlot(slotId, { prompt, busyPrompt: false });
       else updateSlot(slotId, { busyPrompt: false });
@@ -660,7 +677,9 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
                 useRefImage={useRefImage}
                 onRefImageChange={setUseRefImage}
                 defaultSlotHasImage={!!(defaultSlot?.currentSrc)}
+                defaultSlotHasPrompt={!!(defaultSlot?.prompt?.trim())}
                 onPromptChange={v => updateSlot(slot.slotId, { prompt: v })}
+                onHintChange={v => updateSlot(slot.slotId, { hint: v })}
                 onNegativePromptChange={v => updateSlot(slot.slotId, { negativePrompt: v })}
                 onGenerate={() => generateForSlot(slot.slotId)}
                 onCancel={() => cancelForSlot(slot.slotId)}
@@ -705,7 +724,9 @@ function SlotPanel({
   useRefImage,
   onRefImageChange,
   defaultSlotHasImage,
+  defaultSlotHasPrompt,
   onPromptChange,
+  onHintChange,
   onNegativePromptChange,
   onGenerate,
   onCancel,
@@ -720,7 +741,9 @@ function SlotPanel({
   useRefImage: boolean;
   onRefImageChange: (v: boolean) => void;
   defaultSlotHasImage: boolean;
+  defaultSlotHasPrompt: boolean;
   onPromptChange: (v: string) => void;
+  onHintChange: (v: string) => void;
   onNegativePromptChange: (v: string) => void;
   onGenerate: () => void;
   onCancel: () => void;
@@ -730,6 +753,7 @@ function SlotPanel({
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
+  const isVariant = slot.slotId !== 'default' && slot.slotId !== 'static';
   const isApproved = slot.currentSrc.startsWith('assets/');
   const previewUrl = slot.currentSrc && projectDir
     ? toLocalFileUrl(resolveAssetPath(projectDir, slot.currentSrc))
@@ -764,6 +788,31 @@ function SlotPanel({
         )}
       </div>
 
+      {/* Hint field — variant slots only */}
+      {isVariant && llmEnabled && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400 w-16 shrink-0">{ag.hintLabel}</label>
+          <div className="flex-1 flex gap-1">
+            <input
+              type="text"
+              className="flex-1 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
+              placeholder={ag.hintPlaceholder}
+              value={slot.hint}
+              onChange={e => onHintChange(e.target.value)}
+            />
+            <button
+              type="button"
+              disabled={slot.busyPrompt || !defaultSlotHasPrompt}
+              title={!defaultSlotHasPrompt ? ag.generateFromHintNoRef : undefined}
+              className="px-2 py-1 text-[10px] rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors border bg-indigo-700 border-indigo-600 text-white hover:bg-indigo-600 whitespace-nowrap"
+              onClick={() => onGeneratePrompt('hint')}
+            >
+              {slot.busyPrompt ? ag.generatingPrompt : ag.generateFromHintBtn}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Prompt */}
       <div className="flex items-start gap-2">
         <label className="text-xs text-slate-400 w-16 shrink-0 pt-1.5">{ag.promptLabel}</label>
@@ -774,7 +823,8 @@ function SlotPanel({
             value={slot.prompt}
             onChange={e => onPromptChange(e.target.value)}
           />
-          {llmEnabled && (
+          {/* LLM mode buttons — default/static slots only */}
+          {llmEnabled && !isVariant && (
             <div className="flex gap-1 flex-wrap">
               {(['continue', 'rephrase', 'hint'] as const).map(mode => {
                 const label = mode === 'continue' ? ag.llmModeContinue
