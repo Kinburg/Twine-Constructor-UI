@@ -143,6 +143,26 @@ export function charToVarPrefix(name: string): string {
 }
 
 /**
+ * Pre-generate all variable IDs for a new character before it is saved.
+ * Pass the result to addCharacter() so that avatar bindings set during
+ * creation resolve to the correct variables after saving.
+ */
+export function pregenCharVarIds(): CharacterVarIds {
+  return {
+    groupId: crypto.randomUUID(),
+    stylesGroupId: crypto.randomUUID(),
+    nameVarId: crypto.randomUUID(),
+    bgColorVarId: crypto.randomUUID(),
+    borderColorVarId: crypto.randomUUID(),
+    nameColorVarId: crypto.randomUUID(),
+    textColorVarId: crypto.randomUUID(),
+    avatarVarId: crypto.randomUUID(),
+    llmDescrVarId: crypto.randomUUID(),
+    llmTemperatureVarId: crypto.randomUUID(),
+  };
+}
+
+/**
  * Rename a group node anywhere in the variable tree.
  */
 function updateGroupNameInTree(
@@ -170,17 +190,19 @@ function buildCharVarNodes(
   charName: string,
   varName: string,
   colors: { bgColor: string; borderColor: string; nameColor: string; textColor: string; avatarConfig?: AvatarConfig; llm_descr?: string; llm_temperature?: number },
+  pregenIds?: CharacterVarIds,
+  pendingNodes?: VariableTreeNode[],
 ): CharVarBuildResult {
-  const nameVarId            = uuid();
-  const bgColorVarId         = uuid();
-  const borderColorVarId     = uuid();
-  const nameColorVarId       = uuid();
-  const textColorVarId       = uuid();
-  const avatarVarId          = uuid();
-  const llmDescrVarId        = uuid();
-  const llmTemperatureVarId  = uuid();
-  const stylesGroupId        = uuid();
-  const groupId              = uuid();
+  const nameVarId            = pregenIds?.nameVarId ?? uuid();
+  const bgColorVarId         = pregenIds?.bgColorVarId ?? uuid();
+  const borderColorVarId     = pregenIds?.borderColorVarId ?? uuid();
+  const nameColorVarId       = pregenIds?.nameColorVarId ?? uuid();
+  const textColorVarId       = pregenIds?.textColorVarId ?? uuid();
+  const avatarVarId          = pregenIds?.avatarVarId ?? uuid();
+  const llmDescrVarId        = pregenIds?.llmDescrVarId ?? uuid();
+  const llmTemperatureVarId  = pregenIds?.llmTemperatureVarId ?? uuid();
+  const stylesGroupId        = pregenIds?.stylesGroupId ?? uuid();
+  const groupId              = pregenIds?.groupId ?? uuid();
 
   const nameVar: Variable = {
     kind: 'variable', id: nameVarId,
@@ -255,7 +277,7 @@ function buildCharVarNodes(
   const group: VariableGroup = {
     kind: 'group', id: groupId,
     name: varName,
-    children: [nameVar, stylesGroup],
+    children: [nameVar, stylesGroup, ...(pendingNodes ?? [])],
   };
 
   return {
@@ -759,7 +781,7 @@ interface ProjectState {
   deleteConditionBranch: (sceneId: string, blockId: string, branchId: string) => void;
 
   // Characters
-  addCharacter: (char: Omit<Character, 'id'>) => string;
+  addCharacter: (char: Omit<Character, 'id'>, pregenIds?: CharacterVarIds, pendingNodes?: VariableTreeNode[]) => string;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
   deleteCharacter: (id: string) => void;
 
@@ -1473,7 +1495,7 @@ export const useProjectStore = create<ProjectState>()(
 
         // ── Characters ────────────────────────────────────────────────────────
 
-        addCharacter: (char) => {
+        addCharacter: (char, pregenIds, pendingNodes) => {
           get().saveSnapshot();
           const charId = uuid();
           set(s => {
@@ -1485,7 +1507,7 @@ export const useProjectStore = create<ProjectState>()(
               avatarConfig: char.avatarConfig,
               llm_descr: char.llm_descr,
               llm_temperature: char.llm_temperature,
-            });
+            }, pregenIds, pendingNodes);
             const character: Character = { ...char, id: charId, varIds };
             return {
               project: {

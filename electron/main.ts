@@ -231,7 +231,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
-  win.webContents.openDevTools();
+  // win.webContents.openDevTools();
 
   // Fix WebSocket handshake Origin for local services (e.g. ComfyUI).
   // Electron renderer sends an Origin that ComfyUI doesn't recognise → 403.

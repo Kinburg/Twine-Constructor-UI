@@ -1,21 +1,10 @@
 import { useState } from 'react';
 import { useProjectStore, charToVarPrefix } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
-import type { Character, VariableTreeNode, VariableGroup } from '../../types';
+import type { Character } from '../../types';
 import { useT } from '../../i18n';
 import { CharacterModal } from './CharacterModal';
 import { useConfirm } from '../shared/ConfirmModal';
-
-function findGroupInTree(nodes: VariableTreeNode[], id: string): VariableGroup | null {
-  for (const n of nodes) {
-    if (n.kind === 'group' && n.id === id) return n;
-    if (n.kind === 'group') {
-      const found = findGroupInTree(n.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}
 
 const DEFAULT_COLORS = [
   { nameColor: '#7dd3fc', bgColor: '#0c2340', borderColor: '#0ea5e9' },
@@ -51,7 +40,7 @@ type ModalState =
 
 export function CharacterManager() {
   const t = useT();
-  const { project, addCharacter, updateCharacter, deleteCharacter, addVariable, addVariableGroup } = useProjectStore();
+  const { project, addCharacter, updateCharacter, deleteCharacter } = useProjectStore();
   const { characters } = project;
   const [modalState, setModalState] = useState<ModalState>(null);
   const confirmDeleteCharacter = useEditorPrefsStore(s => s.confirmDeleteCharacter);
@@ -108,31 +97,9 @@ export function CharacterManager() {
           takenVarNames={characters
             .filter(c => modalState.mode !== 'edit' || c.id !== modalState.char.id)
             .map(c => c.varName || charToVarPrefix(c.name))}
-          onSave={(data, pendingNodes: VariableTreeNode[]) => {
+          onSave={(data, pendingNodes, pregenVarIds) => {
             if (modalState.mode === 'create') {
-              const newId = addCharacter(data);
-              if (pendingNodes.length > 0) {
-                const newChar = useProjectStore.getState().project.characters.find(c => c.id === newId);
-                const groupId = newChar?.varIds?.groupId ?? null;
-                const addNodesRecursive = (nodes: VariableTreeNode[], parentId: string | null) => {
-                  for (const n of nodes) {
-                    if (n.kind === 'variable') {
-                      addVariable(parentId, { name: n.name, varType: n.varType, defaultValue: n.defaultValue, description: n.description });
-                    } else {
-                      addVariableGroup(parentId, n.name);
-                      // Find the just-added group to get its store-generated ID
-                      const storeNodes = useProjectStore.getState().project.variableNodes;
-                      const parentGroup = parentId ? findGroupInTree(storeNodes, parentId) : null;
-                      const siblings = parentGroup ? parentGroup.children : storeNodes;
-                      const addedGroup = siblings.find(s => s.kind === 'group' && s.name === n.name);
-                      if (addedGroup && n.children.length > 0) {
-                        addNodesRecursive(n.children, addedGroup.id);
-                      }
-                    }
-                  }
-                };
-                addNodesRecursive(pendingNodes, groupId);
-              }
+              addCharacter(data, pregenVarIds ?? undefined, pendingNodes);
             } else {
               updateCharacter(modalState.char.id, data);
             }

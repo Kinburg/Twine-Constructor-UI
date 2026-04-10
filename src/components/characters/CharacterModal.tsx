@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useProjectStore, flattenAssets, charToVarPrefix } from '../../store/projectStore';
+import { useProjectStore, flattenAssets, charToVarPrefix, pregenCharVarIds } from '../../store/projectStore';
 import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
-import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset, VariableTreeNode, VariableGroup } from '../../types';
+import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset, VariableTreeNode, VariableGroup, CharacterVarIds } from '../../types';
 import { useT } from '../../i18n';
 import { AvatarGenModal } from './AvatarGenModal';
 
@@ -39,6 +39,40 @@ function getCharUserNodes(nodes: VariableTreeNode[], groupId: string, nameVarId:
   const group = findGroup(nodes, groupId);
   if (!group) return [];
   return group.children.filter(n => n.id !== nameVarId && n.id !== stylesGroupId);
+}
+
+// ─── Synthetic variable tree for create mode ────────────────────────────────
+
+/**
+ * Build a fake VariableGroup that mirrors what buildCharVarNodes() will produce,
+ * using the pre-generated IDs. Lets VariablePicker show the character's own
+ * variables before the character is saved.
+ */
+function buildSyntheticCharGroup(
+  varName: string,
+  ids: CharacterVarIds,
+  pendingNodes: VariableTreeNode[],
+): VariableGroup {
+  return {
+    kind: 'group', id: ids.groupId,
+    name: varName || 'char',
+    children: [
+      { kind: 'variable', id: ids.nameVarId, name: 'name', varType: 'string', defaultValue: '', description: '' },
+      {
+        kind: 'group', id: ids.stylesGroupId, name: 'styles',
+        children: [
+          { kind: 'variable', id: ids.bgColorVarId, name: 'bgColor', varType: 'string', defaultValue: '', description: '' },
+          { kind: 'variable', id: ids.borderColorVarId, name: 'borderColor', varType: 'string', defaultValue: '', description: '' },
+          { kind: 'variable', id: ids.nameColorVarId, name: 'nameColor', varType: 'string', defaultValue: '', description: '' },
+          { kind: 'variable', id: ids.textColorVarId!, name: 'textColor', varType: 'string', defaultValue: '', description: '' },
+          { kind: 'variable', id: ids.avatarVarId, name: 'avatar', varType: 'string', defaultValue: '', description: '' },
+          { kind: 'variable', id: ids.llmDescrVarId!, name: 'llm_descr', varType: 'string', defaultValue: '', description: '' },
+          { kind: 'variable', id: ids.llmTemperatureVarId!, name: 'llm_temperature', varType: 'number', defaultValue: '', description: '' },
+        ],
+      },
+      ...pendingNodes,
+    ],
+  };
 }
 
 // ─── Local tree operations for create mode ──────────────────────────────────
@@ -76,7 +110,7 @@ interface Props {
   initial: Omit<Character, 'id'>;
   takenNames: string[];
   takenVarNames: string[];
-  onSave: (data: Omit<Character, 'id'>, pendingNodes: VariableTreeNode[]) => void;
+  onSave: (data: Omit<Character, 'id'>, pendingNodes: VariableTreeNode[], pregenVarIds: CharacterVarIds | null) => void;
   onClose: () => void;
 }
 
@@ -128,6 +162,9 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
   // In create mode: track pending nodes locally until save
   const [pendingNodes, setPendingNodes] = useState<VariableTreeNode[]>([]);
 
+  // Pre-generate character variable IDs in create mode so avatar bindings work before save
+  const [pregenVarIds] = useState<CharacterVarIds | null>(() => mode === 'create' ? pregenCharVarIds() : null);
+
   const parsedTemp = llmTemperature !== '' ? parseFloat(llmTemperature) : undefined;
   const draft: Omit<Character, 'id'> = { name, varName, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr, llm_temperature: parsedTemp };
 
@@ -139,6 +176,17 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
       : null;
 
   const trimmedVarName = varName.trim().replace(/^[\d_]+/, '').replace(/_+$/g, '');
+
+  // Synthetic variable tree that mirrors what the character group will look like after saving
+  const selfVarNodes: VariableTreeNode[] = (mode === 'create' && pregenVarIds)
+    ? [buildSyntheticCharGroup(trimmedVarName || varName, pregenVarIds, pendingNodes)]
+    : [];
+
+  // Nodes shown in the avatar variable picker — only this character's own variables
+  const avatarPickerNodes: VariableTreeNode[] = mode === 'create'
+    ? selfVarNodes
+    : (() => { const g = findGroup(project.variableNodes, liveChar?.varIds?.groupId ?? ''); return g ? [g] : project.variableNodes; })();
+
   const varNameError = trimmedVarName === ''
     ? t.characters.varNameEmpty
     : !/^[a-z][a-z0-9_]*$/.test(trimmedVarName)
@@ -149,7 +197,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
 
   const handleSave = () => {
     if (nameError || varNameError) return;
-    onSave({ ...draft, name: trimmedName, varName: trimmedVarName }, pendingNodes);
+    onSave({ ...draft, name: trimmedName, varName: trimmedVarName }, pendingNodes, pregenVarIds);
     onClose();
   };
 
@@ -161,15 +209,18 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
     onDeleteNode: (id) => deleteVariableNode(id),
   };
 
-  // Tree actions for create mode (backed by local state)
+  // Tree actions for create mode (backed by local state).
+  // parentId === pregenVarIds.groupId means "root of this character" — map to null for pendingNodes.
   const createActions: TreeActions = {
     onAddVariable: (parentId, data) => {
       const newVar: Variable = { kind: 'variable', id: crypto.randomUUID(), name: data.name, varType: data.varType, defaultValue: data.defaultValue, description: data.description };
-      setPendingNodes(prev => localAddNode(prev, parentId, newVar));
+      const effectiveParentId = parentId === pregenVarIds?.groupId ? null : parentId;
+      setPendingNodes(prev => localAddNode(prev, effectiveParentId, newVar));
     },
     onAddGroup: (parentId, name) => {
       const newGroup: VariableGroup = { kind: 'group', id: crypto.randomUUID(), name, children: [] };
-      setPendingNodes(prev => localAddNode(prev, parentId, newGroup));
+      const effectiveParentId = parentId === pregenVarIds?.groupId ? null : parentId;
+      setPendingNodes(prev => localAddNode(prev, effectiveParentId, newGroup));
     },
     onUpdateVariable: (id, patch) => {
       setPendingNodes(prev => localUpdateVar(prev, id, patch));
@@ -329,6 +380,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
             charVarName={varName}
             charName={name}
             charLlmDescr={llmDescr}
+            charNodes={avatarPickerNodes}
           />
 
           {/* Custom variables */}
@@ -336,7 +388,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
             nodes={mode === 'edit' ? charUserNodes : pendingNodes}
             allNodes={mode === 'edit' ? charUserNodes : pendingNodes}
             actions={mode === 'edit' ? editActions : createActions}
-            parentId={mode === 'edit' && liveChar?.varIds ? liveChar.varIds.groupId : null}
+            parentId={mode === 'edit' ? (liveChar?.varIds?.groupId ?? null) : (pregenVarIds?.groupId ?? null)}
           />
         </div>
 
@@ -420,6 +472,7 @@ function AvatarEditor({
   charVarName,
   charName,
   charLlmDescr,
+  charNodes,
 }: {
   cfg: AvatarConfig;
   imgAssets: Asset[];
@@ -427,6 +480,7 @@ function AvatarEditor({
   charVarName: string;
   charName: string;
   charLlmDescr?: string;
+  charNodes?: VariableTreeNode[];
 }) {
   const t = useT();
   const { project } = useProjectStore();
@@ -496,7 +550,7 @@ function AvatarEditor({
             <VariablePicker
               value={cfg.variableId}
               onChange={id => onChange({ ...cfg, variableId: id })}
-              nodes={project.variableNodes}
+              nodes={charNodes?.length ? charNodes : project.variableNodes}
               placeholder={t.characters.selectVariable}
             />
           </Field>
