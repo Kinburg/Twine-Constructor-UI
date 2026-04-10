@@ -7,6 +7,7 @@ import type { AvatarConfig, AvatarGenHistoryEntry, AvatarGenSettings, AvatarGenS
 import { useT } from '../../i18n';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
 import { generateAvatarPromptWithLlm } from '../../utils/imageGen/llmPrompt';
+import { StyleChipsEditor } from '../shared/StyleChipsEditor';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ function randomSeed(): number {
 }
 
 function sanitizeFilename(value: string): string {
-  return value.replace(/[/\\]/g, '').replace(/[^a-z0-9_\-]/gi, '_').replace(/_{2,}/g, '_') || 'slot';
+  return value.replace(/[/\\]/g, '').replace(/[^a-z0-9_-]/gi, '_').replace(/_{2,}/g, '_') || 'slot';
 }
 
 function slotApproveFilename(slot: ModalSlotState, mapping: ImageBoundMapping | null): string {
@@ -66,6 +67,7 @@ interface ModalSlotState {
   negativePrompt: string;
   history: AvatarGenHistoryEntry[];
   currentSrc: string;
+  llmMode: 'hint' | 'rephrase' | 'continue';
   busy: boolean;
   busyPrompt: boolean;
   progress: ComfyProgress | null;
@@ -84,6 +86,7 @@ function initSlots(cfg: AvatarConfig, staticLabel: string, defaultLabel: string)
       negativePrompt: s?.negativePrompt ?? '',
       history: s?.history ?? [],
       currentSrc: s?.currentSrc ?? '',
+      llmMode: 'hint',
       busy: false,
       busyPrompt: false,
       progress: null,
@@ -102,6 +105,7 @@ function initSlots(cfg: AvatarConfig, staticLabel: string, defaultLabel: string)
       negativePrompt: s?.negativePrompt ?? '',
       history: s?.history ?? [],
       currentSrc: s?.currentSrc ?? '',
+      llmMode: 'hint',
       busy: false,
       busyPrompt: false,
       progress: null,
@@ -116,6 +120,7 @@ function initSlots(cfg: AvatarConfig, staticLabel: string, defaultLabel: string)
     negativePrompt: def?.negativePrompt ?? '',
     history: def?.history ?? [],
     currentSrc: def?.currentSrc ?? '',
+    llmMode: 'hint',
     busy: false,
     busyPrompt: false,
     progress: null,
@@ -168,6 +173,9 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
   const [genWidth, setGenWidth] = useState(cfg.genSettings?.genWidth ?? 0);
   const [genHeight, setGenHeight] = useState(cfg.genSettings?.genHeight ?? 0);
 
+  // Style hints (shared across all slots)
+  const [styleHints, setStyleHints] = useState<string[]>(cfg.genSettings?.styleHints ?? []);
+
   // Slots
   const [slots, setSlots] = useState<ModalSlotState[]>(() =>
     initSlots(cfg, ag.slotLabelStatic, ag.slotLabelDefault),
@@ -208,7 +216,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
     setSlots(prev => prev.map(s => s.slotId === slotId ? { ...s, ...patch } : s));
 
   /** Build an AvatarGenSettings from current UI state + slot data */
-  const buildGenSettings = (currentSlots: ModalSlotState[]): AvatarGenSettings => ({
+  const buildGenSettings = (currentSlots: ModalSlotState[], currentStyleHints = styleHints): AvatarGenSettings => ({
     provider,
     providerUrl: provider === 'comfyui' ? providerUrl : undefined,
     workflowFile: provider === 'comfyui' ? workflowFile : undefined,
@@ -216,6 +224,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
     pollinationsToken: provider === 'pollinations' ? pollinationsToken : undefined,
     genWidth: genWidth || undefined,
     genHeight: genHeight || undefined,
+    styleHints: currentStyleHints.length > 0 ? currentStyleHints : undefined,
     slots: currentSlots.map(s => ({
       slotId: s.slotId,
       prompt: s.prompt,
@@ -254,10 +263,14 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
       }
 
       const seed = randomSeed();
+      const effectivePrompt = styleHints.length > 0
+        ? `${slot.prompt.trim()}. Style: ${styleHints.join(', ')}`
+        : slot.prompt;
+      console.log(effectivePrompt);
       const generated = await generateImageWithProvider(provider, {
         baseUrl: providerUrl,
         workflow: workflowJson,
-        prompt: slot.prompt,
+        prompt: effectivePrompt,
         negativePrompt: slot.negativePrompt || undefined,
         seed,
         pollinationsModel: pollinationsModel || undefined,
@@ -320,11 +333,11 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
 
   // ─── generate prompt ─────────────────────────────────────────────────────────
 
-  const generatePromptForSlot = async (slotId: string) => {
+  const generatePromptForSlot = async (slotId: string, llmMode: ModalSlotState['llmMode']) => {
     if (!llmEnabled) return;
     const slot = slots.find(s => s.slotId === slotId);
     if (!slot) return;
-    updateSlot(slotId, { busyPrompt: true });
+    updateSlot(slotId, { busyPrompt: true, llmMode });
     try {
       const urlOrApiKey = llmProvider === 'openai' ? llmOpenaiUrl : llmUrl;
       const model = llmProvider === 'openai' ? llmOpenaiModel : llmGeminiModel;
@@ -343,6 +356,8 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         charLlmDescr,
         slot.label,
         slot.prompt,
+        llmMode,
+        styleHints,
       );
       if (prompt) updateSlot(slotId, { prompt, busyPrompt: false });
       else updateSlot(slotId, { busyPrompt: false });
@@ -548,6 +563,15 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
                 </div>
               </div>
             </div>
+
+            {/* Style hints */}
+            <StyleChipsEditor
+              value={styleHints}
+              onChange={setStyleHints}
+              label={ag.styleHintsLabel}
+              customPlaceholder={ag.styleHintsCustomPlaceholder}
+              addBtn={ag.styleHintsAddBtn}
+            />
           </div>
 
           {/* ── Slots ── */}
@@ -562,7 +586,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
                 onNegativePromptChange={v => updateSlot(slot.slotId, { negativePrompt: v })}
                 onGenerate={() => generateForSlot(slot.slotId)}
                 onCancel={() => cancelForSlot(slot.slotId)}
-                onGeneratePrompt={() => generatePromptForSlot(slot.slotId)}
+                onGeneratePrompt={m => generatePromptForSlot(slot.slotId, m)}
                 onHistorySelect={src => updateSlot(slot.slotId, { currentSrc: src })}
                 ag={ag}
               />
@@ -614,7 +638,7 @@ function SlotPanel({
   onNegativePromptChange: (v: string) => void;
   onGenerate: () => void;
   onCancel: () => void;
-  onGeneratePrompt: () => void;
+  onGeneratePrompt: (mode: ModalSlotState['llmMode']) => void;
   onHistorySelect: (src: string) => void;
   ag: ReturnType<typeof useT>['avatarGen'];
 }) {
@@ -648,14 +672,29 @@ function SlotPanel({
             onChange={e => onPromptChange(e.target.value)}
           />
           {llmEnabled && (
-            <button
-              type="button"
-              disabled={slot.busyPrompt}
-              className="self-start px-2 py-0.5 text-[10px] rounded bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white cursor-pointer"
-              onClick={onGeneratePrompt}
-            >
-              {slot.busyPrompt ? ag.generatingPrompt : ag.generatePromptBtn}
-            </button>
+            <div className="flex gap-1 flex-wrap">
+              {(['continue', 'rephrase', 'hint'] as const).map(mode => {
+                const label = mode === 'continue' ? ag.llmModeContinue
+                  : mode === 'rephrase' ? ag.llmModeRephrase
+                  : ag.llmModeHint;
+                const isActive = slot.llmMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    disabled={slot.busyPrompt}
+                    className={`px-2 py-0.5 text-[10px] rounded cursor-pointer disabled:opacity-50 transition-colors border ${
+                      isActive
+                        ? 'bg-indigo-600 border-indigo-500 text-white'
+                        : 'bg-slate-700 border-slate-600 text-slate-300 hover:bg-slate-600'
+                    }`}
+                    onClick={() => onGeneratePrompt(mode)}
+                  >
+                    {slot.busyPrompt && isActive ? ag.generatingPrompt : label}
+                  </button>
+                );
+              })}
+            </div>
           )}
         </div>
       </div>

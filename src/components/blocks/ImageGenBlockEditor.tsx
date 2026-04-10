@@ -8,6 +8,7 @@ import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
 import { generateImagePromptWithLlm } from '../../utils/imageGen/llmPrompt';
+import { StyleChipsEditor } from '../shared/StyleChipsEditor';
 
 async function collectWorkflowFiles(absDir: string, relDir: string): Promise<string[]> {
   const entries = await fsApi.listDir(absDir);
@@ -158,7 +159,7 @@ export function ImageGenBlockEditor({
     : '';
   const isApproved = block.src.startsWith('assets/');
 
-  const generatePrompt = async () => {
+  const generatePrompt = async (llmMode: 'hint' | 'rephrase' | 'continue') => {
     const scene = project.scenes.find(s => s.id === sceneId);
     if (!scene || !llmEnabled) return;
     setBusyPrompt(true);
@@ -179,8 +180,10 @@ export function ImageGenBlockEditor({
         scene,
         block.id,
         block.prompt,
+        llmMode,
+        block.styleHints ?? [],
       );
-      if (prompt) update({ prompt });
+      if (prompt) update({ prompt, llmPromptMode: llmMode });
     } catch {
       toast.error(ig.errorGeneratePrompt);
     } finally {
@@ -210,10 +213,14 @@ export function ImageGenBlockEditor({
       }
 
       const usedSeed = seedMode === 'random' ? randomSeed() : (Number.isFinite(block.seed) ? block.seed : 0);
+      const styleHints = block.styleHints ?? [];
+      const effectivePrompt = styleHints.length > 0
+        ? `${block.prompt.trim()}, ${styleHints.join(', ')}`
+        : block.prompt;
       const generated = await generateImageWithProvider(block.provider, {
         baseUrl: block.providerUrl,
         workflow: workflowJson,
-        prompt: block.prompt,
+        prompt: effectivePrompt,
         negativePrompt: block.negativePrompt,
         seed: usedSeed,
         pollinationsModel: block.pollinationsModel,
@@ -458,14 +465,27 @@ export function ImageGenBlockEditor({
             onChange={e => update({ prompt: e.target.value })}
           />
           {block.promptMode === 'llm' && (
-            <button
-              type="button"
-              disabled={busyPrompt || !llmEnabled}
-              className="self-start px-2.5 py-1 text-xs rounded bg-indigo-700 hover:bg-indigo-600 disabled:opacity-50 text-white cursor-pointer"
-              onClick={generatePrompt}
-            >
-              {busyPrompt ? ig.llmGenerating : ig.llmGeneratePrompt}
-            </button>
+            <div className="flex items-center gap-1 flex-wrap">
+              {([
+                ['continue', ig.llmModeContinue],
+                ['rephrase', ig.llmModeRephrase],
+                ['hint',     ig.llmModeHint],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  type="button"
+                  disabled={busyPrompt || !llmEnabled}
+                  className={`px-2.5 py-1 text-xs rounded disabled:opacity-50 cursor-pointer transition-colors ${
+                    (block.llmPromptMode ?? 'hint') === mode
+                      ? 'bg-indigo-600 text-white'
+                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                  onClick={() => generatePrompt(mode)}
+                >
+                  {busyPrompt && (block.llmPromptMode ?? 'hint') === mode ? ig.llmGenerating : label}
+                </button>
+              ))}
+            </div>
           )}
         </div>
       </div>
@@ -479,6 +499,14 @@ export function ImageGenBlockEditor({
           onChange={e => update({ negativePrompt: e.target.value })}
         />
       </div>
+
+      <StyleChipsEditor
+        value={block.styleHints ?? []}
+        onChange={v => update({ styleHints: v })}
+        label={ig.styleHintsLabel}
+        customPlaceholder={ig.styleHintsCustomPlaceholder}
+        addBtn={ig.styleHintsAddBtn}
+      />
 
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-20 shrink-0">{ig.seedModeLabel}</label>

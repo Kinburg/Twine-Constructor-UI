@@ -1,7 +1,7 @@
 import type { Project, Scene } from '../../types';
 import { generateText } from '../llm';
 import { buildSceneContext } from '../llm/promptBuilder';
-import type { LLMProvider } from '../llm';
+import type { LLMProvider, LLMMode } from '../llm';
 
 export type { LLMProvider };
 
@@ -27,72 +27,88 @@ function getCharacterIdsInScene(scene: Scene, targetBlockId: string): Set<string
   return ids;
 }
 
+/**
+ * Generates a text-to-image prompt for a scene illustration using an LLM.
+ *
+ * @param llmMode  - 'continue' = generate from scratch (or continue if prompt non-empty)
+ *                   'rephrase' = improve / rephrase the existing prompt
+ *                   'hint'     = use the current prompt as a creative hint
+ * @param styleHints - selected style tags; when non-empty, LLM is told NOT to include style
+ */
 export async function generateImagePromptWithLlm(
   options: LlmOptions,
   project: Project,
   scene: Scene,
   blockId: string,
-  hint: string,
+  currentPrompt: string,
+  llmMode: LLMMode = 'hint',
+  styleHints: string[] = [],
   signal?: AbortSignal,
 ): Promise<string> {
-  const context = buildSceneContext(scene, project.characters, blockId);
-  const charIds = getCharacterIdsInScene(scene, blockId);
-
-  const parts: string[] = [
-    'You are writing a text-to-image prompt. Describe only what can be visually SEEN in the image.',
-    'Include: scene location, characters present with their appearance, lighting, mood, composition.',
-    'Do NOT describe plot events, feelings, or dialogue — only visual elements.',
+  const sysParts: string[] = [
+    'You are generating a text-to-image prompt for a visual novel illustration.',
+    'Describe only what can be visually SEEN in the image: scene location, characters present with their appearance, lighting, mood, composition.',
     'Return ONLY the prompt text in English. No markdown, no quotes, no explanations.',
   ];
 
-  if (project.lore?.trim()) {
-    parts.push(`World/Setting:\n${project.lore.trim()}`);
+  if (styleHints.length > 0) {
+    sysParts.push('IMPORTANT: Do NOT include art style in the prompt — it will be appended separately after generation.');
   }
 
-  const charsInScene = project.characters.filter(
-    c => charIds.has(c.id) && c.llm_descr?.trim(),
-  );
+  if (project.lore?.trim()) {
+    sysParts.push(`World/Setting:\n${project.lore.trim()}`);
+  }
+
+  const charIds = getCharacterIdsInScene(scene, blockId);
+  const charsInScene = project.characters.filter(c => charIds.has(c.id) && c.llm_descr?.trim());
   if (charsInScene.length > 0) {
     const charLines = charsInScene.map(c => `  ${c.name}: ${c.llm_descr!.trim()}`).join('\n');
-    parts.push(`Characters in scene:\n${charLines}`);
+    sysParts.push(`Characters in scene:\n${charLines}`);
   }
 
+  const context = buildSceneContext(scene, project.characters, blockId);
   if (context) {
-    parts.push(`Scene narrative context:\n${context}`);
+    sysParts.push(`Scene narrative context:\n${context}`);
   }
 
-  if (hint.trim()) {
-    parts.push(`Additional hint:\n${hint.trim()}`);
-  }
+  const systemPrompt = sysParts.join('\n\n');
 
-  const input = parts.join('\n\n');
+  // For 'continue' mode with an empty field, switch to 'hint' so we get a fresh generation
+  const effectiveMode: LLMMode = llmMode === 'continue' && !currentPrompt.trim() ? 'hint' : llmMode;
+
+  // Pass a stripped-down project (context already embedded in systemPrompt above)
+  const strippedProject = { ...project, lore: '' };
+
+  // Dummy scene — scene context is already embedded in systemPrompt
+  const dummyScene: Scene = { id: '__img_gen__', name: '', tags: [], blocks: [] };
 
   const result = await generateText(
     options.provider,
     options.urlOrApiKey,
     options.model,
-    options.systemPrompt,
-    project,
-    scene,
-    blockId,
-    input,
-    {
-      maxTokens: options.maxTokens,
-      temperature: options.temperature,
-      filterThought: true,
-    },
-    'hint',
+    systemPrompt,
+    strippedProject,
+    dummyScene,
+    '__no_block__',
+    currentPrompt,
+    { maxTokens: options.maxTokens, temperature: options.temperature, filterThought: true },
+    effectiveMode,
     signal,
     undefined,
     options.apiKey,
   );
-
+  console.log(result);
   return (result ?? '').trim();
 }
 
 /**
  * Generates a text-to-image prompt for a character avatar using an LLM.
- * Uses character name, description, and slot label (e.g. emotion name) as context.
+ * Only uses character name + description as context — no story lore or scene data.
+ *
+ * @param llmMode  - 'continue' = generate from scratch (or continue if prompt non-empty)
+ *                   'rephrase' = improve / rephrase the existing prompt
+ *                   'hint'     = use the current prompt as a creative hint
+ * @param styleHints - selected style tags; when non-empty, LLM is told NOT to include style
  */
 export async function generateAvatarPromptWithLlm(
   options: LlmOptions,
@@ -100,54 +116,54 @@ export async function generateAvatarPromptWithLlm(
   charName: string,
   charDescr: string | undefined,
   slotLabel: string,
-  hint: string,
+  currentPrompt: string,
+  llmMode: LLMMode = 'hint',
+  styleHints: string[] = [],
   signal?: AbortSignal,
 ): Promise<string> {
-  const parts: string[] = [
-    'You are writing a text-to-image prompt for a character avatar image in a visual novel.',
+  const sysParts: string[] = [
+    'You are generating a text-to-image prompt for a character avatar illustration in a visual novel.',
     'The image should be a portrait or bust illustration suitable for use as a character avatar.',
-    'Describe: character appearance, facial expression, pose, clothing, lighting, art style.',
-    'Do NOT describe background scene unless specifically relevant.',
+    'Describe: character appearance, facial expression, pose, clothing, lighting.',
     'Return ONLY the prompt text in English. No markdown, no quotes, no explanations.',
   ];
 
-  if (project.lore?.trim()) {
-    parts.push(`World/Setting:\n${project.lore.trim()}`);
+  if (styleHints.length > 0) {
+    sysParts.push('IMPORTANT: Do NOT include art style in the prompt — it will be appended separately after generation.');
   }
 
-  parts.push(`Character name: ${charName}`);
+  sysParts.push(`Character name: ${charName}`);
   if (charDescr?.trim()) {
-    parts.push(`Character description: ${charDescr.trim()}`);
+    sysParts.push(`Character description: ${charDescr.trim()}`);
   }
 
   if (slotLabel && slotLabel !== 'static' && slotLabel !== 'default') {
-    parts.push(`Avatar variant / emotional state: ${slotLabel}`);
+    sysParts.push(`Avatar variant / emotional state: ${slotLabel}`);
   }
 
-  if (hint.trim()) {
-    parts.push(`Additional hint:\n${hint.trim()}`);
-  }
+  const systemPrompt = sysParts.join('\n\n');
 
-  const input = parts.join('\n\n');
+  const effectiveMode: LLMMode = llmMode === 'continue' && !currentPrompt.trim() ? 'hint' : llmMode;
 
-  // Dummy scene — no scene context needed for avatar generation
-  const dummyScene: Scene = { id: '__avatar_gen__', name: 'Avatar', tags: [], blocks: [] };
+  // Pass a stripped project — no lore, no characters (context embedded in systemPrompt)
+  const strippedProject = { ...project, lore: '', characters: [] };
+  const dummyScene: Scene = { id: '__avatar_gen__', name: '', tags: [], blocks: [] };
 
   const result = await generateText(
     options.provider,
     options.urlOrApiKey,
     options.model,
-    options.systemPrompt,
-    project,
+    systemPrompt,
+    strippedProject,
     dummyScene,
     '__no_block__',
-    input,
+    currentPrompt,
     { maxTokens: options.maxTokens, temperature: options.temperature, filterThought: true },
-    'hint',
+    effectiveMode,
     signal,
     undefined,
     options.apiKey,
   );
-
+  console.log(result);
   return (result ?? '').trim();
 }

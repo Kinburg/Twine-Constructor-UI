@@ -562,6 +562,12 @@ export interface Translations {
     approveOutsideRelease: string;
     errorApprove: string;
     errorUnapprove: string;
+    llmModeContinue: string;
+    llmModeRephrase: string;
+    llmModeHint: string;
+    styleHintsLabel: string;
+    styleHintsCustomPlaceholder: string;
+    styleHintsAddBtn: string;
     errorNoProjectDir: string;
     errorNoWorkflow: string;
     errorNoPrompt: string;
@@ -604,6 +610,12 @@ export interface Translations {
     approveSuccess: string;
     approvedBadge: string;
     doubleClickToExpand: string;
+    llmModeContinue: string;
+    llmModeRephrase: string;
+    llmModeHint: string;
+    styleHintsLabel: string;
+    styleHintsCustomPlaceholder: string;
+    styleHintsAddBtn: string;
     errorNoProjectDir: string;
     errorNoWorkflow: string;
     errorNoPrompt: string;

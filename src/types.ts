@@ -207,8 +207,10 @@ export interface ImageGenBlock {
   pollinationsModel?: string;        // Pollinations.AI model (flux, turbo, flux-realism…)
   pollinationsToken?: string;        // Pollinations.AI API token
   promptMode: ImageGenPromptMode;
+  llmPromptMode?: 'hint' | 'rephrase' | 'continue'; // which LLM sub-mode to use when promptMode === 'llm'
   prompt: string;
   negativePrompt?: string;
+  styleHints?: string[];            // art style tags appended to prompt at generation time
   seedMode: ImageGenSeedMode;
   seed?: number;
   width: number;                    // 0 = auto (display width in HTML output)
@@ -605,6 +607,7 @@ export interface AvatarGenSettings {
   pollinationsToken?: string;
   genWidth?: number;
   genHeight?: number;
+  styleHints?: string[];  // shared art style tags for all slots
   slots: AvatarGenSlotData[];
 }
 
