@@ -69,12 +69,16 @@ export const koboldcppProvider: LLMProviderImpl = {
         signal?: AbortSignal,
         onChunk?: (accumulated: string) => void
     ): Promise<string> {
-        const structured = constructGenerationPrompt(systemPrompt, project, scene, blockId, currentValue, mode);
+        let fullPrompt: string;
 
-        // KoboldCPP is a completion model — concatenate everything into a flat prompt.
-        let fullPrompt = `${structured.systemInstruction}\n\n${structured.userPrompt}`;
-        if (mode === 'continue') {
-            fullPrompt += structured.continuationPrefix;
+        if (params.rawUserPrompt) {
+            fullPrompt = `${systemPrompt.trim()}\n\n${params.rawUserPrompt}`;
+        } else {
+            const structured = constructGenerationPrompt(systemPrompt, project, scene, blockId, currentValue, mode);
+            fullPrompt = `${structured.systemInstruction}\n\n${structured.userPrompt}`;
+            if (mode === 'continue') {
+                fullPrompt += structured.continuationPrefix;
+            }
         }
 
         const requestBody: KoboldGenerateRequest = {

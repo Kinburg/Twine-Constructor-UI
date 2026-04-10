@@ -1,5 +1,5 @@
 import type {Project, Scene} from '../../types';
-import type {LLMProvider, LLMProviderImpl, ProviderConfig, LLMMode} from './types';
+import type {LLMProvider, LLMProviderImpl, ProviderConfig, GenerationParams, LLMMode} from './types';
 import {koboldcppProvider} from './koboldcppProvider';
 import {geminiProvider} from './geminiProvider';
 import {openaiProvider} from './openaiProvider';
@@ -26,7 +26,7 @@ export async function generateText(
     scene: Scene,
     blockId: string,
     currentValue: string,
-    params: { maxTokens: number; temperature: number; filterThought?: boolean },
+    params: GenerationParams,
     mode: LLMMode = 'continue',
     signal?: AbortSignal,
     onChunk?: (accumulated: string) => void,

@@ -27,6 +27,26 @@ function getCharacterIdsInScene(scene: Scene, targetBlockId: string): Set<string
   return ids;
 }
 
+/** Build a mode-specific user prompt for image prompt generation. */
+function buildImageGenUserPrompt(currentPrompt: string, mode: LLMMode): string {
+  const trimmed = currentPrompt.trim();
+
+  if (mode === 'rephrase') {
+    return `Improve and refine the following image prompt. Make it more vivid and visually specific. Return ONLY the improved prompt.\n\nOriginal prompt:\n${trimmed}`;
+  }
+
+  if (mode === 'continue' && trimmed) {
+    return `Expand and complete the following image prompt with more visual details. Return ONLY the full expanded prompt.\n\nCurrent prompt:\n${trimmed}`;
+  }
+
+  // 'hint' mode, or 'continue' with empty prompt (fresh generation)
+  if (trimmed) {
+    return `Generate a detailed image prompt based on the following creative direction.\n\nCreative direction:\n${trimmed}`;
+  }
+
+  return 'Generate a detailed image prompt for this scene based on the context provided.';
+}
+
 /**
  * Generates a text-to-image prompt for a scene illustration using an LLM.
  *
@@ -42,18 +62,18 @@ export async function generateImagePromptWithLlm(
   blockId: string,
   currentPrompt: string,
   llmMode: LLMMode = 'hint',
-  styleHints: string[] = [],
+  _styleHints: string[] = [],
   signal?: AbortSignal,
 ): Promise<string> {
   const sysParts: string[] = [
-    'You are generating a text-to-image prompt for a visual novel illustration.',
-    'Describe only what can be visually SEEN in the image: scene location, characters present with their appearance, lighting, mood, composition.',
-    'Return ONLY the prompt text in English. No markdown, no quotes, no explanations.',
+    'You are an expert at writing text-to-image prompts for visual novel scene illustrations.',
+    'Describe a single scene as it would appear in a visual novel CG.',
+    'Focus on visual elements only: environment, character appearances, age, gender, poses, facial expressions, clothing, lighting, color palette, camera angle, and composition.',
+    'Be specific and concrete — use precise visual details rather than abstract concepts.',
+    'Do NOT include any art style, rendering style, or medium descriptions in the prompt — style tags are appended separately by the user.',
+    'Keep the prompt between 2–5 sentences.',
+    'Output ONLY the prompt text in English. No markdown, no quotes, no commentary.',
   ];
-
-  if (styleHints.length > 0) {
-    sysParts.push('IMPORTANT: Do NOT include art style in the prompt — it will be appended separately after generation.');
-  }
 
   if (project.lore?.trim()) {
     sysParts.push(`World/Setting:\n${project.lore.trim()}`);
@@ -75,6 +95,7 @@ export async function generateImagePromptWithLlm(
 
   // For 'continue' mode with an empty field, switch to 'hint' so we get a fresh generation
   const effectiveMode: LLMMode = llmMode === 'continue' && !currentPrompt.trim() ? 'hint' : llmMode;
+  const userPrompt = buildImageGenUserPrompt(currentPrompt, effectiveMode);
 
   // Pass a stripped-down project (context already embedded in systemPrompt above)
   const strippedProject = { ...project, lore: '' };
@@ -91,19 +112,18 @@ export async function generateImagePromptWithLlm(
     dummyScene,
     '__no_block__',
     currentPrompt,
-    { maxTokens: options.maxTokens, temperature: options.temperature, filterThought: true },
+    { maxTokens: options.maxTokens, temperature: options.temperature, filterThought: true, rawUserPrompt: userPrompt },
     effectiveMode,
     signal,
     undefined,
     options.apiKey,
   );
-  console.log(result);
   return (result ?? '').trim();
 }
 
 /**
  * Generates a text-to-image prompt for a character avatar using an LLM.
- * Only uses character name + description as context — no story lore or scene data.
+ * Uses character name + description + world setting as context.
  *
  * @param llmMode  - 'continue' = generate from scratch (or continue if prompt non-empty)
  *                   'rephrase' = improve / rephrase the existing prompt
@@ -118,18 +138,21 @@ export async function generateAvatarPromptWithLlm(
   slotLabel: string,
   currentPrompt: string,
   llmMode: LLMMode = 'hint',
-  styleHints: string[] = [],
+  _styleHints: string[] = [],
   signal?: AbortSignal,
 ): Promise<string> {
   const sysParts: string[] = [
-    'You are generating a text-to-image prompt for a character avatar illustration in a visual novel.',
-    'The image should be a portrait or bust illustration suitable for use as a character avatar.',
-    'Describe: character appearance, facial expression, pose, clothing, lighting.',
-    'Return ONLY the prompt text in English. No markdown, no quotes, no explanations.',
+    'You are an expert at writing text-to-image prompts for character portraits in visual novels.',
+    'Write a prompt for a portrait illustration (head and upper body) suitable as a character avatar.',
+    'Focus on: face, facial expression, hairstyle, eye details, skin tone, visible clothing, lighting, and background.',
+    'Be specific and concrete — describe exact visual details.',
+    'Do NOT include any art style, rendering style, or medium descriptions in the prompt — style tags are appended separately by the user.',
+    'Keep the prompt between 2–4 sentences.',
+    'Output ONLY the prompt text in English. No markdown, no quotes, no commentary.',
   ];
 
-  if (styleHints.length > 0) {
-    sysParts.push('IMPORTANT: Do NOT include art style in the prompt — it will be appended separately after generation.');
+  if (project.lore?.trim()) {
+    sysParts.push(`World setting (for visual context): ${project.lore.trim()}`);
   }
 
   sysParts.push(`Character name: ${charName}`);
@@ -144,6 +167,7 @@ export async function generateAvatarPromptWithLlm(
   const systemPrompt = sysParts.join('\n\n');
 
   const effectiveMode: LLMMode = llmMode === 'continue' && !currentPrompt.trim() ? 'hint' : llmMode;
+  const userPrompt = buildImageGenUserPrompt(currentPrompt, effectiveMode);
 
   // Pass a stripped project — no lore, no characters (context embedded in systemPrompt)
   const strippedProject = { ...project, lore: '', characters: [] };
@@ -158,12 +182,11 @@ export async function generateAvatarPromptWithLlm(
     dummyScene,
     '__no_block__',
     currentPrompt,
-    { maxTokens: options.maxTokens, temperature: options.temperature, filterThought: true },
+    { maxTokens: options.maxTokens, temperature: options.temperature, filterThought: true, rawUserPrompt: userPrompt },
     effectiveMode,
     signal,
     undefined,
     options.apiKey,
   );
-  console.log(result);
   return (result ?? '').trim();
 }

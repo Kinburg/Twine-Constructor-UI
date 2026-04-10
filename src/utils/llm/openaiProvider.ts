@@ -59,7 +59,17 @@ export const openaiProvider: LLMProviderImpl = {
         signal?: AbortSignal,
         onChunk?: (accumulated: string) => void
     ): Promise<string> {
-        const structured = constructGenerationPrompt(systemPrompt, project, scene, blockId, currentValue, mode);
+        let sysInstruction: string;
+        let userContent: string;
+
+        if (params.rawUserPrompt) {
+            sysInstruction = systemPrompt.trim();
+            userContent = params.rawUserPrompt;
+        } else {
+            const structured = constructGenerationPrompt(systemPrompt, project, scene, blockId, currentValue, mode);
+            sysInstruction = structured.systemInstruction;
+            userContent = structured.userPrompt;
+        }
 
         const headers: Record<string, string> = {
             'Content-Type': 'application/json',
@@ -71,8 +81,8 @@ export const openaiProvider: LLMProviderImpl = {
         const requestBody = {
             model: config.model,
             messages: [
-                {role: 'system', content: structured.systemInstruction},
-                {role: 'user', content: structured.userPrompt},
+                {role: 'system', content: sysInstruction},
+                {role: 'user', content: userContent},
             ],
             max_tokens: params.maxTokens,
             temperature: params.temperature,

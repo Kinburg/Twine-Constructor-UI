@@ -17,10 +17,20 @@ export const geminiProvider: LLMProviderImpl = {
         signal?: AbortSignal,
         onChunk?: (accumulated: string) => void
     ): Promise<string> {
-        const structured = constructGenerationPrompt(systemPrompt, project, scene, blockId, currentValue, mode);
-
         const ai = new GoogleGenAI({apiKey: config.apiKey});
         const modelName = config.model.startsWith('models/') ? config.model.slice(7) : config.model;
+
+        let sysInstruction: string;
+        let userContent: string;
+
+        if (params.rawUserPrompt) {
+            sysInstruction = systemPrompt.trim();
+            userContent = params.rawUserPrompt;
+        } else {
+            const structured = constructGenerationPrompt(systemPrompt, project, scene, blockId, currentValue, mode);
+            sysInstruction = structured.systemInstruction;
+            userContent = structured.userPrompt;
+        }
 
         // Gemini models use thinkingBudget, Gemma models use thinkingLevel
         const thinkingConfig: ThinkingConfig = modelName.includes('gemma')
@@ -29,9 +39,9 @@ export const geminiProvider: LLMProviderImpl = {
 
         const requestConfig = {
             model: modelName,
-            contents: structured.userPrompt,
+            contents: userContent,
             config: {
-                systemInstruction: structured.systemInstruction,
+                systemInstruction: sysInstruction,
                 maxOutputTokens: params.maxTokens,
                 temperature: params.temperature,
                 topP: 0.95,

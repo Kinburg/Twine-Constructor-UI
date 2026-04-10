@@ -70,35 +70,32 @@ export function constructGenerationPrompt(
     if (targetBlock?.type === 'dialogue') {
         const char = project.characters.find(c => c.id === targetBlock?.characterId);
         const charName = char?.name || 'the character';
-        styleInstruction = `Write it as a ${charName}'s phrase. Do not use "${charName}:" and quotation marks.`;
+        styleInstruction = `Write ${charName}'s dialogue line, staying in character. Output only the spoken words — no name prefix, no quotation marks.`;
     } else {
-        styleInstruction = `Write it as an author of the story. Do not write dialogues or character's speeches. Write only descriptions of actions, objects and progression through the plot.`;
+        styleInstruction = `Write narrative prose — no dialogue or direct speech. Focus on actions, surroundings, and plot progression.`;
     }
 
     // Continuation prefix (used by completion-style models like KoboldCPP)
     let continuationPrefix = "";
 
     if (mode === 'rephrase') {
-        userPrompt += `Rephrase, improve, and expand the following text. `;
+        userPrompt += `Rephrase, improve, and enrich the following text — add vivid details where appropriate. `;
         if (targetBlock?.type === 'dialogue') {
             userPrompt += `Make sure the speech strictly matches the character's personality and style. `;
-            userPrompt += styleInstruction;
-        } else {
-            userPrompt += styleInstruction;
         }
-        userPrompt += ` Return ONLY the improved text.\n\nSYSTEM: [Text to improve:\n${currentValue.trim()}]\n`;
-    } else if (mode === 'hint') {
-        userPrompt += `Generate a text based on the following hint and instruction. `;
         userPrompt += styleInstruction;
-        userPrompt += ` Return ONLY the generated content, do not repeat the instruction.\n\nSYSTEM: [Take the following into special consideration for your next message: ${currentValue.trim()}]\n`;
+        userPrompt += ` Return ONLY the improved text.\n\nOriginal text:\n${currentValue.trim()}\n`;
+    } else if (mode === 'hint') {
+        userPrompt += `Generate text based on the following creative direction. `;
+        userPrompt += styleInstruction;
+        userPrompt += ` Return ONLY the generated text.\n\nCreative direction:\n${currentValue.trim()}\n`;
     } else {
         // continue
-        userPrompt += `Continue the story from where the text below ends. `;
+        userPrompt += `Continue the story seamlessly from the end of the existing text. `;
         userPrompt += styleInstruction;
-        userPrompt += ` Maintain the tone and style.\n`;
-        userPrompt += `Do NOT repeat or echo any part of the existing text. Write ONLY the new continuation that comes after the last line.\n\n`;
-        userPrompt += `### Text so far:\n${currentValue.trim()}\n\n`;
-        userPrompt += `### Continue from here:\n`;
+        userPrompt += ` Match the existing tone and style. Write only new content — do not repeat any of the existing text.\n\n`;
+        userPrompt += `### Existing text:\n${currentValue.trim()}\n\n`;
+        userPrompt += `### Continuation:\n`;
 
         continuationPrefix = currentValue.trim();
     }

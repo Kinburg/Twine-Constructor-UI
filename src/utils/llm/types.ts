@@ -17,6 +17,8 @@ export interface GenerationParams {
     maxTokens: number;
     temperature: number;
     filterThought?: boolean;
+    /** When set, providers skip constructGenerationPrompt and use this as the user message directly. */
+    rawUserPrompt?: string;
 }
 
 // --- Structured Prompt ---
