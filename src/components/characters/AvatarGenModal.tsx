@@ -864,30 +864,44 @@ function SlotPanel({
       </div>
 
       {/* Generate button + progress */}
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          disabled={slot.busy}
-          className="px-3 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer"
-          onClick={onGenerate}
-        >
-          {slot.busy ? ag.generatingImage : ag.generateImageBtn}
-        </button>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={slot.busy}
+            className="px-3 py-1 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer"
+            onClick={onGenerate}
+          >
+            {slot.busy ? ag.generatingImage : ag.generateImageBtn}
+          </button>
+          {slot.busy && (
+            <>
+              <button
+                type="button"
+                className="px-2 py-1 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white cursor-pointer"
+                onClick={onCancel}
+              >
+                {ag.cancelBtn}
+              </button>
+              {slot.progress && (
+                <span className="text-[10px] text-slate-400">
+                  {slot.progress.current}/{slot.progress.total}
+                </span>
+              )}
+            </>
+          )}
+        </div>
         {slot.busy && (
-          <>
-            <button
-              type="button"
-              className="px-2 py-1 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white cursor-pointer"
-              onClick={onCancel}
-            >
-              {ag.cancelBtn}
-            </button>
-            {slot.progress && (
-              <span className="text-[10px] text-slate-400">
-                {slot.progress.current}/{slot.progress.total}
-              </span>
+          <div className="w-full h-1 rounded-full bg-slate-700 overflow-hidden">
+            {slot.progress ? (
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                style={{ width: `${Math.round((slot.progress.current / slot.progress.total) * 100)}%` }}
+              />
+            ) : (
+              <div className="h-full w-full bg-emerald-500/40 animate-pulse" />
             )}
-          </>
+          </div>
         )}
       </div>
 

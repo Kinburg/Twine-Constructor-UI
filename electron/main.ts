@@ -233,6 +233,19 @@ function createWindow() {
   });
   win.webContents.openDevTools();
 
+  // Fix WebSocket handshake Origin for local services (e.g. ComfyUI).
+  // Electron renderer sends an Origin that ComfyUI doesn't recognise → 403.
+  // Rewrite Origin to match the target so the server accepts the upgrade.
+  win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+    if (details.url.startsWith('ws://') || details.url.startsWith('wss://')) {
+      try {
+        const httpUrl = details.url.replace(/^ws(s?):/, 'http$1:');
+        details.requestHeaders['Origin'] = new URL(httpUrl).origin;
+      } catch { /* leave as-is */ }
+    }
+    callback({ requestHeaders: details.requestHeaders });
+  });
+
   trackWindowBounds(win, 'main');
 
   if (frameless) {
