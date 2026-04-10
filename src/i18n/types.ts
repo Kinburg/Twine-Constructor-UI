@@ -569,6 +569,49 @@ export interface Translations {
     errorGenerateImage: string;
   };
 
+  avatarGen: {
+    modalTitleStatic: string;
+    modalTitleDynamic: string;
+    generateBtn: string;
+    providerLabel: string;
+    providerComfyui: string;
+    providerPollinations: string;
+    providerUrlLabel: string;
+    workflowLabel: string;
+    workflowNone: string;
+    workflowRefresh: string;
+    pollinationsModelLabel: string;
+    pollinationsModelPlaceholder: string;
+    pollinationsTokenLabel: string;
+    pollinationsTokenPlaceholder: string;
+    genSizeLabel: string;
+    genWidthPlaceholder: string;
+    genHeightPlaceholder: string;
+    slotLabelStatic: string;
+    slotLabelDefault: string;
+    promptLabel: string;
+    promptPlaceholder: string;
+    negativePromptLabel: string;
+    negativePromptPlaceholder: string;
+    generatePromptBtn: string;
+    generatingPrompt: string;
+    generateImageBtn: string;
+    generatingImage: string;
+    cancelBtn: string;
+    historyLabel: string;
+    historyEmpty: string;
+    approveAllBtn: string;
+    approveSuccess: string;
+    approvedBadge: string;
+    doubleClickToExpand: string;
+    errorNoProjectDir: string;
+    errorNoWorkflow: string;
+    errorNoPrompt: string;
+    errorGenerateImage: string;
+    errorGeneratePrompt: string;
+    errorApprove: string;
+  };
+
   videoBlock: {
     assetLabel: string;
     selectAsset: string;

@@ -6,6 +6,7 @@ import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
 import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset, VariableTreeNode, VariableGroup } from '../../types';
 import { useT } from '../../i18n';
+import { AvatarGenModal } from './AvatarGenModal';
 
 function resolveEditorSrc(src: string, projectDir: string | null): string {
   if (!src) return '';
@@ -325,6 +326,9 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
             cfg={avatarCfg}
             imgAssets={imgAssets}
             onChange={setAvatarCfg}
+            charVarName={varName}
+            charName={name}
+            charLlmDescr={llmDescr}
           />
 
           {/* Custom variables */}
@@ -413,19 +417,27 @@ function AvatarEditor({
   cfg,
   imgAssets,
   onChange,
+  charVarName,
+  charName,
+  charLlmDescr,
 }: {
   cfg: AvatarConfig;
   imgAssets: Asset[];
   onChange: (c: AvatarConfig) => void;
+  charVarName: string;
+  charName: string;
+  charLlmDescr?: string;
 }) {
   const t = useT();
   const { project } = useProjectStore();
+  const [genModalOpen, setGenModalOpen] = useState(false);
+
   return (
     <div className="flex flex-col gap-2">
       {/* Mode toggle */}
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-20 shrink-0">{t.characters.avatarLabel}</label>
-        <div className="flex gap-1">
+        <div className="flex gap-1 flex-wrap">
           <button
             className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
               cfg.mode === 'static'
@@ -446,8 +458,25 @@ function AvatarEditor({
           >
             {t.characters.avatarDynamic}
           </button>
+          <button
+            className="text-xs px-2 py-1 rounded border transition-colors cursor-pointer bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200 hover:border-slate-500"
+            onClick={() => setGenModalOpen(true)}
+          >
+            {t.avatarGen.generateBtn}
+          </button>
         </div>
       </div>
+
+      {genModalOpen && (
+        <AvatarGenModal
+          cfg={cfg}
+          charVarName={charVarName || 'char'}
+          charName={charName}
+          charLlmDescr={charLlmDescr}
+          onSave={onChange}
+          onClose={() => setGenModalOpen(false)}
+        />
+      )}
 
       {/* Static mode */}
       {cfg.mode === 'static' && (

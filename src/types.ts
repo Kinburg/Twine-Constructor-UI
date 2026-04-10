@@ -578,6 +578,34 @@ export interface AvatarConfig {
   variableId: string;       // which variable drives the image (bound mode)
   mapping: ImageBoundMapping[];
   defaultSrc: string;       // fallback image when no mapping matches (bound mode)
+  genSettings?: AvatarGenSettings; // optional generation settings (persisted across sessions)
+}
+
+export interface AvatarGenHistoryEntry {
+  id: string;
+  src: string;       // relative path under history/
+  prompt: string;
+  seed: number;
+  createdAt: number;
+}
+
+export interface AvatarGenSlotData {
+  slotId: string;           // mapping.id | 'static' | 'default'
+  prompt: string;
+  negativePrompt?: string;
+  history: AvatarGenHistoryEntry[];
+  currentSrc: string;       // currently selected path (history/ or assets/)
+}
+
+export interface AvatarGenSettings {
+  provider: 'comfyui' | 'pollinations';
+  providerUrl?: string;
+  workflowFile?: string;
+  pollinationsModel?: string;
+  pollinationsToken?: string;
+  genWidth?: number;
+  genHeight?: number;
+  slots: AvatarGenSlotData[];
 }
 
 export interface Character {
