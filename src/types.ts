@@ -217,6 +217,7 @@ export interface ImageGenBlock {
   alt: string;
   src: string;                      // currently selected generated image (relative path)
   approvedHistoryId?: string;       // id of the history entry that was approved and copied to assets
+  lastApprovedDir?: string;         // last folder used when approving (relative to release/), e.g. "assets/chars"
   history?: ImageGenHistoryEntry[]; // previous generations for this block
 }
 

@@ -554,6 +554,12 @@ export interface Translations {
     unapproveImageTitle: string;
     approvedBadge: string;
     draftBadge: string;
+    doubleClickToExpand: string;
+    approveSaveTitle: string;
+    approveFolderLabel: string;
+    approveFilenameLabel: string;
+    approveSaveButton: string;
+    approveOutsideRelease: string;
     errorApprove: string;
     errorUnapprove: string;
     errorNoProjectDir: string;

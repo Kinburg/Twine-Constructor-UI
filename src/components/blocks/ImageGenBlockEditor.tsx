@@ -81,6 +81,24 @@ export function ImageGenBlockEditor({
   const clearConfirmTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const seedMode = block.seedMode ?? 'random';
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [approveDialogOpen, setApproveDialogOpen] = useState(false);
+  const [approveFolder, setApproveFolder] = useState('');
+  const [approveFilename, setApproveFilename] = useState('');
+
+  // Derive default filename: {sanitized-scene-name}-{1-based index among image-gen blocks}
+  const defaultApproveFilename = useMemo(() => {
+    const scene = project.scenes.find(s => s.id === sceneId);
+    if (!scene) return block.id;
+    const ext = block.src.split('.').pop() ?? 'png';
+    const safeName = scene.name
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^a-z0-9\-_а-яёїієґ]/gi, '')
+      || 'scene';
+    const idx = scene.blocks.filter(b => b.type === 'image-gen').indexOf(block) + 1;
+    return `${safeName}-${idx}.${ext}`;
+  }, [project.scenes, sceneId, block]);
 
   // Load workflow list from global dir (if set) or project dir.
   useEffect(() => {
@@ -268,32 +286,32 @@ export function ImageGenBlockEditor({
     update({ history: kept });
   };
 
-  const approveImage = async () => {
+  const approveImage = () => {
     if (!projectDir || !block.src) return;
-    const ext = block.src.split('.').pop() ?? 'png';
-    const defaultName = `${block.id}.${ext}`;
-    // Ensure release/assets/ exists so the dialog opens there
-    await fsApi.mkdir(joinPath(projectDir, 'release', 'assets'));
-    const defaultPath = joinPath(projectDir, 'release', 'assets', defaultName);
-    const savePath = await fsApi.saveFileDialog({
-      title: ig.approveImageTitle,
-      defaultPath,
-      filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
-    });
-    if (!savePath) return;
+    // lastApprovedDir stores the subfolder within assets/ (e.g. "chars" → release/assets/chars)
+    // Strip legacy "assets/" prefix in case it was saved before this change
+    const raw = block.lastApprovedDir ?? '';
+    const subfolder = raw.startsWith('assets/') ? raw.slice('assets/'.length) : raw;
+    setApproveFolder(subfolder);
+    setApproveFilename(defaultApproveFilename);
+    setApproveDialogOpen(true);
+  };
 
-    // Derive relative path from release dir (assets must live inside release/)
-    const normalizedRelease = joinPath(projectDir, 'release').replace(/\\/g, '/') + '/';
-    const normalizedSave = savePath.replace(/\\/g, '/');
-    if (!normalizedSave.startsWith(normalizedRelease)) {
-      toast.error('Please save the image inside the project\'s release/ folder.');
+  const doApprove = async (folder: string, filename: string) => {
+    if (!projectDir || !block.src) return;
+    // folder is the subfolder within release/assets/ (may be empty)
+    const cleanSubfolder = folder.replace(/^[/\\]+|[/\\]+$/g, '');
+    if (cleanSubfolder.includes('..')) {
+      toast.error(ig.approveOutsideRelease);
       return;
     }
-    const relPath = normalizedSave.slice(normalizedRelease.length); // e.g. "assets/gen/blockId/name.png"
+    // relPath is relative to release/ — always inside assets/
+    const relPath = cleanSubfolder ? `assets/${cleanSubfolder}/${filename}` : `assets/${filename}`;
+    const savePath = joinPath(projectDir, 'release', relPath);
 
+    setApproveDialogOpen(false);
     try {
-      // Ensure destination parent folder exists (user may have typed a new subfolder)
-      const parentAbs = savePath.replace(/[/\\][^/\\]+$/, '');
+      const parentAbs = joinPath(projectDir, 'release', 'assets', cleanSubfolder || '.');
       await fsApi.mkdir(parentAbs);
 
       const srcAbs = resolveAssetPath(projectDir, block.src);
@@ -301,14 +319,14 @@ export function ImageGenBlockEditor({
 
       if (!imageAssets.has(relPath)) {
         addAsset(null, {
-          name: savePath.replace(/.*[/\\]/, ''),
+          name: filename,
           assetType: 'image',
           relativePath: relPath,
         });
       }
 
       const approvedHistoryId = history.find(h => h.src === block.src)?.id;
-      update({ src: relPath, approvedHistoryId });
+      update({ src: relPath, approvedHistoryId, lastApprovedDir: cleanSubfolder || undefined });
       toast.success(ig.approvedBadge);
     } catch {
       toast.error(ig.errorApprove);
@@ -649,15 +667,97 @@ export function ImageGenBlockEditor({
       </div>
 
       {currentPreview && (
-        <img
-          src={currentPreview}
-          alt={block.alt || 'generated'}
-          className="max-h-44 object-contain rounded border border-slate-700"
-          onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-        />
+        <>
+          <img
+            src={currentPreview}
+            alt={block.alt || 'generated'}
+            className="max-h-44 object-contain rounded border border-slate-700 cursor-zoom-in"
+            title={ig.doubleClickToExpand}
+            onDoubleClick={() => setLightboxOpen(true)}
+            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+          />
+          {lightboxOpen && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+              onClick={() => setLightboxOpen(false)}
+            >
+              <img
+                src={currentPreview}
+                alt={block.alt || 'generated'}
+                className="max-w-[90vw] max-h-[90vh] object-contain rounded shadow-2xl"
+                onClick={e => e.stopPropagation()}
+              />
+            </div>
+          )}
+        </>
       )}
 
       <BlockEffectsPanel delay={block.delay} onDelayChange={v => update({ delay: v })} />
+
+      {approveDialogOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+          onClick={() => setApproveDialogOpen(false)}
+        >
+          <div
+            className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-96 p-4 flex flex-col gap-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <h3 className="text-sm font-semibold text-slate-200">{ig.approveSaveTitle}</h3>
+
+            {currentPreview && (
+              <img
+                src={currentPreview}
+                alt={block.alt || 'generated'}
+                className="w-full max-h-36 object-contain rounded border border-slate-700 bg-slate-900"
+              />
+            )}
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400">{ig.approveFolderLabel}</label>
+              <div className="flex items-center gap-1 bg-slate-700 rounded px-2 py-1 text-sm text-slate-300">
+                <span className="text-slate-500 select-none">release/assets/</span>
+                <input
+                  className="flex-1 bg-transparent outline-none text-white placeholder:text-slate-500"
+                  value={approveFolder}
+                  onChange={e => setApproveFolder(e.target.value)}
+                  placeholder="chars"
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-1">
+              <label className="text-xs text-slate-400">{ig.approveFilenameLabel}</label>
+              <input
+                className="bg-slate-700 rounded px-2 py-1 text-sm text-white outline-none border border-slate-600 focus:border-indigo-500"
+                value={approveFilename}
+                onChange={e => setApproveFilename(e.target.value)}
+                autoComplete="off"
+                onKeyDown={e => { if (e.key === 'Enter' && approveFilename.trim()) doApprove(approveFolder, approveFilename.trim()); }}
+              />
+            </div>
+
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                className="px-3 py-1.5 text-xs text-slate-300 hover:text-white rounded border border-slate-600 hover:border-slate-400 transition-colors cursor-pointer"
+                onClick={() => setApproveDialogOpen(false)}
+              >
+                {t.common.cancel}
+              </button>
+              <button
+                type="button"
+                disabled={!approveFilename.trim()}
+                className="px-3 py-1.5 text-xs text-white rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 transition-colors cursor-pointer"
+                onClick={() => doApprove(approveFolder, approveFilename.trim())}
+              >
+                {ig.approveSaveButton}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
