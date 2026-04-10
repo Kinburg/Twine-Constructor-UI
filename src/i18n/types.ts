@@ -616,6 +616,11 @@ export interface Translations {
     styleHintsLabel: string;
     styleHintsCustomPlaceholder: string;
     styleHintsAddBtn: string;
+    seedLabel: string;
+    seedLock: string;
+    seedRandomize: string;
+    refImageCheckbox: string;
+    refImageTooltip: string;
     errorNoProjectDir: string;
     errorNoWorkflow: string;
     errorNoPrompt: string;

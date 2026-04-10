@@ -608,6 +608,8 @@ export interface AvatarGenSettings {
   genWidth?: number;
   genHeight?: number;
   styleHints?: string[];  // shared art style tags for all slots
+  useRefImage?: boolean;  // pass default slot image as ${charImage} to ComfyUI workflow
+  lockedSeed?: number;    // fixed seed for all slot generations (undefined = random each time)
   slots: AvatarGenSlotData[];
 }
 

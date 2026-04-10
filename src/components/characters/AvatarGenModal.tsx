@@ -51,6 +51,15 @@ function slotApproveFilename(slot: ModalSlotState, mapping: ImageBoundMapping | 
   return sanitizeFilename(mapping.value || slot.label);
 }
 
+function bytesToBase64(bytes: number[]): string {
+  const uint8 = new Uint8Array(bytes);
+  const chunks: string[] = [];
+  for (let i = 0; i < uint8.length; i += 8192) {
+    chunks.push(String.fromCharCode(...uint8.subarray(i, i + 8192)));
+  }
+  return btoa(chunks.join(''));
+}
+
 const ASPECT_RATIOS = [
   { label: '1:1',  w: 1, h: 1 },
   { label: '3:4',  w: 3, h: 4 },
@@ -93,7 +102,22 @@ function initSlots(cfg: AvatarConfig, staticLabel: string, defaultLabel: string)
     }];
   }
 
-  const slots: ModalSlotState[] = cfg.mapping.map(m => {
+  // Dynamic mode: default slot goes FIRST so user generates the reference image first
+  const def = find('default');
+  const defaultSlot: ModalSlotState = {
+    slotId: 'default',
+    label: defaultLabel,
+    prompt: def?.prompt ?? '',
+    negativePrompt: def?.negativePrompt ?? '',
+    history: def?.history ?? [],
+    currentSrc: def?.currentSrc ?? '',
+    llmMode: 'hint',
+    busy: false,
+    busyPrompt: false,
+    progress: null,
+  };
+
+  const variantSlots: ModalSlotState[] = cfg.mapping.map(m => {
     const s = find(m.id ?? '');
     const label = m.matchType === 'range'
       ? `${m.rangeMin ?? ''}–${m.rangeMax ?? ''}`
@@ -112,21 +136,7 @@ function initSlots(cfg: AvatarConfig, staticLabel: string, defaultLabel: string)
     };
   });
 
-  const def = find('default');
-  slots.push({
-    slotId: 'default',
-    label: defaultLabel,
-    prompt: def?.prompt ?? '',
-    negativePrompt: def?.negativePrompt ?? '',
-    history: def?.history ?? [],
-    currentSrc: def?.currentSrc ?? '',
-    llmMode: 'hint',
-    busy: false,
-    busyPrompt: false,
-    progress: null,
-  });
-
-  return slots;
+  return [defaultSlot, ...variantSlots];
 }
 
 // ─── props ────────────────────────────────────────────────────────────────────
@@ -175,6 +185,11 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
 
   // Style hints (shared across all slots)
   const [styleHints, setStyleHints] = useState<string[]>(cfg.genSettings?.styleHints ?? []);
+
+  // Consistency options
+  const [useRefImage, setUseRefImage] = useState(cfg.genSettings?.useRefImage ?? false);
+  const [seedLocked, setSeedLocked] = useState(cfg.genSettings?.lockedSeed !== undefined);
+  const [lockedSeed, setLockedSeed] = useState(cfg.genSettings?.lockedSeed ?? randomSeed());
 
   // Slots
   const [slots, setSlots] = useState<ModalSlotState[]>(() =>
@@ -225,6 +240,8 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
     genWidth: genWidth || undefined,
     genHeight: genHeight || undefined,
     styleHints: currentStyleHints.length > 0 ? currentStyleHints : undefined,
+    useRefImage: (provider === 'comfyui' && mode !== 'static' && useRefImage) ? true : undefined,
+    lockedSeed: seedLocked ? lockedSeed : undefined,
     slots: currentSlots.map(s => ({
       slotId: s.slotId,
       prompt: s.prompt,
@@ -262,11 +279,30 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         workflowJson = JSON.parse(await fsApi.readFile(wfPath));
       }
 
-      const seed = randomSeed();
+      const seed = seedLocked ? lockedSeed : randomSeed();
+
       const effectivePrompt = styleHints.length > 0
         ? `${slot.prompt.trim()}. Style: ${styleHints.join(', ')}`
         : slot.prompt;
-      console.log(effectivePrompt);
+
+      // Load reference image as Base64 if enabled (ComfyUI only, non-default slots)
+      let charImageBase64: string | undefined;
+      if (provider === 'comfyui' && useRefImage && slotId !== 'default') {
+        const defaultSlot = slots.find(s => s.slotId === 'default');
+        if (defaultSlot?.currentSrc && projectDir) {
+          try {
+            const absPath = resolveAssetPath(projectDir, defaultSlot.currentSrc);
+            const fileUrl = toLocalFileUrl(absPath);
+            const imgRes = await fsApi.httpRequestBinary({ url: fileUrl });
+            if (imgRes.status >= 200 && imgRes.status < 300) {
+              charImageBase64 = bytesToBase64(imgRes.bytes);
+            }
+          } catch {
+            // non-fatal: proceed without reference image
+          }
+        }
+      }
+
       const generated = await generateImageWithProvider(provider, {
         baseUrl: providerUrl,
         workflow: workflowJson,
@@ -277,6 +313,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         pollinationsToken: pollinationsToken || undefined,
         genWidth: genWidth || undefined,
         genHeight: genHeight || undefined,
+        charImageBase64,
         onProgress: provider === 'comfyui'
           ? (p) => updateSlot(slotId, { progress: p })
           : undefined,
@@ -357,7 +394,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         slot.label,
         slot.prompt,
         llmMode,
-        styleHints,
+        [],
       );
       if (prompt) updateSlot(slotId, { prompt, busyPrompt: false });
       else updateSlot(slotId, { busyPrompt: false });
@@ -436,6 +473,9 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
 
   const anyBusy = slots.some(s => s.busy);
   const hasPendingApprovals = slots.some(s => s.currentSrc.startsWith('history/'));
+
+  const showRefImageOption = provider === 'comfyui' && mode !== 'static';
+  const defaultSlot = slots.find(s => s.slotId === 'default');
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
@@ -564,6 +604,40 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
               </div>
             </div>
 
+            {/* Seed */}
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-slate-400 w-24 shrink-0">{ag.seedLabel}</label>
+              <label className="flex items-center gap-1.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="accent-indigo-500 cursor-pointer"
+                  checked={seedLocked}
+                  onChange={e => setSeedLocked(e.target.checked)}
+                />
+                <span className="text-xs text-slate-300">{ag.seedLock}</span>
+              </label>
+              {seedLocked && (
+                <>
+                  <input
+                    type="number"
+                    min={0}
+                    max={4294967295}
+                    className="w-32 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+                    value={lockedSeed}
+                    onChange={e => setLockedSeed(parseInt(e.target.value, 10) || 0)}
+                  />
+                  <button
+                    type="button"
+                    className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
+                    title="Randomize seed"
+                    onClick={() => setLockedSeed(randomSeed())}
+                  >
+                    {ag.seedRandomize}
+                  </button>
+                </>
+              )}
+            </div>
+
             {/* Style hints */}
             <StyleChipsEditor
               value={styleHints}
@@ -582,6 +656,10 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
                 slot={slot}
                 projectDir={projectDir}
                 llmEnabled={llmEnabled}
+                showRefImageCheckbox={showRefImageOption && slot.slotId === 'default'}
+                useRefImage={useRefImage}
+                onRefImageChange={setUseRefImage}
+                defaultSlotHasImage={!!(defaultSlot?.currentSrc)}
                 onPromptChange={v => updateSlot(slot.slotId, { prompt: v })}
                 onNegativePromptChange={v => updateSlot(slot.slotId, { negativePrompt: v })}
                 onGenerate={() => generateForSlot(slot.slotId)}
@@ -623,6 +701,10 @@ function SlotPanel({
   slot,
   projectDir,
   llmEnabled,
+  showRefImageCheckbox,
+  useRefImage,
+  onRefImageChange,
+  defaultSlotHasImage,
   onPromptChange,
   onNegativePromptChange,
   onGenerate,
@@ -634,6 +716,10 @@ function SlotPanel({
   slot: ModalSlotState;
   projectDir: string | null;
   llmEnabled: boolean;
+  showRefImageCheckbox: boolean;
+  useRefImage: boolean;
+  onRefImageChange: (v: boolean) => void;
+  defaultSlotHasImage: boolean;
   onPromptChange: (v: string) => void;
   onNegativePromptChange: (v: string) => void;
   onGenerate: () => void;
@@ -652,12 +738,29 @@ function SlotPanel({
   return (
     <div className="flex flex-col gap-2 p-3 rounded border border-slate-700/60 bg-slate-900/30">
       {/* Slot header */}
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-wrap">
         <span className="text-xs font-semibold text-slate-300">{slot.label}</span>
         {isApproved && (
           <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-900/50 border border-emerald-700 text-emerald-400">
             {ag.approvedBadge}
           </span>
+        )}
+        {showRefImageCheckbox && (
+          <label
+            className="flex items-center gap-1.5 cursor-pointer select-none ml-auto"
+            title={ag.refImageTooltip}
+          >
+            <input
+              type="checkbox"
+              className="accent-indigo-500 cursor-pointer"
+              checked={useRefImage}
+              disabled={!defaultSlotHasImage}
+              onChange={e => onRefImageChange(e.target.checked)}
+            />
+            <span className={`text-[10px] font-mono ${defaultSlotHasImage ? 'text-indigo-300' : 'text-slate-500'}`}>
+              {ag.refImageCheckbox}
+            </span>
+          </label>
         )}
       </div>
 

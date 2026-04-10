@@ -18,6 +18,8 @@ export interface ImageGenerateParams {
   pollinationsToken?: string;
   // Progress callback (ComfyUI only, via WebSocket)
   onProgress?: (progress: ComfyProgress) => void;
+  /** Base64-encoded reference image injected as ${charImage} in ComfyUI workflow nodes. */
+  charImageBase64?: string;
 }
 
 export interface ImageGenerateResult {
@@ -59,6 +61,7 @@ function replaceTemplateTokens(
   seed?: number,
   genWidth?: number,
   genHeight?: number,
+  charImage?: string,
 ): string {
   const neg = negativePrompt ?? '';
   const seedText = Number.isFinite(seed) ? String(seed) : '';
@@ -69,7 +72,8 @@ function replaceTemplateTokens(
     .replaceAll('${negative_prompt}', neg)
     .replaceAll('${seed}', seedText)
     .replaceAll('${width}', widthText)
-    .replaceAll('${height}', heightText);
+    .replaceAll('${height}', heightText)
+    .replaceAll('${charImage}', charImage ?? '');
 }
 
 function withTemplateInjected(
@@ -79,6 +83,7 @@ function withTemplateInjected(
   seed?: number,
   genWidth?: number,
   genHeight?: number,
+  charImage?: string,
 ): Record<string, any> {
   const clone = JSON.parse(JSON.stringify(workflow));
 
@@ -87,13 +92,14 @@ function withTemplateInjected(
     const inputs = node.inputs as Record<string, any>;
 
     // Token-based prompt injection.
-    // Use `${prompt}`, `${negative_prompt}`, `${seed}`, `${width}`, `${height}` in workflow text fields.
+    // Use `${prompt}`, `${negative_prompt}`, `${seed}`, `${width}`, `${height}`, `${charImage}` in workflow text fields.
     for (const [key, val] of Object.entries(inputs)) {
       if (typeof val === 'string' && (
         val.includes('${prompt}') || val.includes('${negative_prompt}') ||
-        val.includes('${seed}') || val.includes('${width}') || val.includes('${height}')
+        val.includes('${seed}') || val.includes('${width}') || val.includes('${height}') ||
+        val.includes('${charImage}')
       )) {
-        const replaced = replaceTemplateTokens(val, prompt, negativePrompt, seed, genWidth, genHeight);
+        const replaced = replaceTemplateTokens(val, prompt, negativePrompt, seed, genWidth, genHeight, charImage);
         // Preserve numeric type for fields like seed/width/height when token-only template is used.
         if (val.trim() === '${seed}' && Number.isFinite(seed)) {
           inputs[key] = seed;
@@ -190,6 +196,7 @@ async function generateWithComfy(params: ImageGenerateParams, signal?: AbortSign
   const baseUrl = normalizeBaseUrl(params.baseUrl || 'http://127.0.0.1:8188');
   const promptWorkflow = withTemplateInjected(
     params.workflow, params.prompt, params.negativePrompt, params.seed, params.genWidth, params.genHeight,
+    params.charImageBase64,
   );
 
   // Use a clientId so ComfyUI associates this prompt with our WebSocket connection.
