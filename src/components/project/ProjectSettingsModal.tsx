@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useProjectStore, DEFAULT_PROJECT_SETTINGS } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
 import { useT } from '../../i18n';
-import { fsApi, joinPath, safeName, toLocalFileUrl } from '../../lib/fsApi';
+import { fsApi, joinPath, safeName, toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { toast } from 'sonner';
 import type { Project, ProjectSettings, SidebarPanel, SidebarTab, SidebarRow } from '../../types';
 
@@ -95,7 +95,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
   const [headerPendingPath, setHeaderPendingPath] = useState<string | null>(null);
   const [headerPreviewUrl, setHeaderPreviewUrl]   = useState<string | null>(
     mode === 'edit' && project.settings.headerImageSrc && projectDir
-      ? toLocalFileUrl(joinPath(projectDir, project.settings.headerImageSrc))
+      ? toLocalFileUrl(resolveAssetPath(projectDir, project.settings.headerImageSrc))
       : null
   );
   const [headerRemoved,    setHeaderRemoved]    = useState(false);
@@ -175,7 +175,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
 
   async function copyHeaderImage(dir: string, filePath: string): Promise<string> {
     const fileName = filePath.replace(/.*[/\\]/, '');
-    const destDir  = joinPath(dir, 'assets', 'project');
+    const destDir  = joinPath(dir, 'release', 'assets', 'project');
     await fsApi.mkdir(destDir);
     const destPath = joinPath(destDir, fileName);
     await fsApi.copyFile(filePath, destPath);
@@ -236,7 +236,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
       const folder = await fsApi.openFolderDialog();
       if (!folder) { setBusy(false); return; }
 
-      await fsApi.mkdir(joinPath(folder, 'assets'));
+      await fsApi.mkdir(joinPath(folder, 'release', 'assets'));
 
       let headerSrc: string | null = null;
       if (headerPendingPath) {

@@ -8,7 +8,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
-import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import type {
   DialogueBlock, Block,
   TextBlock, VariableSetBlock, ImageBlock,
@@ -42,7 +42,7 @@ function resolveEditorSrc(src: string, projectDir: string | null): string {
     return src;
   }
   if (projectDir) {
-    return toLocalFileUrl(joinPath(projectDir, src));
+    return toLocalFileUrl(resolveAssetPath(projectDir, src));
   }
   return ''; // can't resolve local path without projectDir
 }

@@ -216,6 +216,7 @@ export interface ImageGenBlock {
   genHeight?: number;               // generation resolution height, 0 = auto
   alt: string;
   src: string;                      // currently selected generated image (relative path)
+  approvedHistoryId?: string;       // id of the history entry that was approved and copied to assets
   history?: ImageGenHistoryEntry[]; // previous generations for this block
 }
 

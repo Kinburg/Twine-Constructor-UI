@@ -227,6 +227,8 @@ export interface Translations {
     successSave: string;
     successExportHtml: string;
     successExportTwee: string;
+    unapprovedImagesTitle: string;
+    unapprovedImagesMessage: (scenes: string[]) => string;
   };
 
   // ─── Asset manager ──────────────────────────────────────────────────────────
@@ -546,6 +548,14 @@ export interface Translations {
     cancelGeneration: string;
     clearHistory: string;
     clearHistoryConfirm: string;
+    approveImage: string;
+    approveImageTitle: string;
+    unapproveImage: string;
+    unapproveImageTitle: string;
+    approvedBadge: string;
+    draftBadge: string;
+    errorApprove: string;
+    errorUnapprove: string;
     errorNoProjectDir: string;
     errorNoWorkflow: string;
     errorNoPrompt: string;

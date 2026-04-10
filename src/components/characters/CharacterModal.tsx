@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore, flattenAssets, charToVarPrefix } from '../../store/projectStore';
-import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
@@ -10,7 +10,7 @@ import { useT } from '../../i18n';
 function resolveEditorSrc(src: string, projectDir: string | null): string {
   if (!src) return '';
   if (/^https?:\/\//i.test(src) || src.startsWith('data:') || src.startsWith('localfile://')) return src;
-  if (projectDir) return toLocalFileUrl(joinPath(projectDir, src));
+  if (projectDir) return toLocalFileUrl(resolveAssetPath(projectDir, src));
   return '';
 }
 

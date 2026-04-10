@@ -3,7 +3,7 @@ import { toast } from 'sonner';
 import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import type { ImageGenBlock } from '../../types';
-import { fsApi, joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { fsApi, joinPath, toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
@@ -57,7 +57,7 @@ export function ImageGenBlockEditor({
 }) {
   const t = useT();
   const ig = t.imageGenBlock;
-  const { project, projectDir, updateBlock, addAsset, saveSnapshot } = useProjectStore();
+  const { project, projectDir, updateBlock, addAsset, deleteAssetNode, saveSnapshot } = useProjectStore();
   const {
     llmEnabled,
     llmProvider,
@@ -134,7 +134,11 @@ export function ImageGenBlockEditor({
 
   const history = block.history ?? [];
   const imageAssets = useMemo(() => new Set(flattenAssets(project.assetNodes).map(a => a.relativePath)), [project.assetNodes]);
-  const currentPreview = block.src && projectDir ? toLocalFileUrl(joinPath(projectDir, block.src)) : '';
+  // Resolve preview: history/ paths live directly under projectDir; assets/ paths inside release/
+  const currentPreview = block.src && projectDir
+    ? toLocalFileUrl(resolveAssetPath(projectDir, block.src))
+    : '';
+  const isApproved = block.src.startsWith('assets/');
 
   const generatePrompt = async () => {
     const scene = project.scenes.find(s => s.id === sceneId);
@@ -215,17 +219,11 @@ export function ImageGenBlockEditor({
         ext = detectExt(generated.imageUrl!, imgRes.headers['content-type'] ?? null);
       }
       const genId = crypto.randomUUID();
-      const relPath = `assets/history/${block.id}/${genId}.${ext}`;
+      // Generated images go to history/ (outside release/assets) — not exported automatically
+      const relPath = `history/${block.id}/${genId}.${ext}`;
       const absPath = joinPath(projectDir, relPath);
+      await fsApi.mkdir(joinPath(projectDir, `history/${block.id}`));
       await fsApi.writeFileBinary(absPath, bytes);
-
-      if (!imageAssets.has(relPath)) {
-        addAsset(null, {
-          name: `${genId}.${ext}`,
-          assetType: 'image',
-          relativePath: relPath,
-        });
-      }
 
       const nextHistory = [
         ...history,
@@ -268,6 +266,70 @@ export function ImageGenBlockEditor({
     setClearConfirm(false);
     const kept = history.filter(h => h.src === block.src);
     update({ history: kept });
+  };
+
+  const approveImage = async () => {
+    if (!projectDir || !block.src) return;
+    const ext = block.src.split('.').pop() ?? 'png';
+    const defaultName = `${block.id}.${ext}`;
+    // Ensure release/assets/ exists so the dialog opens there
+    await fsApi.mkdir(joinPath(projectDir, 'release', 'assets'));
+    const defaultPath = joinPath(projectDir, 'release', 'assets', defaultName);
+    const savePath = await fsApi.saveFileDialog({
+      title: ig.approveImageTitle,
+      defaultPath,
+      filters: [{ name: 'Image', extensions: ['png', 'jpg', 'jpeg', 'webp', 'gif'] }],
+    });
+    if (!savePath) return;
+
+    // Derive relative path from release dir (assets must live inside release/)
+    const normalizedRelease = joinPath(projectDir, 'release').replace(/\\/g, '/') + '/';
+    const normalizedSave = savePath.replace(/\\/g, '/');
+    if (!normalizedSave.startsWith(normalizedRelease)) {
+      toast.error('Please save the image inside the project\'s release/ folder.');
+      return;
+    }
+    const relPath = normalizedSave.slice(normalizedRelease.length); // e.g. "assets/gen/blockId/name.png"
+
+    try {
+      // Ensure destination parent folder exists (user may have typed a new subfolder)
+      const parentAbs = savePath.replace(/[/\\][^/\\]+$/, '');
+      await fsApi.mkdir(parentAbs);
+
+      const srcAbs = resolveAssetPath(projectDir, block.src);
+      await fsApi.copyFile(srcAbs, savePath);
+
+      if (!imageAssets.has(relPath)) {
+        addAsset(null, {
+          name: savePath.replace(/.*[/\\]/, ''),
+          assetType: 'image',
+          relativePath: relPath,
+        });
+      }
+
+      const approvedHistoryId = history.find(h => h.src === block.src)?.id;
+      update({ src: relPath, approvedHistoryId });
+      toast.success(ig.approvedBadge);
+    } catch {
+      toast.error(ig.errorApprove);
+    }
+  };
+
+  const unapproveImage = async () => {
+    if (!projectDir || !block.src || !isApproved) return;
+    try {
+      const absPath = resolveAssetPath(projectDir, block.src);
+      // Remove file from disk
+      try { await fsApi.deleteFile(absPath); } catch { /* already gone */ }
+      // Remove from asset tree
+      const assetNode = flattenAssets(project.assetNodes).find(a => a.relativePath === block.src);
+      if (assetNode) deleteAssetNode(assetNode.id);
+      // Revert block.src to the history entry that was approved
+      const historyEntry = history.find(h => h.id === block.approvedHistoryId);
+      update({ src: historyEntry?.src ?? '', approvedHistoryId: undefined });
+    } catch {
+      toast.error(ig.errorUnapprove);
+    }
   };
 
   const applyAspectRatio = (wRatio: number, hRatio: number) => {
@@ -504,7 +566,7 @@ export function ImageGenBlockEditor({
         <select
           className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
           value={block.src}
-          onChange={e => update({ src: e.target.value })}
+          onChange={e => update({ src: e.target.value, approvedHistoryId: undefined })}
         >
           <option value="">{ig.historyEmpty}</option>
           {[...history].reverse().map(h => (
@@ -527,6 +589,42 @@ export function ImageGenBlockEditor({
           </button>
         )}
       </div>
+
+      {/* Approve / Unapprove */}
+      {block.src && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400 w-20 shrink-0" />
+          {isApproved ? (
+            <>
+              <span className="text-xs px-2 py-0.5 rounded bg-emerald-900/50 border border-emerald-700 text-emerald-400">
+                ✓ {ig.approvedBadge}
+              </span>
+              <button
+                type="button"
+                title={ig.unapproveImageTitle}
+                className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-red-800 text-slate-300 hover:text-white cursor-pointer transition-colors"
+                onClick={unapproveImage}
+              >
+                {ig.unapproveImage}
+              </button>
+            </>
+          ) : (
+            <>
+              <span className="text-xs px-2 py-0.5 rounded bg-amber-900/50 border border-amber-700 text-amber-400">
+                ⚠ {ig.draftBadge}
+              </span>
+              <button
+                type="button"
+                title={ig.approveImageTitle}
+                className="px-2 py-1 text-xs rounded bg-emerald-800 hover:bg-emerald-700 text-white cursor-pointer transition-colors"
+                onClick={approveImage}
+              >
+                {ig.approveImage}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="flex items-center gap-2">
         <label className="text-xs text-slate-400 w-20 shrink-0">{ig.altLabel}</label>

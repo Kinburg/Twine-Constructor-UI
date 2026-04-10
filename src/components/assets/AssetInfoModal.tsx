@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Asset } from '../../types';
-import { fsApi, joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { fsApi, toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 
 interface AssetInfoModalProps {
@@ -60,7 +60,7 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
 
   const isVideo = asset.assetType === 'video';
   const isAudio = asset.assetType === 'audio';
-  const absPath = joinPath(projectDir, asset.relativePath);
+  const absPath = resolveAssetPath(projectDir, asset.relativePath);
   const imgSrc = toLocalFileUrl(absPath);
 
   // Close on Escape

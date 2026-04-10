@@ -77,7 +77,7 @@ export function Header() {
   // ─── Save helpers ─────────────────────────────────────────────────────────
 
   async function doSaveToDir(dir: string): Promise<void> {
-    await fsApi.mkdir(joinPath(dir, 'assets'));
+    await fsApi.mkdir(joinPath(dir, 'release', 'assets'));
     const content  = JSON.stringify(project, null, 2);
     const fileName = `${safeName(project.title)}.${PURL_EXT}`;
     await fsApi.writeFile(joinPath(dir, fileName), content);
@@ -85,14 +85,21 @@ export function Header() {
 
   async function ensureProjectDir(): Promise<string | null> {
     if (projectDir) {
-      await fsApi.mkdir(joinPath(projectDir, 'assets'));
+      await fsApi.mkdir(joinPath(projectDir, 'release', 'assets'));
       return projectDir;
     }
     const folder = await fsApi.openFolderDialog();
     if (!folder) return null;
     setProjectDir(folder);
-    await fsApi.mkdir(joinPath(folder, 'assets'));
+    await fsApi.mkdir(joinPath(folder, 'release', 'assets'));
     return folder;
+  }
+
+  /** Returns names of scenes that have image-gen blocks with unapproved (history/) src */
+  function unapprovedScenes(): string[] {
+    return project.scenes
+      .filter(scene => scene.blocks.some(b => b.type === 'image-gen' && b.src.startsWith('history/')))
+      .map(scene => scene.name);
   }
 
   // ─── Save / Open ──────────────────────────────────────────────────────────
@@ -199,22 +206,37 @@ export function Header() {
   const handleExportHtml = async () => {
     const template = getSCTemplate();
     if (!template) return;
-    setBusy(true);
     setExportMenuOpen(false);
-    try {
-      const dir = await ensureProjectDir();
-      if (!dir) return;
-      const html = generateStandaloneHtml(project, template);
-      await fsApi.writeFile(joinPath(dir, 'index.html'), html);
-      toast.success(t.header.successExportHtml);
-      if (confirmOpenFolderAfterExport) {
-        ask({ message: t.header.confirmHtmlSaved }, async () => { await fsApi.openPath(dir); });
+
+    const doExport = async () => {
+      setBusy(true);
+      try {
+        const dir = await ensureProjectDir();
+        if (!dir) return;
+        const releaseDir = joinPath(dir, 'release');
+        const html = generateStandaloneHtml(project, template);
+        await fsApi.writeFile(joinPath(releaseDir, 'index.html'), html);
+        toast.success(t.header.successExportHtml);
+        if (confirmOpenFolderAfterExport) {
+          ask({ message: t.header.confirmHtmlSaved }, async () => { await fsApi.openPath(releaseDir); });
+        }
+      } catch (e) {
+        alert(t.header.errorExportHtml(String(e)));
+      } finally {
+        setBusy(false);
       }
-    } catch (e) {
-      alert(t.header.errorExportHtml(String(e)));
-    } finally {
-      setBusy(false);
+    };
+
+    const badScenes = unapprovedScenes();
+    if (badScenes.length > 0) {
+      ask(
+        { message: `${t.header.unapprovedImagesTitle}\n\n${t.header.unapprovedImagesMessage(badScenes)}` },
+        doExport,
+      );
+      return;
     }
+
+    await doExport();
   };
 
   const handleExportHtmlAs = async () => {

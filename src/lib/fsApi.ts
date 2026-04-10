@@ -51,3 +51,15 @@ export function toLocalFileUrl(absPath: string): string {
 export function safeName(name: string): string {
   return name.replace(/[<>:"/\\|?*\x00-\x1F]/g, '_').trim() || 'project';
 }
+
+/**
+ * Resolve a relative asset path to an absolute path.
+ * - "assets/..." lives inside projectDir/release/ (published output folder)
+ * - All other relative paths (e.g. "history/...") live directly under projectDir
+ */
+export function resolveAssetPath(projectDir: string, relativePath: string): string {
+  if (relativePath.startsWith('assets/')) {
+    return joinPath(projectDir, 'release', relativePath);
+  }
+  return joinPath(projectDir, relativePath);
+}

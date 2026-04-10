@@ -1,6 +1,6 @@
 import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import type { ImageBlock, ImageBoundMapping, Asset } from '../../types';
-import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
@@ -80,7 +80,7 @@ export function ImageBlockEditor({
 
   function resolvePreviewSrc(src: string): string {
     if (src.startsWith('assets/') && projectDir) {
-      return toLocalFileUrl(joinPath(projectDir, src));
+      return toLocalFileUrl(resolveAssetPath(projectDir, src));
     }
     return src;
   }

@@ -53,7 +53,7 @@ export default function App() {
         if (!dir) { setSavingOnExit(false); return; }
         setProjectDir(dir);
       }
-      await fsApi.mkdir(joinPath(dir, 'assets'));
+      await fsApi.mkdir(joinPath(dir, 'release', 'assets'));
       await fsApi.writeFile(joinPath(dir, `${safeName(project.title)}.purl`), JSON.stringify(project, null, 2));
     } catch { /* proceed with exit even if save fails */ }
     window.electronAPI?.confirmClose();
