@@ -35,7 +35,6 @@ async function requestJson(url: string, init?: {
   signal?: AbortSignal;
 }): Promise<{ status: number; json: any }> {
   if (typeof window !== 'undefined' && window.electronAPI?.httpRequest) {
-    // NOTE: Electron IPC does not support AbortSignal — check signal.aborted manually before calling.
     const res = await window.electronAPI.httpRequest({
       url,
       method: init?.method,
@@ -47,7 +46,9 @@ async function requestJson(url: string, init?: {
     return { status: res.status, json };
   }
   const res = await fetch(url, init);
-  return { status: res.status, json: await res.json() };
+  let json: any = null;
+  try { json = await res.json(); } catch { json = null; }
+  return { status: res.status, json };
 }
 
 function normalizeBaseUrl(url: string): string {
@@ -67,13 +68,17 @@ function replaceTemplateTokens(
   const seedText = Number.isFinite(seed) ? String(seed) : '';
   const widthText = genWidth && genWidth > 0 ? String(genWidth) : '';
   const heightText = genHeight && genHeight > 0 ? String(genHeight) : '';
-  return value
+  
+  let res = value
     .replaceAll('${prompt}', prompt)
     .replaceAll('${negative_prompt}', neg)
-    .replaceAll('${seed}', seedText)
-    .replaceAll('${width}', widthText)
-    .replaceAll('${height}', heightText)
     .replaceAll('${charImage}', charImage ?? '');
+  
+  if (seedText) res = res.replaceAll('${seed}', seedText);
+  if (widthText) res = res.replaceAll('${width}', widthText);
+  if (heightText) res = res.replaceAll('${height}', heightText);
+  
+  return res;
 }
 
 function withTemplateInjected(
@@ -85,30 +90,30 @@ function withTemplateInjected(
   genHeight?: number,
   charImage?: string,
 ): Record<string, any> {
-  const clone = JSON.parse(JSON.stringify(workflow));
+  // ComfyUI "API Format" often nested under a key or just a flat object of nodes.
+  // If it's a full UI export, it has .nodes and .links which API doesn't use.
+  const source = workflow.prompt || workflow;
+  const clone = JSON.parse(JSON.stringify(source));
 
   for (const node of Object.values(clone as Record<string, any>)) {
     if (!node || typeof node !== 'object' || typeof node.inputs !== 'object') continue;
     const inputs = node.inputs as Record<string, any>;
 
-    // Token-based prompt injection.
-    // Use `${prompt}`, `${negative_prompt}`, `${seed}`, `${width}`, `${height}`, `${charImage}` in workflow text fields.
     for (const [key, val] of Object.entries(inputs)) {
       if (typeof val === 'string' && (
         val.includes('${prompt}') || val.includes('${negative_prompt}') ||
         val.includes('${seed}') || val.includes('${width}') || val.includes('${height}') ||
         val.includes('${charImage}')
       )) {
-        const replaced = replaceTemplateTokens(val, prompt, negativePrompt, seed, genWidth, genHeight, charImage);
-        // Preserve numeric type for fields like seed/width/height when token-only template is used.
-        if (val.trim() === '${seed}' && Number.isFinite(seed)) {
+        const trimmed = val.trim();
+        if (trimmed === '${seed}' && Number.isFinite(seed)) {
           inputs[key] = seed;
-        } else if (val.trim() === '${width}' && genWidth && genWidth > 0) {
+        } else if (trimmed === '${width}' && genWidth && genWidth > 0) {
           inputs[key] = genWidth;
-        } else if (val.trim() === '${height}' && genHeight && genHeight > 0) {
+        } else if (trimmed === '${height}' && genHeight && genHeight > 0) {
           inputs[key] = genHeight;
         } else {
-          inputs[key] = replaced;
+          inputs[key] = replaceTemplateTokens(val, prompt, negativePrompt, seed, genWidth, genHeight, charImage);
         }
       }
     }
@@ -117,32 +122,36 @@ function withTemplateInjected(
   return clone;
 }
 
-/**
- * Poll /history until the prompt result is ready.
- * Checks signal.aborted at each iteration (Electron IPC ignores AbortSignal natively).
- */
 async function pollComfyHistory(baseUrl: string, promptId: string, signal?: AbortSignal): Promise<any> {
   const startedAt = Date.now();
   while (Date.now() - startedAt < 120000) {
     if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
     const { status, json } = await requestJson(`${baseUrl}/history/${encodeURIComponent(promptId)}`);
     if (status < 200 || status >= 300) throw new Error(`ComfyUI history failed: ${status}`);
+    
     const entry = json?.[promptId];
-    const outputs = entry?.outputs;
-    if (outputs && typeof outputs === 'object') return outputs;
+    if (entry) {
+      const statusInfo = entry.status;
+      if (statusInfo && statusInfo.status_str && statusInfo.status_str !== 'success') {
+        let errorMsg = '';
+        if (Array.isArray(statusInfo.messages)) {
+          const execError = statusInfo.messages.find((m: any) => m?.[0] === 'execution_error');
+          if (execError && execError[1]) {
+            const d = execError[1];
+            errorMsg = `Node ${d.node_id} (${d.node_type}): ${d.exception_message}`;
+          } else {
+            errorMsg = statusInfo.messages.map((m: any) => m?.[1]?.message || JSON.stringify(m)).join('; ');
+          }
+        }
+        throw new Error(`ComfyUI execution failed: ${errorMsg || statusInfo.status_str}`);
+      }
+      return entry.outputs;
+    }
     await new Promise<void>(resolve => setTimeout(resolve, 1000));
   }
   throw new Error('ComfyUI generation timeout');
 }
 
-/**
- * Connect to ComfyUI WebSocket for real-time step progress.
- * Returns a cleanup function. Falls back silently if WebSocket is unavailable.
- *
- * In Electron, direct WebSocket from the renderer may be blocked by
- * same-origin policy. We attempt the connection and log a warning on failure
- * so the user sees an indeterminate bar instead.
- */
 function connectComfyWebSocket(
   baseUrl: string,
   clientId: string,
@@ -154,18 +163,13 @@ function connectComfyWebSocket(
 
   try {
     ws = new WebSocket(wsUrl);
-
     ws.addEventListener('open', () => {
-      console.log('[ImageGen] WebSocket connected to ComfyUI for progress updates');
+      console.log('[ImageGen] WebSocket connected to ComfyUI');
     });
-
-    ws.addEventListener('error', () => {
-      console.warn('[ImageGen] WebSocket connection to ComfyUI failed — progress will be unavailable');
+    ws.addEventListener('error', (err) => {
+      console.warn('[ImageGen] WebSocket connection failed', err);
     });
-
     ws.addEventListener('message', (evt) => {
-      // ComfyUI sends both text (JSON) and binary (preview images) messages.
-      // Only parse text messages.
       if (typeof evt.data !== 'string') return;
       try {
         const msg = JSON.parse(evt.data);
@@ -179,30 +183,27 @@ function connectComfyWebSocket(
         // ignore malformed messages
       }
     });
-  } catch {
-    // WebSocket constructor failed (should be rare)
+  } catch (e) {
+    console.error('[ImageGen] Failed to create WebSocket:', e);
   }
 
-  const cleanup = () => {
-    ws?.close();
-    ws = null;
-  };
-
+  const cleanup = () => { ws?.close(); ws = null; };
   signal?.addEventListener('abort', cleanup, { once: true });
   return cleanup;
 }
 
 async function generateWithComfy(params: ImageGenerateParams, signal?: AbortSignal): Promise<ImageGenerateResult> {
   const baseUrl = normalizeBaseUrl(params.baseUrl || 'http://127.0.0.1:8188');
+  
+  // Strip any wrapping or extra data if the user provided a full export
   const promptWorkflow = withTemplateInjected(
     params.workflow, params.prompt, params.negativePrompt, params.seed, params.genWidth, params.genHeight,
     params.charImageBase64,
   );
 
-  // Use a clientId so ComfyUI associates this prompt with our WebSocket connection.
-  const clientId = crypto.randomUUID();
+  console.log('[ImageGen] Submitting prompt to ComfyUI:', promptWorkflow);
 
-  // Connect WebSocket for progress updates before submitting the prompt.
+  const clientId = crypto.randomUUID();
   let wsCleanup: (() => void) | null = null;
   if (params.onProgress) {
     wsCleanup = connectComfyWebSocket(baseUrl, clientId, params.onProgress, signal);
@@ -218,13 +219,25 @@ async function generateWithComfy(params: ImageGenerateParams, signal?: AbortSign
       body: JSON.stringify({ prompt: promptWorkflow, client_id: clientId }),
       signal,
     });
-    if (status < 200 || status >= 300) throw new Error(`ComfyUI request failed: ${status}`);
+    
+    if (status < 200 || status >= 300) {
+      const err = submitJson?.error;
+      const message = typeof err === 'object' ? (err.message || err.type) : (err || submitJson?.message);
+      const details = submitJson?.node_errors ? Object.entries(submitJson.node_errors)
+        .map(([id, info]: [any, any]) => `Node ${id}: ${info.errors?.map((e: any) => e.message).join(', ')}`)
+        .join('; ') : '';
+      throw new Error(`ComfyUI request failed: ${status}${message ? ` - ${message}` : ''}${details ? ` (${details})` : ''}`);
+    }
+    
     promptId = submitJson?.prompt_id;
     if (!promptId) throw new Error('ComfyUI did not return prompt_id');
 
     const outputs = await pollComfyHistory(baseUrl, promptId, signal);
     const image = extractFirstImage(outputs);
-    if (!image) throw new Error('No image in ComfyUI output');
+    if (!image) {
+      console.warn('[ImageGen] No image found in outputs:', outputs);
+      throw new Error('No image in ComfyUI output. Check if your workflow has a "Save Image" or "Preview Image" node.');
+    }
 
     const paramsView = new URLSearchParams({
       filename: String(image.filename),
@@ -233,19 +246,11 @@ async function generateWithComfy(params: ImageGenerateParams, signal?: AbortSign
     });
     return { imageUrl: `${baseUrl}/view?${paramsView.toString()}` };
   } catch (err) {
-    // If cancelled, interrupt the running generation AND remove from queue.
     if (signal?.aborted) {
-      // POST /interrupt stops the currently executing generation inside ComfyUI.
-      requestJson(`${baseUrl}/interrupt`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      }).catch(() => {});
-      // POST /queue { delete: [...] } removes a queued (not yet running) prompt.
+      requestJson(`${baseUrl}/interrupt`, { method: 'POST', body: '{}' }).catch(() => {});
       if (promptId) {
         requestJson(`${baseUrl}/queue`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ delete: [promptId] }),
         }).catch(() => {});
       }
@@ -275,7 +280,6 @@ async function generateWithPollinations(params: ImageGenerateParams, signal?: Ab
   const urlParams = new URLSearchParams({ model, width: String(width), height: String(height) });
   if (Number.isFinite(params.seed)) urlParams.set('seed', String(params.seed));
 
-  // In Electron: use direct URL via main process (no CORS). In browser dev: use Vite proxy.
   const isElectron = typeof window !== 'undefined' && !!window.electronAPI?.httpRequestBinary;
   const baseUrl = isElectron ? 'https://gen.pollinations.ai' : '/pollinations';
   const url = `${baseUrl}/image/${encodeURIComponent(params.prompt)}?${urlParams}`;
