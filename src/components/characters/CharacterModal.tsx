@@ -4,9 +4,10 @@ import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
-import type { Character, AvatarConfig, ImageBoundMapping, Variable, Asset, VariableTreeNode, VariableGroup, CharacterVarIds } from '../../types';
+import type { Character, AvatarConfig, Variable, Asset, VariableTreeNode, VariableGroup, CharacterVarIds } from '../../types';
 import { useT } from '../../i18n';
 import { AvatarGenModal } from './AvatarGenModal';
+import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 
 function resolveEditorSrc(src: string, projectDir: string | null): string {
   if (!src) return '';
@@ -535,8 +536,8 @@ function AvatarEditor({
       {/* Static mode */}
       {cfg.mode === 'static' && (
         <Field label={t.characters.fieldImage}>
-          <AvatarImagePicker
-            imgAssets={imgAssets}
+          <ImageAssetPicker
+            assets={imgAssets}
             value={cfg.src}
             onChange={src => onChange({ ...cfg, src })}
           />
@@ -554,188 +555,19 @@ function AvatarEditor({
               placeholder={t.characters.selectVariable}
             />
           </Field>
-
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">{t.characters.mappingsLabel}</span>
-              <button
-                className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
-                onClick={() => onChange({
-                  ...cfg,
-                  mapping: [
-                    ...cfg.mapping,
-                    {
-                      id: crypto.randomUUID(),
-                      matchType: 'exact',
-                      value: '',
-                      rangeMin: '',
-                      rangeMax: '',
-                      src: '',
-                    } satisfies ImageBoundMapping,
-                  ],
-                })}
-              >
-                {t.characters.addMapping}
-              </button>
-            </div>
-
-            {cfg.mapping.map((m, i) => (
-              <MappingEntry
-                key={m.id ?? i}
-                m={m}
-                imgAssets={imgAssets}
-                onChange={patch => onChange({
-                  ...cfg,
-                  mapping: cfg.mapping.map((x, j) => j === i ? { ...x, ...patch } : x),
-                })}
-                onDelete={() => onChange({
-                  ...cfg,
-                  mapping: cfg.mapping.filter((_, j) => j !== i),
-                })}
-              />
-            ))}
-
-            {cfg.mapping.length === 0 && (
-              <p className="text-xs text-slate-600 italic">{t.characters.noMappings}</p>
-            )}
-
-            <div className="flex flex-col gap-1 mt-0.5">
-              <span className="text-xs text-slate-400">{t.characters.defaultMapping}</span>
-              <AvatarImagePicker
-                imgAssets={imgAssets}
-                value={cfg.defaultSrc}
-                onChange={defaultSrc => onChange({ ...cfg, defaultSrc })}
-              />
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Mapping entry row ─────────────────────────────────────────────────────────
-
-function MappingEntry({
-  m,
-  imgAssets,
-  onChange,
-  onDelete,
-}: {
-  m: ImageBoundMapping;
-  imgAssets: Asset[];
-  onChange: (patch: Partial<ImageBoundMapping>) => void;
-  onDelete: () => void;
-}) {
-  const t = useT();
-  const mt = m.matchType ?? 'exact';
-  return (
-    <div className="flex flex-col gap-1 border border-slate-700/60 rounded p-1.5">
-      <div className="flex items-center gap-1">
-        <select
-          className="flex-1 bg-slate-700 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={mt}
-          onChange={e => onChange({ matchType: e.target.value as 'exact' | 'range' })}
-        >
-          <option value="exact">{t.cellModal.matchExact}</option>
-          <option value="range">{t.cellModal.matchRange}</option>
-        </select>
-        <button
-          className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
-          onClick={onDelete}
-        >
-          ✕
-        </button>
-      </div>
-
-      {mt === 'exact' && (
-        <div className="flex gap-1 items-center">
-          <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.valueLabel}</span>
-          <input
-            className="flex-1 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-            placeholder="happy"
-            value={m.value}
-            onChange={e => onChange({ value: e.target.value })}
+          <ImageMappingEditor
+            mapping={cfg.mapping}
+            onChange={mapping => onChange({ ...cfg, mapping })}
+            defaultSrc={cfg.defaultSrc}
+            onDefaultSrcChange={defaultSrc => onChange({ ...cfg, defaultSrc })}
+            assets={imgAssets}
           />
         </div>
       )}
-
-      {mt === 'range' && (
-        <div className="grid grid-cols-2 gap-1">
-          <div className="flex gap-1 items-center">
-            <span className="text-xs text-slate-500 shrink-0 w-6">{t.cellModal.fromLabel}</span>
-            <input
-              className="flex-1 min-w-0 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-              placeholder="0"
-              value={m.rangeMin ?? ''}
-              onChange={e => onChange({ rangeMin: e.target.value })}
-            />
-          </div>
-          <div className="flex gap-1 items-center">
-            <span className="text-xs text-slate-500 shrink-0">{t.cellModal.toLabel}</span>
-            <input
-              className="flex-1 min-w-0 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-              placeholder="20"
-              value={m.rangeMax ?? ''}
-              onChange={e => onChange({ rangeMax: e.target.value })}
-            />
-          </div>
-        </div>
-      )}
-
-      <div className="flex gap-1 items-start">
-        <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">{t.cellModal.fileLabel}</span>
-        <AvatarImagePicker
-          imgAssets={imgAssets}
-          value={m.src}
-          onChange={src => onChange({ src })}
-        />
-      </div>
     </div>
   );
 }
 
-// ─── Asset image picker ────────────────────────────────────────────────────────
-
-function AvatarImagePicker({
-  imgAssets,
-  value,
-  onChange,
-}: {
-  imgAssets: Asset[];
-  value: string;
-  onChange: (src: string) => void;
-}) {
-  const t = useT();
-  const matched = imgAssets.find(a => a.relativePath === value);
-
-  return (
-    <div className="flex-1 flex flex-col gap-1 min-w-0">
-      {imgAssets.length > 0 && (
-        <select
-          className="w-full bg-slate-700 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={matched?.id ?? ''}
-          onChange={e => {
-            const asset = imgAssets.find(a => a.id === e.target.value);
-            if (asset) onChange(asset.relativePath);
-            else if (e.target.value === '') onChange('');
-          }}
-        >
-          <option value="">{t.cellModal.selectAsset}</option>
-          {imgAssets.map(a => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </select>
-      )}
-      <input
-        className="w-full bg-slate-700 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-        placeholder="assets/img.png or https://..."
-        value={value}
-        onChange={e => onChange(e.target.value)}
-      />
-    </div>
-  );
-}
 
 // ─── Character vars editor (tree-based) ─────────────────────────────────────
 

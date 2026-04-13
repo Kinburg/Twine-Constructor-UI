@@ -785,6 +785,33 @@ export interface Translations {
     randomLengthSuffix: string;
   };
 
+  // ─── Shared image mapping editor ────────────────────────────────────────────
+  imageMappingEditor: {
+    mappingsLabel: string;
+    addOne: string;
+    generateBtn: string;
+    noMappings: string;
+    emptySlots: (count: number) => string;
+    matchExact: string;
+    matchRange: string;
+    valueLabel: string;
+    fromLabel: string;
+    toLabel: string;
+    fileLabel: string;
+    defaultLabel: string;
+    selectAsset: string;
+    genByRange: string;
+    genMin: string;
+    genMax: string;
+    genCount: string;
+    genStepPreview: (step: number, count: number) => string;
+    genReplace: string;
+    genAppend: string;
+    genByValues: string;
+    genValuesPlaceholder: string;
+    genValuesPreview: (count: number) => string;
+  };
+
   // ─── Array accessor UI ──────────────────────────────────────────────────────
   arrayAccessor: {
     label: string;

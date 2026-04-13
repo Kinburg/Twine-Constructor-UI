@@ -5,8 +5,9 @@ import type {
   TableBlock, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
   CellButton, CellList, CellAudioVolume, ButtonAction, ButtonStyle, VarOperator,
-  ImageBoundMapping, Variable, Asset,
+  Variable, Asset,
 } from '../../types';
+import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
 
@@ -635,7 +636,7 @@ function TCellEditModal({
         {c.type === 'image-static' && (
           <>
             <TMField label={t.cellModal.imageLabel}>
-              <TAssetPicker imgAssets={imgAssets} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
+              <ImageAssetPicker assets={imgAssets} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
             </TMField>
             <TObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
           </>
@@ -645,64 +646,13 @@ function TCellEditModal({
           <>
             <TVarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
             <TObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">{t.cellModal.mappingsLabel}</span>
-                <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
-                  onClick={() => onUpdateContent({
-                    ...c,
-                    mapping: [...c.mapping, {
-                      id: crypto.randomUUID(), matchType: 'exact', value: '', rangeMin: '', rangeMax: '', src: '',
-                    } satisfies ImageBoundMapping],
-                  })}>{t.cellModal.addMapping}</button>
-              </div>
-
-              {c.mapping.map((m, i) => {
-                const patchM = (patch: Partial<ImageBoundMapping>) =>
-                  onUpdateContent({ ...c, mapping: c.mapping.map((x, j) => j === i ? { ...x, ...patch } : x) });
-                const mt = m.matchType ?? 'exact';
-                return (
-                  <div key={m.id ?? i} className="flex flex-col gap-1.5 border border-slate-700/60 rounded p-1.5">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-slate-500 shrink-0">{t.cellModal.matchMode}</span>
-                      <select className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
-                        value={mt} onChange={e => patchM({ matchType: e.target.value as 'exact' | 'range' })}>
-                        <option value="exact">{t.cellModal.matchExact}</option>
-                        <option value="range">{t.cellModal.matchRange}</option>
-                      </select>
-                      <button className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
-                        onClick={() => onUpdateContent({ ...c, mapping: c.mapping.filter((_, j) => j !== i) })}>✕</button>
-                    </div>
-                    {mt === 'exact' && (
-                      <div className="flex gap-1 items-center">
-                        <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.valueLabel}</span>
-                        <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                          placeholder="100" value={m.value} onChange={e => patchM({ value: e.target.value })} />
-                      </div>
-                    )}
-                    {mt === 'range' && (
-                      <div className="flex gap-1 items-center">
-                        <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.fromLabel}</span>
-                        <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                          placeholder="0" value={m.rangeMin ?? ''} onChange={e => patchM({ rangeMin: e.target.value })} />
-                        <span className="text-xs text-slate-500 shrink-0">{t.cellModal.toLabel}</span>
-                        <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                          placeholder="20" value={m.rangeMax ?? ''} onChange={e => patchM({ rangeMax: e.target.value })} />
-                      </div>
-                    )}
-                    <div className="flex gap-1 items-start">
-                      <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">{t.cellModal.fileLabel}</span>
-                      <TAssetPicker imgAssets={imgAssets} value={m.src} onChange={src => patchM({ src })} />
-                    </div>
-                  </div>
-                );
-              })}
-
-              <TMField label={t.cellModal.defaultLabel}>
-                <TAssetPicker imgAssets={imgAssets} value={c.defaultSrc}
-                  onChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })} />
-              </TMField>
-            </div>
+            <ImageMappingEditor
+              mapping={c.mapping}
+              onChange={mapping => onUpdateContent({ ...c, mapping })}
+              defaultSrc={c.defaultSrc}
+              onDefaultSrcChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })}
+              assets={imgAssets}
+            />
           </>
         )}
 
@@ -1071,27 +1021,3 @@ function TCellButtonEditor({
   );
 }
 
-function TAssetPicker({ imgAssets, value, onChange }: {
-  imgAssets: Asset[]; value: string; onChange: (src: string) => void;
-}) {
-  const t = useT();
-  const matched = imgAssets.find(a => a.relativePath === value);
-  return (
-    <div className="flex-1 flex flex-col gap-1 min-w-0">
-      {imgAssets.length > 0 && (
-        <select className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={matched?.id ?? ''}
-          onChange={e => {
-            const asset = imgAssets.find(a => a.id === e.target.value);
-            if (asset) onChange(asset.relativePath);
-            else if (e.target.value === '') onChange('');
-          }}>
-          <option value="">{t.cellModal.selectAsset}</option>
-          {imgAssets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-      )}
-      <input className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-        placeholder="assets/img.png" value={value} onChange={e => onChange(e.target.value)} />
-    </div>
-  );
-}

@@ -770,6 +770,32 @@ const en: Translations = {
     randomLengthSuffix:   'chars [a-z0-9]',
   },
 
+  imageMappingEditor: {
+    mappingsLabel:      'Mappings (value → file):',
+    addOne:             '+ Add',
+    generateBtn:        '⚡ Generate',
+    noMappings:         'No entries. Click «+ Add».',
+    emptySlots:         (n) => `${n} without image`,
+    matchExact:         'Exact value',
+    matchRange:         'Range',
+    valueLabel:         'Val.:',
+    fromLabel:          'From:',
+    toLabel:            'To:',
+    fileLabel:          'File:',
+    defaultLabel:       'Default (no match):',
+    selectAsset:        '— from assets —',
+    genByRange:         'By range:',
+    genMin:             'Min:',
+    genMax:             'Max:',
+    genCount:           'Count:',
+    genStepPreview:     (step, count) => `→ step ${step % 1 === 0 ? step : step.toFixed(1)}, ${count} slots`,
+    genReplace:         'Replace all',
+    genAppend:          'Append',
+    genByValues:        'By values (comma-separated):',
+    genValuesPlaceholder: 'happy, sad, angry',
+    genValuesPreview:   (n) => `→ ${n} slots`,
+  },
+
   // ─── Array accessor UI ──────────────────────────────────────────────────────
   arrayAccessor: {
     label:            'Access:',
