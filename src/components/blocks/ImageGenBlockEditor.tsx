@@ -63,6 +63,7 @@ export function ImageGenBlockEditor({
     llmEnabled,
     llmProvider,
     llmUrl,
+    llmGeminiApiKey,
     llmGeminiModel,
     llmOpenaiUrl,
     llmOpenaiApiKey,
@@ -70,7 +71,11 @@ export function ImageGenBlockEditor({
     llmMaxTokens,
     llmTemperature,
     llmSystemPrompt,
+    imageGenProvider,
+    comfyUiUrl,
     comfyUiWorkflowsDir,
+    pollinationsModel,
+    pollinationsToken,
   } = useEditorPrefsStore();
 
   const update = onUpdate ?? ((p: Partial<ImageGenBlock>) => updateBlock(sceneId, block.id, p as never));
@@ -164,7 +169,7 @@ export function ImageGenBlockEditor({
     if (!scene || !llmEnabled) return;
     setBusyPrompt(true);
     try {
-      const urlOrApiKey = llmProvider === 'openai' ? llmOpenaiUrl : llmUrl;
+      const urlOrApiKey = llmProvider === 'openai' ? llmOpenaiUrl : llmProvider === 'gemini' ? llmGeminiApiKey : llmUrl;
       const model = llmProvider === 'openai' ? llmOpenaiModel : llmGeminiModel;
       const prompt = await generateImagePromptWithLlm(
         {
@@ -193,7 +198,7 @@ export function ImageGenBlockEditor({
 
   const generateImage = async () => {
     if (!projectDir) return toast.error(ig.errorNoProjectDir);
-    if (block.provider === 'comfyui' && !block.workflowFile) return toast.error(ig.errorNoWorkflow);
+    if (imageGenProvider === 'comfyui' && !block.workflowFile) return toast.error(ig.errorNoWorkflow);
     if (!block.prompt.trim()) return toast.error(ig.errorNoPrompt);
 
     saveSnapshot();
@@ -204,7 +209,7 @@ export function ImageGenBlockEditor({
     try {
       // Resolve workflow JSON: global dir or project dir.
       let workflowJson = {};
-      if (block.provider === 'comfyui' && block.workflowFile) {
+      if (imageGenProvider === 'comfyui' && block.workflowFile) {
         const useGlobal = comfyUiWorkflowsDir.trim() !== '';
         const wfPath = useGlobal
           ? joinPath(comfyUiWorkflowsDir.trim(), block.workflowFile)
@@ -217,17 +222,17 @@ export function ImageGenBlockEditor({
       const effectivePrompt = styleHints.length > 0
         ? `${block.prompt.trim()}, ${styleHints.join(', ')}`
         : block.prompt;
-      const generated = await generateImageWithProvider(block.provider, {
-        baseUrl: block.providerUrl,
+      const generated = await generateImageWithProvider(imageGenProvider, {
+        baseUrl: comfyUiUrl,
         workflow: workflowJson,
         prompt: effectivePrompt,
         negativePrompt: block.negativePrompt,
         seed: usedSeed,
-        pollinationsModel: block.pollinationsModel,
-        pollinationsToken: block.pollinationsToken,
+        pollinationsModel,
+        pollinationsToken,
         genWidth: block.genWidth,
         genHeight: block.genHeight,
-        onProgress: block.provider === 'comfyui' ? setGenProgress : undefined,
+        onProgress: imageGenProvider === 'comfyui' ? setGenProgress : undefined,
       }, controller.signal);
       // Keep the last used seed visible in editor.
       if (seedMode === 'random') update({ seed: usedSeed });
@@ -258,7 +263,7 @@ export function ImageGenBlockEditor({
           prompt: block.prompt,
           seed: usedSeed,
           createdAt: Date.now(),
-          provider: block.provider,
+          provider: imageGenProvider,
         },
       ];
       update({ src: relPath, history: nextHistory });
@@ -366,72 +371,25 @@ export function ImageGenBlockEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.providerLabel}</label>
-        <select
-          className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={block.provider}
-          onChange={e => update({ provider: e.target.value as ImageGenBlock['provider'] })}
-        >
-          <option value="comfyui">{ig.providerComfyui}</option>
-          <option value="pollinations">{ig.providerPollinations}</option>
-        </select>
-      </div>
-
-      {block.provider === 'comfyui' && (
-        <>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.providerUrlLabel}</label>
-            <input
-              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              value={block.providerUrl}
-              onChange={e => update({ providerUrl: e.target.value })}
-            />
-          </div>
-
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.workflowLabel}</label>
-            <select
-              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-              value={block.workflowFile}
-              onChange={e => update({ workflowFile: e.target.value })}
-            >
-              <option value="">{ig.workflowNone}</option>
-              {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
-            </select>
-            <button
-              type="button"
-              className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
-              onClick={refreshWorkflows}
-            >
-              {ig.workflowRefresh}
-            </button>
-          </div>
-        </>
-      )}
-
-      {block.provider === 'pollinations' && (
-        <>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.pollinationsModelLabel}</label>
-            <input
-              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder={ig.pollinationsModelPlaceholder}
-              value={block.pollinationsModel ?? ''}
-              onChange={e => update({ pollinationsModel: e.target.value })}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.pollinationsTokenLabel}</label>
-            <input
-              type="password"
-              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder={ig.pollinationsTokenPlaceholder}
-              value={block.pollinationsToken ?? ''}
-              onChange={e => update({ pollinationsToken: e.target.value })}
-            />
-          </div>
-        </>
+      {imageGenProvider === 'comfyui' && (
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400 w-20 shrink-0">{ig.workflowLabel}</label>
+          <select
+            className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+            value={block.workflowFile}
+            onChange={e => update({ workflowFile: e.target.value })}
+          >
+            <option value="">{ig.workflowNone}</option>
+            {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+          </select>
+          <button
+            type="button"
+            className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
+            onClick={refreshWorkflows}
+          >
+            {ig.workflowRefresh}
+          </button>
+        </div>
       )}
 
       <div className="flex items-center gap-2">

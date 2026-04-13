@@ -202,10 +202,10 @@ export interface ImageGenBlock {
   type: 'image-gen';
   delay?: BlockDelay;
   provider: ImageGenProvider;
-  providerUrl: string;
+  providerUrl?: string;              // legacy per-block URL; provider/URL now set globally in AI Settings
   workflowFile: string;             // project-relative path to workflow JSON (ComfyUI only)
-  pollinationsModel?: string;        // Pollinations.AI model (flux, turbo, flux-realism…)
-  pollinationsToken?: string;        // Pollinations.AI API token
+  pollinationsModel?: string;        // legacy; now set globally in AI Settings
+  pollinationsToken?: string;        // legacy; now set globally in AI Settings
   promptMode: ImageGenPromptMode;
   llmPromptMode?: 'hint' | 'rephrase' | 'continue'; // which LLM sub-mode to use when promptMode === 'llm'
   prompt: string;
@@ -601,11 +601,11 @@ export interface AvatarGenSlotData {
 }
 
 export interface AvatarGenSettings {
-  provider: 'comfyui' | 'pollinations';
-  providerUrl?: string;
+  provider: 'comfyui' | 'pollinations';  // legacy; provider now set globally in AI Settings
+  providerUrl?: string;                  // legacy; URL now set globally in AI Settings
   workflowFile?: string;
-  pollinationsModel?: string;
-  pollinationsToken?: string;
+  pollinationsModel?: string;            // legacy; now set globally in AI Settings
+  pollinationsToken?: string;            // legacy; now set globally in AI Settings
   genWidth?: number;
   genHeight?: number;
   styleHints?: string[];  // shared art style tags for all slots

@@ -164,6 +164,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
     llmEnabled,
     llmProvider,
     llmUrl,
+    llmGeminiApiKey,
     llmGeminiModel,
     llmOpenaiUrl,
     llmOpenaiApiKey,
@@ -171,19 +172,17 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
     llmMaxTokens,
     llmTemperature,
     llmSystemPrompt,
+    imageGenProvider,
+    comfyUiUrl,
     comfyUiWorkflowsDir,
+    pollinationsModel,
+    pollinationsToken,
   } = useEditorPrefsStore();
 
   const mode = cfg.mode;
 
-  // Provider settings — initialised from saved genSettings
-  const [provider, setProvider] = useState<'comfyui' | 'pollinations'>(
-    cfg.genSettings?.provider ?? 'pollinations',
-  );
-  const [providerUrl, setProviderUrl] = useState(cfg.genSettings?.providerUrl ?? 'http://127.0.0.1:8188');
+  // Provider settings — workflow file stored per-character; provider/URL from global store
   const [workflowFile, setWorkflowFile] = useState(cfg.genSettings?.workflowFile ?? '');
-  const [pollinationsModel, setPollinationsModel] = useState(cfg.genSettings?.pollinationsModel ?? '');
-  const [pollinationsToken, setPollinationsToken] = useState(cfg.genSettings?.pollinationsToken ?? '');
   const [genWidth, setGenWidth] = useState(cfg.genSettings?.genWidth ?? 0);
   const [genHeight, setGenHeight] = useState(cfg.genSettings?.genHeight ?? 0);
 
@@ -236,15 +235,12 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
 
   /** Build an AvatarGenSettings from current UI state + slot data */
   const buildGenSettings = (currentSlots: ModalSlotState[], currentStyleHints = styleHints): AvatarGenSettings => ({
-    provider,
-    providerUrl: provider === 'comfyui' ? providerUrl : undefined,
-    workflowFile: provider === 'comfyui' ? workflowFile : undefined,
-    pollinationsModel: provider === 'pollinations' ? pollinationsModel : undefined,
-    pollinationsToken: provider === 'pollinations' ? pollinationsToken : undefined,
+    provider: imageGenProvider,
+    workflowFile: imageGenProvider === 'comfyui' ? workflowFile : undefined,
     genWidth: genWidth || undefined,
     genHeight: genHeight || undefined,
     styleHints: currentStyleHints.length > 0 ? currentStyleHints : undefined,
-    useRefImage: (provider === 'comfyui' && mode !== 'static' && useRefImage) ? true : undefined,
+    useRefImage: (imageGenProvider === 'comfyui' && mode !== 'static' && useRefImage) ? true : undefined,
     lockedSeed: seedLocked ? lockedSeed : undefined,
     slots: currentSlots.map(s => ({
       slotId: s.slotId,
@@ -265,7 +261,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
 
   const generateForSlot = async (slotId: string) => {
     if (!projectDir) return toast.error(ag.errorNoProjectDir);
-    if (provider === 'comfyui' && !workflowFile) return toast.error(ag.errorNoWorkflow);
+    if (imageGenProvider === 'comfyui' && !workflowFile) return toast.error(ag.errorNoWorkflow);
     const slot = slots.find(s => s.slotId === slotId);
     if (!slot) return;
     if (!slot.prompt.trim()) return toast.error(ag.errorNoPrompt);
@@ -276,7 +272,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
 
     try {
       let workflowJson = {};
-      if (provider === 'comfyui' && workflowFile) {
+      if (imageGenProvider === 'comfyui' && workflowFile) {
         const useGlobal = comfyUiWorkflowsDir.trim() !== '';
         const wfPath = useGlobal
           ? joinPath(comfyUiWorkflowsDir.trim(), workflowFile)
@@ -292,7 +288,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
 
       // Load reference image as Base64 if enabled (ComfyUI only, non-default slots)
       let charImageBase64: string | undefined;
-      if (provider === 'comfyui' && useRefImage && slotId !== 'default') {
+      if (imageGenProvider === 'comfyui' && useRefImage && slotId !== 'default') {
         const defaultSlot = slots.find(s => s.slotId === 'default');
         if (defaultSlot?.currentSrc && projectDir) {
           try {
@@ -308,8 +304,8 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         }
       }
 
-      const generated = await generateImageWithProvider(provider, {
-        baseUrl: providerUrl,
+      const generated = await generateImageWithProvider(imageGenProvider, {
+        baseUrl: comfyUiUrl,
         workflow: workflowJson,
         prompt: effectivePrompt,
         negativePrompt: slot.negativePrompt || undefined,
@@ -319,7 +315,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         genWidth: genWidth || undefined,
         genHeight: genHeight || undefined,
         charImageBase64,
-        onProgress: provider === 'comfyui'
+        onProgress: imageGenProvider === 'comfyui'
           ? (p) => updateSlot(slotId, { progress: p })
           : undefined,
       }, controller.signal);
@@ -384,7 +380,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
     const isVariant = slotId !== 'default' && slotId !== 'static';
 
     try {
-      const urlOrApiKey = llmProvider === 'openai' ? llmOpenaiUrl : llmUrl;
+      const urlOrApiKey = llmProvider === 'openai' ? llmOpenaiUrl : llmProvider === 'gemini' ? llmGeminiApiKey : llmUrl;
       const model = llmProvider === 'openai' ? llmOpenaiModel : llmGeminiModel;
 
       // Variant slots: use hint as creative direction + default prompt as reference
@@ -491,7 +487,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
   const anyBusy = slots.some(s => s.busy);
   const hasPendingApprovals = slots.some(s => s.currentSrc.startsWith('history/'));
 
-  const showRefImageOption = provider === 'comfyui' && mode !== 'static';
+  const showRefImageOption = imageGenProvider === 'comfyui' && mode !== 'static';
   const defaultSlot = slots.find(s => s.slotId === 'default');
 
   return (
@@ -517,72 +513,25 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
 
           {/* ── Provider settings ── */}
           <div className="flex flex-col gap-2 p-3 rounded bg-slate-900/60 border border-slate-700/50">
-            {/* Provider selector */}
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400 w-24 shrink-0">{ag.providerLabel}</label>
-              <select
-                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-                value={provider}
-                onChange={e => setProvider(e.target.value as 'comfyui' | 'pollinations')}
-              >
-                <option value="comfyui">{ag.providerComfyui}</option>
-                <option value="pollinations">{ag.providerPollinations}</option>
-              </select>
-            </div>
-
-            {provider === 'comfyui' && (
-              <>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-400 w-24 shrink-0">{ag.providerUrlLabel}</label>
-                  <input
-                    className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-                    value={providerUrl}
-                    onChange={e => setProviderUrl(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-400 w-24 shrink-0">{ag.workflowLabel}</label>
-                  <select
-                    className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-                    value={workflowFile}
-                    onChange={e => setWorkflowFile(e.target.value)}
-                  >
-                    <option value="">{ag.workflowNone}</option>
-                    {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
-                  </select>
-                  <button
-                    type="button"
-                    className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
-                    onClick={refreshWorkflows}
-                  >
-                    {ag.workflowRefresh}
-                  </button>
-                </div>
-              </>
-            )}
-
-            {provider === 'pollinations' && (
-              <>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-400 w-24 shrink-0">{ag.pollinationsModelLabel}</label>
-                  <input
-                    className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-                    placeholder={ag.pollinationsModelPlaceholder}
-                    value={pollinationsModel}
-                    onChange={e => setPollinationsModel(e.target.value)}
-                  />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-400 w-24 shrink-0">{ag.pollinationsTokenLabel}</label>
-                  <input
-                    type="password"
-                    className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-                    placeholder={ag.pollinationsTokenPlaceholder}
-                    value={pollinationsToken}
-                    onChange={e => setPollinationsToken(e.target.value)}
-                  />
-                </div>
-              </>
+            {imageGenProvider === 'comfyui' && (
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-slate-400 w-24 shrink-0">{ag.workflowLabel}</label>
+                <select
+                  className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                  value={workflowFile}
+                  onChange={e => setWorkflowFile(e.target.value)}
+                >
+                  <option value="">{ag.workflowNone}</option>
+                  {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+                </select>
+                <button
+                  type="button"
+                  className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
+                  onClick={refreshWorkflows}
+                >
+                  {ag.workflowRefresh}
+                </button>
+              </div>
             )}
 
             {/* Generation size */}

@@ -86,24 +86,72 @@ export const geminiProvider: LLMProviderImpl = {
     }
 };
 
+// Known free / free-with-limits Gemini model name fragments (lowercase, without 'models/' prefix).
+// Used for UI grouping — not authoritative, just best-effort.
+const FULLY_FREE_FRAGMENTS = ['flash-lite', 'flash-8b', 'gemma'];
+const FREE_LIMITED_FRAGMENTS = ['flash'];
+
+export type GeminiModelTier = 'free' | 'free-limited' | 'paid' | 'experimental';
+
+export interface GeminiModelWithTier extends GeminiModel {
+    tier: GeminiModelTier;
+}
+
+export function classifyModel(name: string): GeminiModelTier {
+    const key = name.replace('models/', '').toLowerCase();
+    if (key.includes('exp') || key.includes('preview') || key.includes('latest')) return 'experimental';
+    if (FULLY_FREE_FRAGMENTS.some(f => key.includes(f))) return 'free';
+    if (FREE_LIMITED_FRAGMENTS.some(f => key.includes(f))) return 'free-limited';
+    return 'paid';
+}
+
+// Name fragments that identify non-text-generation models to exclude.
+const NON_TEXT_FRAGMENTS = [
+    'embed',      // text-embedding-*, embedding-*
+    'imagen',     // image generation
+    'veo',        // video generation
+    'lyria',      // music generation
+    'music',      // any other music models
+    'aqa',        // attributed question answering (retrieval, not generative)
+    'tts',        // text-to-speech
+    'transcri',   // transcription / speech-to-text
+    'audio',      // audio processing models
+    'nano',       // on-device only, not callable via API
+    'banana',     // internal/experimental non-text codename
+];
+
+// Only include models from known text-generation families.
+const TEXT_MODEL_PREFIXES = ['gemini-', 'gemma-', 'learnlm', 'text-'];
+
+/** Returns true for text-generation models only (excludes embeddings, image, video, audio, etc.) */
+function isTextGenerationModel(name: string): boolean {
+    const key = (name ?? '').replace('models/', '').toLowerCase();
+    if (NON_TEXT_FRAGMENTS.some(f => key.includes(f))) return false;
+    return TEXT_MODEL_PREFIXES.some(p => key.startsWith(p));
+}
+
 /**
- * Fetches available models from Gemini API using the SDK.
+ * Fetches available text-generation models from Gemini API.
+ * Filters out embeddings, image-gen, and other non-text models.
+ * Returns models annotated with a billing tier for UI grouping.
  */
-export async function fetchGeminiModels(apiKey: string): Promise<GeminiModel[]> {
+export async function fetchGeminiModels(apiKey: string): Promise<GeminiModelWithTier[]> {
     try {
         const ai = new GoogleGenAI({apiKey});
         const pager = await ai.models.list({config: {pageSize: 100}});
 
-        const models: GeminiModel[] = [];
+        const models: GeminiModelWithTier[] = [];
         for await (const model of pager) {
             const actions = model.supportedActions ?? [];
-            if (actions.includes('generateContent')) {
+            const name = model.name ?? '';
+            if (actions.includes('generateContent') && isTextGenerationModel(name)) {
                 models.push({
-                    name: model.name ?? '',
+                    name,
                     version: model.version ?? '',
-                    displayName: model.displayName ?? '',
+                    displayName: model.displayName ?? name.replace('models/', ''),
                     description: model.description ?? '',
                     supportedGenerationMethods: actions,
+                    tier: classifyModel(name),
                 });
             }
         }

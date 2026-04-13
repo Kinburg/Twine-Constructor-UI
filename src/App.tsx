@@ -7,7 +7,7 @@ import { WorkspaceLayout } from './components/layout/WorkspaceLayout';
 
 import { ProjectSettingsModal } from './components/project/ProjectSettingsModal';
 import { EditorPrefsModal } from './components/editor/EditorPrefsModal';
-import { LLMSettingsModal } from './components/editor/LLMSettingsModal';
+import { AISettingsModal } from './components/editor/LLMSettingsModal';
 import { useAutosave } from './hooks/useAutosave';
 import { Toaster } from 'sonner';
 import { useT } from './i18n';
@@ -100,7 +100,7 @@ export default function App() {
         <EditorPrefsModal onClose={() => setEditorPrefsOpen(false)} />
       )}
       {llmSettingsOpen && (
-        <LLMSettingsModal onClose={() => setLLMSettingsOpen(false)} />
+        <AISettingsModal onClose={() => setLLMSettingsOpen(false)} />
       )}
 
       {/* Close confirmation modal */}

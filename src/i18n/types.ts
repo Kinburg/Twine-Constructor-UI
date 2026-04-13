@@ -912,10 +912,18 @@ export interface Translations {
     temperatureLabel: string;
     systemPromptLabel: string;
     systemPromptPlaceholder: string;
+    imageGenSectionLabel: string;
+    imageGenProviderLabel: string;
+    comfyUiUrlLabel: string;
+    comfyUiUrlPlaceholder: string;
     comfyUiWorkflowsDirLabel: string;
     comfyUiWorkflowsDirPlaceholder: string;
     comfyUiWorkflowsDirHint: string;
     comfyUiWorkflowsDirBrowse: string;
+    pollinationsModelLabel: string;
+    pollinationsModelPlaceholder: string;
+    pollinationsTokenLabel: string;
+    pollinationsTokenPlaceholder: string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────
@@ -951,6 +959,22 @@ export interface Translations {
     headerImageNote:        string;
     successSave:            string;
     successCreate:          string;
+    // AI features
+    aiLlmSettingsBtn:       string;
+    sectionAiImage:         string;
+    aiExpandDesc:           string;
+    aiExpandDescBusy:       string;
+    aiGenerateLore:         string;
+    aiGenerateLoreBusy:     string;
+    aiGeneratePrompt:       string;
+    aiGeneratePromptBusy:   string;
+    aiImageReady:           string;
+    aiImageRemove:          string;
+    aiLlmDisabledHint:      string;
+    aiExpandError:          string;
+    aiLoreError:            string;
+    aiImageErrorNoPrompt:   string;
+    aiImageError:           string;
   };
 
   // ─── Scene settings modal ────────────────────────────────────────────────────

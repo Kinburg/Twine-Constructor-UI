@@ -41,7 +41,7 @@ export function makeBlock(type: BlockType): Block {
       id,
       type,
       provider: 'comfyui',
-      providerUrl: 'http://127.0.0.1:8188',
+      providerUrl: '',
       workflowFile: '',
       promptMode: 'manual' as const,
       prompt: '',

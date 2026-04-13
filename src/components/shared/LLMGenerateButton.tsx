@@ -21,6 +21,7 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated,
     llmEnabled,
     llmProvider,
     llmUrl,
+    llmGeminiApiKey,
     llmGeminiModel,
     llmOpenaiUrl,
     llmOpenaiApiKey,
@@ -170,7 +171,9 @@ export function LLMGenerateButton({ sceneId, blockId, currentValue, onGenerated,
     try {
       let urlOrApiKey = llmUrl;
       let model = llmGeminiModel;
-      if (llmProvider === 'openai') {
+      if (llmProvider === 'gemini') {
+        urlOrApiKey = llmGeminiApiKey;
+      } else if (llmProvider === 'openai') {
         urlOrApiKey = llmOpenaiUrl;
         model = llmOpenaiModel;
       }

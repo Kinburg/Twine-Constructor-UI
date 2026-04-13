@@ -56,6 +56,7 @@ export async function abortGeneration(provider: LLMProvider, genUrl: string) {
 // --- Re-exports ---
 
 export type {LLMMode, LLMProvider, GeminiModel, GenerationParams, ProviderConfig} from './types';
-export {fetchGeminiModels} from './geminiProvider';
+export {fetchGeminiModels, classifyModel} from './geminiProvider';
+export type {GeminiModelWithTier, GeminiModelTier} from './geminiProvider';
 export {filterThought} from './utils';
 export {buildSceneContext} from './promptBuilder';
