@@ -837,6 +837,15 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: Variable
     case 'image-static':
       return `<img src="${c.src}" style="width:100%;height:100%;display:block;object-fit:${c.objectFit};" />`;
 
+    case 'image-gen':
+      return `<img src="${c.src}" style="width:100%;height:100%;display:block;object-fit:cover;" />`;
+
+    case 'image-from-var': {
+      const v = vars.find(x => x.id === c.variableId);
+      const vname = v ? `$${varPath(v, nodes)}` : '$???';
+      return `<<if ${vname}>><img src="<<print ${vname}>>" style="width:100%;height:100%;display:block;object-fit:${c.objectFit};" /><</if>>`;
+    }
+
     case 'image-bound': {
       const v = vars.find(x => x.id === c.variableId);
       const vname = v ? `$${varPath(v, nodes)}` : '$???';
@@ -936,6 +945,17 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
     case 'image-static':
       inner = `<img class="tg-cell-img tg-lb" src="${c.src}" style="object-fit: ${c.objectFit};" onclick="tgOpenLightbox(this.src)" />`;
       break;
+
+    case 'image-gen':
+      inner = `<img class="tg-cell-img tg-lb" src="${c.src}" style="object-fit: cover;" onclick="tgOpenLightbox(this.src)" />`;
+      break;
+
+    case 'image-from-var': {
+      const v = vars.find(x => x.id === c.variableId);
+      const vname = v ? `$${varPath(v, nodes)}` : '$???';
+      inner = `<<if ${vname}>><img class="tg-cell-img tg-lb" src="<<print ${vname}>>" style="object-fit: ${c.objectFit};" onclick="tgOpenLightbox(this.src)" /><</if>>`;
+      break;
+    }
 
     case 'raw':
       inner = c.code;
@@ -1100,7 +1120,8 @@ export function buildPanelScript(panel: SidebarPanel): string {
   const hasImg = panel.tabs.some(t =>
     t.rows.some(r =>
       r.cells.some(c =>
-        c.content.type === 'image-static' || c.content.type === 'image-bound'
+        c.content.type === 'image-static' || c.content.type === 'image-bound' ||
+        c.content.type === 'image-gen' || c.content.type === 'image-from-var'
       )
     )
   );

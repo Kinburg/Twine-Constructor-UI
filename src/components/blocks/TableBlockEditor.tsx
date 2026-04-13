@@ -4,26 +4,31 @@ import { useT } from '../../i18n';
 import type {
   TableBlock, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
-  CellButton, CellList, CellAudioVolume, ButtonAction, ButtonStyle, VarOperator,
+  CellButton, CellList, CellAudioVolume, CellImageGen, CellImageFromVar,
+  ButtonAction, ButtonStyle, VarOperator,
   Variable, Asset,
 } from '../../types';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
+import { CellImageGenEditor } from '../shared/CellImageGenEditor';
+import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function makeDefaultContent(type: CellContent['type']): CellContent {
   switch (type) {
-    case 'text':         return { type: 'text', value: '' } as CellText;
-    case 'variable':     return { type: 'variable', variableId: '', prefix: '', suffix: '' } as CellVariable;
-    case 'progress':     return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', emptyColor: '#333333', textColor: '', colorRange: null, showText: false } as CellProgress;
-    case 'image-static': return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
-    case 'image-bound':  return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
-    case 'raw':          return { type: 'raw', code: '' } as CellRaw;
-    case 'button':       return { type: 'button', label: '', style: { bgColor: '#3b82f6', textColor: '#ffffff', borderColor: '#2563eb', borderRadius: 4, paddingV: 4, paddingH: 10, fontSize: 9, bold: false, fullWidth: false }, actions: [] };
-    case 'list':         return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' };
-    case 'audio-volume': return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
+    case 'text':           return { type: 'text', value: '' } as CellText;
+    case 'variable':       return { type: 'variable', variableId: '', prefix: '', suffix: '' } as CellVariable;
+    case 'progress':       return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', emptyColor: '#333333', textColor: '', colorRange: null, showText: false } as CellProgress;
+    case 'image-static':   return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
+    case 'image-bound':    return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
+    case 'image-gen':      return { type: 'image-gen', promptMode: 'manual', prompt: '', seedMode: 'random', workflowFile: '', alt: '', src: '', width: 0 } as CellImageGen;
+    case 'image-from-var': return { type: 'image-from-var', variableId: '', objectFit: 'cover' } as CellImageFromVar;
+    case 'raw':            return { type: 'raw', code: '' } as CellRaw;
+    case 'button':         return { type: 'button', label: '', style: { bgColor: '#3b82f6', textColor: '#ffffff', borderColor: '#2563eb', borderRadius: 4, paddingV: 4, paddingH: 10, fontSize: 9, bold: false, fullWidth: false }, actions: [] };
+    case 'list':           return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' };
+    case 'audio-volume':   return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
   }
 }
 
@@ -172,6 +177,7 @@ export function TableBlockEditor({
                     cell={cell}
                     vars={vars}
                     imgAssets={imgAssets}
+                    sceneId={sceneId}
                     onUpdateContent={content => updateCellContent(row.id, cell.id, content)}
                     onDelete={() => deleteCell(row.id, cell.id)}
                   />,
@@ -367,11 +373,12 @@ function TCellWidthBar({
 // ─── Cell editor ──────────────────────────────────────────────────────────────
 
 function TCellEditor({
-  cell, vars, imgAssets, onUpdateContent, onDelete,
+  cell, vars, imgAssets, sceneId, onUpdateContent, onDelete,
 }: {
   cell: SidebarCell;
   vars: Variable[];
   imgAssets: Asset[];
+  sceneId: string;
   onUpdateContent: (c: CellContent) => void;
   onDelete: () => void;
 }) {
@@ -396,6 +403,7 @@ function TCellEditor({
       {editing && (
         <TCellEditModal
           cell={cell} vars={vars} imgAssets={imgAssets}
+          sceneId={sceneId}
           onUpdateContent={onUpdateContent}
           onClose={() => setEditing(false)}
         />
@@ -408,15 +416,17 @@ function TCellEditor({
 
 function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type']): string {
   const m: Record<CellContent['type'], string> = {
-    text:           t.cellModal.typeText,
-    variable:       t.cellModal.typeVariable,
-    progress:       t.cellModal.typeProgress,
-    'image-static': t.cellModal.typeImageStatic,
-    'image-bound':  t.cellModal.typeImageBoundShort,
-    raw:            t.cellModal.typeRaw,
-    button:         t.cellModal.typeButton,
-    list:           t.cellModal.typeList,
-    'audio-volume': t.cellModal.typeAudioVolume,
+    text:             t.cellModal.typeText,
+    variable:         t.cellModal.typeVariable,
+    progress:         t.cellModal.typeProgress,
+    'image-static':   t.cellModal.typeImageStatic,
+    'image-bound':    t.cellModal.typeImageBoundShort,
+    'image-gen':      t.cellModal.typeImageGenShort,
+    'image-from-var': t.cellModal.typeImageFromVarShort,
+    raw:              t.cellModal.typeRaw,
+    button:           t.cellModal.typeButton,
+    list:             t.cellModal.typeList,
+    'audio-volume':   t.cellModal.typeAudioVolume,
   };
   return m[type];
 }
@@ -454,7 +464,7 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       </div>
     );
   }
-  if (c.type === 'image-static' || c.type === 'image-bound') return (
+  if (c.type === 'image-static' || c.type === 'image-bound' || c.type === 'image-gen' || c.type === 'image-from-var') return (
     <div className="flex-1 flex items-center justify-center p-1">
       <span className="text-xs text-slate-500">🖼️</span>
     </div>
@@ -494,26 +504,30 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
 // ─── Cell edit modal ──────────────────────────────────────────────────────────
 
 function TCellEditModal({
-  cell, vars, imgAssets, onUpdateContent, onClose,
+  cell, vars, imgAssets, sceneId, onUpdateContent, onClose,
 }: {
   cell: SidebarCell;
   vars: Variable[];
   imgAssets: Asset[];
+  sceneId: string;
   onUpdateContent: (c: CellContent) => void;
   onClose: () => void;
 }) {
   const t = useT();
   const c = cell.content;
+  const [genModalOpen, setGenModalOpen] = useState(false);
 
   const CELL_TYPES: { value: CellContent['type']; label: string }[] = [
-    { value: 'text',         label: t.cellModal.typeText },
-    { value: 'variable',     label: t.cellModal.typeVariable },
-    { value: 'progress',     label: t.cellModal.typeProgress },
-    { value: 'image-static', label: t.cellModal.typeImageStatic },
-    { value: 'image-bound',  label: t.cellModal.typeImageBound },
-    { value: 'raw',          label: t.cellModal.typeRaw },
-    { value: 'button',       label: t.cellModal.typeButton },
-    { value: 'list',         label: t.cellModal.typeList },
+    { value: 'text',           label: t.cellModal.typeText },
+    { value: 'variable',       label: t.cellModal.typeVariable },
+    { value: 'progress',       label: t.cellModal.typeProgress },
+    { value: 'image-static',   label: t.cellModal.typeImageStatic },
+    { value: 'image-bound',    label: t.cellModal.typeImageBound },
+    { value: 'image-gen',      label: t.cellModal.typeImageGen },
+    { value: 'image-from-var', label: t.cellModal.typeImageFromVar },
+    { value: 'raw',            label: t.cellModal.typeRaw },
+    { value: 'button',         label: t.cellModal.typeButton },
+    { value: 'list',           label: t.cellModal.typeList },
   ];
 
   const changeType = (type: CellContent['type']) => {
@@ -521,6 +535,7 @@ function TCellEditModal({
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3"
         onClick={e => e.stopPropagation()}>
@@ -653,6 +668,27 @@ function TCellEditModal({
               onDefaultSrcChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })}
               assets={imgAssets}
             />
+            <button
+              type="button"
+              className="self-start px-3 py-1.5 text-xs rounded bg-indigo-700 hover:bg-indigo-600 text-white cursor-pointer transition-colors"
+              onClick={() => setGenModalOpen(true)}
+            >{t.cellModal.openImageBoundGen}</button>
+          </>
+        )}
+
+        {c.type === 'image-gen' && (
+          <CellImageGenEditor
+            content={c}
+            cellId={cell.id}
+            sceneId={sceneId}
+            onUpdate={patch => onUpdateContent({ ...c, ...patch })}
+          />
+        )}
+
+        {c.type === 'image-from-var' && (
+          <>
+            <TVarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
+            <TObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
           </>
         )}
 
@@ -719,6 +755,18 @@ function TCellEditModal({
           onClick={onClose}>{t.cellModal.done}</button>
       </div>
     </div>
+
+    {genModalOpen && c.type === 'image-bound' && (
+      <CellImageBoundGenModal
+        cell={c}
+        cellId={cell.id}
+        variableId={c.variableId}
+        sceneId={sceneId}
+        onSave={updated => onUpdateContent(updated)}
+        onClose={() => setGenModalOpen(false)}
+      />
+    )}
+    </>
   );
 }
 

@@ -748,6 +748,35 @@ export interface CellImageBound {
   mapping: ImageBoundMapping[];
   defaultSrc: string;   // shown when no mapping matches
   objectFit: 'cover' | 'contain';
+  genSettings?: AvatarGenSettings; // optional AI generation settings (one slot per mapping entry + default)
+}
+
+/** Image cell with embedded AI generation. Fields mirror ImageGenBlock (minus block-level fields). */
+export interface CellImageGen {
+  type: 'image-gen';
+  promptMode: ImageGenPromptMode;
+  llmPromptMode?: 'hint' | 'rephrase' | 'continue';
+  prompt: string;
+  negativePrompt?: string;
+  styleHints?: string[];
+  seedMode: ImageGenSeedMode;
+  seed?: number;
+  genWidth?: number;
+  genHeight?: number;
+  workflowFile: string;
+  alt: string;
+  src: string;
+  width: number;
+  approvedHistoryId?: string;
+  lastApprovedDir?: string;
+  history?: ImageGenHistoryEntry[];
+}
+
+/** Image cell where src is taken directly from a variable value (no value→file mapping). */
+export interface CellImageFromVar {
+  type: 'image-from-var';
+  variableId: string;
+  objectFit: 'cover' | 'contain';
 }
 
 /** Raw SugarCube / HTML code inserted verbatim into the StoryCaption cell */
@@ -795,6 +824,8 @@ export type CellContent =
   | CellProgress
   | CellImageStatic
   | CellImageBound
+  | CellImageGen
+  | CellImageFromVar
   | CellRaw
   | CellButton
   | CellList

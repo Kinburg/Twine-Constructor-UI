@@ -372,6 +372,13 @@ const ua: Translations = {
     // ── Audio volume cell fields ──
     typeAudioVolume:          'Гучність',
     audioVolumeMuteButton:    'Кнопка вимкнення звуку',
+    // ── New image cell types ──
+    typeImageGen:             'Зображення (генероване)',
+    typeImageGenShort:        'Зображ. (ген)',
+    typeImageFromVar:         'Зображення (зі змінної)',
+    typeImageFromVarShort:    'Зображ. (змінна)',
+    openImageBoundGen:        'Генерувати зображення…',
+    variableLabel:            'Змінна',
   },
 
   rowsEditor: {
@@ -602,6 +609,15 @@ const ua: Translations = {
     errorGenerateImage: 'Не вдалося згенерувати зображення.',
     errorGeneratePrompt: 'Не вдалося згенерувати промпт.',
     errorApprove: 'Не вдалося зберегти аватарку.',
+  },
+
+  cellBoundGen: {
+    modalTitle:           'Генерація зображень (за змінною)',
+    promptPlaceholder:    'Опишіть зображення для цього значення…',
+    hintPlaceholder:      'Опис варіанту, напр. зламаний, світиться, стародавній…',
+    generateFromHintNoRef:'Спочатку згенеруйте промпт для слоту Default як референс',
+    approveSuccess:       'Усі зображення затверджено.',
+    errorApprove:         'Не вдалося зберегти зображення.',
   },
 
   videoBlock: {

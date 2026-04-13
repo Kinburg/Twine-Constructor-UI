@@ -4,12 +4,15 @@ import { useT } from '../../i18n';
 import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
-  CellButton, CellList, CellAudioVolume, ButtonAction, ButtonStyle, VarOperator,
+  CellButton, CellList, CellAudioVolume, CellImageGen, CellImageFromVar,
+  ButtonAction, ButtonStyle, VarOperator,
   Variable, Asset,
 } from '../../types';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 import { VariablePicker } from '../shared/VariablePicker';
 import { useConfirm } from '../shared/ConfirmModal';
+import { CellImageGenEditor } from '../shared/CellImageGenEditor';
+import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -610,15 +613,17 @@ const DEFAULT_BUTTON_STYLE: ButtonStyle = {
 
 function makeDefaultContent(type: CellContent['type']): CellContent {
   switch (type) {
-    case 'text':         return { type: 'text', value: '' } as CellText;
-    case 'variable':     return { type: 'variable', variableId: '', prefix: '', suffix: '' } as CellVariable;
-    case 'progress':     return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', emptyColor: '#333333', textColor: '', colorRange: null, showText: false } as CellProgress;
-    case 'image-static': return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
-    case 'image-bound':  return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
-    case 'raw':          return { type: 'raw', code: '' } as CellRaw;
-    case 'button':       return { type: 'button', label: '', style: { ...DEFAULT_BUTTON_STYLE }, actions: [] } as CellButton;
-    case 'list':         return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
-    case 'audio-volume': return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
+    case 'text':           return { type: 'text', value: '' } as CellText;
+    case 'variable':       return { type: 'variable', variableId: '', prefix: '', suffix: '' } as CellVariable;
+    case 'progress':       return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', emptyColor: '#333333', textColor: '', colorRange: null, showText: false } as CellProgress;
+    case 'image-static':   return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
+    case 'image-bound':    return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
+    case 'image-gen':      return { type: 'image-gen', promptMode: 'manual', prompt: '', seedMode: 'random', workflowFile: '', alt: '', src: '', width: 0 } as CellImageGen;
+    case 'image-from-var': return { type: 'image-from-var', variableId: '', objectFit: 'cover' } as CellImageFromVar;
+    case 'raw':            return { type: 'raw', code: '' } as CellRaw;
+    case 'button':         return { type: 'button', label: '', style: { ...DEFAULT_BUTTON_STYLE }, actions: [] } as CellButton;
+    case 'list':           return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
+    case 'audio-volume':   return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
   }
 }
 
@@ -635,16 +640,20 @@ function CellEditModal({
   const { project } = useProjectStore();
   const c = cell.content;
 
+  const [genModalOpen, setGenModalOpen] = useState(false);
+
   const CELL_TYPES: { value: CellContent['type']; label: string }[] = [
-    { value: 'text',         label: t.cellModal.typeText },
-    { value: 'variable',     label: t.cellModal.typeVariable },
-    { value: 'progress',     label: t.cellModal.typeProgress },
-    { value: 'image-static', label: t.cellModal.typeImageStatic },
-    { value: 'image-bound',  label: t.cellModal.typeImageBound },
-    { value: 'raw',          label: t.cellModal.typeRaw },
-    { value: 'button',       label: t.cellModal.typeButton },
-    { value: 'list',         label: t.cellModal.typeList },
-    { value: 'audio-volume', label: t.cellModal.typeAudioVolume },
+    { value: 'text',           label: t.cellModal.typeText },
+    { value: 'variable',       label: t.cellModal.typeVariable },
+    { value: 'progress',       label: t.cellModal.typeProgress },
+    { value: 'image-static',   label: t.cellModal.typeImageStatic },
+    { value: 'image-bound',    label: t.cellModal.typeImageBound },
+    { value: 'image-gen',      label: t.cellModal.typeImageGen },
+    { value: 'image-from-var', label: t.cellModal.typeImageFromVar },
+    { value: 'raw',            label: t.cellModal.typeRaw },
+    { value: 'button',         label: t.cellModal.typeButton },
+    { value: 'list',           label: t.cellModal.typeList },
+    { value: 'audio-volume',   label: t.cellModal.typeAudioVolume },
   ];
 
   const handleTypeChange = (type: CellContent['type']) => {
@@ -652,6 +661,7 @@ function CellEditModal({
   };
 
   return (
+    <>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
       <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3"
         onClick={e => e.stopPropagation()}>
@@ -786,6 +796,34 @@ function CellEditModal({
               onDefaultSrcChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })}
               assets={imgAssets}
             />
+            <button
+              type="button"
+              className="self-start px-3 py-1.5 text-xs rounded bg-indigo-700 hover:bg-indigo-600 text-white cursor-pointer transition-colors"
+              onClick={() => setGenModalOpen(true)}
+            >{t.cellModal.openImageBoundGen}</button>
+          </>
+        )}
+
+        {c.type === 'image-gen' && (
+          <CellImageGenEditor
+            content={c}
+            cellId={cell.id}
+            sceneId=""
+            onUpdate={patch => onUpdateContent({ ...c, ...patch })}
+          />
+        )}
+
+        {c.type === 'image-from-var' && (
+          <>
+            <MField label={t.cellModal.variableLabel}>
+              <VariablePicker
+                value={c.variableId}
+                onChange={id => onUpdateContent({ ...c, variableId: id })}
+                nodes={project.variableNodes}
+                placeholder={t.cellModal.selectVariable}
+              />
+            </MField>
+            <ObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
           </>
         )}
 
@@ -857,6 +895,18 @@ function CellEditModal({
           onClick={onClose}>{t.cellModal.done}</button>
       </div>
     </div>
+
+    {genModalOpen && c.type === 'image-bound' && (
+      <CellImageBoundGenModal
+        cell={c}
+        cellId={cell.id}
+        variableId={c.variableId}
+        sceneId=""
+        onSave={updated => onUpdateContent(updated)}
+        onClose={() => setGenModalOpen(false)}
+      />
+    )}
+    </>
   );
 }
 

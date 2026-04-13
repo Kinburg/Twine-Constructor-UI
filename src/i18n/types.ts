@@ -397,6 +397,13 @@ export interface Translations {
     // ── Audio volume cell fields ──
     typeAudioVolume: string;
     audioVolumeMuteButton: string;
+    // ── New image cell types ──
+    typeImageGen: string;
+    typeImageGenShort: string;
+    typeImageFromVar: string;
+    typeImageFromVarShort: string;
+    openImageBoundGen: string;
+    variableLabel: string;
   };
 
   // ─── Shared: rows/cells editor UI (Panel + Table) ──────────────────────────
@@ -630,6 +637,16 @@ export interface Translations {
     errorNoPrompt: string;
     errorGenerateImage: string;
     errorGeneratePrompt: string;
+    errorApprove: string;
+  };
+
+  // ─── Cell image-bound generation modal (overrides for non-avatar context) ───
+  cellBoundGen: {
+    modalTitle: string;
+    promptPlaceholder: string;
+    hintPlaceholder: string;
+    generateFromHintNoRef: string;
+    approveSuccess: string;
     errorApprove: string;
   };
 

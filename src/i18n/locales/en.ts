@@ -372,6 +372,13 @@ const en: Translations = {
     // ── Audio volume cell fields ──
     typeAudioVolume:          'Volume control',
     audioVolumeMuteButton:    'Show mute button',
+    // ── New image cell types ──
+    typeImageGen:             'Image (generated)',
+    typeImageGenShort:        'Image (gen)',
+    typeImageFromVar:         'Image (from variable)',
+    typeImageFromVarShort:    'Image (from var)',
+    openImageBoundGen:        'Generate images…',
+    variableLabel:            'Variable',
   },
 
   rowsEditor: {
@@ -602,6 +609,15 @@ const en: Translations = {
     errorGenerateImage: 'Failed to generate image.',
     errorGeneratePrompt: 'Failed to generate prompt.',
     errorApprove: 'Failed to save avatar.',
+  },
+
+  cellBoundGen: {
+    modalTitle:           'Generate Images (by variable)',
+    promptPlaceholder:    'Describe the image for this value…',
+    hintPlaceholder:      'Variant description, e.g. broken, glowing, ancient…',
+    generateFromHintNoRef:'Generate the Default slot prompt first to use as a reference',
+    approveSuccess:       'All images approved.',
+    errorApprove:         'Failed to save image.',
   },
 
   videoBlock: {
