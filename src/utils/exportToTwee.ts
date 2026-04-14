@@ -779,6 +779,7 @@ function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[], node
     .filter(Boolean);
 
   macros.push('<<run window._tgCheckWatchers && window._tgCheckWatchers()>>');
+  macros.push('<<run UIBar.update()>>');
 
   if (c.navigate?.type === 'back') {
     macros.push('<<run Engine.backward()>>');
@@ -843,7 +844,7 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: Variable
     case 'image-from-var': {
       const v = vars.find(x => x.id === c.variableId);
       const vname = v ? `$${varPath(v, nodes)}` : '$???';
-      return `<<if ${vname}>><img src="<<print ${vname}>>" style="width:100%;height:100%;display:block;object-fit:${c.objectFit};" /><</if>>`;
+      return `<<if ${vname}>><img @src="${vname}" style="width:100%;height:100%;display:block;object-fit:${c.objectFit};" /><</if>>`;
     }
 
     case 'image-bound': {
@@ -953,7 +954,7 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
     case 'image-from-var': {
       const v = vars.find(x => x.id === c.variableId);
       const vname = v ? `$${varPath(v, nodes)}` : '$???';
-      inner = `<<if ${vname}>><img class="tg-cell-img tg-lb" src="<<print ${vname}>>" style="object-fit: ${c.objectFit};" onclick="tgOpenLightbox(this.src)" /><</if>>`;
+      inner = `<<if ${vname}>><img class="tg-cell-img tg-lb" @src="${vname}" style="object-fit: ${c.objectFit};" onclick="tgOpenLightbox(this.src)" /><</if>>`;
       break;
     }
 

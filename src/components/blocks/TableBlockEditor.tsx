@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react';
-import { useProjectStore, flattenVariables, flattenAssets, DEFAULT_PANEL_STYLE, redistributeWidths } from '../../store/projectStore';
+import { useProjectStore, flattenVariables, DEFAULT_PANEL_STYLE, redistributeWidths } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type {
   TableBlock, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
   CellButton, CellList, CellAudioVolume, CellImageGen, CellImageFromVar,
   ButtonAction, ButtonStyle, VarOperator,
-  Variable, Asset,
+  Variable, AssetTreeNode,
 } from '../../types';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
@@ -45,7 +45,7 @@ export function TableBlockEditor({
   const { updateBlock, saveSnapshot } = useProjectStore();
   const project = useProjectStore(s => s.project);
   const vars = flattenVariables(project.variableNodes);
-  const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
+  const assetNodes = project.assetNodes;
 
   const update = onUpdate ?? ((p: Partial<TableBlock>) => updateBlock(sceneId, block.id, p as never));
   const updateRows = (rows: SidebarRow[]) => update({ rows });
@@ -176,7 +176,7 @@ export function TableBlockEditor({
                     key={cell.id}
                     cell={cell}
                     vars={vars}
-                    imgAssets={imgAssets}
+                    assetNodes={assetNodes}
                     sceneId={sceneId}
                     onUpdateContent={content => updateCellContent(row.id, cell.id, content)}
                     onDelete={() => deleteCell(row.id, cell.id)}
@@ -373,11 +373,11 @@ function TCellWidthBar({
 // ─── Cell editor ──────────────────────────────────────────────────────────────
 
 function TCellEditor({
-  cell, vars, imgAssets, sceneId, onUpdateContent, onDelete,
+  cell, vars, assetNodes, sceneId, onUpdateContent, onDelete,
 }: {
   cell: SidebarCell;
   vars: Variable[];
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
   sceneId: string;
   onUpdateContent: (c: CellContent) => void;
   onDelete: () => void;
@@ -402,7 +402,7 @@ function TCellEditor({
       </div>
       {editing && (
         <TCellEditModal
-          cell={cell} vars={vars} imgAssets={imgAssets}
+          cell={cell} vars={vars} assetNodes={assetNodes}
           sceneId={sceneId}
           onUpdateContent={onUpdateContent}
           onClose={() => setEditing(false)}
@@ -464,9 +464,39 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       </div>
     );
   }
-  if (c.type === 'image-static' || c.type === 'image-bound' || c.type === 'image-gen' || c.type === 'image-from-var') return (
-    <div className="flex-1 flex items-center justify-center p-1">
-      <span className="text-xs text-slate-500">🖼️</span>
+  if (c.type === 'image-static') {
+    const filename = c.src ? c.src.split('/').pop()! : '';
+    return (
+      <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+        <span className="text-slate-400 shrink-0">🖼️</span>
+        <span className="text-xs text-slate-300 font-mono truncate flex-1">
+          {filename || <em className="text-slate-600 not-italic">—</em>}
+        </span>
+      </div>
+    );
+  }
+  if (c.type === 'image-bound') return (
+    <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
+      {c.mapping.length > 0 && <span className="text-xs text-slate-500 shrink-0">×{c.mapping.length}</span>}
+    </div>
+  );
+  if (c.type === 'image-gen') {
+    const filename = c.src ? c.src.split('/').pop()! : '';
+    return (
+      <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+        <span className="text-slate-400 shrink-0">🖼️✨</span>
+        <span className="text-xs text-slate-300 truncate flex-1">
+          {filename || c.prompt || <em className="text-slate-600 not-italic">—</em>}
+        </span>
+      </div>
+    );
+  }
+  if (c.type === 'image-from-var') return (
+    <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
     </div>
   );
   if (c.type === 'raw') return (
@@ -504,11 +534,11 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
 // ─── Cell edit modal ──────────────────────────────────────────────────────────
 
 function TCellEditModal({
-  cell, vars, imgAssets, sceneId, onUpdateContent, onClose,
+  cell, vars, assetNodes, sceneId, onUpdateContent, onClose,
 }: {
   cell: SidebarCell;
   vars: Variable[];
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
   sceneId: string;
   onUpdateContent: (c: CellContent) => void;
   onClose: () => void;
@@ -651,7 +681,7 @@ function TCellEditModal({
         {c.type === 'image-static' && (
           <>
             <TMField label={t.cellModal.imageLabel}>
-              <ImageAssetPicker assets={imgAssets} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
+              <ImageAssetPicker assetNodes={assetNodes} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
             </TMField>
             <TObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
           </>
@@ -666,7 +696,7 @@ function TCellEditModal({
               onChange={mapping => onUpdateContent({ ...c, mapping })}
               defaultSrc={c.defaultSrc}
               onDefaultSrcChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })}
-              assets={imgAssets}
+              assetNodes={assetNodes}
             />
             <button
               type="button"

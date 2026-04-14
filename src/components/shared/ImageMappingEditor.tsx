@@ -1,42 +1,219 @@
-import { useState } from 'react';
-import type { ImageBoundMapping, Asset } from '../../types';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import type { ImageBoundMapping, Asset, AssetTreeNode, AssetGroup } from '../../types';
 import { useT } from '../../i18n';
 
+// ─── Asset tree helpers ───────────────────────────────────────────────────────
+
+function hasImageAssets(nodes: AssetTreeNode[]): boolean {
+  return nodes.some(n =>
+    n.kind === 'asset' ? n.assetType === 'image' : hasImageAssets(n.children)
+  );
+}
+
+function imageGroupMatchesFilter(group: AssetGroup, text: string): boolean {
+  if (group.name.toLowerCase().includes(text)) return true;
+  return group.children.some(n => {
+    if (n.kind === 'asset') {
+      return n.assetType === 'image' &&
+        (n.name.toLowerCase().includes(text) || n.relativePath.toLowerCase().includes(text));
+    }
+    return imageGroupMatchesFilter(n, text);
+  });
+}
+
+// ─── Asset tree renderer ──────────────────────────────────────────────────────
+
+function AssetPickerTree({
+  nodes, depth, expanded, onToggleGroup, onSelect, selectedPath, filterText,
+}: {
+  nodes: AssetTreeNode[];
+  depth: number;
+  expanded: Set<string>;
+  onToggleGroup: (id: string) => void;
+  onSelect: (path: string) => void;
+  selectedPath: string;
+  filterText: string;
+}) {
+  return (
+    <>
+      {nodes.map(node => {
+        if (node.kind === 'group') {
+          if (!hasImageAssets(node.children)) return null;
+          if (filterText && !imageGroupMatchesFilter(node, filterText)) return null;
+          const isExp = expanded.has(node.id) || !!filterText;
+          return (
+            <div key={node.id}>
+              <div
+                className="flex items-center gap-1 cursor-pointer hover:bg-slate-800 transition-colors"
+                style={{ paddingLeft: depth * 12 + 8 }}
+                onClick={() => onToggleGroup(node.id)}
+              >
+                <span className="text-slate-500 text-xs w-3 shrink-0">{isExp ? '▾' : '▸'}</span>
+                <span className="text-amber-400/70 text-xs shrink-0">📁</span>
+                <span className="text-xs text-slate-400 truncate py-0.5">{node.name}</span>
+              </div>
+              {isExp && (
+                <AssetPickerTree
+                  nodes={node.children}
+                  depth={depth + 1}
+                  expanded={expanded}
+                  onToggleGroup={onToggleGroup}
+                  onSelect={onSelect}
+                  selectedPath={selectedPath}
+                  filterText={filterText}
+                />
+              )}
+            </div>
+          );
+        }
+
+        // Leaf — only images
+        if (node.assetType !== 'image') return null;
+        if (
+          filterText &&
+          !node.name.toLowerCase().includes(filterText) &&
+          !node.relativePath.toLowerCase().includes(filterText)
+        ) return null;
+
+        const isSelected = node.relativePath === selectedPath;
+        return (
+          <div
+            key={node.id}
+            className={`flex items-center gap-1.5 cursor-pointer transition-colors ${
+              isSelected ? 'bg-indigo-600/30 text-white' : 'hover:bg-slate-800 text-slate-300'
+            }`}
+            style={{ paddingLeft: depth * 12 + 8 }}
+            onClick={() => onSelect(node.relativePath)}
+          >
+            <span className="text-slate-500 text-xs shrink-0 w-3">🖼</span>
+            <span className="text-xs font-mono truncate flex-1 py-0.5">{node.name}</span>
+            {isSelected && <span className="text-xs text-indigo-400 pr-1">✓</span>}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
 // ─── Shared image asset picker ────────────────────────────────────────────────
-// Select from registered assets + manual path/URL input.
+// Tree-based picker (folder hierarchy) + manual path/URL input.
 
 export function ImageAssetPicker({
-  assets,
+  assetNodes,
   value,
   onChange,
   placeholder = 'assets/img.png',
 }: {
-  assets: Asset[];
+  assetNodes: AssetTreeNode[];
   value: string;
   onChange: (src: string) => void;
   placeholder?: string;
 }) {
   const t = useT();
-  const matched = assets.find(a => a.relativePath === value);
+  const [open, setOpen] = useState(false);
+  const [filter, setFilter] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const filterRef = useRef<HTMLInputElement>(null);
+  const [pos, setPos] = useState<{ top: number; left: number; width: number; maxHeight: number } | null>(null);
+
+  const hasImages = hasImageAssets(assetNodes);
+  const displayName = value ? value.split('/').pop()! : '';
+
+  const openPanel = useCallback(() => {
+    if (btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      const spaceBelow = window.innerHeight - rect.bottom - 8;
+      const spaceAbove = rect.top - 8;
+      const maxH = Math.max(spaceBelow, spaceAbove, 120);
+      const top = spaceBelow >= Math.min(maxH, 240)
+        ? rect.bottom + 2
+        : rect.top - Math.min(maxH, 240) - 2;
+      const w = Math.max(rect.width, 220);
+      setPos({
+        top,
+        left: Math.min(rect.left, window.innerWidth - w - 4),
+        width: w,
+        maxHeight: Math.min(maxH, 320),
+      });
+    }
+    setOpen(true);
+    setFilter('');
+  }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (
+        panelRef.current && !panelRef.current.contains(e.target as Node) &&
+        btnRef.current  && !btnRef.current.contains(e.target as Node)
+      ) setOpen(false);
+    };
+    document.addEventListener('mousedown', handle);
+    return () => document.removeEventListener('mousedown', handle);
+  }, [open]);
+
+  useEffect(() => {
+    if (open) setTimeout(() => filterRef.current?.focus(), 0);
+  }, [open]);
+
+  const toggleGroup = (id: string) => {
+    setExpanded(prev => {
+      const s = new Set(prev);
+      if (s.has(id)) s.delete(id); else s.add(id);
+      return s;
+    });
+  };
+
+  const filterLower = filter.toLowerCase();
 
   return (
     <div className="flex-1 flex flex-col gap-1 min-w-0">
-      {assets.length > 0 && (
-        <select
-          className="w-full bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={matched?.id ?? ''}
-          onChange={e => {
-            const asset = assets.find(a => a.id === e.target.value);
-            if (asset) onChange(asset.relativePath);
-            else if (e.target.value === '') onChange('');
-          }}
-        >
-          <option value="">{t.imageMappingEditor.selectAsset}</option>
-          {assets.map(a => (
-            <option key={a.id} value={a.id}>{a.name}</option>
-          ))}
-        </select>
+      {hasImages && (
+        <>
+          <button
+            ref={btnRef}
+            type="button"
+            className="w-full bg-slate-800 text-xs rounded px-1.5 py-0.5 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer text-left truncate"
+            onClick={() => open ? setOpen(false) : openPanel()}
+          >
+            {displayName
+              ? <span className="font-mono text-white">{displayName}</span>
+              : <span className="text-slate-500">{t.imageMappingEditor.selectAsset}</span>
+            }
+          </button>
+
+          {open && pos && (
+            <div
+              ref={panelRef}
+              className="fixed z-[9999] bg-slate-900 border border-slate-600 rounded shadow-xl flex flex-col"
+              style={{ top: pos.top, left: pos.left, width: pos.width, maxHeight: pos.maxHeight }}
+            >
+              <input
+                ref={filterRef}
+                className="text-xs bg-slate-800 text-white px-2 py-1 outline-none border-b border-slate-700 rounded-t"
+                placeholder="Filter…"
+                value={filter}
+                onChange={e => setFilter(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
+              />
+              <div className="overflow-y-auto flex-1 py-1">
+                <AssetPickerTree
+                  nodes={assetNodes}
+                  depth={0}
+                  expanded={expanded}
+                  onToggleGroup={toggleGroup}
+                  onSelect={path => { onChange(path); setOpen(false); }}
+                  selectedPath={value}
+                  filterText={filterLower}
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
+
       <input
         className="w-full bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
         placeholder={placeholder}
@@ -50,10 +227,10 @@ export function ImageAssetPicker({
 // ─── Mapping entry row ────────────────────────────────────────────────────────
 
 function MappingEntry({
-  m, assets, onChange, onDelete,
+  m, assetNodes, onChange, onDelete,
 }: {
   m: ImageBoundMapping;
-  assets: Asset[];
+  assetNodes: AssetTreeNode[];
   onChange: (patch: Partial<ImageBoundMapping>) => void;
   onDelete: () => void;
 }) {
@@ -115,7 +292,7 @@ function MappingEntry({
 
       <div className="flex gap-1 items-start">
         <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">{t.imageMappingEditor.fileLabel}</span>
-        <ImageAssetPicker assets={assets} value={m.src} onChange={src => onChange({ src })} />
+        <ImageAssetPicker assetNodes={assetNodes} value={m.src} onChange={src => onChange({ src })} />
       </div>
     </div>
   );
@@ -259,13 +436,13 @@ export function ImageMappingEditor({
   onChange,
   defaultSrc,
   onDefaultSrcChange,
-  assets,
+  assetNodes,
 }: {
   mapping: ImageBoundMapping[];
   onChange: (mapping: ImageBoundMapping[]) => void;
   defaultSrc: string;
   onDefaultSrcChange: (src: string) => void;
-  assets: Asset[];
+  assetNodes: AssetTreeNode[];
 }) {
   const t = useT();
   const [showGenerator, setShowGenerator] = useState(false);
@@ -332,7 +509,7 @@ export function ImageMappingEditor({
         <MappingEntry
           key={m.id ?? i}
           m={m}
-          assets={assets}
+          assetNodes={assetNodes}
           onChange={p => patch(i, p)}
           onDelete={() => remove(i)}
         />
@@ -341,8 +518,11 @@ export function ImageMappingEditor({
       {/* Default / fallback */}
       <div className="flex flex-col gap-1 mt-0.5">
         <span className="text-xs text-slate-400">{t.imageMappingEditor.defaultLabel}</span>
-        <ImageAssetPicker assets={assets} value={defaultSrc} onChange={onDefaultSrcChange} />
+        <ImageAssetPicker assetNodes={assetNodes} value={defaultSrc} onChange={onDefaultSrcChange} />
       </div>
     </div>
   );
 }
+
+// Keep Asset re-exported for any callers that import it from here
+export type { Asset };

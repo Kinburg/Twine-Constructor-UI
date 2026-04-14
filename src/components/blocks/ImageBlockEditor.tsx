@@ -1,10 +1,10 @@
-import { useProjectStore, flattenAssets } from '../../store/projectStore';
+import { useProjectStore } from '../../store/projectStore';
 import type { ImageBlock } from '../../types';
 import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
-import { ImageMappingEditor } from '../shared/ImageMappingEditor';
+import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 
 // ─── Main editor ──────────────────────────────────────────────────────────────
 
@@ -20,7 +20,6 @@ export function ImageBlockEditor({
   const { project, projectDir, updateBlock } = useProjectStore();
   const update = onUpdate ?? ((p: Partial<ImageBlock>) => updateBlock(sceneId, block.id, p as never));
   const t = useT();
-  const imageAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
   const mode    = block.mode ?? 'static';
   const mapping = block.mapping ?? [];
 
@@ -61,30 +60,13 @@ export function ImageBlockEditor({
       {/* ── Static mode ───────────────────────────────────────────────────── */}
       {mode === 'static' && (
         <>
-          {imageAssets.length > 0 && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.assetLabel}</label>
-              <select
-                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-                value=""
-                onChange={e => {
-                  const asset = imageAssets.find(a => a.id === e.target.value);
-                  if (asset) update({ src: asset.relativePath, alt: asset.name });
-                }}
-              >
-                <option value="">{t.imageBlock.selectAsset}</option>
-                {imageAssets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.urlLabel}</label>
-            <input
-              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder={t.imageBlock.urlPlaceholder}
+          <div className="flex items-start gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0 pt-1">{t.imageBlock.urlLabel}</label>
+            <ImageAssetPicker
+              assetNodes={project.assetNodes}
               value={block.src}
-              onChange={e => update({ src: e.target.value })}
+              onChange={src => update({ src })}
+              placeholder={t.imageBlock.urlPlaceholder}
             />
           </div>
 
@@ -119,7 +101,7 @@ export function ImageBlockEditor({
             onChange={mapping => update({ mapping })}
             defaultSrc={block.defaultSrc ?? ''}
             onDefaultSrcChange={defaultSrc => update({ defaultSrc })}
-            assets={imageAssets}
+            assetNodes={project.assetNodes}
           />
         </div>
       )}

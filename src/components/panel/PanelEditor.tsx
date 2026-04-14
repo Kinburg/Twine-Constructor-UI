@@ -1,12 +1,12 @@
 import { useState, useRef } from 'react';
-import { useProjectStore, flattenVariables, flattenAssets, DEFAULT_PANEL_STYLE, redistributeWidths } from '../../store/projectStore';
+import { useProjectStore, flattenVariables, DEFAULT_PANEL_STYLE, redistributeWidths } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
   CellButton, CellList, CellAudioVolume, CellImageGen, CellImageFromVar,
   ButtonAction, ButtonStyle, VarOperator,
-  Variable, Asset,
+  Variable, AssetTreeNode,
 } from '../../types';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 import { VariablePicker } from '../shared/VariablePicker';
@@ -35,7 +35,7 @@ export function PanelEditor() {
   const { ask, modal: confirmModal } = useConfirm();
 
   const vars = flattenVariables(project.variableNodes);
-  const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
+  const assetNodes = project.assetNodes;
   const activeTab = sidebarPanel.tabs.find(t => t.id === activeTabId) ?? null;
   const style: PanelStyle = sidebarPanel.style ?? DEFAULT_PANEL_STYLE;
 
@@ -139,7 +139,7 @@ export function PanelEditor() {
             {/* ── Panel style settings ── */}
             <PanelStyleEditor style={style} onChange={updatePanelStyle} />
 
-            <TabRowsEditor tab={activeTab} vars={vars} imgAssets={imgAssets} />
+            <TabRowsEditor tab={activeTab} vars={vars} assetNodes={assetNodes} />
           </>
         )}
       </div>
@@ -223,11 +223,11 @@ function PanelStyleEditor({
 // ─── Tab rows editor ──────────────────────────────────────────────────────────
 
 function TabRowsEditor({
-  tab, vars, imgAssets,
+  tab, vars, assetNodes,
 }: {
   tab: SidebarTab;
   vars: Variable[];
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
 }) {
   const t = useT();
   const { addPanelRow, updatePanelRow, deletePanelRow, addPanelCell } = useProjectStore();
@@ -293,7 +293,7 @@ function TabRowsEditor({
                   row={row}
                   cell={cell}
                   vars={vars}
-                  imgAssets={imgAssets}
+                  assetNodes={assetNodes}
                 />,
               ]).filter(Boolean)}
               {row.cells.length === 0 && (
@@ -466,13 +466,13 @@ function DragDivider({
 // ─── Cell editor ──────────────────────────────────────────────────────────────
 
 function CellEditor({
-  tabId, row, cell, vars, imgAssets,
+  tabId, row, cell, vars, assetNodes,
 }: {
   tabId: string;
   row: SidebarRow;
   cell: SidebarCell;
   vars: Variable[];
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
 }) {
   const t = useT();
   const { deletePanelCell, updateCellContent } = useProjectStore();
@@ -500,7 +500,7 @@ function CellEditor({
 
       {editing && (
         <CellEditModal
-          cell={cell} vars={vars} imgAssets={imgAssets}
+          cell={cell} vars={vars} assetNodes={assetNodes}
           onUpdateContent={updateContent}
           onClose={() => setEditing(false)}
         />
@@ -513,15 +513,17 @@ function CellEditor({
 
 function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type']): string {
   const m: Record<CellContent['type'], string> = {
-    text:           t.cellModal.typeText,
-    variable:       t.cellModal.typeVariable,
-    progress:       t.cellModal.typeProgress,
-    'image-static': t.cellModal.typeImageStatic,
-    'image-bound':  t.cellModal.typeImageBoundShort,
-    raw:            t.cellModal.typeRaw,
-    button:         t.cellModal.typeButton,
-    list:           t.cellModal.typeList,
-    'audio-volume': t.cellModal.typeAudioVolume,
+    text:             t.cellModal.typeText,
+    variable:         t.cellModal.typeVariable,
+    progress:         t.cellModal.typeProgress,
+    'image-static':   t.cellModal.typeImageStatic,
+    'image-bound':    t.cellModal.typeImageBoundShort,
+    'image-gen':      t.cellModal.typeImageGenShort,
+    'image-from-var': t.cellModal.typeImageFromVarShort,
+    raw:              t.cellModal.typeRaw,
+    button:           t.cellModal.typeButton,
+    list:             t.cellModal.typeList,
+    'audio-volume':   t.cellModal.typeAudioVolume,
   };
   return m[type];
 }
@@ -560,9 +562,39 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       </div>
     );
   }
-  if (c.type === 'image-static' || c.type === 'image-bound') return (
-    <div className="flex-1 flex items-center justify-center p-1">
-      <span className="text-xs text-slate-500">🖼️</span>
+  if (c.type === 'image-static') {
+    const filename = c.src ? c.src.split('/').pop()! : '';
+    return (
+      <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+        <span className="text-slate-400 shrink-0">🖼️</span>
+        <span className="text-xs text-slate-300 font-mono truncate flex-1">
+          {filename || <em className="text-slate-600 not-italic">—</em>}
+        </span>
+      </div>
+    );
+  }
+  if (c.type === 'image-bound') return (
+    <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
+      {c.mapping.length > 0 && <span className="text-xs text-slate-500 shrink-0">×{c.mapping.length}</span>}
+    </div>
+  );
+  if (c.type === 'image-gen') {
+    const filename = c.src ? c.src.split('/').pop()! : '';
+    return (
+      <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+        <span className="text-slate-400 shrink-0">🖼️✨</span>
+        <span className="text-xs text-slate-300 truncate flex-1">
+          {filename || c.prompt || <em className="text-slate-600 not-italic">—</em>}
+        </span>
+      </div>
+    );
+  }
+  if (c.type === 'image-from-var') return (
+    <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
     </div>
   );
   if (c.type === 'raw') return (
@@ -628,11 +660,11 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
 }
 
 function CellEditModal({
-  cell, vars, imgAssets, onUpdateContent, onClose,
+  cell, vars, assetNodes, onUpdateContent, onClose,
 }: {
   cell: SidebarCell;
   vars: Variable[];
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
   onUpdateContent: (c: CellContent) => void;
   onClose: () => void;
 }) {
@@ -779,7 +811,7 @@ function CellEditModal({
         {c.type === 'image-static' && (
           <>
             <MField label={t.cellModal.imageLabel}>
-              <ImageAssetPicker assets={imgAssets} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
+              <ImageAssetPicker assetNodes={assetNodes} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
             </MField>
             <ObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
           </>
@@ -794,7 +826,7 @@ function CellEditModal({
               onChange={mapping => onUpdateContent({ ...c, mapping })}
               defaultSrc={c.defaultSrc}
               onDefaultSrcChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })}
-              assets={imgAssets}
+              assetNodes={assetNodes}
             />
             <button
               type="button"

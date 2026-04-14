@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useProjectStore, flattenAssets, charToVarPrefix, pregenCharVarIds } from '../../store/projectStore';
+import { useProjectStore, charToVarPrefix, pregenCharVarIds } from '../../store/projectStore';
 import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
-import type { Character, AvatarConfig, Variable, Asset, VariableTreeNode, VariableGroup, CharacterVarIds } from '../../types';
+import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds } from '../../types';
 import { useT } from '../../i18n';
 import { AvatarGenModal } from './AvatarGenModal';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
@@ -118,7 +118,7 @@ interface Props {
 export function CharacterModal({ mode, charId, initial, takenNames, takenVarNames, onSave, onClose }: Props) {
   const t = useT();
   const { project, addVariable, addVariableGroup, updateVariable, deleteVariableNode } = useProjectStore();
-  const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
+  const assetNodes = project.assetNodes;
 
   const [name, setName] = useState(initial.name);
   // In edit mode, prefer the actual group name from the variable tree as the source of truth
@@ -376,7 +376,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
           {/* Avatar */}
           <AvatarEditor
             cfg={avatarCfg}
-            imgAssets={imgAssets}
+            assetNodes={assetNodes}
             onChange={setAvatarCfg}
             charVarName={varName}
             charName={name}
@@ -468,7 +468,7 @@ function CharacterPreview({ char, avatarCfg }: { char: Omit<Character, 'id'>; av
 
 function AvatarEditor({
   cfg,
-  imgAssets,
+  assetNodes,
   onChange,
   charVarName,
   charName,
@@ -476,7 +476,7 @@ function AvatarEditor({
   charNodes,
 }: {
   cfg: AvatarConfig;
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
   onChange: (c: AvatarConfig) => void;
   charVarName: string;
   charName: string;
@@ -537,7 +537,7 @@ function AvatarEditor({
       {cfg.mode === 'static' && (
         <Field label={t.characters.fieldImage}>
           <ImageAssetPicker
-            assets={imgAssets}
+            assetNodes={assetNodes}
             value={cfg.src}
             onChange={src => onChange({ ...cfg, src })}
           />
@@ -560,7 +560,7 @@ function AvatarEditor({
             onChange={mapping => onChange({ ...cfg, mapping })}
             defaultSrc={cfg.defaultSrc}
             onDefaultSrcChange={defaultSrc => onChange({ ...cfg, defaultSrc })}
-            assets={imgAssets}
+            assetNodes={assetNodes}
           />
         </div>
       )}
