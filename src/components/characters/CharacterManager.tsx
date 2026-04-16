@@ -124,13 +124,14 @@ function CharacterRow({
   const t = useT();
   return (
     <div
-      className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer"
+      className={`flex items-center gap-2 px-2 py-1.5 rounded border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer${char.isHero ? ' ring-2 ring-amber-400' : ''}`}
       onClick={onEdit}
     >
       <div
         className="w-3 h-3 rounded-full shrink-0"
         style={{ background: char.borderColor }}
       />
+      {char.isHero && <span className="text-xs shrink-0">⭐</span>}
       <span className="flex-1 text-xs truncate" style={{ color: char.nameColor }}>
         {char.name || t.characters.noName}
       </span>

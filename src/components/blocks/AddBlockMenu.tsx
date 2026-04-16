@@ -26,6 +26,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'function':     'ƒ',
   'popup':        '🪟',
   'audio':        '🔊',
+  'container':    '🏪',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -91,6 +92,7 @@ export function makeBlock(type: BlockType): Block {
     };
     case 'popup':        return { id, type, targetSceneId: '' };
     case 'audio':        return { id, type, src: '', trigger: 'immediate' as const, loop: false, onLeave: 'stop' as const, stopOthers: false, volume: 100 };
+    case 'container':    return { id, type, containerId: '', charId: '' };
   }
 }
 
@@ -102,7 +104,7 @@ const BLOCK_CATEGORIES: { key: CategoryKey; types: BlockType[] }[] = [
   { key: 'content',     types: ['text', 'dialogue', 'image', 'image-gen', 'video', 'audio', 'table', 'divider'] },
   { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio'] },
   { key: 'logic',       types: ['condition', 'variable-set', 'function', 'popup'] },
-  { key: 'system',      types: ['raw', 'include', 'note'] },
+  { key: 'system',      types: ['raw', 'include', 'note', 'container'] },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -132,6 +134,7 @@ function buildEntries(t: ReturnType<typeof useT>): BlockEntry[] {
     { type: 'function',     icon: BLOCK_ICONS['function'],     label: t.addBlock.function.label,    desc: t.addBlock.function.desc },
     { type: 'popup',        icon: BLOCK_ICONS['popup'],        label: t.addBlock.popup.label,       desc: t.addBlock.popup.desc },
     { type: 'audio',        icon: BLOCK_ICONS['audio'],        label: t.addBlock.audio.label,       desc: t.addBlock.audio.desc },
+    { type: 'container',   icon: BLOCK_ICONS['container'],    label: t.addBlock.container.label,   desc: t.addBlock.container.desc },
   ];
 }
 

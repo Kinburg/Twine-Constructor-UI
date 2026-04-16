@@ -51,6 +51,7 @@ export function blockTypeLabel(t: Translations, type: Block['type']): string {
     'function':     t.block.function,
     'popup':        t.block.popup,
     'audio':        t.block.audio,
+    'container':    t.block.container,
   };
   return map[type] ?? type;
 }

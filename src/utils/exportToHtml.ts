@@ -1,7 +1,7 @@
 import type { Project, ProjectSettings, Character } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildContainerScript, buildContainerCSS } from './exportToTwee';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -136,6 +136,14 @@ export function buildPassages(project: Project): {
   const hasAudioVolume = sidebarPanel.tabs.some(tab =>
     tab.rows.some(r => r.cells.some(c => c.content.type === 'audio-volume')));
   if (hasAudioVolume) inits.push('<<set $__tgMasterVol to 1>>');
+  // Initial inventory: push starting items for each character
+  for (const char of project.characters) {
+    if (!char.initialInventory?.length || !char.varName) continue;
+    const charPath = `$${char.varName}`;
+    for (const slot of char.initialInventory) {
+      inits.push(`<<run ${charPath}.inventory.push({ item: "${slot.itemVarName}", qty: ${slot.quantity}, equipped: ${slot.equipped} })>>`);
+    }
+  }
   if (inits.length > 0) {
     passages.push({
       pid: pid++, name: 'StoryInit', tags: '',
@@ -157,7 +165,7 @@ export function buildPassages(project: Project): {
 
   scenes.forEach((scene, idx) => {
     const body = scene.blocks
-      .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName))
+      .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName, project))
       .filter(Boolean)
       .join('\n');
     const scenePid = pid++;
@@ -173,12 +181,13 @@ export function buildPassages(project: Project): {
     });
   });
 
-  const charCSS   = buildCharacterCSS(characters);
-  const panelCSS  = buildPanelCSS(sidebarPanel);
-  const buttonCSS = buildButtonsCSS(scenes);
-  const tipCSS    = buildTooltipCSS();
-  const globalCSS = buildGlobalCSS(project.settings);
-  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS].filter(Boolean).join('\n\n');
+  const charCSS      = buildCharacterCSS(characters);
+  const panelCSS     = buildPanelCSS(sidebarPanel);
+  const buttonCSS    = buildButtonsCSS(scenes);
+  const tipCSS       = buildTooltipCSS();
+  const globalCSS    = buildGlobalCSS(project.settings);
+  const containerCSS = buildContainerCSS();
+  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS, containerCSS].filter(Boolean).join('\n\n');
 
   const settingsScript = buildSettingsScript(project.settings);
   const scriptContent = [
@@ -188,6 +197,8 @@ export function buildPassages(project: Project): {
     buildLiveScript(scenes),
     buildWatcherScript(project.watchers ?? [], variables, variableNodes, idToName),
     buildAudioScript(scenes, project.settings?.audioUnlockText),
+    buildInventoryScript(project),
+    buildContainerScript(project),
     buildPurlSignatureScript(),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load (audio + video)',

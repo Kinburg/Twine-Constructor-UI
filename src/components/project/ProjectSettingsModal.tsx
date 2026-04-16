@@ -507,6 +507,8 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
         scenes:      [{ id: crypto.randomUUID(), name: 'Start', tags: ['start'], blocks: [] }],
         sceneGroups:  [],
         characters:   [],
+        items:        [],
+        containers:   [],
         variableNodes: [],
         assetNodes:   [],
         sidebarPanel: { tabs: [], liveUpdate: false, style: { rowGap: 2, borderWidth: 1, borderColor: '#555555', showOuterBorder: false, showRowBorders: false, showCellBorders: false } } as SidebarPanel,

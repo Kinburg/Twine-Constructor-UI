@@ -3,7 +3,7 @@ import type {
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
   Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
   ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList,
-  Watcher, WatcherCondition, AudioBlock,
+  Watcher, WatcherCondition, AudioBlock, ContainerBlock,
   VariableTreeNode, VariableGroup,
 } from '../types';
 import { START_TAG } from '../types';
@@ -154,14 +154,14 @@ function wrapBlockEffects(
   return result;
 }
 
-export function blockToSC(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>): string {
-  const raw = blockToSCInner(block, chars, vars, nodes, indent, idToName);
+export function blockToSC(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>, project?: Project): string {
+  const raw = blockToSCInner(block, chars, vars, nodes, indent, idToName, project);
   if (!raw || block.type === 'condition' || block.type === 'note') return raw;
   const b = block as { delay?: BlockDelay; typewriter?: BlockTypewriter };
   return wrapBlockEffects(raw, b.delay, b.typewriter, indent, block.id);
 }
 
-function blockToSCInner(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>): string {
+function blockToSCInner(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>, project?: Project): string {
   switch (block.type) {
     case 'text':
       if (block.live) {
@@ -221,7 +221,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
       // Inner blocks rendered inside the dialogue bubble after the main text
       const innerBlocksHtml = (block.innerBlocks ?? [])
-        .map(b => blockToSC(b, chars, vars, nodes, '', idToName))
+        .map(b => blockToSC(b, chars, vars, nodes, '', idToName, project))
         .filter(Boolean)
         .join('');
 
@@ -277,7 +277,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     case 'condition': {
       if (block.branches.length === 0) return '';
       return block.branches
-        .map((branch, i) => branchToSC(branch, chars, vars, nodes, indent, i === 0, idToName))
+        .map((branch, i) => branchToSC(branch, chars, vars, nodes, indent, i === 0, idToName, project))
         .join('\n') + `\n${indent}<</if>>`;
     }
 
@@ -630,6 +630,18 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         ? `${indent}${stopAllMacro}\n${indent}${audioMacro}`
         : `${indent}${audioMacro}`;
     }
+
+    case 'container': {
+      const cb = block as ContainerBlock;
+      if (!cb.containerId) return `${indent}/* Container block: no container selected */`;
+      const container = (project?.containers ?? []).find(c => c.id === cb.containerId);
+      if (!container) return `${indent}/* Container block: container not found */`;
+      const hero = chars.find(c => c.isHero);
+      if (!hero) return `${indent}/* Container block: no main hero defined — set one in Characters tab */`;
+      const heroVarName = hero.varName || hero.name.toLowerCase().replace(/\s+/g, '_');
+      const titleArg = cb.title ? ` "${cb.title.replace(/"/g, '\\"')}"` : '';
+      return `${indent}<<tgContainer "${container.varName}" "${heroVarName}"${titleArg}>>`;
+    }
   }
 }
 
@@ -641,9 +653,10 @@ function branchToSC(
   indent: string,
   isFirst: boolean,
   idToName?: Map<string, string>,
+  project?: Project,
 ): string {
   const innerLines = branch.blocks
-    .map(b => blockToSC(b, chars, vars, nodes, indent + '  ', idToName))
+    .map(b => blockToSC(b, chars, vars, nodes, indent + '  ', idToName, project))
     .join('\n');
 
   if (branch.branchType === 'else') {
@@ -1702,6 +1715,14 @@ export function exportToTwee(project: Project): string {
   const hasAudioVolume = sidebarPanel.tabs.some(tab =>
     tab.rows.some(r => r.cells.some(c => c.content.type === 'audio-volume')));
   if (hasAudioVolume) inits.push('<<set $__tgMasterVol to 1>>');
+  // Initial inventory: push starting items for each character
+  for (const char of characters) {
+    if (!char.initialInventory?.length || !char.varName) continue;
+    const charPath = `$${char.varName}`;
+    for (const slot of char.initialInventory) {
+      inits.push(`<<run ${charPath}.inventory.push({ item: "${slot.itemVarName}", qty: ${slot.quantity}, equipped: ${slot.equipped} })>>`);
+    }
+  }
   if (inits.length > 0) {
     // NOTE: StoryInit must NOT have [script] tag — its content is SugarCube
     // markup (<<set>>), not raw JavaScript. The [script] tag would cause Twine
@@ -1710,12 +1731,13 @@ export function exportToTwee(project: Project): string {
   }
 
   // StoryStylesheet
-  const charCSS   = buildCharacterCSS(characters);
-  const panelCSS  = buildPanelCSS(sidebarPanel);
-  const buttonCSS = buildButtonsCSS(scenes);
-  const animCSS   = buildAnimationCSS(scenes);
-  const tipCSS    = buildTooltipCSS();
-  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS, tipCSS].filter(Boolean).join('\n\n');
+  const charCSS      = buildCharacterCSS(characters);
+  const panelCSS     = buildPanelCSS(sidebarPanel);
+  const buttonCSS    = buildButtonsCSS(scenes);
+  const animCSS      = buildAnimationCSS(scenes);
+  const tipCSS       = buildTooltipCSS();
+  const containerCSS = buildContainerCSS();
+  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS, tipCSS, containerCSS].filter(Boolean).join('\n\n');
   if (allCSS) parts.push(`::StoryStylesheet [stylesheet]\n${allCSS}\n`);
 
   // StoryScript (lightbox + input debounce) — single passage
@@ -1725,6 +1747,8 @@ export function exportToTwee(project: Project): string {
     buildLiveScript(scenes),
     buildWatcherScript(project.watchers ?? [], variables, variableNodes, idToName),
     buildAudioScript(scenes, project.settings?.audioUnlockText),
+    buildInventoryScript(project),
+    buildContainerScript(project),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load',
       '$(document).on(":passagedisplay", function() {',
@@ -1745,7 +1769,7 @@ export function exportToTwee(project: Project): string {
     const exportTags = scene.tags.filter(t => t !== START_TAG);
     const tags = exportTags.length > 0 ? ` [${exportTags.join(' ')}]` : '';
     const body = scene.blocks
-      .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName))
+      .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName, project))
       .filter(Boolean)
       .join('\n');
 
@@ -1761,6 +1785,300 @@ export function exportToTwee(project: Project): string {
   }
 
   return parts.join('\n\n') + '\n';
+}
+
+/**
+ * Build SugarCube macro definitions for the inventory system.
+ * Included when the project has at least one character.
+ *
+ * Macros:
+ *   <<tgInvAdd  charVar itemVarName qty>>  — add items to inventory
+ *   <<tgInvRemove charVar itemVarName qty>> — remove items from inventory
+ *
+ * JS helpers (usable in <<if>> expressions):
+ *   window.tgInvHas(charVar, itemVarName)   → boolean
+ *   window.tgInvCount(charVar, itemVarName) → number
+ */
+export function buildContainerCSS(): string {
+  return [
+    '.tg-container { font-family: inherit; }',
+    '.tg-cont-header { font-size: 1.05em; font-weight: bold; margin-bottom: 8px; }',
+    '.tg-cont-body { display: flex; gap: 16px; align-items: flex-start; }',
+    '.tg-cont-grid { display: grid; grid-template-columns: repeat(4, 64px); gap: 4px; align-content: start; }',
+    '.tg-cont-cell { width: 64px; height: 64px; border: 2px solid rgba(255,255,255,0.15); border-radius: 4px; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; padding: 4px; position: relative; transition: border-color 0.15s, background 0.15s; box-sizing: border-box; }',
+    '.tg-cont-cell:hover { border-color: rgba(255,255,255,0.4); }',
+    '.tg-cont-cell.tg-selected { border-color: #6366f1; background: rgba(99,102,241,0.18); }',
+    '.tg-cont-cell img { width: 36px; height: 36px; object-fit: contain; }',
+    '.tg-cell-qty { position: absolute; bottom: 2px; right: 4px; font-size: 10px; opacity: 0.8; }',
+    '.tg-cell-name { font-size: 10px; text-align: center; overflow: hidden; max-width: 60px; white-space: nowrap; text-overflow: ellipsis; }',
+    '.tg-cont-detail { flex: 1; min-width: 160px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; min-height: 140px; }',
+    '.tg-detail-placeholder { color: rgba(255,255,255,0.3); font-size: 12px; padding-top: 8px; }',
+    '.tg-detail-icon { margin-bottom: 6px; }',
+    '.tg-detail-icon img { width: 56px; height: 56px; object-fit: contain; }',
+    '.tg-detail-name { font-weight: bold; margin-bottom: 2px; }',
+    '.tg-detail-desc { font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 6px; }',
+    '.tg-detail-meta { font-size: 12px; margin-bottom: 10px; color: rgba(255,255,255,0.7); }',
+    '.tg-detail-action { display: inline-block; padding: 5px 18px; background: #6366f1; border: none; border-radius: 4px; color: #fff; cursor: pointer; font-size: 13px; transition: background 0.15s; }',
+    '.tg-detail-action:hover:not(:disabled) { background: #4f46e5; }',
+    '.tg-detail-action:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: not-allowed; }',
+    '.tg-cont-empty { color: rgba(255,255,255,0.3); font-size: 13px; padding: 16px 0; }',
+  ].join('\n');
+}
+
+/**
+ * Build SugarCube macro definitions for the container system.
+ * Included when the project has at least one container.
+ *
+ * Macros (usage in passages):
+ *   <<tgContainer containerVar charVar [title]>>
+ *     — renders the container UI inline (shop/chest/loot based on container mode)
+ *   <<tgShopBuy   containerVar itemVarName charVar [qty]>> — buy item from shop
+ *   <<tgShopSell  containerVar itemVarName charVar [qty]>> — sell item to shop
+ *   <<tgChestTake containerVar itemVarName charVar [qty]>> — take item from chest
+ *   <<tgLootAll   containerVar charVar>>                   — take all loot
+ */
+export function buildContainerScript(project: Project): string {
+  const containers = project.containers ?? [];
+  if (containers.length === 0) return '';
+
+  // Static map of container varName → mode
+  const containerModes = containers.map(c => `"${c.varName}":"${c.mode}"`).join(',');
+
+  return [
+    '// ── Container system ──',
+    `var _tgModes = {${containerModes}};`,
+    '',
+    '// Shared: get container object by varName string',
+    'function _tgGetCont(n) { return (State.variables["containers"] || {})[n]; }',
+    '// Shared: get character object by varName string',
+    'function _tgGetChar(n) { return State.variables[n]; }',
+    '',
+    '// Buy one item from a shop container',
+    'window.tgBuyItem = function(contName, charName, itemName, qty) {',
+    '  qty = qty || 1;',
+    '  var cont = _tgGetCont(contName); var ch = _tgGetChar(charName);',
+    '  if (!cont || !ch) return;',
+    '  var slot = cont.items.find(function(s){return s.item===itemName;});',
+    '  if (!slot) return;',
+    '  var items = State.variables["items"] || {};',
+    '  var price = (slot.price != null ? slot.price : (items[itemName] ? items[itemName].price||0 : 0)) * qty;',
+    '  if ((ch.money||0) < price) return;',
+    '  ch.money = (ch.money||0) - price;',
+    '  if (slot.qty !== -1) { slot.qty -= qty; if (slot.qty <= 0) cont.items.splice(cont.items.indexOf(slot),1); }',
+    '  var stackable = items[itemName] ? items[itemName].stackable : false;',
+    '  if (stackable) { var ex=ch.inventory.find(function(e){return e.item===itemName;}); if(ex){ex.qty+=qty;} else {ch.inventory.push({item:itemName,qty:qty,equipped:false});} }',
+    '  else { ch.inventory.push({item:itemName,qty:qty,equipped:false}); }',
+    '  Engine.show();',
+    '};',
+    '',
+    '// Take one item from a chest/loot container',
+    'window.tgTakeItem = function(contName, charName, itemName, qty) {',
+    '  qty = qty || 1;',
+    '  var cont = _tgGetCont(contName); var ch = _tgGetChar(charName);',
+    '  if (!cont || !ch) return;',
+    '  var slot = cont.items.find(function(s){return s.item===itemName;});',
+    '  if (!slot) return;',
+    '  var take = slot.qty === -1 ? qty : Math.min(qty, slot.qty);',
+    '  if (slot.qty !== -1) { slot.qty -= take; if (slot.qty <= 0) cont.items.splice(cont.items.indexOf(slot),1); }',
+    '  var items = State.variables["items"] || {};',
+    '  var stackable = items[itemName] ? items[itemName].stackable : false;',
+    '  if (stackable) { var ex=ch.inventory.find(function(e){return e.item===itemName;}); if(ex){ex.qty+=take;} else {ch.inventory.push({item:itemName,qty:take,equipped:false});} }',
+    '  else { ch.inventory.push({item:itemName,qty:take,equipped:false}); }',
+    '  Engine.show();',
+    '};',
+    '',
+    '// Loot all items at once',
+    'window.tgLootAllItems = function(contName, charName) {',
+    '  var cont = _tgGetCont(contName); var ch = _tgGetChar(charName);',
+    '  if (!cont || !ch) return;',
+    '  var items = State.variables["items"] || {};',
+    '  cont.items.forEach(function(slot) {',
+    '    var qty = slot.qty === -1 ? 1 : slot.qty;',
+    '    var stackable = items[slot.item] ? items[slot.item].stackable : false;',
+    '    if (stackable) { var ex=ch.inventory.find(function(e){return e.item===slot.item;}); if(ex){ex.qty+=qty; return;} }',
+    '    ch.inventory.push({item:slot.item,qty:qty,equipped:false});',
+    '  });',
+    '  cont.items = [];',
+    '  Engine.show();',
+    '};',
+    '',
+    '// Cell click: reads contName/charName from parent data-* attrs — no quoting needed',
+    'window.tgCellClick = function(el) {',
+    '  var wrap = el.closest(".tg-container");',
+    '  if (!wrap) return;',
+    '  var contName    = wrap.dataset.cont;',
+    '  var charName    = wrap.dataset.char;',
+    '  var detailId    = wrap.dataset.det;',
+    '  var itemVarName = el.dataset.item;',
+    '  el.closest(".tg-cont-grid").querySelectorAll(".tg-cont-cell").forEach(function(c){c.classList.remove("tg-selected");});',
+    '  el.classList.add("tg-selected");',
+    '  var detail = document.getElementById(detailId);',
+    '  if (!detail) return;',
+    '  var cont = _tgGetCont(contName);',
+    '  var ch   = _tgGetChar(charName);',
+    '  var allItems = State.variables["items"] || {};',
+    '  var item  = allItems[itemVarName] || {};',
+    '  var slot  = cont ? cont.items.find(function(s){return s.item===itemVarName;}) : null;',
+    '  if (!slot) { detail.innerHTML = "<div class=\\"tg-detail-placeholder\\">Item not found</div>"; return; }',
+    '  var mode  = _tgModes[contName] || "loot";',
+    '  var name  = item.name || itemVarName;',
+    '  var desc  = item.description || "";',
+    '  var icon  = item.icon ? "<img src=\\""+item.icon+"\\">": "";',
+    '  var price = slot.price != null ? slot.price : (item.price || 0);',
+    '  var qty   = slot.qty === -1 ? "\\u221e" : slot.qty;',
+    '  var money = ch ? (ch.money || 0) : 0;',
+    '  var html = "";',
+    '  if (icon) html += "<div class=\\"tg-detail-icon\\">"+icon+"</div>";',
+    '  html += "<div class=\\"tg-detail-name\\">"+name+"</div>";',
+    '  if (desc) html += "<div class=\\"tg-detail-desc\\">"+desc+"</div>";',
+    '  if (mode === "shop") {',
+    '    html += "<div class=\\"tg-detail-meta\\">Price: "+price+"g &nbsp;|&nbsp; Your money: "+money+"g &nbsp;|&nbsp; In stock: "+qty+"</div>";',
+    '    html += "<button class=\\"tg-detail-action\\" "+(money>=price?"":"disabled")+" onclick=\\"window.tgBuyNow(this)\\">Buy</button>";',
+    '  } else {',
+    '    html += "<div class=\\"tg-detail-meta\\">Qty: "+qty+"</div>";',
+    '    html += "<button class=\\"tg-detail-action\\" onclick=\\"window.tgTakeNow(this)\\">Take</button>";',
+    '  }',
+    '  detail.innerHTML = html;',
+    '};',
+    '// Action dispatchers — walk up DOM to find context, no args needed in onclick',
+    'window.tgBuyNow = function(el) {',
+    '  var wrap = el.closest(".tg-container");',
+    '  var sel  = wrap ? wrap.querySelector(".tg-cont-cell.tg-selected") : null;',
+    '  if (!wrap || !sel) return;',
+    '  window.tgBuyItem(wrap.dataset.cont, wrap.dataset.char, sel.dataset.item, 1);',
+    '};',
+    'window.tgTakeNow = function(el) {',
+    '  var wrap = el.closest(".tg-container");',
+    '  var sel  = wrap ? wrap.querySelector(".tg-cont-cell.tg-selected") : null;',
+    '  if (!wrap || !sel) return;',
+    '  window.tgTakeItem(wrap.dataset.cont, wrap.dataset.char, sel.dataset.item, 1);',
+    '};',
+    'window.tgLootNow = function(el) {',
+    '  var wrap = el.closest(".tg-container");',
+    '  if (!wrap) return;',
+    '  window.tgLootAllItems(wrap.dataset.cont, wrap.dataset.char);',
+    '};',
+    '',
+    '// tgContainer macro — renders the full interactive container grid',
+    '// Usage: <<tgContainer "containerVarName" "heroVarName" ["Title"]>>',
+    'Macro.add("tgContainer", {',
+    '  handler: function() {',
+    '    var contName = this.args[0];',
+    '    var charName = this.args[1];',
+    '    var title    = this.args[2] || "";',
+    '    var cont     = _tgGetCont(contName);',
+    '    var ch       = _tgGetChar(charName);',
+    '    if (!cont || !ch) { this.error("tgContainer: container or character not found: "+contName+" / "+charName); return; }',
+    '',
+    '    var mode     = _tgModes[contName] || "loot";',
+    '    var allItems = State.variables["items"] || {};',
+    '    var detailId = "tg-det-"+contName;',
+    '',
+    '    var html = "<div class=\\"tg-container\\" data-cont=\\""+contName+"\\" data-char=\\""+charName+"\\" data-det=\\""+detailId+"\\">";',
+    '    if (title) html += "<div class=\\"tg-cont-header\\">"+title+"</div>";',
+    '',
+    '    if (cont.items.length === 0) {',
+    '      html += "<div class=\\"tg-cont-empty\\">Empty</div>";',
+    '    } else {',
+    '      html += "<div class=\\"tg-cont-body\\">";',
+    '      html += "<div class=\\"tg-cont-grid\\">";',
+    '      cont.items.forEach(function(slot) {',
+    '        var item = allItems[slot.item] || {};',
+    '        var name = item.name || slot.item;',
+    '        var icon = item.icon ? "<img src=\\""+item.icon+"\\" alt=\\"\\">": "<span style=\\"font-size:28px;line-height:1\\">📦</span>";',
+    '        var qty  = slot.qty === -1 ? "∞" : slot.qty;',
+    '        html += "<div class=\\"tg-cont-cell\\" data-item=\\""+slot.item+"\\" onclick=\\"window.tgCellClick(this)\\">"+icon+"<span class=\\"tg-cell-qty\\">&times;"+qty+"</span><span class=\\"tg-cell-name\\">"+name+"</span></div>";',
+    '      });',
+    '      html += "</div>";',
+    '      // detail panel',
+    '      html += "<div class=\\"tg-cont-detail\\" id=\\""+detailId+"\\"><div class=\\"tg-detail-placeholder\\">Select an item</div></div>";',
+    '      // loot-all button for chest/loot modes',
+    '      html += "</div>";',
+    '      if (mode !== "shop") {',
+    '        html += "<div style=\\"margin-top:8px\\"><button class=\\"tg-detail-action\\" onclick=\\"window.tgLootNow(this)\\">Take all</button></div>";',
+    '      }',
+    '    }',
+    '    html += "</div>";',
+    '    $(this.output).wiki(html);',
+    '  }',
+    '});',
+    '',
+    '// Legacy action macros (for manual use in passages)',
+    '// tgShopBuy "containerVarName" "itemVarName" "charVarName" [qty]',
+    'Macro.add("tgShopBuy", {',
+    '  handler: function() {',
+    '    window.tgBuyItem(this.args[0], this.args[2], this.args[1], this.args[3] != null ? this.args[3] : 1);',
+    '  }',
+    '});',
+    'Macro.add("tgShopSell", {',
+    '  handler: function() {',
+    '    var cont = _tgGetCont(this.args[0]); var ch = _tgGetChar(this.args[2]);',
+    '    if (!cont || !ch) return;',
+    '    var itemName = this.args[1]; var qty = this.args[3] != null ? this.args[3] : 1;',
+    '    var items = State.variables["items"];',
+    '    var idx = ch.inventory.findIndex(function(e){return e.item===itemName;});',
+    '    if (idx === -1) return;',
+    '    var price = (items && items[itemName] ? items[itemName].price||0 : 0) * qty;',
+    '    ch.inventory[idx].qty -= qty;',
+    '    if (ch.inventory[idx].qty <= 0) ch.inventory.splice(idx,1);',
+    '    ch.money = (ch.money||0) + price;',
+    '    Engine.show();',
+    '  }',
+    '});',
+    'Macro.add("tgChestTake", {',
+    '  handler: function() { window.tgTakeItem(this.args[0], this.args[2], this.args[1], this.args[3] != null ? this.args[3] : 1); }',
+    '});',
+    'Macro.add("tgLootAll", {',
+    '  handler: function() { window.tgLootAllItems(this.args[0], this.args[1]); }',
+    '});',
+  ].join('\n');
+}
+
+export function buildInventoryScript(project: Project): string {
+  if (!project.characters.length) return '';
+
+  return [
+    '// ── Inventory macros ──',
+    'Macro.add("tgInvAdd", {',
+    '  handler: function() {',
+    '    var charVar = this.args[0];',
+    '    var itemName = this.args[1];',
+    '    var qty = this.args[2] != null ? this.args[2] : 1;',
+    '    if (!charVar || !charVar.inventory) return;',
+    '    var items = State.variables["items"];',
+    '    var item = items ? items[itemName] : null;',
+    '    if (item && item.stackable) {',
+    '      var ex = charVar.inventory.find(function(e) { return e.item === itemName; });',
+    '      if (ex) { ex.qty += qty; return; }',
+    '    }',
+    '    charVar.inventory.push({ item: itemName, qty: qty, equipped: false });',
+    '  }',
+    '});',
+    '',
+    'Macro.add("tgInvRemove", {',
+    '  handler: function() {',
+    '    var charVar = this.args[0];',
+    '    var itemName = this.args[1];',
+    '    var qty = this.args[2] != null ? this.args[2] : 1;',
+    '    if (!charVar || !charVar.inventory) return;',
+    '    var idx = charVar.inventory.findIndex(function(e) { return e.item === itemName; });',
+    '    if (idx === -1) return;',
+    '    charVar.inventory[idx].qty -= qty;',
+    '    if (charVar.inventory[idx].qty <= 0) charVar.inventory.splice(idx, 1);',
+    '  }',
+    '});',
+    '',
+    '// Inventory helpers usable in <<if>> expressions',
+    'window.tgInvHas = function(charVar, itemName) {',
+    '  if (!charVar || !charVar.inventory) return false;',
+    '  return charVar.inventory.some(function(e) { return e.item === itemName; });',
+    '};',
+    'window.tgInvCount = function(charVar, itemName) {',
+    '  if (!charVar || !charVar.inventory) return 0;',
+    '  var entry = charVar.inventory.find(function(e) { return e.item === itemName; });',
+    '  return entry ? entry.qty : 0;',
+    '};',
+  ].join('\n');
 }
 
 export function downloadFile(content: string, filename: string, mimeType = 'text/plain') {

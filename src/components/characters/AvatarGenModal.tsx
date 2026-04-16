@@ -150,13 +150,17 @@ interface Props {
   charVarName: string;
   charName: string;
   charLlmDescr?: string;
+  /** Subfolder under assets/ and history/ where images are saved. Default: 'chars' */
+  assetSubfolder?: string;
+  /** Override the modal title (both static/dynamic variants). */
+  modalTitle?: string;
   onSave: (updatedCfg: AvatarConfig) => void;
   onClose: () => void;
 }
 
 // ─── main component ───────────────────────────────────────────────────────────
 
-export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSave, onClose }: Props) {
+export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, assetSubfolder = 'chars', modalTitle, onSave, onClose }: Props) {
   const t = useT();
   const ag = t.avatarGen;
   const { project, projectDir, addAsset } = useProjectStore();
@@ -333,9 +337,9 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
       }
 
       const genId = crypto.randomUUID();
-      const relPath = `history/chars/${charVarName}/${slotId}/${genId}.${ext}`;
+      const relPath = `history/${assetSubfolder}/${charVarName}/${slotId}/${genId}.${ext}`;
       const absPath = joinPath(projectDir, relPath);
-      await fsApi.mkdir(joinPath(projectDir, `history/chars/${charVarName}/${slotId}`));
+      await fsApi.mkdir(joinPath(projectDir, `history/${assetSubfolder}/${charVarName}/${slotId}`));
       await fsApi.writeFileBinary(absPath, bytes);
 
       const entry: AvatarGenHistoryEntry = {
@@ -436,8 +440,8 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         ? `${charVarName}.${ext}`
         : `${slotApproveFilename(slot, mapping)}.${ext}`;
       const subdir = slot.slotId === 'static'
-        ? `assets/chars`
-        : `assets/chars/${charVarName}`;
+        ? `assets/${assetSubfolder}`
+        : `assets/${assetSubfolder}/${charVarName}`;
       const relPath = `${subdir}/${filename}`;
       const savePath = joinPath(projectDir, 'release', relPath);
       const srcAbs = resolveAssetPath(projectDir, slot.currentSrc);
@@ -498,7 +502,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, onSav
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
           <h2 className="text-sm font-semibold text-white">
-            {mode === 'static' ? ag.modalTitleStatic : ag.modalTitleDynamic}
+            {modalTitle ?? (mode === 'static' ? ag.modalTitleStatic : ag.modalTitleDynamic)}
           </h2>
           <button
             onClick={onClose}

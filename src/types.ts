@@ -499,6 +499,16 @@ export interface FunctionBlock {
   delay?: BlockDelay;
 }
 
+/** Renders a container (shop/chest/loot) in a passage */
+export interface ContainerBlock {
+  id: string;
+  type: 'container';
+  containerId: string;   // ContainerDefinition.id
+  charId?: string;       // character who is the buyer/receiver (deprecated; use main hero instead)
+  title?: string;
+  delay?: BlockDelay;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -520,7 +530,8 @@ export type Block =
   | RadioBlock
   | FunctionBlock
   | PopupBlock
-  | AudioBlock;
+  | AudioBlock
+  | ContainerBlock;
 
 export type BlockType = Block['type'];
 
@@ -564,6 +575,8 @@ export interface CharacterVarIds {
   textColorVarId?: string;  // $prefix_textColor variable id (added in v1.7)
   llmDescrVarId?: string;   // $prefix_llm_descr variable id (added in v1.8)
   llmTemperatureVarId?: string; // $prefix_llm_temperature variable id
+  inventoryVarId?: string;  // $chars.{name}.inventory array variable id
+  moneyVarId?: string;      // $chars.{name}.money number variable id
 }
 
 export type AvatarMode = 'static' | 'bound';
@@ -614,6 +627,14 @@ export interface AvatarGenSettings {
   slots: AvatarGenSlotData[];
 }
 
+/** One item slot in a character's initial inventory */
+export interface CharacterInventorySlot {
+  id: string;
+  itemVarName: string;   // matches ItemDefinition.varName
+  quantity: number;      // initial quantity (default 1)
+  equipped: boolean;     // initial equipped state (only meaningful for wearable)
+}
+
 export interface Character {
   id: string;
   name: string;
@@ -631,8 +652,107 @@ export interface Character {
   avatarUrl?: string;
   /** Avatar settings (static URL or variable-bound). Added in v1.4. */
   avatarConfig?: AvatarConfig;
+  /** Items the character starts the story with. */
+  initialInventory?: CharacterInventorySlot[];
   /** Auto-created variable group. Absent on characters from old saves. */
   varIds?: CharacterVarIds;
+  /** Marks this character as the main hero (used automatically in container interactions). */
+  isHero?: boolean;
+}
+
+// ─── Item ────────────────────────────────────────────────────────────────────
+
+/** Determines how an item is used/equipped */
+export type ItemCategory = 'wearable' | 'consumable' | 'misc';
+
+/** How the item icon is sourced */
+export type ItemIconMode = 'static' | 'generated';
+
+/** Item icon config — mirrors AvatarConfig but for a single image */
+export interface ItemIconConfig {
+  mode: ItemIconMode;
+  /** Current image path (relative to project root) */
+  src: string;
+  /** AI generation settings (reuses AvatarGenSettings infrastructure) */
+  genSettings?: AvatarGenSettings;
+}
+
+/** A user-defined extra property on an item (e.g. damage, weight, duration) */
+export interface ItemCustomProp {
+  id: string;
+  name: string;
+  varType: 'number' | 'string' | 'boolean';
+  defaultValue: string;
+}
+
+/** References to auto-created VariableGroup nodes for an item */
+export interface ItemVarIds {
+  /** ID of the top-level 'items' VariableGroup in variableNodes */
+  itemsRootGroupId: string;
+  /** ID of this item's own VariableGroup (child of the root) */
+  groupId: string;
+  nameVarId: string;
+  iconVarId: string;
+  priceVarId: string;
+  descVarId: string;
+  stackableVarId: string;
+  /** Only present when category === 'wearable' */
+  slotVarId?: string;
+}
+
+/**
+ * A game item definition. Stored in Project.items[].
+ * Variables live in $items.{varName}.{field} via auto-created VariableGroup.
+ * Consumable items get an auto-created [func] scene for use-effects.
+ */
+export interface ItemDefinition {
+  id: string;
+  name: string;
+  /** Used as the SugarCube sub-group name: $items.{varName}.name */
+  varName: string;
+  category: ItemCategory;
+  stackable: boolean;
+  /** Paperdoll slot name this item occupies — only relevant for 'wearable' */
+  targetSlot?: string;
+  /** ID of the auto-created [func] scene for use-effects — only for 'consumable' */
+  useFuncSceneId?: string;
+  iconConfig: ItemIconConfig;
+  /** User-defined extra properties (become variables in the item's group) */
+  customProps: ItemCustomProp[];
+  varIds?: ItemVarIds;
+}
+
+// ─── Container ───────────────────────────────────────────────────────────────
+
+/** How the container behaves at runtime */
+export type ContainerMode = 'shop' | 'chest' | 'loot';
+
+/** One item slot in a container's initial stock */
+export interface ContainerItemSlot {
+  id: string;
+  itemVarName: string;   // matches ItemDefinition.varName
+  quantity: number;      // -1 = infinite
+  price?: number;        // override item's default price (shop mode)
+}
+
+export interface ContainerVarIds {
+  containersRootGroupId: string;
+  groupId: string;       // $containers.{varName} group id
+  itemsVarId: string;    // $containers.{varName}.items array variable id
+}
+
+/**
+ * A container entity (shop, chest, loot box).
+ * Variables live in $containers.{varName}.items via auto-created VariableGroup.
+ */
+export interface ContainerDefinition {
+  id: string;
+  name: string;
+  /** Used as SugarCube sub-group name: $containers.{varName} */
+  varName: string;
+  mode: ContainerMode;
+  initialItems: ContainerItemSlot[];
+  varIds?: ContainerVarIds;
 }
 
 // ─── Variable ───────────────────────────────────────────────────────────────
@@ -896,6 +1016,10 @@ export interface Project {
   scenes: Scene[];
   sceneGroups: SceneGroup[];
   characters: Character[];
+  /** Item definitions — variables stored under $items.{varName} */
+  items: ItemDefinition[];
+  /** Container definitions (shops, chests, loot) — $containers.{varName}.items */
+  containers: ContainerDefinition[];
   variableNodes: VariableTreeNode[];
   assetNodes: AssetTreeNode[];
   sidebarPanel: SidebarPanel;

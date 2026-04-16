@@ -19,6 +19,8 @@ export interface Translations {
     assets: string;
     panel: string;
     watchers: string;
+    items: string;
+    containers: string;
   };
 
   scene: {
@@ -81,6 +83,7 @@ export interface Translations {
     function: string;
     popup: string;
     audio: string;
+    container: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -124,6 +127,7 @@ export interface Translations {
     function:    { label: string; desc: string };
     popup:       { label: string; desc: string };
     audio:       { label: string; desc: string };
+    container:   { label: string; desc: string };
   };
 
   includeBlock: {
@@ -307,6 +311,14 @@ export interface Translations {
     customVarsEmpty: string;
     customVarsNameEmpty: string;
     customVarsConfirmDelete: (name: string) => string;
+    initialInventorySection: string;
+    initialInventoryAdd: string;
+    initialInventoryEmpty: string;
+    initialInventoryQty: string;
+    initialInventoryEquipped: string;
+    initialInventoryNoItems: string;
+    isHero: string;
+    heroTooltip: string;
   };
 
   // ─── Variables ──────────────────────────────────────────────────────────────
@@ -1047,6 +1059,80 @@ export interface Translations {
     addAction: string;
     unconditionalLabel: string;
     unconditionalHint: string;
+  };
+
+  // ─── Items ───────────────────────────────────────────────────────────────────
+  items: {
+    add: string;
+    empty: string;
+    confirmDelete: (name: string) => string;
+    noName: string;
+    defaultName: string;
+    createTitle: string;
+    editTitle: string;
+    save: string;
+    fieldName: string;
+    fieldVarName: string;
+    varNameHint: string;
+    varNameInvalid: string;
+    varNameTaken: string;
+    varNameEmpty: string;
+    nameTaken: string;
+    nameEmpty: string;
+    fieldCategory: string;
+    categoryWearable: string;
+    categoryConsumable: string;
+    categoryMisc: string;
+    fieldStackable: string;
+    fieldTargetSlot: string;
+    targetSlotHint: string;
+    fieldIcon: string;
+    iconStatic: string;
+    iconGenerated: string;
+    consumableFuncHint: string;
+    customVarsSection: string;
+    customVarsAdd: string;
+    customVarsEmpty: string;
+    customVarsNamePlaceholder: string;
+    customVarsConfirmDelete: (name: string) => string;
+  };
+
+  // ─── Containers ─────────────────────────────────────────────────────────────
+  containers: {
+    add: string;
+    empty: string;
+    confirmDelete: (name: string) => string;
+    noName: string;
+    defaultName: string;
+    createTitle: string;
+    editTitle: string;
+    save: string;
+    fieldName: string;
+    fieldVarName: string;
+    varNameHint: string;
+    varNameEmpty: string;
+    varNameInvalid: string;
+    varNameTaken: string;
+    nameTaken: string;
+    nameEmpty: string;
+    fieldMode: string;
+    modeShop: string;
+    modeChest: string;
+    modeLoot: string;
+    stockSection: string;
+    stockAdd: string;
+    stockEmpty: string;
+    stockItem: string;
+    stockQty: string;
+    stockPrice: string;
+    stockInfinite: string;
+    noItemsDefined: string;
+    // ContainerBlock
+    blockNoContainer: string;
+    blockNoChar: string;
+    blockContainerLabel: string;
+    blockCharLabel: string;
+    blockTitleLabel: string;
   };
 
   insertToolbar: {

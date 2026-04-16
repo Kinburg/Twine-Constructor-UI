@@ -8,6 +8,8 @@ import type {
   SidebarPanel, SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   AvatarConfig, AvatarMode,
   Watcher,
+  ItemDefinition, ItemVarIds, ItemCategory,
+  ContainerDefinition, ContainerVarIds, ContainerItemSlot,
 } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, flattenAssets, hasSiblingNameConflict } from '../utils/treeUtils';
@@ -46,6 +48,8 @@ function makeDefaultProject(): Project {
     scenes: [{ id: uuid(), name: 'Start', tags: ['start'], blocks: [] }],
     sceneGroups: [],
     characters: [],
+    items: [],
+    containers: [],
     variableNodes: [],
     assetNodes: [],
     sidebarPanel: DEFAULT_PANEL,
@@ -159,6 +163,8 @@ export function pregenCharVarIds(): CharacterVarIds {
     avatarVarId: crypto.randomUUID(),
     llmDescrVarId: crypto.randomUUID(),
     llmTemperatureVarId: crypto.randomUUID(),
+    inventoryVarId: crypto.randomUUID(),
+    moneyVarId: crypto.randomUUID(),
   };
 }
 
@@ -201,6 +207,8 @@ function buildCharVarNodes(
   const avatarVarId          = pregenIds?.avatarVarId ?? uuid();
   const llmDescrVarId        = pregenIds?.llmDescrVarId ?? uuid();
   const llmTemperatureVarId  = pregenIds?.llmTemperatureVarId ?? uuid();
+  const inventoryVarId       = pregenIds?.inventoryVarId ?? uuid();
+  const moneyVarId           = pregenIds?.moneyVarId ?? uuid();
   const stylesGroupId        = pregenIds?.stylesGroupId ?? uuid();
   const groupId              = pregenIds?.groupId ?? uuid();
 
@@ -268,6 +276,22 @@ function buildCharVarNodes(
     description: `LLM temperature for "${charName}" (empty = use global)`,
   };
 
+  const inventoryVar: Variable = {
+    kind: 'variable', id: inventoryVarId,
+    name: 'inventory',
+    varType: 'array',
+    defaultValue: '[]',
+    description: `Inventory for character "${charName}"`,
+  };
+
+  const moneyVar: Variable = {
+    kind: 'variable', id: moneyVarId,
+    name: 'money',
+    varType: 'number',
+    defaultValue: '0',
+    description: `Money for character "${charName}"`,
+  };
+
   const stylesGroup: VariableGroup = {
     kind: 'group', id: stylesGroupId,
     name: 'styles',
@@ -277,12 +301,192 @@ function buildCharVarNodes(
   const group: VariableGroup = {
     kind: 'group', id: groupId,
     name: varName,
-    children: [nameVar, stylesGroup, ...(pendingNodes ?? [])],
+    children: [nameVar, stylesGroup, inventoryVar, moneyVar, ...(pendingNodes ?? [])],
   };
 
   return {
     group,
-    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, textColorVarId, avatarVarId, llmDescrVarId, llmTemperatureVarId },
+    varIds: { groupId, stylesGroupId, nameVarId, bgColorVarId, borderColorVarId, nameColorVarId, textColorVarId, avatarVarId, llmDescrVarId, llmTemperatureVarId, inventoryVarId, moneyVarId },
+  };
+}
+
+// ─── Item helpers ─────────────────────────────────────────────────────────────
+
+const ITEMS_ROOT_GROUP_NAME = 'items';
+const ITEMS_ASSET_FOLDER_NAME = 'Items';
+const ITEMS_ASSET_FOLDER_PATH = 'assets/Items';
+
+/**
+ * Find the root 'items' VariableGroup or create it if absent.
+ * Returns updated variableNodes + the root group id.
+ */
+function findOrCreateItemsRootGroup(variableNodes: VariableTreeNode[]): {
+  nodes: VariableTreeNode[];
+  rootGroupId: string;
+} {
+  const existing = variableNodes.find(
+    n => n.kind === 'group' && n.name === ITEMS_ROOT_GROUP_NAME,
+  ) as VariableGroup | undefined;
+  if (existing) return { nodes: variableNodes, rootGroupId: existing.id };
+  const rootGroup: VariableGroup = { kind: 'group', id: uuid(), name: ITEMS_ROOT_GROUP_NAME, children: [] };
+  return { nodes: [...variableNodes, rootGroup], rootGroupId: rootGroup.id };
+}
+
+/**
+ * Find the 'assets/Items' AssetGroup or create it if absent.
+ * Returns updated assetNodes + the folder id.
+ */
+function findOrCreateItemsAssetFolder(assetNodes: AssetTreeNode[]): {
+  nodes: AssetTreeNode[];
+  folderId: string;
+} {
+  const existing = assetNodes.find(
+    n => n.kind === 'group' && (n as AssetGroup).name === ITEMS_ASSET_FOLDER_NAME,
+  ) as AssetGroup | undefined;
+  if (existing) return { nodes: assetNodes, folderId: existing.id };
+  const folder: AssetGroup = {
+    kind: 'group', id: uuid(),
+    name: ITEMS_ASSET_FOLDER_NAME,
+    relativePath: ITEMS_ASSET_FOLDER_PATH,
+    children: [],
+  };
+  return { nodes: [...assetNodes, folder], folderId: folder.id };
+}
+
+interface ItemVarBuildResult {
+  itemGroup: VariableGroup;
+  varIds: ItemVarIds;
+}
+
+/**
+ * Build the VariableGroup subtree for a newly created item.
+ * Places the group under the root 'items' group (via rootGroupId).
+ */
+function buildItemVarNodes(
+  item: { name: string; varName: string; category: ItemCategory; stackable: boolean; targetSlot?: string; iconSrc?: string },
+  rootGroupId: string,
+): ItemVarBuildResult {
+  const nameVarId      = uuid();
+  const iconVarId      = uuid();
+  const priceVarId     = uuid();
+  const descVarId      = uuid();
+  const stackableVarId = uuid();
+  const slotVarId      = item.category === 'wearable' ? uuid() : undefined;
+  const groupId        = uuid();
+
+  const children: Variable[] = [
+    {
+      kind: 'variable', id: nameVarId,
+      name: 'name', varType: 'string',
+      defaultValue: item.name,
+      description: `Display name for item "${item.name}"`,
+    },
+    {
+      kind: 'variable', id: iconVarId,
+      name: 'icon', varType: 'string',
+      defaultValue: item.iconSrc ?? '',
+      description: `Icon path for item "${item.name}"`,
+    },
+    {
+      kind: 'variable', id: priceVarId,
+      name: 'price', varType: 'number',
+      defaultValue: '0',
+      description: `Price of item "${item.name}"`,
+    },
+    {
+      kind: 'variable', id: descVarId,
+      name: 'description', varType: 'string',
+      defaultValue: '',
+      description: `Description of item "${item.name}"`,
+    },
+    {
+      kind: 'variable', id: stackableVarId,
+      name: 'stackable', varType: 'boolean',
+      defaultValue: item.stackable ? 'true' : 'false',
+      description: '',
+    },
+  ];
+
+  if (slotVarId) {
+    children.push({
+      kind: 'variable', id: slotVarId,
+      name: 'slot', varType: 'string',
+      defaultValue: item.targetSlot ?? '',
+      description: `Paperdoll slot for item "${item.name}"`,
+    });
+  }
+
+  const itemGroup: VariableGroup = { kind: 'group', id: groupId, name: item.varName, children };
+  return {
+    itemGroup,
+    varIds: { itemsRootGroupId: rootGroupId, groupId, nameVarId, iconVarId, priceVarId, descVarId, stackableVarId, slotVarId },
+  };
+}
+
+// ─── Container helpers ────────────────────────────────────────────────────────
+
+const CONTAINERS_ROOT_GROUP_NAME = 'containers';
+
+/**
+ * Find the root 'containers' VariableGroup or create it if absent.
+ * Returns updated variableNodes + the root group id.
+ */
+function findOrCreateContainersRootGroup(variableNodes: VariableTreeNode[]): {
+  nodes: VariableTreeNode[];
+  rootGroupId: string;
+} {
+  const existing = variableNodes.find(
+    n => n.kind === 'group' && n.name === CONTAINERS_ROOT_GROUP_NAME,
+  ) as VariableGroup | undefined;
+  if (existing) return { nodes: variableNodes, rootGroupId: existing.id };
+  const rootGroup: VariableGroup = { kind: 'group', id: uuid(), name: CONTAINERS_ROOT_GROUP_NAME, children: [] };
+  return { nodes: [...variableNodes, rootGroup], rootGroupId: rootGroup.id };
+}
+
+/** Build the JS array literal for a container's initial items */
+function buildContainerItemsLiteral(slots: ContainerItemSlot[]): string {
+  if (slots.length === 0) return '[]';
+  const entries = slots.map(s => {
+    const parts = [`item:"${s.itemVarName}",qty:${s.quantity}`];
+    if (s.price !== undefined) parts.push(`price:${s.price}`);
+    return `{${parts.join(',')}}`;
+  });
+  return `[${entries.join(',')}]`;
+}
+
+interface ContainerVarBuildResult {
+  containerGroup: VariableGroup;
+  varIds: ContainerVarIds;
+}
+
+/**
+ * Build the VariableGroup subtree for a newly created container.
+ * Places the group under the root 'containers' group (via rootGroupId).
+ */
+function buildContainerVarNodes(
+  container: { varName: string; initialItems: ContainerItemSlot[] },
+  rootGroupId: string,
+): ContainerVarBuildResult {
+  const itemsVarId = uuid();
+  const groupId    = uuid();
+
+  const itemsVar: Variable = {
+    kind: 'variable', id: itemsVarId,
+    name: 'items',
+    varType: 'array',
+    defaultValue: buildContainerItemsLiteral(container.initialItems),
+    description: `Stock for container "${container.varName}"`,
+  };
+
+  const containerGroup: VariableGroup = {
+    kind: 'group', id: groupId,
+    name: container.varName,
+    children: [itemsVar],
+  };
+
+  return {
+    containerGroup,
+    varIds: { containersRootGroupId: rootGroupId, groupId, itemsVarId },
   };
 }
 
@@ -515,6 +719,80 @@ function migrateCharacterLlmTemperatureVar(p: Project): Project {
 }
 
 /**
+ * Add inventory array variable to characters that were created before it existed.
+ * Runs idempotently (skips if inventoryVarId already present).
+ */
+function migrateCharacterInventoryVar(p: Project): Project {
+  let variableNodes = p.variableNodes;
+  let characters = p.characters;
+  let changed = false;
+
+  for (let i = 0; i < characters.length; i++) {
+    const char = characters[i];
+    if (!char.varIds || char.varIds.inventoryVarId) continue;
+
+    const inventoryVarId = uuid();
+
+    const inventoryVar: Variable = {
+      kind: 'variable', id: inventoryVarId,
+      name: 'inventory',
+      varType: 'array',
+      defaultValue: '[]',
+      description: `Inventory for character "${char.name}"`,
+    };
+
+    variableNodes = addNode(
+      variableNodes as AnyNode[],
+      char.varIds.groupId,
+      inventoryVar as AnyNode,
+    ) as VariableTreeNode[];
+
+    const updatedVarIds: CharacterVarIds = { ...char.varIds, inventoryVarId };
+    characters = characters.map((c, idx) => idx === i ? { ...c, varIds: updatedVarIds, initialInventory: c.initialInventory ?? [] } : c);
+    changed = true;
+  }
+
+  return changed ? { ...p, variableNodes, characters } : p;
+}
+
+/**
+ * Add money number variable to characters that were created before it existed.
+ * Runs idempotently (skips if moneyVarId already present).
+ */
+function migrateCharacterMoneyVar(p: Project): Project {
+  let variableNodes = p.variableNodes;
+  let characters = p.characters;
+  let changed = false;
+
+  for (let i = 0; i < characters.length; i++) {
+    const char = characters[i];
+    if (!char.varIds || char.varIds.moneyVarId) continue;
+
+    const moneyVarId = uuid();
+
+    const moneyVar: Variable = {
+      kind: 'variable', id: moneyVarId,
+      name: 'money',
+      varType: 'number',
+      defaultValue: '0',
+      description: `Money for character "${char.name}"`,
+    };
+
+    variableNodes = addNode(
+      variableNodes as AnyNode[],
+      char.varIds.groupId,
+      moneyVar as AnyNode,
+    ) as VariableTreeNode[];
+
+    const updatedVarIds: CharacterVarIds = { ...char.varIds, moneyVarId };
+    characters = characters.map((c, idx) => idx === i ? { ...c, varIds: updatedVarIds } : c);
+    changed = true;
+  }
+
+  return changed ? { ...p, variableNodes, characters } : p;
+}
+
+/**
  * Add avatarConfig to characters created before AvatarConfig was introduced.
  * Converts legacy avatarUrl → avatarConfig { mode: 'static', src: avatarUrl }.
  * Runs idempotently (skips characters that already have avatarConfig).
@@ -676,9 +954,26 @@ function migrateProject(raw: any): Project {
   // Add $prefix_llm_descr variable to characters that predate this feature
   p = migrateCharacterLlmDescrVar(p as Project);
   p = migrateCharacterLlmTemperatureVar(p as Project);
+  // Add inventory array variable to characters that predate this feature
+  p = migrateCharacterInventoryVar(p as Project);
+  // Add money number variable to characters that predate this feature
+  p = migrateCharacterMoneyVar(p as Project);
+  // Ensure every character has initialInventory
+  p.characters = (p.characters as any[]).map((c: any) => ({
+    ...c,
+    initialInventory: c.initialInventory ?? [],
+  }));
 
   if (!p.watchers) p.watchers = [];
   if (!p.sceneGroups) p.sceneGroups = [];
+  if (!p.items) p.items = [];
+  if (!p.containers) p.containers = [];
+  // Ensure every item has a valid iconConfig (guard against incomplete saved data)
+  p.items = (p.items as any[]).map((item: any) => ({
+    ...item,
+    iconConfig: item.iconConfig ?? { mode: 'static', src: '' },
+    customProps: item.customProps ?? [],
+  }));
   if (!p.settings) p.settings = { ...DEFAULT_PROJECT_SETTINGS };
   if (p.settings.historyControls === undefined) p.settings.historyControls = DEFAULT_PROJECT_SETTINGS.historyControls;
   if (p.settings.saveLoadMenu === undefined) p.settings.saveLoadMenu = DEFAULT_PROJECT_SETTINGS.saveLoadMenu;
@@ -699,7 +994,7 @@ function findAssetNodeById(nodes: AssetTreeNode[], id: string): AssetTreeNode | 
 
 // ─── Store shape ──────────────────────────────────────────────────────────────
 
-type SidebarTabId = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers';
+type SidebarTabId = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers' | 'items' | 'containers';
 
 interface ProjectState {
   project: Project;
@@ -784,6 +1079,16 @@ interface ProjectState {
   addCharacter: (char: Omit<Character, 'id'>, pregenIds?: CharacterVarIds, pendingNodes?: VariableTreeNode[]) => string;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
   deleteCharacter: (id: string) => void;
+
+  // Items
+  addItem: (item: Omit<ItemDefinition, 'id' | 'varIds'>) => string;
+  updateItem: (id: string, patch: Partial<Omit<ItemDefinition, 'id' | 'varIds'>>) => void;
+  deleteItem: (id: string) => void;
+
+  // Containers
+  addContainer: (data: Omit<ContainerDefinition, 'id' | 'varIds'>) => string;
+  updateContainer: (id: string, patch: Partial<Omit<ContainerDefinition, 'id' | 'varIds'>>) => void;
+  deleteContainer: (id: string) => void;
 
   // Watchers
   addWatcher: () => void;
@@ -1525,6 +1830,12 @@ export const useProjectStore = create<ProjectState>()(
             const oldChar = s.project.characters.find(c => c.id === id);
             if (!oldChar) return s;
 
+            // If setting isHero = true, clear it from all other characters first
+            let characters = s.project.characters;
+            if (patch.isHero === true) {
+              characters = characters.map(c => c.id === id ? c : { ...c, isHero: false });
+            }
+
             const updatedChar: Character = { ...oldChar, ...patch };
             let variableNodes = s.project.variableNodes;
 
@@ -1588,7 +1899,7 @@ export const useProjectStore = create<ProjectState>()(
             return {
               project: {
                 ...s.project,
-                characters: s.project.characters.map(c => c.id === id ? updatedChar : c),
+                characters: characters.map(c => c.id === id ? updatedChar : c),
                 variableNodes,
               },
             };
@@ -1605,6 +1916,192 @@ export const useProjectStore = create<ProjectState>()(
               project: {
                 ...s.project,
                 characters: s.project.characters.filter(c => c.id !== id),
+                variableNodes,
+              },
+            };
+          });
+        },
+
+        // ── Items ─────────────────────────────────────────────────────────────
+
+        addItem: (itemData) => {
+          get().saveSnapshot();
+          const itemId = uuid();
+          set(s => {
+            // Find or create 'items' root VariableGroup
+            const { nodes: varNodes1, rootGroupId } = findOrCreateItemsRootGroup(s.project.variableNodes);
+            // Build item variable subtree
+            const { itemGroup, varIds } = buildItemVarNodes(
+              { ...itemData, iconSrc: itemData.iconConfig.src },
+              rootGroupId,
+            );
+            // Add custom props as variables inside the item group
+            let finalItemGroup = itemGroup;
+            if (itemData.customProps.length > 0) {
+              const propVars: Variable[] = itemData.customProps.map(p => ({
+                kind: 'variable' as const,
+                id: p.id || uuid(),
+                name: p.name,
+                varType: p.varType as 'number' | 'string' | 'boolean',
+                defaultValue: p.defaultValue,
+                description: '',
+              }));
+              finalItemGroup = { ...itemGroup, children: [...itemGroup.children, ...propVars] };
+            }
+            // Insert item group under root
+            const varNodes2 = addNode(varNodes1 as AnyNode[], rootGroupId, finalItemGroup as AnyNode) as VariableTreeNode[];
+            // Find or create assets/Items folder
+            const { nodes: assetNodes } = findOrCreateItemsAssetFolder(s.project.assetNodes);
+            // Create [func] scene for consumable use-effects
+            let scenes = s.project.scenes;
+            let useFuncSceneId: string | undefined;
+            if (itemData.category === 'consumable') {
+              useFuncSceneId = uuid();
+              const funcScene: Scene = {
+                id: useFuncSceneId,
+                name: `tg_use_${itemData.varName}`,
+                tags: ['func'],
+                blocks: [],
+              };
+              scenes = [...scenes, funcScene];
+            }
+            const item: ItemDefinition = { ...itemData, id: itemId, varIds, useFuncSceneId };
+            return {
+              project: {
+                ...s.project,
+                items: [...(s.project.items ?? []), item],
+                variableNodes: varNodes2,
+                assetNodes,
+                scenes,
+              },
+            };
+          });
+          return itemId;
+        },
+
+        updateItem: (id, patch) => {
+          get().saveSnapshot();
+          set(s => {
+            const item = (s.project.items ?? []).find(it => it.id === id);
+            if (!item) return s;
+            const updatedItem: ItemDefinition = { ...item, ...patch };
+            let variableNodes = s.project.variableNodes;
+            if (item.varIds) {
+              const { varIds } = item;
+              // Sync name variable
+              if (patch.name !== undefined && patch.name !== item.name) {
+                variableNodes = updateVarInTree(variableNodes, varIds.nameVarId, {
+                  defaultValue: patch.name,
+                  description: `Display name for item "${patch.name}"`,
+                });
+              }
+              // Sync icon variable
+              if (patch.iconConfig !== undefined) {
+                variableNodes = updateVarInTree(variableNodes, varIds.iconVarId, {
+                  defaultValue: patch.iconConfig.src,
+                });
+              }
+              // Sync stackable variable
+              if (patch.stackable !== undefined) {
+                variableNodes = updateVarInTree(variableNodes, varIds.stackableVarId, {
+                  defaultValue: patch.stackable ? 'true' : 'false',
+                });
+              }
+              // Sync slot variable (wearable only)
+              if (patch.targetSlot !== undefined && varIds.slotVarId) {
+                variableNodes = updateVarInTree(variableNodes, varIds.slotVarId, {
+                  defaultValue: patch.targetSlot,
+                });
+              }
+            }
+            return {
+              project: {
+                ...s.project,
+                items: (s.project.items ?? []).map(it => it.id === id ? updatedItem : it),
+                variableNodes,
+              },
+            };
+          });
+        },
+
+        deleteItem: (id) => {
+          get().saveSnapshot();
+          set(s => {
+            const item = (s.project.items ?? []).find(it => it.id === id);
+            // Remove item's variable group
+            const variableNodes = item?.varIds
+              ? removeNode(s.project.variableNodes as AnyNode[], item.varIds.groupId) as VariableTreeNode[]
+              : s.project.variableNodes;
+            // Remove consumable func-scene
+            const scenes = item?.useFuncSceneId
+              ? s.project.scenes.filter(sc => sc.id !== item.useFuncSceneId)
+              : s.project.scenes;
+            return {
+              project: {
+                ...s.project,
+                items: (s.project.items ?? []).filter(it => it.id !== id),
+                variableNodes,
+                scenes,
+              },
+            };
+          });
+        },
+
+        // ── Containers ────────────────────────────────────────────────────────
+
+        addContainer: (data) => {
+          get().saveSnapshot();
+          const containerId = uuid();
+          set(s => {
+            const { nodes: varNodes1, rootGroupId } = findOrCreateContainersRootGroup(s.project.variableNodes);
+            const { containerGroup, varIds } = buildContainerVarNodes(data, rootGroupId);
+            const varNodes2 = addNode(varNodes1 as AnyNode[], rootGroupId, containerGroup as AnyNode) as VariableTreeNode[];
+            const container: ContainerDefinition = { ...data, id: containerId, varIds };
+            return {
+              project: {
+                ...s.project,
+                containers: [...(s.project.containers ?? []), container],
+                variableNodes: varNodes2,
+              },
+            };
+          });
+          return containerId;
+        },
+
+        updateContainer: (id, patch) => {
+          get().saveSnapshot();
+          set(s => {
+            const container = (s.project.containers ?? []).find(c => c.id === id);
+            if (!container) return s;
+            const updated: ContainerDefinition = { ...container, ...patch };
+            let variableNodes = s.project.variableNodes;
+            // If initialItems changed, update the items variable's defaultValue
+            if (patch.initialItems !== undefined && container.varIds) {
+              variableNodes = updateVarInTree(variableNodes, container.varIds.itemsVarId, {
+                defaultValue: buildContainerItemsLiteral(patch.initialItems),
+              });
+            }
+            return {
+              project: {
+                ...s.project,
+                containers: (s.project.containers ?? []).map(c => c.id === id ? updated : c),
+                variableNodes,
+              },
+            };
+          });
+        },
+
+        deleteContainer: (id) => {
+          get().saveSnapshot();
+          set(s => {
+            const container = (s.project.containers ?? []).find(c => c.id === id);
+            const variableNodes = container?.varIds
+              ? removeNode(s.project.variableNodes as AnyNode[], container.varIds.groupId) as VariableTreeNode[]
+              : s.project.variableNodes;
+            return {
+              project: {
+                ...s.project,
+                containers: (s.project.containers ?? []).filter(c => c.id !== id),
                 variableNodes,
               },
             };

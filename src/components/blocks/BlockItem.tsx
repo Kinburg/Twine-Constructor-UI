@@ -27,6 +27,7 @@ import { RadioBlockEditor } from './RadioBlockEditor';
 import { FunctionBlockEditor } from './FunctionBlockEditor';
 import { PopupBlockEditor } from './PopupBlockEditor';
 import { AudioBlockEditor } from './AudioBlockEditor';
+import { ContainerBlockEditor } from './ContainerBlockEditor';
 
 const BLOCK_COLORS: Record<Block['type'], string> = {
   'text':         'bg-slate-700',
@@ -50,6 +51,7 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'function':     'bg-purple-900/40',
   'popup':        'bg-blue-900/40',
   'audio':        'bg-amber-900/40',
+  'container':    'bg-teal-900/40',
 };
 
 interface Props {
@@ -158,6 +160,7 @@ export function BlockItem({ block, sceneId, collapsed, onToggleCollapse }: Props
         {block.type === 'function'     && <FunctionBlockEditor    block={block} sceneId={sceneId} />}
         {block.type === 'popup'        && <PopupBlockEditor       block={block} sceneId={sceneId} />}
         {block.type === 'audio'        && <AudioBlockEditor       block={block} sceneId={sceneId} />}
+        {block.type === 'container'    && <ContainerBlockEditor   block={block} sceneId={sceneId} />}
       </div>}
     </div>
     {confirmModal}

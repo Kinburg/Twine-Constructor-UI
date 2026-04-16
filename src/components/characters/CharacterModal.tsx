@@ -4,7 +4,7 @@ import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
-import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds } from '../../types';
+import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds, CharacterInventorySlot, ItemDefinition } from '../../types';
 import { useT } from '../../i18n';
 import { AvatarGenModal } from './AvatarGenModal';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
@@ -141,6 +141,8 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
   const [llmTemperature, setLlmTemperature] = useState<string>(
     initial.llm_temperature !== undefined ? String(initial.llm_temperature) : ''
   );
+  const [initialInventory, setInitialInventory] = useState<CharacterInventorySlot[]>(initial.initialInventory ?? []);
+  const [isHero, setIsHero] = useState(initial.isHero ?? false);
 
   const handleNameChange = (v: string) => {
     setName(v);
@@ -167,7 +169,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
   const [pregenVarIds] = useState<CharacterVarIds | null>(() => mode === 'create' ? pregenCharVarIds() : null);
 
   const parsedTemp = llmTemperature !== '' ? parseFloat(llmTemperature) : undefined;
-  const draft: Omit<Character, 'id'> = { name, varName, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr, llm_temperature: parsedTemp };
+  const draft: Omit<Character, 'id'> = { name, varName, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr, llm_temperature: parsedTemp, initialInventory, isHero };
 
   const trimmedName = name.trim();
   const nameError = trimmedName === ''
@@ -296,6 +298,21 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
             </div>
           </Field>
 
+          {/* Main Hero */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">&nbsp;</label>
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="accent-amber-400"
+                checked={isHero}
+                onChange={e => setIsHero(e.target.checked)}
+              />
+              <span className="text-xs text-slate-300">{t.characters.isHero}</span>
+              <span className="text-xs text-slate-500 cursor-help" title={t.characters.heroTooltip}>ℹ️</span>
+            </label>
+          </div>
+
           {/* LLM Description */}
           <Field label="LLM Description">
             <textarea
@@ -382,6 +399,13 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
             charName={name}
             charLlmDescr={llmDescr}
             charNodes={avatarPickerNodes}
+          />
+
+          {/* Initial Inventory */}
+          <InitialInventoryEditor
+            slots={initialInventory}
+            items={project.items ?? []}
+            onChange={setInitialInventory}
           />
 
           {/* Custom variables */}
@@ -622,6 +646,139 @@ function CharacterVarsEditor({
             actions={actions}
             showAddAtRoot
           />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Initial Inventory Editor ─────────────────────────────────────────────────
+
+const ITEM_CATEGORY_ICONS: Record<string, string> = {
+  wearable:   '👕',
+  consumable: '🧪',
+  misc:       '📦',
+};
+
+function InitialInventoryEditor({
+  slots,
+  items,
+  onChange,
+}: {
+  slots: CharacterInventorySlot[];
+  items: ItemDefinition[];
+  onChange: (slots: CharacterInventorySlot[]) => void;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+
+  const addSlot = () => {
+    if (items.length === 0) return;
+    const firstItem = items[0];
+    const newSlot: CharacterInventorySlot = {
+      id: crypto.randomUUID(),
+      itemVarName: firstItem.varName,
+      quantity: 1,
+      equipped: false,
+    };
+    onChange([...slots, newSlot]);
+    if (!open) setOpen(true);
+  };
+
+  const updateSlot = (id: string, patch: Partial<CharacterInventorySlot>) => {
+    onChange(slots.map(s => s.id === id ? { ...s, ...patch } : s));
+  };
+
+  const removeSlot = (id: string) => {
+    onChange(slots.filter(s => s.id !== id));
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer py-0.5 text-left"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span className="text-slate-600 text-[10px]">{open ? '▼' : '▶'}</span>
+        <span className="font-medium">{t.characters.initialInventorySection}</span>
+        {slots.length > 0 && <span className="text-slate-600 font-mono">({slots.length})</span>}
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-1 pl-1 border-l border-slate-700/60 mt-0.5">
+          {items.length === 0 ? (
+            <p className="text-xs text-slate-600 italic py-1 pl-2">{t.characters.initialInventoryNoItems}</p>
+          ) : slots.length === 0 ? (
+            <p className="text-xs text-slate-600 italic py-1 pl-2">{t.characters.initialInventoryEmpty}</p>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {slots.map(slot => {
+                const item = items.find(i => i.varName === slot.itemVarName);
+                const isWearable = item?.category === 'wearable';
+                return (
+                  <div key={slot.id} className="flex items-center gap-1.5">
+                    {/* Item picker */}
+                    <select
+                      className="flex-1 min-w-0 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                      value={slot.itemVarName}
+                      onChange={e => updateSlot(slot.id, { itemVarName: e.target.value, equipped: false })}
+                    >
+                      {items.map(it => (
+                        <option key={it.id} value={it.varName}>
+                          {ITEM_CATEGORY_ICONS[it.category] ?? '📦'} {it.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    {/* Qty */}
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <span className="text-[10px] text-slate-500">{t.characters.initialInventoryQty}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        className="w-12 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+                        value={slot.quantity}
+                        onChange={e => updateSlot(slot.id, { quantity: Math.max(1, parseInt(e.target.value) || 1) })}
+                      />
+                    </div>
+
+                    {/* Equipped (wearable only) */}
+                    {isWearable && (
+                      <label className="flex items-center gap-0.5 shrink-0 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="accent-indigo-500"
+                          checked={slot.equipped}
+                          onChange={e => updateSlot(slot.id, { equipped: e.target.checked })}
+                        />
+                        <span className="text-[10px] text-slate-400">{t.characters.initialInventoryEquipped}</span>
+                      </label>
+                    )}
+
+                    {/* Delete */}
+                    <button
+                      type="button"
+                      className="text-slate-600 hover:text-red-400 transition-colors cursor-pointer text-xs shrink-0"
+                      onClick={() => removeSlot(slot.id)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {items.length > 0 && (
+            <button
+              type="button"
+              className="text-xs text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600 mt-0.5"
+              onClick={addSlot}
+            >
+              {t.characters.initialInventoryAdd}
+            </button>
+          )}
         </div>
       )}
     </div>
