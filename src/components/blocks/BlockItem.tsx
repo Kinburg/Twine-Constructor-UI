@@ -28,30 +28,32 @@ import { FunctionBlockEditor } from './FunctionBlockEditor';
 import { PopupBlockEditor } from './PopupBlockEditor';
 import { AudioBlockEditor } from './AudioBlockEditor';
 import { ContainerBlockEditor } from './ContainerBlockEditor';
+import { TimeManipulationBlockEditor } from './TimeManipulationBlockEditor';
 
 const BLOCK_COLORS: Record<Block['type'], string> = {
-  'text':         'bg-slate-700',
-  'dialogue':     'bg-indigo-900/40',
-  'choice':       'bg-emerald-900/40',
-  'condition':    'bg-amber-900/40',
-  'variable-set': 'bg-purple-900/40',
-  'button':       'bg-blue-900/40',
-  'link':         'bg-emerald-900/40',
-  'input-field':  'bg-teal-900/40',
-  'image':        'bg-pink-900/40',
-  'image-gen':    'bg-fuchsia-900/30',
-  'video':        'bg-red-900/40',
-  'raw':          'bg-zinc-700/60',
-  'note':         'bg-amber-950/60',
-  'table':        'bg-cyan-900/40',
-  'include':      'bg-sky-900/40',
-  'divider':      'bg-slate-700/40',
-  'checkbox':     'bg-violet-900/40',
-  'radio':        'bg-fuchsia-900/40',
-  'function':     'bg-purple-900/40',
-  'popup':        'bg-blue-900/40',
-  'audio':        'bg-amber-900/40',
-  'container':    'bg-teal-900/40',
+  'text':              'bg-slate-700',
+  'dialogue':          'bg-indigo-900/40',
+  'choice':            'bg-emerald-900/40',
+  'condition':         'bg-amber-900/40',
+  'variable-set':      'bg-purple-900/40',
+  'button':            'bg-blue-900/40',
+  'link':              'bg-emerald-900/40',
+  'input-field':       'bg-teal-900/40',
+  'image':             'bg-pink-900/40',
+  'image-gen':         'bg-fuchsia-900/30',
+  'video':             'bg-red-900/40',
+  'raw':               'bg-zinc-700/60',
+  'note':              'bg-amber-950/60',
+  'table':             'bg-cyan-900/40',
+  'include':           'bg-sky-900/40',
+  'divider':           'bg-slate-700/40',
+  'checkbox':          'bg-violet-900/40',
+  'radio':             'bg-fuchsia-900/40',
+  'function':          'bg-purple-900/40',
+  'popup':             'bg-blue-900/40',
+  'audio':             'bg-amber-900/40',
+  'container':         'bg-teal-900/40',
+  'time-manipulation': 'bg-indigo-950/50',
 };
 
 interface Props {
@@ -139,28 +141,29 @@ export function BlockItem({ block, sceneId, collapsed, onToggleCollapse }: Props
 
       {/* Block body */}
       {!collapsed && <div className="block-body p-3">
-        {block.type === 'text'         && <TextBlockEditor        block={block} sceneId={sceneId} />}
-        {block.type === 'dialogue'     && <DialogueBlockEditor    block={block} sceneId={sceneId} />}
-        {block.type === 'choice'       && <ChoiceBlockEditor      block={block} sceneId={sceneId} />}
-        {block.type === 'condition'    && <ConditionBlockEditor   block={block} sceneId={sceneId} />}
-        {block.type === 'variable-set' && <VariableSetBlockEditor block={block} sceneId={sceneId} />}
-        {block.type === 'image'        && <ImageBlockEditor       block={block} sceneId={sceneId} />}
-        {block.type === 'image-gen'    && <ImageGenBlockEditor    block={block} sceneId={sceneId} />}
-        {block.type === 'video'        && <VideoBlockEditor       block={block} sceneId={sceneId} />}
-        {block.type === 'button'       && <ButtonBlockEditor      block={block} sceneId={sceneId} />}
-        {block.type === 'link'         && <LinkBlockEditor        block={block} sceneId={sceneId} />}
-        {block.type === 'input-field'  && <InputFieldBlockEditor  block={block} sceneId={sceneId} />}
-        {block.type === 'raw'          && <RawBlockEditor         block={block} sceneId={sceneId} />}
-        {block.type === 'note'         && <NoteBlockEditor        block={block} sceneId={sceneId} />}
-        {block.type === 'table'        && <TableBlockEditor       block={block} sceneId={sceneId} />}
-        {block.type === 'include'      && <IncludeBlockEditor     block={block} sceneId={sceneId} />}
-        {block.type === 'divider'      && <DividerBlockEditor     block={block} sceneId={sceneId} />}
-        {block.type === 'checkbox'     && <CheckboxBlockEditor    block={block} sceneId={sceneId} />}
-        {block.type === 'radio'        && <RadioBlockEditor       block={block} sceneId={sceneId} />}
-        {block.type === 'function'     && <FunctionBlockEditor    block={block} sceneId={sceneId} />}
-        {block.type === 'popup'        && <PopupBlockEditor       block={block} sceneId={sceneId} />}
-        {block.type === 'audio'        && <AudioBlockEditor       block={block} sceneId={sceneId} />}
-        {block.type === 'container'    && <ContainerBlockEditor   block={block} sceneId={sceneId} />}
+        {block.type === 'text'              && <TextBlockEditor             block={block} sceneId={sceneId} />}
+        {block.type === 'dialogue'          && <DialogueBlockEditor         block={block} sceneId={sceneId} />}
+        {block.type === 'choice'            && <ChoiceBlockEditor           block={block} sceneId={sceneId} />}
+        {block.type === 'condition'         && <ConditionBlockEditor        block={block} sceneId={sceneId} />}
+        {block.type === 'variable-set'      && <VariableSetBlockEditor      block={block} sceneId={sceneId} />}
+        {block.type === 'image'             && <ImageBlockEditor            block={block} sceneId={sceneId} />}
+        {block.type === 'image-gen'         && <ImageGenBlockEditor         block={block} sceneId={sceneId} />}
+        {block.type === 'video'             && <VideoBlockEditor            block={block} sceneId={sceneId} />}
+        {block.type === 'button'            && <ButtonBlockEditor           block={block} sceneId={sceneId} />}
+        {block.type === 'link'              && <LinkBlockEditor             block={block} sceneId={sceneId} />}
+        {block.type === 'input-field'       && <InputFieldBlockEditor       block={block} sceneId={sceneId} />}
+        {block.type === 'raw'               && <RawBlockEditor              block={block} sceneId={sceneId} />}
+        {block.type === 'note'              && <NoteBlockEditor             block={block} sceneId={sceneId} />}
+        {block.type === 'table'             && <TableBlockEditor            block={block} sceneId={sceneId} />}
+        {block.type === 'include'           && <IncludeBlockEditor          block={block} sceneId={sceneId} />}
+        {block.type === 'divider'           && <DividerBlockEditor          block={block} sceneId={sceneId} />}
+        {block.type === 'checkbox'          && <CheckboxBlockEditor         block={block} sceneId={sceneId} />}
+        {block.type === 'radio'             && <RadioBlockEditor            block={block} sceneId={sceneId} />}
+        {block.type === 'function'          && <FunctionBlockEditor         block={block} sceneId={sceneId} />}
+        {block.type === 'popup'             && <PopupBlockEditor            block={block} sceneId={sceneId} />}
+        {block.type === 'audio'             && <AudioBlockEditor            block={block} sceneId={sceneId} />}
+        {block.type === 'container'         && <ContainerBlockEditor        block={block} sceneId={sceneId} />}
+        {block.type === 'time-manipulation' && <TimeManipulationBlockEditor block={block} sceneId={sceneId} />}
       </div>}
     </div>
     {confirmModal}

@@ -349,6 +349,9 @@ function VariableNode({
               <option value="string">{t.variables.typeString}</option>
               <option value="boolean">{t.variables.typeBoolean}</option>
               <option value="array">{t.variables.typeArray}</option>
+              <option value="date">{t.variables.typeDate}</option>
+              <option value="time">{t.variables.typeTime}</option>
+              <option value="datetime">{t.variables.typeDateTime}</option>
             </select>
           </Field>
 
@@ -366,7 +369,14 @@ function VariableNode({
               <input
                 className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
                 value={v.defaultValue}
-                placeholder={v.varType === 'number' ? t.variables.defaultPlaceholderNumber : v.varType === 'array' ? '[]' : t.variables.defaultPlaceholderText}
+                placeholder={
+                  v.varType === 'number'   ? t.variables.defaultPlaceholderNumber :
+                  v.varType === 'array'    ? '[]' :
+                  v.varType === 'date'     ? '2024-01-01' :
+                  v.varType === 'time'     ? '12:00' :
+                  v.varType === 'datetime' ? '2024-01-01T12:00' :
+                  t.variables.defaultPlaceholderText
+                }
                 onChange={e => upd({ defaultValue: e.target.value })}
               />
             )}
@@ -382,7 +392,7 @@ function VariableNode({
           </Field>
 
           <div className="text-xs text-slate-500 font-mono bg-slate-800/60 px-2 py-1 rounded break-all">
-            {'<<set $' + (getVariablePath(v.id, allNodes) || v.name) + ' to ' + (v.varType === 'string' ? `"${v.defaultValue}"` : v.defaultValue || (v.varType === 'array' ? '[]' : v.defaultValue)) + '>>'}
+            {'<<set $' + (getVariablePath(v.id, allNodes) || v.name) + ' to ' + (v.varType === 'string' || v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime' ? `"${v.defaultValue}"` : v.defaultValue || (v.varType === 'array' ? '[]' : v.defaultValue)) + '>>'}
           </div>
         </div>
       )}

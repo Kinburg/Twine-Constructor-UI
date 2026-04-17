@@ -4,7 +4,7 @@ import { useT } from '../../i18n';
 import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
-  CellButton, CellList, CellAudioVolume, CellImageGen, CellImageFromVar,
+  CellButton, CellList, CellAudioVolume, CellImageGen, CellImageFromVar, CellDateTime,
   ButtonAction, ButtonStyle, VarOperator,
   Variable, AssetTreeNode,
 } from '../../types';
@@ -379,7 +379,7 @@ function CellWidthBar({
             <input
               type="number"
               min={1} max={99}
-              className="w-full text-[10px] bg-slate-800 text-slate-300 rounded px-1 py-0.5 outline-none border border-slate-700 focus:border-indigo-500 font-mono text-center"
+              className="w-full text-[10px] bg-slate-800 text-slate-300 rounded px-1.5 py-0.5 outline-none border border-slate-700 focus:border-indigo-500 font-mono text-center"
               value={cell.width}
               onChange={e => handleWidthChange(cell.id, Number(e.target.value))}
             />
@@ -524,6 +524,7 @@ function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type'
     button:           t.cellModal.typeButton,
     list:             t.cellModal.typeList,
     'audio-volume':   t.cellModal.typeAudioVolume,
+    'date-time':      t.cellModal.typeDateTime,
   };
   return m[type];
 }
@@ -632,6 +633,12 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   if (c.type === 'audio-volume') return (
     <span className="text-xs text-amber-300 p-1 truncate flex-1">🔊 Volume</span>
   );
+  if (c.type === 'date-time') return (
+    <span className="text-xs text-orange-300 p-1 font-mono truncate flex-1">
+      {c.prefix}{v ? `$${v.name}` : '?'}{c.suffix}
+      <span className="text-[10px] text-slate-500 ml-1">({c.format})</span>
+    </span>
+  );
   return null;
 }
 
@@ -656,6 +663,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'button':         return { type: 'button', label: '', style: { ...DEFAULT_BUTTON_STYLE }, actions: [] } as CellButton;
     case 'list':           return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
     case 'audio-volume':   return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
+    case 'date-time':      return { type: 'date-time', variableId: '', format: 'DD.MM.YYYY HH:mm', prefix: '', suffix: '' } as CellDateTime;
   }
 }
 
@@ -686,6 +694,7 @@ function CellEditModal({
     { value: 'button',         label: t.cellModal.typeButton },
     { value: 'list',           label: t.cellModal.typeList },
     { value: 'audio-volume',   label: t.cellModal.typeAudioVolume },
+    { value: 'date-time',      label: t.cellModal.typeDateTime },
   ];
 
   const handleTypeChange = (type: CellContent['type']) => {
@@ -921,6 +930,33 @@ function CellEditModal({
               onChange={e => onUpdateContent({ ...c, showMuteButton: e.target.checked })} />
             {t.cellModal.audioVolumeMuteButton}
           </label>
+        )}
+
+        {c.type === 'date-time' && (
+          <>
+            <MField label={t.cellModal.variableLabel}>
+              <VariablePicker
+                value={c.variableId}
+                onChange={id => onUpdateContent({ ...c, variableId: id })}
+                nodes={project.variableNodes}
+                placeholder={t.cellModal.selectVariable}
+                filter={v => v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime'}
+              />
+            </MField>
+            <MField label={t.cellModal.formatLabel}>
+              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
+                placeholder="DD.MM.YYYY HH:mm"
+                value={c.format} onChange={e => onUpdateContent({ ...c, format: e.target.value })} />
+            </MField>
+            <MField label={t.cellModal.prefix}>
+              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
+                value={c.prefix ?? ''} onChange={e => onUpdateContent({ ...c, prefix: e.target.value })} />
+            </MField>
+            <MField label={t.cellModal.suffix}>
+              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
+                value={c.suffix ?? ''} onChange={e => onUpdateContent({ ...c, suffix: e.target.value })} />
+            </MField>
+          </>
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"

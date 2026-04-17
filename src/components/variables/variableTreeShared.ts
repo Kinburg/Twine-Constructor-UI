@@ -1,11 +1,23 @@
 import type { Variable, VariableType } from '../../types';
 
 export const TYPE_DEFAULTS: Record<VariableType, string> = {
-  number: '0', string: '', boolean: 'false', array: '[]',
+  number: '0',
+  string: '',
+  boolean: 'false',
+  array: '[]',
+  date: '2024-01-01',
+  time: '12:00',
+  datetime: '2024-01-01T12:00',
 };
 
 export const TYPE_COLOR: Record<VariableType, string> = {
-  number: 'text-sky-400', string: 'text-emerald-400', boolean: 'text-amber-400', array: 'text-violet-400',
+  number: 'text-sky-400',
+  string: 'text-emerald-400',
+  boolean: 'text-amber-400',
+  array: 'text-violet-400',
+  date: 'text-orange-400',
+  time: 'text-rose-400',
+  datetime: 'text-pink-400',
 };
 
 /** Callbacks for tree mutations — allows backing by store or local state */

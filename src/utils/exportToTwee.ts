@@ -2,8 +2,8 @@ import type {
   Project, Block, Character, Variable, ConditionBranch,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
   Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
-  ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList,
-  Watcher, WatcherCondition, AudioBlock, ContainerBlock,
+  ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList, CellDateTime,
+  Watcher, WatcherCondition, AudioBlock, ContainerBlock, TimeManipulationBlock,
   VariableTreeNode, VariableGroup,
 } from '../types';
 import { START_TAG } from '../types';
@@ -25,7 +25,7 @@ function buildJSRef(path: string): string {
 
 /** Convert a variable default value to a SugarCube literal string */
 export function defaultValueLiteral(v: Variable): string {
-  if (v.varType === 'string') return `"${v.defaultValue}"`;
+  if (v.varType === 'string' || v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime') return `"${v.defaultValue}"`;
   if (v.varType === 'boolean') return v.defaultValue === 'true' ? 'true' : 'false';
   if (v.varType === 'array') return v.defaultValue || '[]';
   return v.defaultValue || '0';
@@ -93,7 +93,7 @@ function actionToSC(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[]
   }
 
   let val = a.value;
-  if (v.varType === 'string') val = `"${val}"`;
+  if (v.varType === 'string' || v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime') val = `"${val}"`;
   if (a.operator === '=') return `${lineIndent}<<set $${path} to ${val}>>`;
   return `${lineIndent}<<set $${path} ${a.operator} ${val}>>`;
 }
@@ -156,7 +156,7 @@ function wrapBlockEffects(
 
 export function blockToSC(block: Block, chars: Character[], vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>, project?: Project): string {
   const raw = blockToSCInner(block, chars, vars, nodes, indent, idToName, project);
-  if (!raw || block.type === 'condition' || block.type === 'note') return raw;
+  if (!raw || block.type === 'condition' || block.type === 'note' || block.type === 'time-manipulation') return raw;
   const b = block as { delay?: BlockDelay; typewriter?: BlockTypewriter };
   return wrapBlockEffects(raw, b.delay, b.typewriter, indent, block.id);
 }
@@ -358,7 +358,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
       // ── Manual value ────────────────────────────────────────────────────────
       let val = block.value;
-      if (v.varType === 'string') val = `"${val}"`;
+      if (v.varType === 'string' || v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime') val = `"${val}"`;
       if (block.operator === '=') return `${indent}<<set $${path} to ${val}>>`;
       return `${indent}<<set $${path} ${block.operator} ${val}>>`;
     }
@@ -642,6 +642,21 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       const titleArg = cb.title ? ` "${cb.title.replace(/"/g, '\\"')}"` : '';
       return `${indent}<<tgContainer "${container.varName}" "${heroVarName}"${titleArg}>>`;
     }
+
+    case 'time-manipulation': {
+      const tb = block as TimeManipulationBlock;
+      const v = vars.find(x => x.id === tb.variableId);
+      if (!v) return `${indent}/* Time manipulation: variable not found */`;
+      const path = varPath(v, nodes);
+      const delta = {
+        years: tb.years || 0,
+        months: tb.months || 0,
+        days: tb.days || 0,
+        hours: tb.hours || 0,
+        minutes: tb.minutes || 0,
+      };
+      return `${indent}<<run tgAddTime("${path}", ${JSON.stringify(delta)})>>`;
+    }
   }
 }
 
@@ -693,7 +708,7 @@ function branchToSC(
     expr = `${varName}.length ${branch.operator} ${branch.value}`;
   } else {
     let val = branch.value;
-    if (v?.varType === 'string') val = `"${val}"`;
+    if (v?.varType === 'string' || v?.varType === 'date' || v?.varType === 'time' || v?.varType === 'datetime') val = `"${val}"`;
     expr = `${varName} ${branch.operator} ${val}`;
   }
 
@@ -832,6 +847,54 @@ function buildCellListSC(c: CellList, vars: Variable[], nodes: VariableTreeNode[
   return inner;
 }
 
+// ─── Date-Time logic ─────────────────────────────────────────────────────────
+
+export function buildDateTimeScript(): string {
+  return [
+    '// ── Date-Time Utils ──',
+    'window.tgAddTime = function(varPath, delta) {',
+    '  var parts = varPath.split(".");',
+    '  var obj = State.variables;',
+    '  for (var i = 0; i < parts.length - 1; i++) { obj = obj[parts[i]]; }',
+    '  var key = parts[parts.length - 1];',
+    '  var val = obj[key];',
+    '',
+    '  // Parse value: handle space between date and time for better Date() support',
+    '  var date = new Date(String(val).replace(" ", "T"));',
+    '  if (isNaN(date.getTime())) date = new Date();',
+    '',
+    '  if (delta.minutes) date.setMinutes(date.getMinutes() + delta.minutes);',
+    '  if (delta.hours)   date.setHours(date.getHours() + delta.hours);',
+    '  if (delta.days)    date.setDate(date.getDate() + delta.days);',
+    '  if (delta.months)  date.setMonth(date.getMonth() + delta.months);',
+    '  if (delta.years)   date.setFullYear(date.getFullYear() + delta.years);',
+    '',
+    '  // Manual Local Formatting (avoid UTC shift from toISOString)',
+    '  var pad = function(n) { return n < 10 ? "0" + n : n; };',
+    '  var res = date.getFullYear() + "-" + ',
+    '            pad(date.getMonth() + 1) + "-" + ',
+    '            pad(date.getDate()) + " " + ',
+    '            pad(date.getHours()) + ":" + ',
+    '            pad(date.getMinutes());',
+    '  ',
+    '  obj[key] = res;',
+    '};',
+    '',
+    'window.tgFormatDate = function(val, format) {',
+    '  var date = new Date(String(val).replace(" ", "T"));',
+    '  if (isNaN(date.getTime())) return val;',
+    '  var o = {',
+    '    "DD": ("0" + date.getDate()).slice(-2),',
+    '    "MM": ("0" + (date.getMonth() + 1)).slice(-2),',
+    '    "YYYY": date.getFullYear(),',
+    '    "HH": ("0" + date.getHours()).slice(-2),',
+    '    "mm": ("0" + date.getMinutes()).slice(-2)',
+    '  };',
+    '  return format.replace(/DD|MM|YYYY|HH|mm/g, function(matched) { return o[matched]; });',
+    '};',
+  ].join('\n');
+}
+
 // ─── Table block → inline HTML (fully self-contained, no class deps) ──────────
 
 function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
@@ -889,6 +952,13 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: Variable
 
     case 'list':
       return buildCellListSC(c as CellList, vars, nodes);
+
+    case 'date-time': {
+      const v = vars.find(x => x.id === c.variableId);
+      const vname = v ? `$${varPath(v, nodes)}` : '$???';
+      const format = (c as CellDateTime).format || 'DD.MM.YYYY HH:mm';
+      return `${c.prefix}<<print tgFormatDate(${vname}, "${format}")>>${c.suffix}`;
+    }
 
     default: return '';
   }
@@ -1030,6 +1100,14 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
         '<</script>>',
       ].filter(Boolean).join('');
       inner = `<span style="display:flex;align-items:center;gap:4px;width:100%">${mute}${slider}</span>${initScript}`;
+      break;
+    }
+
+    case 'date-time': {
+      const v = vars.find(x => x.id === c.variableId);
+      const vname = v ? `$${varPath(v, nodes)}` : '$???';
+      const format = (c as CellDateTime).format || 'DD.MM.YYYY HH:mm';
+      inner = `${c.prefix}<<print tgFormatDate(${vname}, "${format}")>>${c.suffix}`;
       break;
     }
   }

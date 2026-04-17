@@ -30,28 +30,29 @@ export function getLocales(): { code: string; name: string }[] {
 /** Map a Block['type'] to the corresponding label in the current translations. */
 export function blockTypeLabel(t: Translations, type: Block['type']): string {
   const map: Record<Block['type'], string> = {
-    'text':         t.block.text,
-    'dialogue':     t.block.dialogue,
-    'choice':       t.block.choice,
-    'condition':    t.block.condition,
-    'variable-set': t.block.variableSet,
-    'button':       t.block.button,
-    'link':         t.block.link,
-    'input-field':  t.block.inputField,
-    'image':        t.block.image,
-    'image-gen':    t.block.imageGen,
-    'video':        t.block.video,
-    'raw':          t.block.raw,
-    'note':         t.block.note,
-    'table':        t.block.table,
-    'include':      t.block.include,
-    'divider':      t.block.divider,
-    'checkbox':     t.block.checkbox,
-    'radio':        t.block.radio,
-    'function':     t.block.function,
-    'popup':        t.block.popup,
-    'audio':        t.block.audio,
-    'container':    t.block.container,
+    'text':              t.block.text,
+    'dialogue':          t.block.dialogue,
+    'choice':            t.block.choice,
+    'condition':         t.block.condition,
+    'variable-set':      t.block.variableSet,
+    'button':            t.block.button,
+    'link':              t.block.link,
+    'input-field':       t.block.inputField,
+    'image':             t.block.image,
+    'image-gen':         t.block.imageGen,
+    'video':             t.block.video,
+    'raw':               t.block.raw,
+    'note':              t.block.note,
+    'table':             t.block.table,
+    'include':           t.block.include,
+    'divider':           t.block.divider,
+    'checkbox':          t.block.checkbox,
+    'radio':             t.block.radio,
+    'function':          t.block.function,
+    'popup':             t.block.popup,
+    'audio':             t.block.audio,
+    'container':         t.block.container,
+    'time-manipulation': t.block.timeManipulation,
   };
   return map[type] ?? type;
 }
@@ -77,7 +78,7 @@ export const useLocaleStore = create<LocaleState>()(
 
 /**
  * Returns the translations object for the currently selected locale.
- * Falls back to Russian if the locale is not found.
+ * Falls back to English if the locale is not found.
  *
  * Usage:
  *   const t = useT();

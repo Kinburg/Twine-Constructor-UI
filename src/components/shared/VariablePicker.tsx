@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { VariableTreeNode, VariableType, VariableGroup } from '../../types';
+import type { Variable, VariableTreeNode, VariableType, VariableGroup } from '../../types';
 import { getVariablePath, hasLeafVariables } from '../../utils/treeUtils';
 
 export interface VariablePickerProps {
@@ -8,16 +8,17 @@ export interface VariablePickerProps {
   nodes: VariableTreeNode[];    // project.variableNodes
   placeholder?: string;
   filterType?: VariableType;    // optional: only show variables of this type
+  filter?: (v: Variable) => boolean; // optional: custom filter function
   className?: string;
 }
 
-export function VariablePicker({ value, onChange, nodes, placeholder, filterType, className }: VariablePickerProps) {
+export function VariablePicker({ value, onChange, nodes, placeholder, filterType, filter: customFilter, className }: VariablePickerProps) {
   const [open, setOpen] = useState(false);
-  const [filter, setFilter] = useState('');
+  const [filterText, setFilterText] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const filterRef = useRef<HTMLInputElement>(null);
+  const filterInputRef = useRef<HTMLInputElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
 
   // Resolve selected variable's display path
@@ -33,7 +34,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
       setPos({ top, left: Math.min(rect.left, window.innerWidth - 220), maxHeight: Math.min(maxH, 320) });
     }
     setOpen(true);
-    setFilter('');
+    setFilterText('');
   }, []);
 
   // Close on outside click
@@ -50,7 +51,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
   }, [open]);
 
   // Focus filter input when panel opens
-  useEffect(() => { if (open) setTimeout(() => filterRef.current?.focus(), 0); }, [open]);
+  useEffect(() => { if (open) setTimeout(() => filterInputRef.current?.focus(), 0); }, [open]);
 
   const toggleGroup = (id: string) => {
     setExpanded(prev => {
@@ -65,7 +66,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
     setOpen(false);
   };
 
-  const filterLower = filter.toLowerCase();
+  const filterLower = filterText.toLowerCase();
 
   return (
     <>
@@ -86,11 +87,11 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
         >
           {/* Filter */}
           <input
-            ref={filterRef}
+            ref={filterInputRef}
             className="text-xs bg-slate-800 text-white px-2 py-1 outline-none border-b border-slate-700 rounded-t"
             placeholder="Filter..."
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
+            value={filterText}
+            onChange={e => setFilterText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
           />
 
@@ -104,6 +105,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
               onSelect={handleSelect}
               selectedId={value}
               filterType={filterType}
+              filter={customFilter}
               filterText={filterLower}
               allNodes={nodes}
             />
@@ -117,7 +119,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
 // ─── Reusable tree renderer ──────────────────────────────────────────────────
 
 export function PickerTree({
-  nodes, depth, expanded, onToggleGroup, onSelect, selectedId, filterType, filterText, allNodes,
+  nodes, depth, expanded, onToggleGroup, onSelect, selectedId, filterType, filter, filterText, allNodes,
 }: {
   nodes: VariableTreeNode[];
   depth: number;
@@ -126,6 +128,7 @@ export function PickerTree({
   onSelect: (id: string) => void;
   selectedId: string;
   filterType?: VariableType;
+  filter?: (v: Variable) => boolean;
   filterText: string;
   allNodes: VariableTreeNode[];
 }) {
@@ -135,7 +138,7 @@ export function PickerTree({
         if (node.kind === 'group') {
           // Skip groups with no matching leaf variables
           if (!hasLeafVariables(node, filterType)) return null;
-          if (filterText && !groupMatchesFilter(node, filterText, filterType)) return null;
+          if (filterText && !groupMatchesFilter(node, filterText, filterType, filter)) return null;
 
           const isExp = expanded.has(node.id) || !!filterText;
           return (
@@ -158,6 +161,7 @@ export function PickerTree({
                   onSelect={onSelect}
                   selectedId={selectedId}
                   filterType={filterType}
+                  filter={filter}
                   filterText={filterText}
                   allNodes={allNodes}
                 />
@@ -168,6 +172,8 @@ export function PickerTree({
 
         // Variable leaf
         if (filterType && node.varType !== filterType) return null;
+        if (filter && !filter(node)) return null;
+        
         const path = getVariablePath(node.id, allNodes) || node.name;
         if (filterText && !path.toLowerCase().includes(filterText) && !node.name.toLowerCase().includes(filterText)) return null;
 
@@ -195,18 +201,22 @@ export function typeColor(t: VariableType): string {
     case 'string': return 'text-emerald-400';
     case 'boolean': return 'text-amber-400';
     case 'array': return 'text-violet-400';
+    case 'date': return 'text-orange-400';
+    case 'time': return 'text-rose-400';
+    case 'datetime': return 'text-pink-400';
     default: return 'text-slate-400';
   }
 }
 
 /** Check if any leaf variable in this group matches the filter text */
-export function groupMatchesFilter(group: VariableGroup, filterText: string, filterType?: VariableType): boolean {
+export function groupMatchesFilter(group: VariableGroup, filterText: string, filterType?: VariableType, filter?: (v: Variable) => boolean): boolean {
   return group.children.some(n => {
     if (n.kind === 'variable') {
       if (filterType && n.varType !== filterType) return false;
+      if (filter && !filter(n)) return false;
       return n.name.toLowerCase().includes(filterText);
     }
-    if (n.kind === 'group') return groupMatchesFilter(n, filterText, filterType);
+    if (n.kind === 'group') return groupMatchesFilter(n, filterText, filterType, filter);
     return false;
   });
 }

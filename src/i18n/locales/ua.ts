@@ -80,6 +80,7 @@ const ua: Translations = {
     popup:            'Попап',
     audio:            'Аудіо',
     container:        'Контейнер',
+    timeManipulation: 'Маніпуляція часом',
     drag:             'Перетягнути для сортування',
     copy:             'Копіювати блок у буфер',
     duplicate:        'Дублювати блок',
@@ -123,6 +124,7 @@ const ua: Translations = {
     popup:       { label: 'Попап',      desc: 'Відкрити діалог при завантаженні' },
     audio:       { label: 'Аудіо',     desc: 'Фонові звуки / музика' },
     container:   { label: 'Контейнер', desc: 'Магазин, скриня або лут' },
+    timeManipulation: { label: 'Час', desc: 'Додати хвилини, години, дні...' },
   },
 
   condition: {
@@ -314,6 +316,9 @@ const ua: Translations = {
     typeString:               'string',
     typeBoolean:              'boolean',
     typeArray:                'array',
+    typeDate:                 'date',
+    typeTime:                 'time',
+    typeDateTime:             'datetime',
     defaultPlaceholderNumber: '0',
     defaultPlaceholderText:   'текст',
     descriptionPlaceholder:   'що зберігає...',
@@ -391,6 +396,9 @@ const ua: Translations = {
     typeImageFromVarShort:    'Зображ. (змінна)',
     openImageBoundGen:        'Генерувати зображення…',
     variableLabel:            'Змінна',
+    // ── Date/Time cell fields ──
+    typeDateTime:             'Дата/Час',
+    formatLabel:              'Формат:',
   },
 
   rowsEditor: {
@@ -798,6 +806,16 @@ const ua: Translations = {
     randomLengthSuffix:   'символів [a-z0-9]',
   },
 
+  timeManipulationBlock: {
+    title: 'Маніпуляція часом',
+    variableLabel: 'Змінна:',
+    years: 'років',
+    months: 'місяців',
+    days: 'днів',
+    hours: 'годин',
+    minutes: 'хвилин',
+  },
+
   imageMappingEditor: {
     mappingsLabel:      'Відповідності (значення → файл):',
     addOne:             '+ Додати',
@@ -1084,7 +1102,7 @@ const ua: Translations = {
     varNameTaken:     'Контейнер з такою назвою змінної вже існує.',
     nameTaken:        'Контейнер з такою назвою вже існує.',
     nameEmpty:        'Назва не може бути порожньою.',
-    fieldMode:        'Режим',
+    fieldMode:        'Mode',
     modeShop:         '🏪 Магазин',
     modeChest:        '📦 Скриня',
     modeLoot:         '🎁 Лут',

@@ -509,6 +509,21 @@ export interface ContainerBlock {
   delay?: BlockDelay;
 }
 
+/**
+ * Invisible block that modifies a date/time variable.
+ */
+export interface TimeManipulationBlock {
+  id: string;
+  type: 'time-manipulation';
+  variableId: string;
+  years: number;
+  months: number;
+  days: number;
+  hours: number;
+  minutes: number;
+  delay?: BlockDelay;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -531,7 +546,8 @@ export type Block =
   | FunctionBlock
   | PopupBlock
   | AudioBlock
-  | ContainerBlock;
+  | ContainerBlock
+  | TimeManipulationBlock;
 
 export type BlockType = Block['type'];
 
@@ -757,7 +773,7 @@ export interface ContainerDefinition {
 
 // ─── Variable ───────────────────────────────────────────────────────────────
 
-export type VariableType = 'number' | 'string' | 'boolean' | 'array';
+export type VariableType = 'number' | 'string' | 'boolean' | 'array' | 'date' | 'time' | 'datetime';
 
 export interface Variable {
   kind: 'variable';
@@ -938,6 +954,15 @@ export interface CellAudioVolume {
   showMuteButton: boolean;
 }
 
+/** Displays a date/time variable with a custom format */
+export interface CellDateTime {
+  type: 'date-time';
+  variableId: string;
+  format: string;     // e.g. "DD.MM.YYYY HH:mm"
+  prefix?: string;
+  suffix?: string;
+}
+
 export type CellContent =
   | CellText
   | CellVariable
@@ -949,7 +974,8 @@ export type CellContent =
   | CellRaw
   | CellButton
   | CellList
-  | CellAudioVolume;
+  | CellAudioVolume
+  | CellDateTime;
 
 export interface SidebarCell {
   id: string;

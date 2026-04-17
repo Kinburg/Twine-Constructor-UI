@@ -5,28 +5,29 @@ import { useT } from '../../i18n';
 import type { Block, BlockType } from '../../types';
 
 const BLOCK_ICONS: Record<BlockType, string> = {
-  'text':         '📝',
-  'dialogue':     '💬',
-  'choice':       '🔀',
-  'condition':    '❓',
-  'variable-set': '📊',
-  'button':       '🔘',
-  'link':         '🔗',
-  'input-field':  '✏️',
-  'image':        '🖼️',
-  'image-gen':    '🧠',
-  'video':        '🎥',
-  'raw':          '🧩',
-  'note':         '🗒️',
-  'table':        '🗂️',
-  'include':      '📎',
-  'divider':      '─',
-  'checkbox':     '☑',
-  'radio':        '🔵',
-  'function':     'ƒ',
-  'popup':        '🪟',
-  'audio':        '🔊',
-  'container':    '🏪',
+  'text':              '📝',
+  'dialogue':          '💬',
+  'choice':            '🔀',
+  'condition':         '❓',
+  'variable-set':      '📊',
+  'button':            '🔘',
+  'link':              '🔗',
+  'input-field':       '✏️',
+  'image':             '🖼️',
+  'image-gen':         '🧠',
+  'video':             '🎥',
+  'raw':               '🧩',
+  'note':              '🗒️',
+  'table':             '🗂️',
+  'include':           '📎',
+  'divider':           '─',
+  'checkbox':          '☑',
+  'radio':             '🔵',
+  'function':          'ƒ',
+  'popup':             '🪟',
+  'audio':             '🔊',
+  'container':         '🏪',
+  'time-manipulation': '🕒',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -93,6 +94,7 @@ export function makeBlock(type: BlockType): Block {
     case 'popup':        return { id, type, targetSceneId: '' };
     case 'audio':        return { id, type, src: '', trigger: 'immediate' as const, loop: false, onLeave: 'stop' as const, stopOthers: false, volume: 100 };
     case 'container':    return { id, type, containerId: '', charId: '' };
+    case 'time-manipulation': return { id, type, variableId: '', years: 0, months: 0, days: 0, hours: 0, minutes: 0 };
   }
 }
 
@@ -103,7 +105,7 @@ type CategoryKey = 'content' | 'interaction' | 'logic' | 'system';
 const BLOCK_CATEGORIES: { key: CategoryKey; types: BlockType[] }[] = [
   { key: 'content',     types: ['text', 'dialogue', 'image', 'image-gen', 'video', 'audio', 'table', 'divider'] },
   { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio'] },
-  { key: 'logic',       types: ['condition', 'variable-set', 'function', 'popup'] },
+  { key: 'logic',       types: ['condition', 'variable-set', 'time-manipulation', 'function', 'popup'] },
   { key: 'system',      types: ['raw', 'include', 'note', 'container'] },
 ];
 
@@ -113,28 +115,29 @@ interface BlockEntry { type: BlockType; label: string; icon: string; desc: strin
 
 function buildEntries(t: ReturnType<typeof useT>): BlockEntry[] {
   return [
-    { type: 'text',         icon: BLOCK_ICONS['text'],         label: t.addBlock.text.label,        desc: t.addBlock.text.desc },
-    { type: 'dialogue',     icon: BLOCK_ICONS['dialogue'],     label: t.addBlock.dialogue.label,    desc: t.addBlock.dialogue.desc },
-    { type: 'choice',       icon: BLOCK_ICONS['choice'],       label: t.addBlock.choice.label,      desc: t.addBlock.choice.desc },
-    { type: 'condition',    icon: BLOCK_ICONS['condition'],    label: t.addBlock.condition.label,   desc: t.addBlock.condition.desc },
-    { type: 'variable-set', icon: BLOCK_ICONS['variable-set'], label: t.addBlock.variableSet.label, desc: t.addBlock.variableSet.desc },
-    { type: 'button',       icon: BLOCK_ICONS['button'],       label: t.addBlock.button.label,      desc: t.addBlock.button.desc },
-    { type: 'link',         icon: BLOCK_ICONS['link'],         label: t.addBlock.link.label,        desc: t.addBlock.link.desc },
-    { type: 'input-field',  icon: BLOCK_ICONS['input-field'],  label: t.addBlock.inputField.label,  desc: t.addBlock.inputField.desc },
-    { type: 'image',        icon: BLOCK_ICONS['image'],        label: t.addBlock.image.label,       desc: t.addBlock.image.desc },
-    { type: 'image-gen',    icon: BLOCK_ICONS['image-gen'],    label: t.addBlock.imageGen.label,    desc: t.addBlock.imageGen.desc },
-    { type: 'video',        icon: BLOCK_ICONS['video'],        label: t.addBlock.video.label,       desc: t.addBlock.video.desc },
-    { type: 'raw',          icon: BLOCK_ICONS['raw'],          label: t.addBlock.raw.label,         desc: t.addBlock.raw.desc },
-    { type: 'note',         icon: BLOCK_ICONS['note'],         label: t.addBlock.note.label,        desc: t.addBlock.note.desc },
-    { type: 'table',        icon: BLOCK_ICONS['table'],        label: t.addBlock.table.label,       desc: t.addBlock.table.desc },
-    { type: 'include',      icon: BLOCK_ICONS['include'],      label: t.addBlock.include.label,     desc: t.addBlock.include.desc },
-    { type: 'divider',      icon: BLOCK_ICONS['divider'],      label: t.addBlock.divider.label,     desc: t.addBlock.divider.desc },
-    { type: 'checkbox',     icon: BLOCK_ICONS['checkbox'],     label: t.addBlock.checkbox.label,    desc: t.addBlock.checkbox.desc },
-    { type: 'radio',        icon: BLOCK_ICONS['radio'],        label: t.addBlock.radio.label,       desc: t.addBlock.radio.desc },
-    { type: 'function',     icon: BLOCK_ICONS['function'],     label: t.addBlock.function.label,    desc: t.addBlock.function.desc },
-    { type: 'popup',        icon: BLOCK_ICONS['popup'],        label: t.addBlock.popup.label,       desc: t.addBlock.popup.desc },
-    { type: 'audio',        icon: BLOCK_ICONS['audio'],        label: t.addBlock.audio.label,       desc: t.addBlock.audio.desc },
-    { type: 'container',   icon: BLOCK_ICONS['container'],    label: t.addBlock.container.label,   desc: t.addBlock.container.desc },
+    { type: 'text',              icon: BLOCK_ICONS['text'],              label: t.addBlock.text.label,             desc: t.addBlock.text.desc },
+    { type: 'dialogue',          icon: BLOCK_ICONS['dialogue'],          label: t.addBlock.dialogue.label,         desc: t.addBlock.dialogue.desc },
+    { type: 'choice',            icon: BLOCK_ICONS['choice'],            label: t.addBlock.choice.label,           desc: t.addBlock.choice.desc },
+    { type: 'condition',         icon: BLOCK_ICONS['condition'],         label: t.addBlock.condition.label,        desc: t.addBlock.condition.desc },
+    { type: 'variable-set',      icon: BLOCK_ICONS['variable-set'],      label: t.addBlock.variableSet.label,      desc: t.addBlock.variableSet.desc },
+    { type: 'button',            icon: BLOCK_ICONS['button'],            label: t.addBlock.button.label,           desc: t.addBlock.button.desc },
+    { type: 'link',              icon: BLOCK_ICONS['link'],              label: t.addBlock.link.label,             desc: t.addBlock.link.desc },
+    { type: 'input-field',       icon: BLOCK_ICONS['input-field'],       label: t.addBlock.inputField.label,       desc: t.addBlock.inputField.desc },
+    { type: 'image',             icon: BLOCK_ICONS['image'],             label: t.addBlock.image.label,            desc: t.addBlock.image.desc },
+    { type: 'image-gen',         icon: BLOCK_ICONS['image-gen'],         label: t.addBlock.imageGen.label,         desc: t.addBlock.imageGen.desc },
+    { type: 'video',             icon: BLOCK_ICONS['video'],             label: t.addBlock.video.label,            desc: t.addBlock.video.desc },
+    { type: 'raw',               icon: BLOCK_ICONS['raw'],               label: t.addBlock.raw.label,              desc: t.addBlock.raw.desc },
+    { type: 'note',              icon: BLOCK_ICONS['note'],              label: t.addBlock.note.label,             desc: t.addBlock.note.desc },
+    { type: 'table',             icon: BLOCK_ICONS['table'],             label: t.addBlock.table.label,            desc: t.addBlock.table.desc },
+    { type: 'include',           icon: BLOCK_ICONS['include'],           label: t.addBlock.include.label,          desc: t.addBlock.include.desc },
+    { type: 'divider',           icon: BLOCK_ICONS['divider'],           label: t.addBlock.divider.label,          desc: t.addBlock.divider.desc },
+    { type: 'checkbox',          icon: BLOCK_ICONS['checkbox'],          label: t.addBlock.checkbox.label,         desc: t.addBlock.checkbox.desc },
+    { type: 'radio',             icon: BLOCK_ICONS['radio'],             label: t.addBlock.radio.label,            desc: t.addBlock.radio.desc },
+    { type: 'function',          icon: BLOCK_ICONS['function'],          label: t.addBlock.function.label,         desc: t.addBlock.function.desc },
+    { type: 'popup',             icon: BLOCK_ICONS['popup'],             label: t.addBlock.popup.label,            desc: t.addBlock.popup.desc },
+    { type: 'audio',             icon: BLOCK_ICONS['audio'],             label: t.addBlock.audio.label,            desc: t.addBlock.audio.desc },
+    { type: 'container',         icon: BLOCK_ICONS['container'],         label: t.addBlock.container.label,        desc: t.addBlock.container.desc },
+    { type: 'time-manipulation', icon: BLOCK_ICONS['time-manipulation'], label: t.addBlock.timeManipulation.label, desc: t.addBlock.timeManipulation.desc },
   ];
 }
 

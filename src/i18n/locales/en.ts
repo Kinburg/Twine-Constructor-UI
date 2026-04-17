@@ -80,6 +80,7 @@ const en: Translations = {
     popup:            'Popup',
     audio:            'Audio',
     container:        'Container',
+    timeManipulation: 'Time manipulation',
     drag:             'Drag to reorder',
     copy:             'Copy block to clipboard',
     duplicate:        'Duplicate block',
@@ -123,6 +124,7 @@ const en: Translations = {
     popup:       { label: 'Popup',      desc: 'Open a dialog on load' },
     audio:       { label: 'Audio',     desc: 'Background sound / music' },
     container:   { label: 'Container', desc: 'Shop, chest or loot display' },
+    timeManipulation: { label: 'Time', desc: 'Add minutes, hours, days...' },
   },
 
   condition: {
@@ -314,6 +316,9 @@ const en: Translations = {
     typeString:               'string',
     typeBoolean:              'boolean',
     typeArray:                'array',
+    typeDate:                 'date',
+    typeTime:                 'time',
+    typeDateTime:             'datetime',
     defaultPlaceholderNumber: '0',
     defaultPlaceholderText:   'text',
     descriptionPlaceholder:   'what it stores...',
@@ -391,6 +396,9 @@ const en: Translations = {
     typeImageFromVarShort:    'Image (from var)',
     openImageBoundGen:        'Generate images…',
     variableLabel:            'Variable',
+    // ── Date/Time cell fields ──
+    typeDateTime:             'Date/Time',
+    formatLabel:              'Format:',
   },
 
   rowsEditor: {
@@ -796,6 +804,16 @@ const en: Translations = {
     randomRange:          'Range:',
     randomLength:         'Length:',
     randomLengthSuffix:   'chars [a-z0-9]',
+  },
+
+  timeManipulationBlock: {
+    title: 'Time Manipulation (Invisible)',
+    variableLabel: 'Variable:',
+    years: 'years',
+    months: 'months',
+    days: 'days',
+    hours: 'hours',
+    minutes: 'minutes',
   },
 
   imageMappingEditor: {

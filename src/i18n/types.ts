@@ -84,6 +84,7 @@ export interface Translations {
     popup: string;
     audio: string;
     container: string;
+    timeManipulation: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -128,6 +129,7 @@ export interface Translations {
     popup:       { label: string; desc: string };
     audio:       { label: string; desc: string };
     container:   { label: string; desc: string };
+    timeManipulation: { label: string; desc: string };
   };
 
   includeBlock: {
@@ -337,6 +339,9 @@ export interface Translations {
     typeString: string;
     typeBoolean: string;
     typeArray: string;
+    typeDate: string;
+    typeTime: string;
+    typeDateTime: string;
     defaultPlaceholderNumber: string;
     defaultPlaceholderText: string;
     descriptionPlaceholder: string;
@@ -416,6 +421,9 @@ export interface Translations {
     typeImageFromVarShort: string;
     openImageBoundGen: string;
     variableLabel: string;
+    // ── Date/Time cell fields ──
+    typeDateTime: string;
+    formatLabel: string;
   };
 
   // ─── Shared: rows/cells editor UI (Panel + Table) ──────────────────────────
@@ -812,6 +820,16 @@ export interface Translations {
     randomRange: string;
     randomLength: string;
     randomLengthSuffix: string;
+  };
+
+  timeManipulationBlock: {
+    title: string;
+    variableLabel: string;
+    years: string;
+    months: string;
+    days: string;
+    hours: string;
+    minutes: string;
   };
 
   // ─── Shared image mapping editor ────────────────────────────────────────────
