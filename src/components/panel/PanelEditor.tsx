@@ -13,6 +13,7 @@ import { VariablePicker } from '../shared/VariablePicker';
 import { useConfirm } from '../shared/ConfirmModal';
 import { CellImageGenEditor } from '../shared/CellImageGenEditor';
 import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
+import { DateTimeCellEditor } from '../shared/DateTimeCellEditor';
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -933,30 +934,12 @@ function CellEditModal({
         )}
 
         {c.type === 'date-time' && (
-          <>
-            <MField label={t.cellModal.variableLabel}>
-              <VariablePicker
-                value={c.variableId}
-                onChange={id => onUpdateContent({ ...c, variableId: id })}
-                nodes={project.variableNodes}
-                placeholder={t.cellModal.selectVariable}
-                filter={v => v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime'}
-              />
-            </MField>
-            <MField label={t.cellModal.formatLabel}>
-              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-                placeholder="DD.MM.YYYY HH:mm"
-                value={c.format} onChange={e => onUpdateContent({ ...c, format: e.target.value })} />
-            </MField>
-            <MField label={t.cellModal.prefix}>
-              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
-                value={c.prefix ?? ''} onChange={e => onUpdateContent({ ...c, prefix: e.target.value })} />
-            </MField>
-            <MField label={t.cellModal.suffix}>
-              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
-                value={c.suffix ?? ''} onChange={e => onUpdateContent({ ...c, suffix: e.target.value })} />
-            </MField>
-          </>
+          <DateTimeCellEditor
+            c={c}
+            nodes={project.variableNodes}
+            onChange={patch => onUpdateContent({ ...c, ...patch })}
+            Field={MField}
+          />
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"

@@ -5,8 +5,6 @@ export const TYPE_DEFAULTS: Record<VariableType, string> = {
   string: '',
   boolean: 'false',
   array: '[]',
-  date: '2024-01-01',
-  time: '12:00',
   datetime: '2024-01-01T12:00',
 };
 
@@ -15,8 +13,6 @@ export const TYPE_COLOR: Record<VariableType, string> = {
   string: 'text-emerald-400',
   boolean: 'text-amber-400',
   array: 'text-violet-400',
-  date: 'text-orange-400',
-  time: 'text-rose-400',
   datetime: 'text-pink-400',
 };
 

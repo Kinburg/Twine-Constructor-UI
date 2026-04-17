@@ -773,7 +773,7 @@ export interface ContainerDefinition {
 
 // ─── Variable ───────────────────────────────────────────────────────────────
 
-export type VariableType = 'number' | 'string' | 'boolean' | 'array' | 'date' | 'time' | 'datetime';
+export type VariableType = 'number' | 'string' | 'boolean' | 'array' | 'datetime';
 
 export interface Variable {
   kind: 'variable';
@@ -954,11 +954,14 @@ export interface CellAudioVolume {
   showMuteButton: boolean;
 }
 
-/** Displays a date/time variable with a custom format */
+export type DateTimeDisplayMode = 'text' | 'clock' | 'digital' | 'calendar' | 'clock-calendar' | 'digital-calendar';
+
+/** Displays a date/time variable with a custom format or graphical widget */
 export interface CellDateTime {
   type: 'date-time';
   variableId: string;
-  format: string;     // e.g. "DD.MM.YYYY HH:mm"
+  displayMode?: DateTimeDisplayMode;
+  format: string;     // e.g. "DD.MM.YYYY HH:mm", only used when displayMode === 'text'
   prefix?: string;
   suffix?: string;
 }

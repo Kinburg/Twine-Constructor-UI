@@ -13,6 +13,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
 import { CellImageGenEditor } from '../shared/CellImageGenEditor';
 import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
+import { DateTimeCellEditor } from '../shared/DateTimeCellEditor';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -552,6 +553,7 @@ function TCellEditModal({
   onClose: () => void;
 }) {
   const t = useT();
+  const { project } = useProjectStore();
   const c = cell.content;
   const [genModalOpen, setGenModalOpen] = useState(false);
 
@@ -791,22 +793,12 @@ function TCellEditModal({
         )}
 
         {c.type === 'date-time' && (
-          <>
-            <TVarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
-            <TMField label={t.cellModal.formatLabel}>
-              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-                placeholder="DD.MM.YYYY HH:mm"
-                value={(c as CellDateTime).format} onChange={e => onUpdateContent({ ...(c as CellDateTime), format: e.target.value })} />
-            </TMField>
-            <TMField label={t.cellModal.prefix}>
-              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
-                value={(c as CellDateTime).prefix ?? ''} onChange={e => onUpdateContent({ ...(c as CellDateTime), prefix: e.target.value })} />
-            </TMField>
-            <TMField label={t.cellModal.suffix}>
-              <input className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600"
-                value={(c as CellDateTime).suffix ?? ''} onChange={e => onUpdateContent({ ...(c as CellDateTime), suffix: e.target.value })} />
-            </TMField>
-          </>
+          <DateTimeCellEditor
+            c={c as CellDateTime}
+            nodes={project.variableNodes}
+            onChange={patch => onUpdateContent({ ...(c as CellDateTime), ...patch })}
+            Field={TMField}
+          />
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"

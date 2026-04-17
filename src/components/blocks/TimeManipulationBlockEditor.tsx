@@ -1,7 +1,6 @@
 import { useProjectStore } from '../../store/projectStore';
 import type { TimeManipulationBlock } from '../../types';
 import { useT } from '../../i18n';
-import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
 
 export function TimeManipulationBlockEditor({
@@ -38,7 +37,7 @@ export function TimeManipulationBlockEditor({
           value={block.variableId}
           onChange={id => update({ variableId: id })}
           nodes={project.variableNodes}
-          filter={v => v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime'}
+          filter={v => v.varType === 'datetime'}
         />
       </div>
 
@@ -57,10 +56,6 @@ export function TimeManipulationBlockEditor({
         ))}
       </div>
 
-      <BlockEffectsPanel
-        delay={block.delay}
-        onDelayChange={v => update({ delay: v })}
-      />
     </div>
   );
 }

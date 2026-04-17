@@ -339,8 +339,6 @@ export interface Translations {
     typeString: string;
     typeBoolean: string;
     typeArray: string;
-    typeDate: string;
-    typeTime: string;
     typeDateTime: string;
     defaultPlaceholderNumber: string;
     defaultPlaceholderText: string;
@@ -423,7 +421,22 @@ export interface Translations {
     variableLabel: string;
     // ── Date/Time cell fields ──
     typeDateTime: string;
-    formatLabel: string;
+    displayModeLabel: string;
+    displayModeText: string;
+    displayModeClock: string;
+    displayModeDigital: string;
+    displayModeCalendar: string;
+    displayModeClockCalendar: string;
+    displayModeDigitalCalendar: string;
+    fmtTime: string;
+    fmtDate: string;
+    fmtDateTime: string;
+    fmtWeekday: string;
+    fmtWeekdayTime: string;
+    fmtWeekdayDate: string;
+    fmtWeekdayFull: string;
+    fmtMonthYear: string;
+    fmtCustom: string;
   };
 
   // ─── Shared: rows/cells editor UI (Panel + Table) ──────────────────────────

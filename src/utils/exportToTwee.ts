@@ -2,7 +2,7 @@ import type {
   Project, Block, Character, Variable, ConditionBranch,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
   Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
-  ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList, CellDateTime,
+  ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList, CellDateTime, DateTimeDisplayMode,
   Watcher, WatcherCondition, AudioBlock, ContainerBlock, TimeManipulationBlock,
   VariableTreeNode, VariableGroup,
 } from '../types';
@@ -25,7 +25,7 @@ function buildJSRef(path: string): string {
 
 /** Convert a variable default value to a SugarCube literal string */
 export function defaultValueLiteral(v: Variable): string {
-  if (v.varType === 'string' || v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime') return `"${v.defaultValue}"`;
+  if (v.varType === 'string' || v.varType === 'datetime') return `"${v.defaultValue}"`;
   if (v.varType === 'boolean') return v.defaultValue === 'true' ? 'true' : 'false';
   if (v.varType === 'array') return v.defaultValue || '[]';
   return v.defaultValue || '0';
@@ -93,7 +93,7 @@ function actionToSC(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[]
   }
 
   let val = a.value;
-  if (v.varType === 'string' || v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime') val = `"${val}"`;
+  if (v.varType === 'string' || v.varType === 'datetime') val = `"${val}"`;
   if (a.operator === '=') return `${lineIndent}<<set $${path} to ${val}>>`;
   return `${lineIndent}<<set $${path} ${a.operator} ${val}>>`;
 }
@@ -358,7 +358,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
       // ── Manual value ────────────────────────────────────────────────────────
       let val = block.value;
-      if (v.varType === 'string' || v.varType === 'date' || v.varType === 'time' || v.varType === 'datetime') val = `"${val}"`;
+      if (v.varType === 'string' || v.varType === 'datetime') val = `"${val}"`;
       if (block.operator === '=') return `${indent}<<set $${path} to ${val}>>`;
       return `${indent}<<set $${path} ${block.operator} ${val}>>`;
     }
@@ -708,7 +708,7 @@ function branchToSC(
     expr = `${varName}.length ${branch.operator} ${branch.value}`;
   } else {
     let val = branch.value;
-    if (v?.varType === 'string' || v?.varType === 'date' || v?.varType === 'time' || v?.varType === 'datetime') val = `"${val}"`;
+    if (v?.varType === 'string' || v?.varType === 'datetime') val = `"${val}"`;
     expr = `${varName} ${branch.operator} ${val}`;
   }
 
@@ -849,6 +849,22 @@ function buildCellListSC(c: CellList, vars: Variable[], nodes: VariableTreeNode[
 
 // ─── Date-Time logic ─────────────────────────────────────────────────────────
 
+function buildDateTimeCellSC(c: CellDateTime, vname: string): string {
+  const mode: DateTimeDisplayMode = c.displayMode ?? 'text';
+  const pre = c.prefix ?? '';
+  const suf = c.suffix ?? '';
+
+  let inner: string;
+  if (mode === 'clock')             inner = `<<print tgRenderClock(${vname})>>`;
+  else if (mode === 'digital')      inner = `<<print tgRenderDigital(${vname})>>`;
+  else if (mode === 'calendar')     inner = `<<print tgRenderCalendar(${vname})>>`;
+  else if (mode === 'clock-calendar')   inner = `<<print tgRenderClockCalendar(${vname})>>`;
+  else if (mode === 'digital-calendar') inner = `<<print tgRenderDigitalCalendar(${vname})>>`;
+  else inner = `<<print tgFormatDate(${vname}, "${c.format || 'DD.MM.YYYY HH:mm'}")>>`;
+
+  return `<span style="display:flex;justify-content:center;align-items:center;width:100%;flex-wrap:wrap">${pre}${inner}${suf}</span>`;
+}
+
 export function buildDateTimeScript(): string {
   return [
     '// ── Date-Time Utils ──',
@@ -859,9 +875,8 @@ export function buildDateTimeScript(): string {
     '  var key = parts[parts.length - 1];',
     '  var val = obj[key];',
     '',
-    '  // Parse value: handle space between date and time for better Date() support',
     '  var date = new Date(String(val).replace(" ", "T"));',
-    '  if (isNaN(date.getTime())) date = new Date();',
+    '  if (isNaN(date.getTime())) return;',
     '',
     '  if (delta.minutes) date.setMinutes(date.getMinutes() + delta.minutes);',
     '  if (delta.hours)   date.setHours(date.getHours() + delta.hours);',
@@ -869,28 +884,91 @@ export function buildDateTimeScript(): string {
     '  if (delta.months)  date.setMonth(date.getMonth() + delta.months);',
     '  if (delta.years)   date.setFullYear(date.getFullYear() + delta.years);',
     '',
-    '  // Manual Local Formatting (avoid UTC shift from toISOString)',
     '  var pad = function(n) { return n < 10 ? "0" + n : n; };',
-    '  var res = date.getFullYear() + "-" + ',
-    '            pad(date.getMonth() + 1) + "-" + ',
-    '            pad(date.getDate()) + " " + ',
-    '            pad(date.getHours()) + ":" + ',
-    '            pad(date.getMinutes());',
-    '  ',
-    '  obj[key] = res;',
+    '  obj[key] = date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) + " " + pad(date.getHours()) + ":" + pad(date.getMinutes());',
     '};',
     '',
     'window.tgFormatDate = function(val, format) {',
     '  var date = new Date(String(val).replace(" ", "T"));',
     '  if (isNaN(date.getTime())) return val;',
+    '  var DAYS_L  = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];',
+    '  var DAYS_S  = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];',
+    '  var MONS_L  = ["January","February","March","April","May","June","July","August","September","October","November","December"];',
+    '  var MONS_S  = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];',
     '  var o = {',
-    '    "DD": ("0" + date.getDate()).slice(-2),',
-    '    "MM": ("0" + (date.getMonth() + 1)).slice(-2),',
-    '    "YYYY": date.getFullYear(),',
-    '    "HH": ("0" + date.getHours()).slice(-2),',
-    '    "mm": ("0" + date.getMinutes()).slice(-2)',
+    '    "dddd": DAYS_L[date.getDay()],',
+    '    "ddd":  DAYS_S[date.getDay()],',
+    '    "MMMM": MONS_L[date.getMonth()],',
+    '    "MMM":  MONS_S[date.getMonth()],',
+    '    "DD":   ("0" + date.getDate()).slice(-2),',
+    '    "MM":   ("0" + (date.getMonth() + 1)).slice(-2),',
+    '    "YYYY": String(date.getFullYear()),',
+    '    "HH":   ("0" + date.getHours()).slice(-2),',
+    '    "mm":   ("0" + date.getMinutes()).slice(-2)',
     '  };',
-    '  return format.replace(/DD|MM|YYYY|HH|mm/g, function(matched) { return o[matched]; });',
+    '  return format.replace(/dddd|ddd|MMMM|MMM|DD|MM|YYYY|HH|mm/g, function(m) { return o[m]; });',
+    '};',
+    '',
+    'window.tgRenderClock = function(val) {',
+    '  var date = new Date(String(val).replace(" ", "T"));',
+    '  if (isNaN(date.getTime())) return String(val);',
+    '  var h = date.getHours() % 12 + date.getMinutes() / 60;',
+    '  var m = date.getMinutes();',
+    '  var PI = Math.PI;',
+    '  var toR = function(deg) { return deg * PI / 180; };',
+    '  var hA = toR(h / 12 * 360 - 90);',
+    '  var mA = toR(m / 60 * 360 - 90);',
+    '  var fx = function(r, a) { return (50 + r * Math.cos(a)).toFixed(1); };',
+    '  var fy = function(r, a) { return (50 + r * Math.sin(a)).toFixed(1); };',
+    '  var marks = "";',
+    '  for (var i = 0; i < 12; i++) {',
+    '    var a = toR(i / 12 * 360 - 90);',
+    '    marks += \'<line x1="\' + fx(43,a) + \'" y1="\' + fy(43,a) + \'" x2="\' + fx(48,a) + \'" y2="\' + fy(48,a) + \'" stroke="currentColor" stroke-width="2"/>\';',
+    '  }',
+    '  return \'<svg viewBox="0 0 100 100" width="60" height="60" style="display:inline-block;vertical-align:middle">\' +',
+    '    \'<circle cx="50" cy="50" r="49" fill="none" stroke="currentColor" stroke-width="1.5"/>\' +',
+    '    marks +',
+    '    \'<line x1="50" y1="50" x2="\' + fx(30,hA) + \'" y2="\' + fy(30,hA) + \'" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>\' +',
+    '    \'<line x1="50" y1="50" x2="\' + fx(40,mA) + \'" y2="\' + fy(40,mA) + \'" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>\' +',
+    '    \'<circle cx="50" cy="50" r="3" fill="currentColor"/>\' +',
+    '    \'</svg>\';',
+    '};',
+    '',
+    'window.tgRenderDigital = function(val) {',
+    '  var date = new Date(String(val).replace(" ", "T"));',
+    '  if (isNaN(date.getTime())) return String(val);',
+    '  var pad = function(n) { return ("0" + n).slice(-2); };',
+    '  return \'<span style="font-family:monospace;font-size:1.4em;letter-spacing:0.05em;display:inline-block;background:rgba(0,0,0,0.35);padding:2px 8px;border-radius:4px">\' + pad(date.getHours()) + \':\' + pad(date.getMinutes()) + \'</span>\';',
+    '};',
+    '',
+    'window.tgRenderCalendar = function(val) {',
+    '  var date = new Date(String(val).replace(" ", "T"));',
+    '  if (isNaN(date.getTime())) return String(val);',
+    '  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];',
+    '  var DAYS   = ["Mo","Tu","We","Th","Fr","Sa","Su"];',
+    '  var yr = date.getFullYear(), mo = date.getMonth(), dy = date.getDate();',
+    '  var first = (new Date(yr, mo, 1).getDay() + 6) % 7;',
+    '  var total = new Date(yr, mo + 1, 0).getDate();',
+    '  var s = \'<table style="border-collapse:collapse;font-size:0.78em;display:inline-table;vertical-align:middle">\';',
+    '  s += \'<caption style="text-align:center;padding-bottom:2px;font-weight:bold">\' + MONTHS[mo] + " " + yr + \'</caption><thead><tr>\';',
+    '  for (var d = 0; d < 7; d++) s += \'<th style="padding:1px 3px;text-align:center;opacity:0.6">\' + DAYS[d] + \'</th>\';',
+    '  s += \'</tr></thead><tbody><tr>\';',
+    '  for (var i = 0; i < first; i++) s += \'<td></td>\';',
+    '  for (var i = 1; i <= total; i++) {',
+    '    if ((i + first - 1) % 7 === 0 && i > 1) s += \'</tr><tr>\';',
+    '    var cur = (i === dy);',
+    '    s += \'<td style="padding:1px 3px;text-align:center\' + (cur ? ";font-weight:bold;outline:1px solid currentColor;border-radius:50%" : "") + \'">\' + i + \'</td>\';',
+    '  }',
+    '  s += \'</tr></tbody></table>\';',
+    '  return s;',
+    '};',
+    '',
+    'window.tgRenderClockCalendar = function(val) {',
+    '  return \'<span style="display:inline-flex;align-items:center;gap:8px">\' + window.tgRenderClock(val) + window.tgRenderCalendar(val) + \'</span>\';',
+    '};',
+    '',
+    'window.tgRenderDigitalCalendar = function(val) {',
+    '  return \'<span style="display:inline-flex;flex-direction:column;align-items:center;gap:4px">\' + window.tgRenderCalendar(val) + window.tgRenderDigital(val) + \'</span>\';',
     '};',
   ].join('\n');
 }
@@ -956,8 +1034,7 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: Variable
     case 'date-time': {
       const v = vars.find(x => x.id === c.variableId);
       const vname = v ? `$${varPath(v, nodes)}` : '$???';
-      const format = (c as CellDateTime).format || 'DD.MM.YYYY HH:mm';
-      return `${c.prefix}<<print tgFormatDate(${vname}, "${format}")>>${c.suffix}`;
+      return buildDateTimeCellSC(c as CellDateTime, vname);
     }
 
     default: return '';
@@ -1106,8 +1183,7 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
     case 'date-time': {
       const v = vars.find(x => x.id === c.variableId);
       const vname = v ? `$${varPath(v, nodes)}` : '$???';
-      const format = (c as CellDateTime).format || 'DD.MM.YYYY HH:mm';
-      inner = `${c.prefix}<<print tgFormatDate(${vname}, "${format}")>>${c.suffix}`;
+      inner = buildDateTimeCellSC(c as CellDateTime, vname);
       break;
     }
   }

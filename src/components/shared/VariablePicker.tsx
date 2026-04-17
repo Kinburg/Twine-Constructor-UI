@@ -201,8 +201,6 @@ export function typeColor(t: VariableType): string {
     case 'string': return 'text-emerald-400';
     case 'boolean': return 'text-amber-400';
     case 'array': return 'text-violet-400';
-    case 'date': return 'text-orange-400';
-    case 'time': return 'text-rose-400';
     case 'datetime': return 'text-pink-400';
     default: return 'text-slate-400';
   }
