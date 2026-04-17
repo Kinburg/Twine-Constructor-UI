@@ -299,6 +299,19 @@ const ua: Translations = {
     initialInventoryNoItems:   'У проєкті немає предметів.',
     isHero:      'Головний герой',
     heroTooltip: 'Головний герой автоматично використовується у взаємодіях з контейнерами — як покупець або той, хто підбирає предмети.',
+    paperdollSection:         'Пепердол',
+    paperdollAddSlot:         '+ Додати слот',
+    paperdollNoSlots:         'Слоти не визначені.',
+    paperdollSlotLabel:       'Назва',
+    paperdollSlotId:          'ID слоту',
+    paperdollRowLabel:        'Рядок',
+    paperdollColLabel:        'Стовпець',
+    paperdollGridCols:        'Стовпців',
+    paperdollGridRows:        'Рядків',
+    paperdollCellSize:        'Розмір комірки (px)',
+    paperdollAllowedItems:    'Дозволені предмети (одягувані)',
+    paperdollPlaceholderIcon: 'Іконка-заповнювач',
+    paperdollConfirmDelete:   (label) => `Видалити слот "${label}"?`,
   },
 
   variables: {
@@ -412,6 +425,11 @@ const ua: Translations = {
     fmtWeekdayFull:           'День + Дата + Час',
     fmtMonthYear:             'Місяць + Рік',
     fmtCustom:                'Довільний…',
+    typePaperdoll:            'Пепердол',
+    paperdollCharLabel:       'Персонаж',
+    paperdollShowLabels:      'Показувати підписи',
+    paperdollClickable:       'Клікабельний (зняти при кліку)',
+    paperdollNoChar:          '— оберіть персонажа —',
   },
 
   rowsEditor: {

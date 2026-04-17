@@ -299,6 +299,19 @@ const en: Translations = {
     initialInventoryNoItems:   'No items defined in project.',
     isHero:      'Main Hero',
     heroTooltip: 'The main hero is used automatically in container interactions and as the buyer/picker in shops and chests.',
+    paperdollSection:         'Paperdoll',
+    paperdollAddSlot:         '+ Add Slot',
+    paperdollNoSlots:         'No slots defined.',
+    paperdollSlotLabel:       'Label',
+    paperdollSlotId:          'Slot ID',
+    paperdollRowLabel:        'Row',
+    paperdollColLabel:        'Col',
+    paperdollGridCols:        'Columns',
+    paperdollGridRows:        'Rows',
+    paperdollCellSize:        'Cell size (px)',
+    paperdollAllowedItems:    'Allowed items (wearable)',
+    paperdollPlaceholderIcon: 'Placeholder icon',
+    paperdollConfirmDelete:   (label) => `Remove slot "${label}"?`,
   },
 
   variables: {
@@ -412,6 +425,11 @@ const en: Translations = {
     fmtWeekdayFull:           'Weekday + Date + Time',
     fmtMonthYear:             'Month + Year',
     fmtCustom:                'Custom…',
+    typePaperdoll:            'Paperdoll',
+    paperdollCharLabel:       'Character',
+    paperdollShowLabels:      'Show labels',
+    paperdollClickable:       'Clickable (unequip on click)',
+    paperdollNoChar:          '— select character —',
   },
 
   rowsEditor: {

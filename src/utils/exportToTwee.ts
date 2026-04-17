@@ -1080,7 +1080,7 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
 
 // ─── Panel → StoryCaption markup ──────────────────────────────────────────────
 
-function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
+function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>, characters?: Character[]): string {
   const c = cell.content;
   // Use flex: N (proportional) so CSS gap is respected without overflow.
   // cell.width is a percentage (e.g. 40), flex: 40 gives the same 40:60 ratio.
@@ -1186,21 +1186,28 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
       inner = buildDateTimeCellSC(c as CellDateTime, vname);
       break;
     }
+
+    case 'paperdoll': {
+      const char = characters?.find(ch => ch.id === c.charId);
+      if (!char?.paperdoll || !char.varName) { inner = ''; break; }
+      inner = buildPaperdollCellSC(char.varName, char.paperdoll, c.showLabels, c.clickable);
+      break;
+    }
   }
 
   return `<span class="tg-cell" style="${flex}">${inner}</span>`;
 }
 
-function rowToSC(row: SidebarRow, vars: Variable[], nodes: VariableTreeNode[], style: PanelStyle, idToName?: Map<string, string>): string {
+function rowToSC(row: SidebarRow, vars: Variable[], nodes: VariableTreeNode[], style: PanelStyle, idToName?: Map<string, string>, characters?: Character[]): string {
   if (row.cells.length === 0) return '';
-  const cells = row.cells.map(c => cellToSC(c, vars, nodes, idToName)).join('');
+  const cells = row.cells.map(c => cellToSC(c, vars, nodes, idToName, characters)).join('');
   const borderStyle = style.showCellBorders
     ? ` border: ${style.borderWidth}px solid ${style.borderColor};`
     : '';
   return `<div class="tg-row" style="height: ${row.height}px;${borderStyle}">${cells}</div>`;
 }
 
-export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
+export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>, characters?: Character[]): string {
   if (panel.tabs.length === 0) return '';
 
   const style: PanelStyle = panel.style ?? DEFAULT_PANEL_STYLE;
@@ -1224,7 +1231,7 @@ export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes
     lines.push(`${kw} $__tgTab eq ${i}>>`);
     // Concatenate rows WITHOUT \n between them — SugarCube's wiki parser converts
     // \n between block-level elements into <p></p> tags (adding 1em vertical space).
-    const rowsHTML = tab.rows.map(r => rowToSC(r, vars, nodes, style, idToName)).filter(Boolean).join('');
+    const rowsHTML = tab.rows.map(r => rowToSC(r, vars, nodes, style, idToName, characters)).filter(Boolean).join('');
     lines.push(outerOpen + rowsHTML + '</div>');
   });
 
@@ -1903,6 +1910,7 @@ export function exportToTwee(project: Project): string {
     buildAudioScript(scenes, project.settings?.audioUnlockText),
     buildInventoryScript(project),
     buildContainerScript(project),
+    buildPaperdollScript(project),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load',
       '$(document).on(":passagedisplay", function() {',
@@ -1915,7 +1923,7 @@ export function exportToTwee(project: Project): string {
   if (storyScript) parts.push(`::StoryScript [script]\n${storyScript}\n`);
 
   // StoryCaption
-  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName);
+  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName, characters);
   if (captionSC) parts.push(`::StoryCaption\n${captionSC}\n`);
 
   // Scene passages
@@ -2185,6 +2193,142 @@ export function buildContainerScript(project: Project): string {
     'Macro.add("tgLootAll", {',
     '  handler: function() { window.tgLootAllItems(this.args[0], this.args[1]); }',
     '});',
+  ].join('\n');
+}
+
+// ─── Paperdoll export helpers ─────────────────────────────────────────────────
+
+/**
+ * Build SugarCube HTML for a paperdoll grid cell in the sidebar panel.
+ * Generates a static CSS-grid container with <<if>> expressions for each slot.
+ */
+function buildPaperdollCellSC(
+  charVarName: string,
+  pd: import('../types').PaperdollConfig,
+  showLabels?: boolean,
+  clickable?: boolean,
+): string {
+  const { gridCols, gridRows, cellSize, slots } = pd;
+  const gridStyle = [
+    'display:grid',
+    `grid-template-columns:repeat(${gridCols},${cellSize}px)`,
+    `grid-template-rows:repeat(${gridRows},${cellSize}px)`,
+    'gap:2px',
+  ].join(';');
+
+  const slotDivs = slots.map(slot => {
+    const equipVar = `$${charVarName}.equipment.${slot.id}`;
+    const cellStyle = [
+      `grid-row:${slot.row}`,
+      `grid-column:${slot.col}`,
+      `width:${cellSize}px`,
+      `height:${cellSize}px`,
+      'box-sizing:border-box',
+      'overflow:hidden',
+      'border:1px solid rgba(100,116,139,0.7)',
+      'border-radius:3px',
+      'position:relative',
+      'background:rgba(15,23,42,0.5)',
+    ].join(';');
+
+    // Empty slot — placeholder icon or subtle indicator
+    const emptySlotContent = slot.placeholderIcon
+      ? `<img src="${slot.placeholderIcon}" style="width:100%;height:100%;object-fit:contain;opacity:0.3;" />`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.4em;opacity:0.2;color:#94a3b8;">○</span></div>`;
+
+    // Label overlay (optional)
+    const label = showLabels
+      ? `<div style="position:absolute;bottom:0;left:0;right:0;font-size:0.6em;text-align:center;background:rgba(0,0,0,0.6);color:#cbd5e1;pointer-events:none;padding:1px 0;">${slot.label}</div>`
+      : '';
+
+    // Equipped state: @src is SugarCube's dynamic attribute syntax (no <<= >> needed)
+    // onclick uses a plain JS helper (tgUnequipJS) — SugarCube macros are NOT valid inside onclick
+    const imgClick = clickable
+      ? ` style="width:100%;height:100%;object-fit:contain;display:block;cursor:pointer;" onclick="tgUnequipJS('${charVarName}','${slot.id}')"`
+      : ` style="width:100%;height:100%;object-fit:contain;display:block;"`;
+
+    const equipped = [
+      `<<if ${equipVar} neq "">>`,
+      `<img @src="$items[${equipVar}].icon"${imgClick}/>`,
+      label,
+      `<<else>>`,
+      emptySlotContent,
+      `<</if>>`,
+    ].join('');
+
+    return `<div class="tg-pd-slot" style="${cellStyle}">${equipped}</div>`;
+  }).join('');
+
+  return `<div class="tg-paperdoll" style="${gridStyle}">${slotDivs}</div>`;
+}
+
+export function buildPaperdollScript(project: Project): string {
+  const hasAnyPaperdoll = project.characters.some(c => c.paperdoll?.slots?.length);
+  if (!hasAnyPaperdoll) return '';
+
+  return [
+    '// ── Paperdoll macros ──',
+    '// tgEquip($charVar, itemVarName) — equips wearable item into its target slot',
+    'Macro.add("tgEquip", {',
+    '  handler: function() {',
+    '    var charVar = this.args[0];',
+    '    var itemName = this.args[1];',
+    '    if (!charVar || !itemName) return;',
+    '    var items = State.variables["items"];',
+    '    var item = items ? items[itemName] : null;',
+    '    if (!item || !item.targetSlot) return;',
+    '    var slot = item.targetSlot;',
+    '    if (!charVar.equipment) charVar.equipment = {};',
+    '    // Unequip anything already in the slot',
+    '    var prev = charVar.equipment[slot];',
+    '    if (prev && charVar.inventory) {',
+    '      var pe = charVar.inventory.find(function(e){ return e.item === prev; });',
+    '      if (pe) pe.equipped = false;',
+    '    }',
+    '    charVar.equipment[slot] = itemName;',
+    '    // Mark as equipped in inventory',
+    '    if (charVar.inventory) {',
+    '      var e = charVar.inventory.find(function(e){ return e.item === itemName; });',
+    '      if (e) e.equipped = true;',
+    '    }',
+    '  }',
+    '});',
+    '',
+    '// tgUnequip($charVar, slotId) — unequips item from named slot',
+    'Macro.add("tgUnequip", {',
+    '  handler: function() {',
+    '    var charVar = this.args[0];',
+    '    var slotId = this.args[1];',
+    '    if (!charVar || !slotId || !charVar.equipment) return;',
+    '    var itemName = charVar.equipment[slotId];',
+    '    charVar.equipment[slotId] = "";',
+    '    if (itemName && charVar.inventory) {',
+    '      var e = charVar.inventory.find(function(e){ return e.item === itemName; });',
+    '      if (e) e.equipped = false;',
+    '    }',
+    '  }',
+    '});',
+    '',
+    '// tgIsEquipped(charVar, itemVarName) → boolean (use in expressions)',
+    'window.tgIsEquipped = function(charVar, itemName) {',
+    '  if (!charVar || !charVar.equipment || !itemName) return false;',
+    '  return Object.values(charVar.equipment).indexOf(itemName) !== -1;',
+    '};',
+    '',
+    '// tgUnequipJS(charVarName, slotId) — called from onclick attributes in paperdoll cells',
+    '// Uses plain JS (not SugarCube macros) so it is safe inside HTML event handlers.',
+    'window.tgUnequipJS = function(charVarName, slotId) {',
+    '  var ch = State.variables[charVarName];',
+    '  if (!ch || !ch.equipment) return;',
+    '  var prev = ch.equipment[slotId];',
+    '  if (!prev) return;',
+    '  ch.equipment[slotId] = "";',
+    '  if (ch.inventory) {',
+    '    var e = ch.inventory.find(function(e){ return e.item === prev; });',
+    '    if (e) e.equipped = false;',
+    '  }',
+    '  UIBar.update();',
+    '};',
   ].join('\n');
 }
 

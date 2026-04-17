@@ -5,6 +5,7 @@ import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
   CellButton, CellList, CellAudioVolume, CellImageGen, CellImageFromVar, CellDateTime,
+  CellPaperdoll,
   ButtonAction, ButtonStyle, VarOperator,
   Variable, AssetTreeNode,
 } from '../../types';
@@ -526,6 +527,7 @@ function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type'
     list:             t.cellModal.typeList,
     'audio-volume':   t.cellModal.typeAudioVolume,
     'date-time':      t.cellModal.typeDateTime,
+    paperdoll:        t.cellModal.typePaperdoll,
   };
   return m[type];
 }
@@ -665,6 +667,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'list':           return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
     case 'audio-volume':   return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
     case 'date-time':      return { type: 'date-time', variableId: '', format: 'DD.MM.YYYY HH:mm', prefix: '', suffix: '' } as CellDateTime;
+    case 'paperdoll':      return { type: 'paperdoll', charId: '', showLabels: false, clickable: false } as CellPaperdoll;
   }
 }
 
@@ -696,6 +699,7 @@ function CellEditModal({
     { value: 'list',           label: t.cellModal.typeList },
     { value: 'audio-volume',   label: t.cellModal.typeAudioVolume },
     { value: 'date-time',      label: t.cellModal.typeDateTime },
+    { value: 'paperdoll',      label: t.cellModal.typePaperdoll },
   ];
 
   const handleTypeChange = (type: CellContent['type']) => {
@@ -940,6 +944,35 @@ function CellEditModal({
             onChange={patch => onUpdateContent({ ...c, ...patch })}
             Field={MField}
           />
+        )}
+
+        {c.type === 'paperdoll' && (
+          <>
+            <MField label={t.cellModal.paperdollCharLabel}>
+              <select
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                value={c.charId}
+                onChange={e => onUpdateContent({ ...c, charId: e.target.value })}
+              >
+                <option value="">{t.cellModal.paperdollNoChar}</option>
+                {project.characters.map(ch => (
+                  <option key={ch.id} value={ch.id}>
+                    {ch.name}{ch.paperdoll ? ` (${ch.paperdoll.slots.length})` : ''}
+                  </option>
+                ))}
+              </select>
+            </MField>
+            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" checked={c.showLabels ?? false}
+                onChange={e => onUpdateContent({ ...c, showLabels: e.target.checked })} />
+              {t.cellModal.paperdollShowLabels}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" checked={c.clickable ?? false}
+                onChange={e => onUpdateContent({ ...c, clickable: e.target.checked })} />
+              {t.cellModal.paperdollClickable}
+            </label>
+          </>
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"

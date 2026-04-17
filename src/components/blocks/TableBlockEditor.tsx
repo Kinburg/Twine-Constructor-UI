@@ -31,6 +31,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'list':           return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' };
     case 'audio-volume':   return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
     case 'date-time':      return { type: 'date-time', variableId: '', format: 'DD.MM.YYYY HH:mm', prefix: '', suffix: '' } as CellDateTime;
+    case 'paperdoll':      return { type: 'paperdoll', charId: '', showLabels: false, clickable: false };
   }
 }
 
@@ -430,6 +431,7 @@ function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type'
     list:             t.cellModal.typeList,
     'audio-volume':   t.cellModal.typeAudioVolume,
     'date-time':      t.cellModal.typeDateTime,
+    paperdoll:        t.cellModal.typePaperdoll,
   };
   return m[type];
 }

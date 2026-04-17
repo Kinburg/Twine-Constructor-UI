@@ -4,7 +4,7 @@ import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
-import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds, CharacterInventorySlot, ItemDefinition } from '../../types';
+import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds, CharacterInventorySlot, ItemDefinition, PaperdollConfig, PaperdollSlot } from '../../types';
 import { useT } from '../../i18n';
 import { AvatarGenModal } from './AvatarGenModal';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
@@ -117,7 +117,7 @@ interface Props {
 
 export function CharacterModal({ mode, charId, initial, takenNames, takenVarNames, onSave, onClose }: Props) {
   const t = useT();
-  const { project, addVariable, addVariableGroup, updateVariable, deleteVariableNode } = useProjectStore();
+  const { project, addVariable, addVariableGroup, updateVariable, deleteVariableNode, addPaperdollSlot, updatePaperdollSlot, deletePaperdollSlot, setPaperdollConfig } = useProjectStore();
   const assetNodes = project.assetNodes;
 
   const [name, setName] = useState(initial.name);
@@ -142,6 +142,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
     initial.llm_temperature !== undefined ? String(initial.llm_temperature) : ''
   );
   const [initialInventory, setInitialInventory] = useState<CharacterInventorySlot[]>(initial.initialInventory ?? []);
+  const [localPaperdoll, setLocalPaperdoll] = useState<PaperdollConfig | undefined>(initial.paperdoll);
   const [isHero, setIsHero] = useState(initial.isHero ?? false);
 
   const handleNameChange = (v: string) => {
@@ -169,7 +170,13 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
   const [pregenVarIds] = useState<CharacterVarIds | null>(() => mode === 'create' ? pregenCharVarIds() : null);
 
   const parsedTemp = llmTemperature !== '' ? parseFloat(llmTemperature) : undefined;
-  const draft: Omit<Character, 'id'> = { name, varName, nameColor, textColor, bgColor, borderColor, avatarConfig: avatarCfg, llm_descr: llmDescr, llm_temperature: parsedTemp, initialInventory, isHero };
+  // paperdoll only included in create mode — in edit mode it's managed live via store actions
+  const draft: Omit<Character, 'id'> = {
+    name, varName, nameColor, textColor, bgColor, borderColor,
+    avatarConfig: avatarCfg, llm_descr: llmDescr, llm_temperature: parsedTemp,
+    initialInventory, isHero,
+    ...(mode === 'create' ? { paperdoll: localPaperdoll } : {}),
+  };
 
   const trimmedName = name.trim();
   const nameError = trimmedName === ''
@@ -406,6 +413,20 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
             slots={initialInventory}
             items={project.items ?? []}
             onChange={setInitialInventory}
+          />
+
+          {/* Paperdoll */}
+          <PaperdollEditor
+            mode={mode}
+            charId={charId}
+            localConfig={localPaperdoll}
+            onChange={setLocalPaperdoll}
+            items={project.items ?? []}
+            addPaperdollSlot={addPaperdollSlot}
+            updatePaperdollSlot={updatePaperdollSlot}
+            deletePaperdollSlot={deletePaperdollSlot}
+            setPaperdollConfig={setPaperdollConfig}
+            liveChar={mode === 'edit' && charId ? project.characters.find(c => c.id === charId) : undefined}
           />
 
           {/* Custom variables */}
@@ -779,6 +800,244 @@ function InitialInventoryEditor({
               {t.characters.initialInventoryAdd}
             </button>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Multi-checkbox dropdown ──────────────────────────────────────────────────
+
+function MultiCheckboxDropdown({
+  label,
+  items,
+  selected,
+  onChange,
+}: {
+  label: string;
+  items: { id: string; label: string }[];
+  selected: string[];
+  onChange: (ids: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const count = selected.length;
+
+  return (
+    <div className="flex flex-col gap-0.5 relative">
+      <span className="text-[10px] text-slate-500">{label}:</span>
+      <button
+        type="button"
+        className="flex items-center justify-between w-full bg-slate-700 text-xs text-slate-300 rounded px-1.5 py-1 border border-slate-600 hover:border-slate-500 cursor-pointer text-left"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span>{count > 0 ? `${count} selected` : 'Any wearable'}</span>
+        <span className="text-slate-500 text-[10px]">{open ? '▲' : '▼'}</span>
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 right-0 z-20 bg-slate-800 border border-slate-600 rounded shadow-xl mt-0.5 max-h-36 overflow-y-auto">
+          {items.map(it => (
+            <label key={it.id} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-700 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="accent-indigo-500 shrink-0"
+                checked={selected.includes(it.id)}
+                onChange={e => {
+                  const updated = e.target.checked
+                    ? [...selected, it.id]
+                    : selected.filter(id => id !== it.id);
+                  onChange(updated);
+                }}
+              />
+              <span className="text-xs text-slate-300">{it.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Paperdoll Editor ─────────────────────────────────────────────────────────
+
+function PaperdollEditor({
+  mode,
+  charId,
+  localConfig,
+  onChange,
+  items,
+  addPaperdollSlot,
+  updatePaperdollSlot,
+  deletePaperdollSlot,
+  setPaperdollConfig,
+  liveChar,
+}: {
+  mode: 'create' | 'edit';
+  charId?: string;
+  localConfig?: PaperdollConfig;
+  onChange: (c: PaperdollConfig | undefined) => void;
+  items: ItemDefinition[];
+  addPaperdollSlot: (charId: string, slot: Omit<PaperdollSlot, 'id'>) => void;
+  updatePaperdollSlot: (charId: string, slotId: string, patch: Partial<Omit<PaperdollSlot, 'id'>>) => void;
+  deletePaperdollSlot: (charId: string, slotId: string) => void;
+  setPaperdollConfig: (charId: string, config: PaperdollConfig | undefined) => void;
+  liveChar?: Character;
+}) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+
+  // In edit mode, source of truth is the live store char; in create mode, local state
+  const config = mode === 'edit' ? liveChar?.paperdoll : localConfig;
+  const slots = config?.slots ?? [];
+
+  const defaultConfig = (): PaperdollConfig => ({ gridCols: 3, gridRows: 4, cellSize: 64, slots: [] });
+
+  const handleAddSlot = () => {
+    const slotData: Omit<PaperdollSlot, 'id'> = { label: 'New Slot', row: 1, col: 1 };
+    if (mode === 'edit' && charId) {
+      addPaperdollSlot(charId, slotData);
+    } else {
+      const cur = localConfig ?? defaultConfig();
+      // Derive a clean ID (store logic mirrors addPaperdollSlot)
+      const base = 'new_slot';
+      let id = base;
+      let n = 2;
+      while (cur.slots.some(s => s.id === id)) { id = `${base}${n++}`; }
+      onChange({ ...cur, slots: [...cur.slots, { ...slotData, id }] });
+    }
+    if (!open) setOpen(true);
+  };
+
+  const handleDeleteSlot = (slotId: string) => {
+    if (mode === 'edit' && charId) {
+      deletePaperdollSlot(charId, slotId);
+    } else {
+      const cur = localConfig ?? defaultConfig();
+      onChange({ ...cur, slots: cur.slots.filter(s => s.id !== slotId) });
+    }
+  };
+
+  const handleUpdateSlot = (slotId: string, patch: Partial<Omit<PaperdollSlot, 'id'>>) => {
+    if (mode === 'edit' && charId) {
+      updatePaperdollSlot(charId, slotId, patch);
+    } else {
+      const cur = localConfig ?? defaultConfig();
+      onChange({ ...cur, slots: cur.slots.map(s => s.id === slotId ? { ...s, ...patch } : s) });
+    }
+  };
+
+  const handleGridChange = (patch: Partial<Pick<PaperdollConfig, 'gridCols' | 'gridRows' | 'cellSize'>>) => {
+    const cur = config ?? defaultConfig();
+    const next: PaperdollConfig = { ...cur, ...patch };
+    if (mode === 'edit' && charId) {
+      setPaperdollConfig(charId, next);
+    } else {
+      onChange(next);
+    }
+  };
+
+  const wearableItems = items.filter(i => i.category === 'wearable');
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer py-0.5 text-left"
+        onClick={() => setOpen(v => !v)}
+      >
+        <span className="text-slate-600 text-[10px]">{open ? '▼' : '▶'}</span>
+        <span className="font-medium">{t.characters.paperdollSection}</span>
+        {slots.length > 0 && <span className="text-slate-600 font-mono">({slots.length})</span>}
+      </button>
+
+      {open && (
+        <div className="flex flex-col gap-2 pl-1 border-l border-slate-700/60 mt-0.5">
+          {/* Grid settings */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {([
+              { key: 'gridCols' as const, label: t.characters.paperdollGridCols, def: 3 },
+              { key: 'gridRows' as const, label: t.characters.paperdollGridRows, def: 4 },
+              { key: 'cellSize' as const, label: t.characters.paperdollCellSize, def: 64 },
+            ] as const).map(({ key, label, def }) => (
+              <div key={key} className="flex items-center gap-1 shrink-0">
+                <span className="text-[10px] text-slate-500">{label}</span>
+                <input
+                  type="number"
+                  min={1}
+                  className="w-14 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+                  value={config?.[key] ?? def}
+                  onChange={e => handleGridChange({ [key]: Math.max(1, parseInt(e.target.value) || 1) })}
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Slot list */}
+          {slots.length === 0 ? (
+            <p className="text-xs text-slate-600 italic py-1 pl-2">{t.characters.paperdollNoSlots}</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {slots.map(slot => (
+                <div key={slot.id} className="flex flex-col gap-1 border border-slate-700/50 rounded p-1.5 bg-slate-800/40">
+                  <div className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      placeholder={t.characters.paperdollSlotLabel}
+                      className="flex-1 min-w-0 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+                      value={slot.label}
+                      onChange={e => handleUpdateSlot(slot.id, { label: e.target.value })}
+                    />
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <span className="text-[10px] text-slate-500">{t.characters.paperdollRowLabel}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        className="w-10 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+                        value={slot.row}
+                        onChange={e => handleUpdateSlot(slot.id, { row: Math.max(1, parseInt(e.target.value) || 1) })}
+                      />
+                    </div>
+                    <div className="flex items-center gap-0.5 shrink-0">
+                      <span className="text-[10px] text-slate-500">{t.characters.paperdollColLabel}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        className="w-10 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+                        value={slot.col}
+                        onChange={e => handleUpdateSlot(slot.id, { col: Math.max(1, parseInt(e.target.value) || 1) })}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      className="text-slate-600 hover:text-red-400 transition-colors cursor-pointer text-xs shrink-0"
+                      onClick={() => handleDeleteSlot(slot.id)}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-slate-600">{t.characters.paperdollSlotId}:</span>
+                    <span className="text-[10px] text-slate-500 font-mono">{slot.id}</span>
+                  </div>
+                  {wearableItems.length > 0 && (
+                    <MultiCheckboxDropdown
+                      label={t.characters.paperdollAllowedItems}
+                      items={wearableItems.map(it => ({ id: it.id, label: it.name }))}
+                      selected={slot.allowedItemIds ?? []}
+                      onChange={ids => handleUpdateSlot(slot.id, { allowedItemIds: ids.length ? ids : undefined })}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="text-xs text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600 mt-0.5"
+            onClick={handleAddSlot}
+          >
+            {t.characters.paperdollAddSlot}
+          </button>
         </div>
       )}
     </div>

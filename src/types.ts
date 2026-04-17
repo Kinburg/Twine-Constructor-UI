@@ -593,6 +593,27 @@ export interface CharacterVarIds {
   llmTemperatureVarId?: string; // $prefix_llm_temperature variable id
   inventoryVarId?: string;  // $chars.{name}.inventory array variable id
   moneyVarId?: string;      // $chars.{name}.money number variable id
+  equipmentGroupId?: string; // $chars.{name}.equipment VariableGroup id
+}
+
+// ─── Paperdoll ───────────────────────────────────────────────────────────────
+
+/** One named slot in a paperdoll grid (e.g. head, chest, weapon) */
+export interface PaperdollSlot {
+  id: string;           // used as key in $chars.hero.equipment and as variable name
+  label: string;        // display name shown in editor, e.g. "Head"
+  row: number;          // grid row (1-based)
+  col: number;          // grid column (1-based)
+  allowedItemIds?: string[];  // optional whitelist of item IDs; empty = any wearable
+  placeholderIcon?: string;   // asset path for empty-slot placeholder image
+}
+
+/** Paperdoll layout config attached to a Character */
+export interface PaperdollConfig {
+  slots: PaperdollSlot[];
+  gridCols: number;   // total columns in grid (default 3)
+  gridRows: number;   // total rows in grid (default 4)
+  cellSize: number;   // px per cell (default 64)
 }
 
 export type AvatarMode = 'static' | 'bound';
@@ -670,6 +691,8 @@ export interface Character {
   avatarConfig?: AvatarConfig;
   /** Items the character starts the story with. */
   initialInventory?: CharacterInventorySlot[];
+  /** Paperdoll equipment slot configuration. */
+  paperdoll?: PaperdollConfig;
   /** Auto-created variable group. Absent on characters from old saves. */
   varIds?: CharacterVarIds;
   /** Marks this character as the main hero (used automatically in container interactions). */
@@ -966,6 +989,14 @@ export interface CellDateTime {
   suffix?: string;
 }
 
+/** Displays a character's paperdoll (equipment grid) in a sidebar panel cell */
+export interface CellPaperdoll {
+  type: 'paperdoll';
+  charId: string;
+  showLabels?: boolean;
+  clickable?: boolean;
+}
+
 export type CellContent =
   | CellText
   | CellVariable
@@ -978,7 +1009,8 @@ export type CellContent =
   | CellButton
   | CellList
   | CellAudioVolume
-  | CellDateTime;
+  | CellDateTime
+  | CellPaperdoll;
 
 export interface SidebarCell {
   id: string;

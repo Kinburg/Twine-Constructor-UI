@@ -10,6 +10,7 @@ import type {
   Watcher,
   ItemDefinition, ItemVarIds, ItemCategory,
   ContainerDefinition, ContainerVarIds, ContainerItemSlot,
+  PaperdollSlot, PaperdollConfig,
 } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, flattenAssets, hasSiblingNameConflict } from '../utils/treeUtils';
@@ -792,6 +793,34 @@ function migrateCharacterMoneyVar(p: Project): Project {
   return changed ? { ...p, variableNodes, characters } : p;
 }
 
+// ─── Paperdoll helpers ────────────────────────────────────────────────────────
+
+/**
+ * Find or create the 'equipment' VariableGroup under a character's group.
+ * Returns updated tree + the equipment group id.
+ */
+function findOrCreateCharEquipmentGroup(
+  variableNodes: VariableTreeNode[],
+  charGroupId: string,
+  existingEquipmentGroupId?: string,
+): { nodes: VariableTreeNode[]; equipmentGroupId: string } {
+  if (existingEquipmentGroupId) {
+    return { nodes: variableNodes, equipmentGroupId: existingEquipmentGroupId };
+  }
+  const equipmentGroupId = uuid();
+  const equipmentGroup: VariableGroup = {
+    kind: 'group', id: equipmentGroupId,
+    name: 'equipment',
+    children: [],
+  };
+  const nodes = addNode(
+    variableNodes as AnyNode[],
+    charGroupId,
+    equipmentGroup as AnyNode,
+  ) as VariableTreeNode[];
+  return { nodes, equipmentGroupId };
+}
+
 /**
  * Add avatarConfig to characters created before AvatarConfig was introduced.
  * Converts legacy avatarUrl → avatarConfig { mode: 'static', src: avatarUrl }.
@@ -962,6 +991,7 @@ function migrateProject(raw: any): Project {
   p.characters = (p.characters as any[]).map((c: any) => ({
     ...c,
     initialInventory: c.initialInventory ?? [],
+    // paperdoll is optional — no default needed, undefined = feature not used
   }));
 
   if (!p.watchers) p.watchers = [];
@@ -1079,6 +1109,12 @@ interface ProjectState {
   addCharacter: (char: Omit<Character, 'id'>, pregenIds?: CharacterVarIds, pendingNodes?: VariableTreeNode[]) => string;
   updateCharacter: (id: string, patch: Partial<Character>) => void;
   deleteCharacter: (id: string) => void;
+
+  // Paperdoll
+  setPaperdollConfig: (charId: string, config: PaperdollConfig | undefined) => void;
+  addPaperdollSlot: (charId: string, slot: Omit<PaperdollSlot, 'id'>) => void;
+  updatePaperdollSlot: (charId: string, slotId: string, patch: Partial<Omit<PaperdollSlot, 'id'>>) => void;
+  deletePaperdollSlot: (charId: string, slotId: string) => void;
 
   // Items
   addItem: (item: Omit<ItemDefinition, 'id' | 'varIds'>) => string;
@@ -1813,12 +1849,35 @@ export const useProjectStore = create<ProjectState>()(
               llm_descr: char.llm_descr,
               llm_temperature: char.llm_temperature,
             }, pregenIds, pendingNodes);
-            const character: Character = { ...char, id: charId, varIds };
+            let finalGroup = group;
+            let finalVarIds = varIds;
+
+            // If the character has paperdoll slots, create the equipment VariableGroup + slot vars
+            if (char.paperdoll?.slots?.length) {
+              const equipmentGroupId = uuid();
+              const slotVars = char.paperdoll.slots.map(sl => ({
+                kind: 'variable' as const,
+                id: uuid(),
+                name: sl.id,
+                varType: 'string' as const,
+                defaultValue: '',
+                description: `Paperdoll slot "${sl.label}" for character "${char.name}"`,
+              }));
+              const equipmentGroup: VariableGroup = {
+                kind: 'group', id: equipmentGroupId,
+                name: 'equipment',
+                children: slotVars,
+              };
+              finalGroup = { ...group, children: [...group.children, equipmentGroup] };
+              finalVarIds = { ...varIds, equipmentGroupId };
+            }
+
+            const character: Character = { ...char, id: charId, varIds: finalVarIds };
             return {
               project: {
                 ...s.project,
                 characters: [...s.project.characters, character],
-                variableNodes: [...s.project.variableNodes, group],
+                variableNodes: [...s.project.variableNodes, finalGroup],
               },
             };
           });
@@ -1917,6 +1976,140 @@ export const useProjectStore = create<ProjectState>()(
                 ...s.project,
                 characters: s.project.characters.filter(c => c.id !== id),
                 variableNodes,
+              },
+            };
+          });
+        },
+
+        // ── Paperdoll ─────────────────────────────────────────────────────────
+
+        setPaperdollConfig: (charId, config) =>
+          set(s => ({
+            project: {
+              ...s.project,
+              characters: s.project.characters.map(c =>
+                c.id === charId ? { ...c, paperdoll: config } : c,
+              ),
+            },
+          })),
+
+        addPaperdollSlot: (charId, slotData) => {
+          get().saveSnapshot();
+          set(s => {
+            const char = s.project.characters.find(c => c.id === charId);
+            if (!char?.varIds) return s;
+
+            // Derive a clean variable-friendly ID from the label
+            const base = (slotData.label || 'slot')
+              .toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+            const safeBase = /^[a-z]/.test(base) ? base || 'slot' : 'slot';
+            const existing = char.paperdoll?.slots ?? [];
+            let slotId = safeBase;
+            let n = 2;
+            while (existing.some(s => s.id === slotId)) { slotId = `${safeBase}${n++}`; }
+
+            const slot: PaperdollSlot = { ...slotData, id: slotId };
+
+            // Find or create equipment VariableGroup under this character's group
+            const { nodes: varNodes, equipmentGroupId } = findOrCreateCharEquipmentGroup(
+              s.project.variableNodes,
+              char.varIds.groupId,
+              char.varIds.equipmentGroupId,
+            );
+
+            // Add a string variable for this slot (default = "" = nothing equipped)
+            const slotVar: Variable = {
+              kind: 'variable', id: uuid(),
+              name: slotId,
+              varType: 'string',
+              defaultValue: '',
+              description: `Paperdoll slot "${slot.label}" for character "${char.name}"`,
+            };
+            const finalNodes = addNode(varNodes as AnyNode[], equipmentGroupId, slotVar as AnyNode) as VariableTreeNode[];
+
+            const updatedPaperdoll: PaperdollConfig = {
+              gridCols: char.paperdoll?.gridCols ?? 3,
+              gridRows: char.paperdoll?.gridRows ?? 4,
+              cellSize: char.paperdoll?.cellSize ?? 64,
+              slots: [...(char.paperdoll?.slots ?? []), slot],
+            };
+            const updatedVarIds: typeof char.varIds = { ...char.varIds, equipmentGroupId };
+
+            return {
+              project: {
+                ...s.project,
+                variableNodes: finalNodes,
+                characters: s.project.characters.map(c =>
+                  c.id === charId
+                    ? { ...c, paperdoll: updatedPaperdoll, varIds: updatedVarIds }
+                    : c,
+                ),
+              },
+            };
+          });
+        },
+
+        updatePaperdollSlot: (charId, slotId, patch) =>
+          set(s => ({
+            project: {
+              ...s.project,
+              characters: s.project.characters.map(c => {
+                if (c.id !== charId || !c.paperdoll) return c;
+                return {
+                  ...c,
+                  paperdoll: {
+                    ...c.paperdoll,
+                    slots: c.paperdoll.slots.map(sl =>
+                      sl.id === slotId ? { ...sl, ...patch } : sl,
+                    ),
+                  },
+                };
+              }),
+            },
+          })),
+
+        deletePaperdollSlot: (charId, slotId) => {
+          get().saveSnapshot();
+          set(s => {
+            const char = s.project.characters.find(c => c.id === charId);
+            if (!char?.paperdoll) return s;
+
+            // Remove the slot variable from the equipment group
+            // The variable name equals slotId, find it by name inside the equipment group
+            let variableNodes = s.project.variableNodes;
+            if (char.varIds?.equipmentGroupId) {
+              // Find the variable node with name === slotId inside the equipment group
+              const findVarId = (nodes: VariableTreeNode[], groupId: string, varName: string): string | null => {
+                for (const n of nodes) {
+                  if (n.kind === 'group' && n.id === groupId) {
+                    const v = n.children.find(ch => ch.kind === 'variable' && ch.name === varName);
+                    return v ? v.id : null;
+                  }
+                  if (n.kind === 'group') {
+                    const found = findVarId(n.children, groupId, varName);
+                    if (found) return found;
+                  }
+                }
+                return null;
+              };
+              const varId = findVarId(variableNodes, char.varIds.equipmentGroupId, slotId);
+              if (varId) {
+                variableNodes = removeNode(variableNodes as AnyNode[], varId) as VariableTreeNode[];
+              }
+            }
+
+            const updatedPaperdoll: PaperdollConfig = {
+              ...char.paperdoll,
+              slots: char.paperdoll.slots.filter(sl => sl.id !== slotId),
+            };
+
+            return {
+              project: {
+                ...s.project,
+                variableNodes,
+                characters: s.project.characters.map(c =>
+                  c.id === charId ? { ...c, paperdoll: updatedPaperdoll } : c,
+                ),
               },
             };
           });

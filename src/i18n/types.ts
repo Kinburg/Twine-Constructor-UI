@@ -321,6 +321,19 @@ export interface Translations {
     initialInventoryNoItems: string;
     isHero: string;
     heroTooltip: string;
+    paperdollSection: string;
+    paperdollAddSlot: string;
+    paperdollNoSlots: string;
+    paperdollSlotLabel: string;
+    paperdollSlotId: string;
+    paperdollRowLabel: string;
+    paperdollColLabel: string;
+    paperdollGridCols: string;
+    paperdollGridRows: string;
+    paperdollCellSize: string;
+    paperdollAllowedItems: string;
+    paperdollPlaceholderIcon: string;
+    paperdollConfirmDelete: (label: string) => string;
   };
 
   // ─── Variables ──────────────────────────────────────────────────────────────
@@ -437,6 +450,12 @@ export interface Translations {
     fmtWeekdayFull: string;
     fmtMonthYear: string;
     fmtCustom: string;
+    // ── Paperdoll cell fields ──
+    typePaperdoll: string;
+    paperdollCharLabel: string;
+    paperdollShowLabels: string;
+    paperdollClickable: string;
+    paperdollNoChar: string;
   };
 
   // ─── Shared: rows/cells editor UI (Panel + Table) ──────────────────────────

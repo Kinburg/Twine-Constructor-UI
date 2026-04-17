@@ -1,7 +1,7 @@
 import type { Project, ProjectSettings, Character } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildContainerScript, buildContainerCSS, buildDateTimeScript } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript } from './exportToTwee';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -152,7 +152,7 @@ export function buildPassages(project: Project): {
   }
 
   // StoryCaption (sidebar panel)
-  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName);
+  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName, project.characters);
   if (captionSC) {
     passages.push({
       pid: pid++, name: 'StoryCaption', tags: '',
@@ -200,6 +200,7 @@ export function buildPassages(project: Project): {
     buildAudioScript(scenes, project.settings?.audioUnlockText),
     buildInventoryScript(project),
     buildContainerScript(project),
+    buildPaperdollScript(project),
     buildPurlSignatureScript(),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load (audio + video)',
