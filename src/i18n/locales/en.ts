@@ -309,7 +309,9 @@ const en: Translations = {
     paperdollGridCols:        'Columns',
     paperdollGridRows:        'Rows',
     paperdollCellSize:        'Cell size (px)',
-    paperdollAllowedItems:    'Allowed items (wearable)',
+    paperdollDefaultItem:     'Default equipped item',
+    paperdollDefaultItemNone: '— none —',
+    paperdollSlotClickable:   'Click to equip/unequip',
     paperdollPlaceholderIcon: 'Placeholder icon',
     paperdollConfirmDelete:   (label) => `Remove slot "${label}"?`,
   },
@@ -428,7 +430,6 @@ const en: Translations = {
     typePaperdoll:            'Paperdoll',
     paperdollCharLabel:       'Character',
     paperdollShowLabels:      'Show labels',
-    paperdollClickable:       'Clickable (unequip on click)',
     paperdollNoChar:          '— select character —',
   },
 

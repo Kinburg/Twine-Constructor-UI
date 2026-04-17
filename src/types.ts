@@ -600,12 +600,13 @@ export interface CharacterVarIds {
 
 /** One named slot in a paperdoll grid (e.g. head, chest, weapon) */
 export interface PaperdollSlot {
-  id: string;           // used as key in $chars.hero.equipment and as variable name
-  label: string;        // display name shown in editor, e.g. "Head"
-  row: number;          // grid row (1-based)
-  col: number;          // grid column (1-based)
-  allowedItemIds?: string[];  // optional whitelist of item IDs; empty = any wearable
-  placeholderIcon?: string;   // asset path for empty-slot placeholder image
+  id: string;                   // used as key in $chars.hero.equipment and as variable name
+  label: string;                // display name shown in editor, e.g. "Head"
+  row: number;                  // grid row (1-based)
+  col: number;                  // grid column (1-based)
+  defaultItemVarName?: string;  // item varName that starts equipped in this slot
+  clickable?: boolean;          // whether clicking this slot unequips the item at runtime
+  placeholderIcon?: string;     // asset path for empty-slot placeholder image
 }
 
 /** Paperdoll layout config attached to a Character */
@@ -994,7 +995,6 @@ export interface CellPaperdoll {
   type: 'paperdoll';
   charId: string;
   showLabels?: boolean;
-  clickable?: boolean;
 }
 
 export type CellContent =

@@ -309,7 +309,9 @@ const ua: Translations = {
     paperdollGridCols:        'Стовпців',
     paperdollGridRows:        'Рядків',
     paperdollCellSize:        'Розмір комірки (px)',
-    paperdollAllowedItems:    'Дозволені предмети (одягувані)',
+    paperdollDefaultItem:     'Предмет за замовчуванням',
+    paperdollDefaultItemNone: '— немає —',
+    paperdollSlotClickable:   'Клік: екіпірувати/зняти',
     paperdollPlaceholderIcon: 'Іконка-заповнювач',
     paperdollConfirmDelete:   (label) => `Видалити слот "${label}"?`,
   },
@@ -428,7 +430,6 @@ const ua: Translations = {
     typePaperdoll:            'Пепердол',
     paperdollCharLabel:       'Персонаж',
     paperdollShowLabels:      'Показувати підписи',
-    paperdollClickable:       'Клікабельний (зняти при кліку)',
     paperdollNoChar:          '— оберіть персонажа —',
   },
 

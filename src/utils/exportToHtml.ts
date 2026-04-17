@@ -1,7 +1,7 @@
 import type { Project, ProjectSettings, Character } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS } from './exportToTwee';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -138,10 +138,22 @@ export function buildPassages(project: Project): {
   if (hasAudioVolume) inits.push('<<set $__tgMasterVol to 1>>');
   // Initial inventory: push starting items for each character
   for (const char of project.characters) {
-    if (!char.initialInventory?.length || !char.varName) continue;
+    if (!char.varName) continue;
     const charPath = `$${char.varName}`;
+    // Paperdoll default equipment: set slot variables from defaultItemVarName
+    if (char.paperdoll?.slots?.length) {
+      for (const pdSlot of char.paperdoll.slots) {
+        if (pdSlot.defaultItemVarName) {
+          inits.push(`<<set ${charPath}.equipment.${pdSlot.id} to "${pdSlot.defaultItemVarName}">>`);
+        }
+      }
+    }
+    if (!char.initialInventory?.length) continue;
     for (const slot of char.initialInventory) {
-      inits.push(`<<run ${charPath}.inventory.push({ item: "${slot.itemVarName}", qty: ${slot.quantity}, equipped: ${slot.equipped} })>>`);
+      const isDefaultEquipped = char.paperdoll?.slots?.some(
+        ps => ps.defaultItemVarName === slot.itemVarName
+      ) ?? false;
+      inits.push(`<<run ${charPath}.inventory.push({ item: "${slot.itemVarName}", qty: ${slot.quantity}, equipped: ${isDefaultEquipped} })>>`);
     }
   }
   if (inits.length > 0) {
@@ -187,7 +199,8 @@ export function buildPassages(project: Project): {
   const tipCSS       = buildTooltipCSS();
   const globalCSS    = buildGlobalCSS(project.settings);
   const containerCSS = buildContainerCSS();
-  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS, containerCSS].filter(Boolean).join('\n\n');
+  const paperdollCSS = buildPaperdollCSS(project);
+  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS, containerCSS, paperdollCSS].filter(Boolean).join('\n\n');
 
   const settingsScript = buildSettingsScript(project.settings);
   const scriptContent = [

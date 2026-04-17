@@ -1190,7 +1190,7 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
     case 'paperdoll': {
       const char = characters?.find(ch => ch.id === c.charId);
       if (!char?.paperdoll || !char.varName) { inner = ''; break; }
-      inner = buildPaperdollCellSC(char.varName, char.paperdoll, c.showLabels, c.clickable);
+      inner = buildPaperdollCellSC(char.varName, char.paperdoll, c.showLabels);
       break;
     }
   }
@@ -1878,10 +1878,23 @@ export function exportToTwee(project: Project): string {
   if (hasAudioVolume) inits.push('<<set $__tgMasterVol to 1>>');
   // Initial inventory: push starting items for each character
   for (const char of characters) {
-    if (!char.initialInventory?.length || !char.varName) continue;
+    if (!char.varName) continue;
     const charPath = `$${char.varName}`;
+    // Paperdoll default equipment: set slot variables from defaultItemVarName
+    if (char.paperdoll?.slots?.length) {
+      for (const pdSlot of char.paperdoll.slots) {
+        if (pdSlot.defaultItemVarName) {
+          inits.push(`<<set ${charPath}.equipment.${pdSlot.id} to "${pdSlot.defaultItemVarName}">>`);
+        }
+      }
+    }
+    if (!char.initialInventory?.length) continue;
     for (const slot of char.initialInventory) {
-      inits.push(`<<run ${charPath}.inventory.push({ item: "${slot.itemVarName}", qty: ${slot.quantity}, equipped: ${slot.equipped} })>>`);
+      // Mark item as equipped if it matches a paperdoll default
+      const isDefaultEquipped = char.paperdoll?.slots?.some(
+        ps => ps.defaultItemVarName === slot.itemVarName
+      ) ?? false;
+      inits.push(`<<run ${charPath}.inventory.push({ item: "${slot.itemVarName}", qty: ${slot.quantity}, equipped: ${isDefaultEquipped} })>>`);
     }
   }
   if (inits.length > 0) {
@@ -1898,7 +1911,8 @@ export function exportToTwee(project: Project): string {
   const animCSS      = buildAnimationCSS(scenes);
   const tipCSS       = buildTooltipCSS();
   const containerCSS = buildContainerCSS();
-  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS, tipCSS, containerCSS].filter(Boolean).join('\n\n');
+  const paperdollCSS = buildPaperdollCSS(project);
+  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS, tipCSS, containerCSS, paperdollCSS].filter(Boolean).join('\n\n');
   if (allCSS) parts.push(`::StoryStylesheet [stylesheet]\n${allCSS}\n`);
 
   // StoryScript (lightbox + input debounce) — single passage
@@ -2206,7 +2220,6 @@ function buildPaperdollCellSC(
   charVarName: string,
   pd: import('../types').PaperdollConfig,
   showLabels?: boolean,
-  clickable?: boolean,
 ): string {
   const { gridCols, gridRows, cellSize, slots } = pd;
   const gridStyle = [
@@ -2218,7 +2231,8 @@ function buildPaperdollCellSC(
 
   const slotDivs = slots.map(slot => {
     const equipVar = `$${charVarName}.equipment.${slot.id}`;
-    const cellStyle = [
+    const slotLabelNorm = (slot.label || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+    const baseCellStyle = [
       `grid-row:${slot.row}`,
       `grid-column:${slot.col}`,
       `width:${cellSize}px`,
@@ -2229,37 +2243,54 @@ function buildPaperdollCellSC(
       'border-radius:3px',
       'position:relative',
       'background:rgba(15,23,42,0.5)',
-    ].join(';');
+    ];
+    const cellStyle = (slot.clickable ? [...baseCellStyle, 'cursor:pointer'] : baseCellStyle).join(';');
+    const cellClick = slot.clickable
+      ? ` onclick="tgSlotMenu('${charVarName}','${slot.id}','${slotLabelNorm}',event)"`
+      : '';
 
     // Empty slot — placeholder icon or subtle indicator
+    // pointer-events:none so clicks bubble to the wrapping cell div
     const emptySlotContent = slot.placeholderIcon
-      ? `<img src="${slot.placeholderIcon}" style="width:100%;height:100%;object-fit:contain;opacity:0.3;" />`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;"><span style="font-size:1.4em;opacity:0.2;color:#94a3b8;">○</span></div>`;
+      ? `<img src="${slot.placeholderIcon}" style="width:100%;height:100%;object-fit:contain;opacity:0.3;pointer-events:none;" />`
+      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:1.4em;opacity:0.2;color:#94a3b8;">○</span></div>`;
 
     // Label overlay (optional)
     const label = showLabels
       ? `<div style="position:absolute;bottom:0;left:0;right:0;font-size:0.6em;text-align:center;background:rgba(0,0,0,0.6);color:#cbd5e1;pointer-events:none;padding:1px 0;">${slot.label}</div>`
       : '';
 
-    // Equipped state: @src is SugarCube's dynamic attribute syntax (no <<= >> needed)
-    // onclick uses a plain JS helper (tgUnequipJS) — SugarCube macros are NOT valid inside onclick
-    const imgClick = clickable
-      ? ` style="width:100%;height:100%;object-fit:contain;display:block;cursor:pointer;" onclick="tgUnequipJS('${charVarName}','${slot.id}')"`
-      : ` style="width:100%;height:100%;object-fit:contain;display:block;"`;
+    // Equipped image — pointer-events:none so clicks bubble up to the cell div (which has the onclick)
+    const imgStyle = 'width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;';
 
     const equipped = [
       `<<if ${equipVar} neq "">>`,
-      `<img @src="$items[${equipVar}].icon"${imgClick}/>`,
+      `<img @src="$items[${equipVar}].icon" style="${imgStyle}"/>`,
       label,
       `<<else>>`,
       emptySlotContent,
       `<</if>>`,
     ].join('');
 
-    return `<div class="tg-pd-slot" style="${cellStyle}">${equipped}</div>`;
+    return `<div class="tg-pd-slot" style="${cellStyle}"${cellClick}>${equipped}</div>`;
   }).join('');
 
   return `<div class="tg-paperdoll" style="${gridStyle}">${slotDivs}</div>`;
+}
+
+export function buildPaperdollCSS(project: Project): string {
+  const hasAnyPaperdoll = project.characters.some(c => c.paperdoll?.slots?.length);
+  if (!hasAnyPaperdoll) return '';
+  return [
+    '.tg-pd-slot:hover { border-color: rgba(99,102,241,0.8) !important; }',
+    '.tg-pd-menu { position: fixed; z-index: 10000; background: #1a1a2e; border: 1px solid rgba(99,102,241,0.5); border-radius: 4px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); padding: 4px; min-width: 160px; max-height: 60vh; overflow-y: auto; }',
+    '.tg-pd-menu-item { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 3px; cursor: pointer; color: #e2e8f0; font-size: 13px; transition: background 0.1s; }',
+    '.tg-pd-menu-item:hover { background: rgba(99,102,241,0.25); }',
+    '.tg-pd-menu-item.tg-pd-menu-unequip { color: #f87171; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 2px; padding-bottom: 6px; }',
+    '.tg-pd-menu-icon { width: 24px; height: 24px; object-fit: contain; display: inline-block; flex-shrink: 0; }',
+    '.tg-pd-menu-label { flex: 1; white-space: nowrap; }',
+    '.tg-pd-menu-empty { padding: 8px 10px; color: rgba(255,255,255,0.4); font-size: 12px; text-align: center; }',
+  ].join('\n');
 }
 
 export function buildPaperdollScript(project: Project): string {
@@ -2276,8 +2307,8 @@ export function buildPaperdollScript(project: Project): string {
     '    if (!charVar || !itemName) return;',
     '    var items = State.variables["items"];',
     '    var item = items ? items[itemName] : null;',
-    '    if (!item || !item.targetSlot) return;',
-    '    var slot = item.targetSlot;',
+    '    if (!item || !item.slot) return;',
+    '    var slot = item.slot;',
     '    if (!charVar.equipment) charVar.equipment = {};',
     '    // Unequip anything already in the slot',
     '    var prev = charVar.equipment[slot];',
@@ -2291,6 +2322,7 @@ export function buildPaperdollScript(project: Project): string {
     '      var e = charVar.inventory.find(function(e){ return e.item === itemName; });',
     '      if (e) e.equipped = true;',
     '    }',
+    '    UIBar.update();',
     '  }',
     '});',
     '',
@@ -2315,19 +2347,85 @@ export function buildPaperdollScript(project: Project): string {
     '  return Object.values(charVar.equipment).indexOf(itemName) !== -1;',
     '};',
     '',
-    '// tgUnequipJS(charVarName, slotId) — called from onclick attributes in paperdoll cells',
-    '// Uses plain JS (not SugarCube macros) so it is safe inside HTML event handlers.',
-    'window.tgUnequipJS = function(charVarName, slotId) {',
+    '// tgSlotMenu(charVarName, slotId, slotLabelNorm, event) — open a popup menu to equip/unequip',
+    '// Shows compatible items from the character inventory + an Unequip option.',
+    'window.tgSlotMenu = function(charVarName, slotId, slotLabelNorm, ev) {',
+    '  if (ev) { ev.stopPropagation(); ev.preventDefault(); }',
     '  var ch = State.variables[charVarName];',
-    '  if (!ch || !ch.equipment) return;',
-    '  var prev = ch.equipment[slotId];',
-    '  if (!prev) return;',
-    '  ch.equipment[slotId] = "";',
-    '  if (ch.inventory) {',
-    '    var e = ch.inventory.find(function(e){ return e.item === prev; });',
-    '    if (e) e.equipped = false;',
+    '  if (!ch) return;',
+    '  if (!ch.equipment) ch.equipment = {};',
+    '  if (!ch.inventory) ch.inventory = [];',
+    '  var items = State.variables["items"] || {};',
+    '  var currentEquipped = ch.equipment[slotId] || "";',
+    '  // Compatible: inventory entries whose item.slot matches slotId or normalized label',
+    '  var compatible = ch.inventory.filter(function(entry) {',
+    '    var it = items[entry.item];',
+    '    if (!it || !it.slot) return false;',
+    '    var nslot = String(it.slot).toLowerCase().replace(/\\s+/g,"_").replace(/[^a-z0-9_]/g,"");',
+    '    return nslot === slotId || nslot === slotLabelNorm;',
+    '  });',
+    '  // Remove any existing menu',
+    '  var existing = document.getElementById("tg-pd-menu");',
+    '  if (existing) existing.remove();',
+    '  var menu = document.createElement("div");',
+    '  menu.id = "tg-pd-menu";',
+    '  menu.className = "tg-pd-menu";',
+    '  function addRow(html, onClick, extraCls) {',
+    '    var row = document.createElement("div");',
+    '    row.className = "tg-pd-menu-item" + (extraCls ? " " + extraCls : "");',
+    '    row.innerHTML = html;',
+    '    row.addEventListener("click", function(e) { e.stopPropagation(); onClick(); menu.remove(); UIBar.update(); });',
+    '    menu.appendChild(row);',
     '  }',
-    '  UIBar.update();',
+    '  if (currentEquipped) {',
+    '    var curIt = items[currentEquipped] || {};',
+    '    var curIcon = curIt.icon ? \'<img src="\' + curIt.icon + \'" class="tg-pd-menu-icon"/>\' : \'<span class="tg-pd-menu-icon"></span>\';',
+    '    addRow(curIcon + \'<span class="tg-pd-menu-label">✕ \' + (curIt.name || currentEquipped) + \'</span>\', function() {',
+    '      ch.equipment[slotId] = "";',
+    '      var e = ch.inventory.find(function(x){ return x.item === currentEquipped; });',
+    '      if (e) e.equipped = false;',
+    '    }, "tg-pd-menu-unequip");',
+    '  }',
+    '  compatible.forEach(function(entry) {',
+    '    if (entry.item === currentEquipped) return;',
+    '    var it = items[entry.item] || {};',
+    '    var icon = it.icon ? \'<img src="\' + it.icon + \'" class="tg-pd-menu-icon"/>\' : \'<span class="tg-pd-menu-icon"></span>\';',
+    '    addRow(icon + \'<span class="tg-pd-menu-label">\' + (it.name || entry.item) + \'</span>\', function() {',
+    '      if (currentEquipped) {',
+    '        var old = ch.inventory.find(function(x){ return x.item === currentEquipped; });',
+    '        if (old) old.equipped = false;',
+    '      }',
+    '      ch.equipment[slotId] = entry.item;',
+    '      entry.equipped = true;',
+    '    });',
+    '  });',
+    '  if (menu.children.length === 0) {',
+    '    var empty = document.createElement("div");',
+    '    empty.className = "tg-pd-menu-empty";',
+    '    empty.textContent = "No compatible items";',
+    '    menu.appendChild(empty);',
+    '  }',
+    '  document.body.appendChild(menu);',
+    '  // Position next to the clicked cell',
+    '  var rect = (ev && ev.currentTarget ? ev.currentTarget : ev && ev.target).getBoundingClientRect();',
+    '  var mw = menu.offsetWidth, mh = menu.offsetHeight;',
+    '  var vw = window.innerWidth, vh = window.innerHeight;',
+    '  var left = rect.right + 4;',
+    '  if (left + mw > vw) left = Math.max(4, rect.left - mw - 4);',
+    '  var top = rect.top;',
+    '  if (top + mh > vh) top = Math.max(4, vh - mh - 4);',
+    '  menu.style.left = left + "px";',
+    '  menu.style.top = top + "px";',
+    '  setTimeout(function() {',
+    '    var closer = function(e) {',
+    '      if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener("click", closer); document.removeEventListener("keydown", keyCloser); }',
+    '    };',
+    '    var keyCloser = function(e) {',
+    '      if (e.key === "Escape") { menu.remove(); document.removeEventListener("click", closer); document.removeEventListener("keydown", keyCloser); }',
+    '    };',
+    '    document.addEventListener("click", closer);',
+    '    document.addEventListener("keydown", keyCloser);',
+    '  }, 0);',
     '};',
   ].join('\n');
 }

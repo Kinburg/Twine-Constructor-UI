@@ -735,8 +735,6 @@ function InitialInventoryEditor({
           ) : (
             <div className="flex flex-col gap-1">
               {slots.map(slot => {
-                const item = items.find(i => i.varName === slot.itemVarName);
-                const isWearable = item?.category === 'wearable';
                 return (
                   <div key={slot.id} className="flex items-center gap-1.5">
                     {/* Item picker */}
@@ -764,19 +762,6 @@ function InitialInventoryEditor({
                       />
                     </div>
 
-                    {/* Equipped (wearable only) */}
-                    {isWearable && (
-                      <label className="flex items-center gap-0.5 shrink-0 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="accent-indigo-500"
-                          checked={slot.equipped}
-                          onChange={e => updateSlot(slot.id, { equipped: e.target.checked })}
-                        />
-                        <span className="text-[10px] text-slate-400">{t.characters.initialInventoryEquipped}</span>
-                      </label>
-                    )}
-
                     {/* Delete */}
                     <button
                       type="button"
@@ -800,57 +785,6 @@ function InitialInventoryEditor({
               {t.characters.initialInventoryAdd}
             </button>
           )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Multi-checkbox dropdown ──────────────────────────────────────────────────
-
-function MultiCheckboxDropdown({
-  label,
-  items,
-  selected,
-  onChange,
-}: {
-  label: string;
-  items: { id: string; label: string }[];
-  selected: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const count = selected.length;
-
-  return (
-    <div className="flex flex-col gap-0.5 relative">
-      <span className="text-[10px] text-slate-500">{label}:</span>
-      <button
-        type="button"
-        className="flex items-center justify-between w-full bg-slate-700 text-xs text-slate-300 rounded px-1.5 py-1 border border-slate-600 hover:border-slate-500 cursor-pointer text-left"
-        onClick={() => setOpen(v => !v)}
-      >
-        <span>{count > 0 ? `${count} selected` : 'Any wearable'}</span>
-        <span className="text-slate-500 text-[10px]">{open ? '▲' : '▼'}</span>
-      </button>
-      {open && (
-        <div className="absolute top-full left-0 right-0 z-20 bg-slate-800 border border-slate-600 rounded shadow-xl mt-0.5 max-h-36 overflow-y-auto">
-          {items.map(it => (
-            <label key={it.id} className="flex items-center gap-2 px-2 py-1 hover:bg-slate-700 cursor-pointer select-none">
-              <input
-                type="checkbox"
-                className="accent-indigo-500 shrink-0"
-                checked={selected.includes(it.id)}
-                onChange={e => {
-                  const updated = e.target.checked
-                    ? [...selected, it.id]
-                    : selected.filter(id => id !== it.id);
-                  onChange(updated);
-                }}
-              />
-              <span className="text-xs text-slate-300">{it.label}</span>
-            </label>
-          ))}
         </div>
       )}
     </div>
@@ -935,8 +869,6 @@ function PaperdollEditor({
     }
   };
 
-  const wearableItems = items.filter(i => i.category === 'wearable');
-
   return (
     <div className="flex flex-col gap-1">
       <button
@@ -1018,14 +950,33 @@ function PaperdollEditor({
                     <span className="text-[10px] text-slate-600">{t.characters.paperdollSlotId}:</span>
                     <span className="text-[10px] text-slate-500 font-mono">{slot.id}</span>
                   </div>
-                  {wearableItems.length > 0 && (
-                    <MultiCheckboxDropdown
-                      label={t.characters.paperdollAllowedItems}
-                      items={wearableItems.map(it => ({ id: it.id, label: it.name }))}
-                      selected={slot.allowedItemIds ?? []}
-                      onChange={ids => handleUpdateSlot(slot.id, { allowedItemIds: ids.length ? ids : undefined })}
-                    />
-                  )}
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[10px] text-slate-500 shrink-0">{t.characters.paperdollDefaultItem}:</span>
+                    <select
+                      className="flex-1 min-w-0 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                      value={slot.defaultItemVarName ?? ''}
+                      onChange={e => handleUpdateSlot(slot.id, { defaultItemVarName: e.target.value || undefined })}
+                    >
+                      <option value="">{t.characters.paperdollDefaultItemNone}</option>
+                      {items.filter(i => {
+                        if (i.category !== 'wearable') return false;
+                        const norm = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+                        return norm(i.targetSlot ?? '') === slot.id ||
+                               (i.targetSlot ?? '').toLowerCase() === (slot.label ?? '').toLowerCase();
+                      }).map(it => (
+                        <option key={it.id} value={it.varName}>{it.name}</option>
+                      ))}
+                    </select>
+                    <label className="flex items-center gap-0.5 shrink-0 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        className="accent-indigo-500"
+                        checked={slot.clickable ?? false}
+                        onChange={e => handleUpdateSlot(slot.id, { clickable: e.target.checked })}
+                      />
+                      <span className="text-[10px] text-slate-400">{t.characters.paperdollSlotClickable}</span>
+                    </label>
+                  </div>
                 </div>
               ))}
             </div>

@@ -331,7 +331,9 @@ export interface Translations {
     paperdollGridCols: string;
     paperdollGridRows: string;
     paperdollCellSize: string;
-    paperdollAllowedItems: string;
+    paperdollDefaultItem: string;
+    paperdollDefaultItemNone: string;
+    paperdollSlotClickable: string;
     paperdollPlaceholderIcon: string;
     paperdollConfirmDelete: (label: string) => string;
   };
@@ -454,7 +456,6 @@ export interface Translations {
     typePaperdoll: string;
     paperdollCharLabel: string;
     paperdollShowLabels: string;
-    paperdollClickable: string;
     paperdollNoChar: string;
   };
 

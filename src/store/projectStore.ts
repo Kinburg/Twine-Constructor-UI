@@ -412,7 +412,7 @@ function buildItemVarNodes(
     children.push({
       kind: 'variable', id: slotVarId,
       name: 'slot', varType: 'string',
-      defaultValue: item.targetSlot ?? '',
+      defaultValue: (item.targetSlot ?? '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
       description: `Paperdoll slot for item "${item.name}"`,
     });
   }
@@ -2200,10 +2200,10 @@ export const useProjectStore = create<ProjectState>()(
                   defaultValue: patch.stackable ? 'true' : 'false',
                 });
               }
-              // Sync slot variable (wearable only)
+              // Sync slot variable (wearable only) — normalize to match slot IDs (lowercase_underscore)
               if (patch.targetSlot !== undefined && varIds.slotVarId) {
                 variableNodes = updateVarInTree(variableNodes, varIds.slotVarId, {
-                  defaultValue: patch.targetSlot,
+                  defaultValue: (patch.targetSlot || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, ''),
                 });
               }
             }
@@ -2553,3 +2553,7 @@ export const useProjectStore = create<ProjectState>()(
     }
   )
 );
+
+if (typeof window !== 'undefined') {
+  (window as unknown as { __store: typeof useProjectStore }).__store = useProjectStore;
+}

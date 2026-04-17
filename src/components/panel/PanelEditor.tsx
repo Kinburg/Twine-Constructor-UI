@@ -667,7 +667,7 @@ function makeDefaultContent(type: CellContent['type']): CellContent {
     case 'list':           return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
     case 'audio-volume':   return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
     case 'date-time':      return { type: 'date-time', variableId: '', format: 'DD.MM.YYYY HH:mm', prefix: '', suffix: '' } as CellDateTime;
-    case 'paperdoll':      return { type: 'paperdoll', charId: '', showLabels: false, clickable: false } as CellPaperdoll;
+    case 'paperdoll':      return { type: 'paperdoll', charId: '', showLabels: false } as CellPaperdoll;
   }
 }
 
@@ -966,11 +966,6 @@ function CellEditModal({
               <input type="checkbox" checked={c.showLabels ?? false}
                 onChange={e => onUpdateContent({ ...c, showLabels: e.target.checked })} />
               {t.cellModal.paperdollShowLabels}
-            </label>
-            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
-              <input type="checkbox" checked={c.clickable ?? false}
-                onChange={e => onUpdateContent({ ...c, clickable: e.target.checked })} />
-              {t.cellModal.paperdollClickable}
             </label>
           </>
         )}
