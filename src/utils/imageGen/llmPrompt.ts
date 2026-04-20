@@ -143,42 +143,99 @@ export async function generateAvatarPromptWithLlm(
   _styleHints: string[] = [],
   signal?: AbortSignal,
   referencePrompt?: string,
+  entityKind: 'character' | 'item' | 'paperdoll-slot' = 'character',
 ): Promise<string> {
   const isDefaultOrStatic = !slotLabel || slotLabel === 'default' || slotLabel === 'static';
 
-  const sysParts: string[] = [
-    'You are an expert at writing text-to-image prompts for character portraits in visual novels.',
-    'Write a prompt for a portrait illustration (head and upper body) suitable as a character avatar.',
-    'Focus on: face, facial expression, hairstyle, eye details, skin tone, visible clothing, lighting, and background.',
-    'Be specific and concrete — describe exact visual details.',
-    'Do NOT include any art style, rendering style, or medium descriptions in the prompt — style tags are appended separately by the user.',
-    'Keep the prompt between 2–4 sentences.',
-    'Output ONLY the prompt text in English. No markdown, no quotes, no commentary.',
-  ];
+  let sysParts: string[];
 
-  if (project.lore?.trim()) {
-    sysParts.push(`World setting (for visual context): ${project.lore.trim()}`);
-  }
-
-  sysParts.push(`Character name: ${charName}`);
-  if (charDescr?.trim()) {
-    sysParts.push(`Character description: ${charDescr.trim()}`);
-  }
-
-  if (isDefaultOrStatic) {
-    // Default/static portrait — always neutral so it can serve as a reference for variants
-    sysParts.push('This is the reference/default portrait. The character must have a neutral, expressionless face: mouth closed, lips together and relaxed, jaw unclenched, eyes open and calm. Stoic, blank reference pose — no smile, no raised eyebrows, no emotional expression of any kind.');
-  } else {
-    if (referencePrompt?.trim()) {
-      // Variant slot: anchor physical appearance to the reference prompt
-      sysParts.push(
-        'This is a variant portrait of the same character.\n' +
-        'Keep ALL physical descriptors IDENTICAL to the reference (face shape, hair, skin, clothing, body).\n' +
-        'Only change what the hint specifies — typically the facial expression, eye state, or emotional cues.\n' +
-        `Reference portrait:\n${referencePrompt.trim()}`,
-      );
+  if (entityKind === 'paperdoll-slot') {
+    sysParts = [
+      'You are an expert at writing text-to-image prompts for paperdoll body part illustrations in visual novels.',
+      'Write a prompt for a single isolated body part or clothing slot — the kind used in a character outfit/paperdoll overlay system.',
+      'Focus on: the specific body region, clothing or skin detail, texture, material, color, lighting, and how it fits the character.',
+      'Do NOT describe the full character body — only the relevant slot area.',
+      'Do NOT include any art style, rendering style, or medium descriptions — style tags are appended separately by the user.',
+      'Keep the prompt between 1–3 sentences.',
+      'Output ONLY the prompt text in English. No markdown, no quotes, no commentary.',
+    ];
+    if (project.lore?.trim()) {
+      sysParts.push(`World setting (for visual context): ${project.lore.trim()}`);
     }
-    sysParts.push(`Avatar variant / emotional state: ${slotLabel}`);
+    sysParts.push(`Character name: ${charName}`);
+    if (charDescr?.trim()) {
+      sysParts.push(`Character description: ${charDescr.trim()}`);
+    }
+    if (isDefaultOrStatic) {
+      sysParts.push(`Paperdoll slot: ${slotLabel || 'body part'}. Show the neutral/default state — no special effects or damage.`);
+    } else {
+      if (referencePrompt?.trim()) {
+        sysParts.push(
+          'This is a visual variant of the same body part slot.\n' +
+          'Keep the base shape and body region IDENTICAL to the reference — only apply the visual change described by the hint.\n' +
+          `Reference slot:\n${referencePrompt.trim()}`,
+        );
+      }
+      sysParts.push(`Slot variant: ${slotLabel}`);
+    }
+  } else if (entityKind === 'item') {
+    sysParts = [
+      'You are an expert at writing text-to-image prompts for game items and objects.',
+      'Write a prompt for an item icon — a clean, well-lit close-up of the object suitable for a game inventory.',
+      'Focus on: shape, material, texture, color, surface details, and lighting. No characters or people.',
+      'Do NOT include any art style, rendering style, or medium descriptions — style tags are appended separately by the user.',
+      'Keep the prompt between 1–3 sentences.',
+      'Output ONLY the prompt text in English. No markdown, no quotes, no commentary.',
+    ];
+    if (project.lore?.trim()) {
+      sysParts.push(`World setting (for visual context): ${project.lore.trim()}`);
+    }
+    sysParts.push(`Item name: ${charName}`);
+    if (charDescr?.trim()) {
+      sysParts.push(`Item description: ${charDescr.trim()}`);
+    }
+    if (isDefaultOrStatic) {
+      sysParts.push('This is the reference/default state. Show the item in a neutral, clean, well-lit presentation.');
+    } else {
+      if (referencePrompt?.trim()) {
+        sysParts.push(
+          'This is a visual variant of the same item.\n' +
+          'Keep the item\'s base shape and form IDENTICAL to the reference — only apply the visual change described by the hint.\n' +
+          `Reference icon:\n${referencePrompt.trim()}`,
+        );
+      }
+      sysParts.push(`Item variant: ${slotLabel}`);
+    }
+  } else {
+    sysParts = [
+      'You are an expert at writing text-to-image prompts for character portraits in visual novels.',
+      'Write a prompt for a portrait illustration (head and upper body) suitable as a character avatar.',
+      'Focus on: face, facial expression, hairstyle, eye details, skin tone, visible clothing, lighting, and background.',
+      'Be specific and concrete — describe exact visual details.',
+      'Do NOT include any art style, rendering style, or medium descriptions in the prompt — style tags are appended separately by the user.',
+      'Keep the prompt between 2–4 sentences.',
+      'Output ONLY the prompt text in English. No markdown, no quotes, no commentary.',
+    ];
+    if (project.lore?.trim()) {
+      sysParts.push(`World setting (for visual context): ${project.lore.trim()}`);
+    }
+    sysParts.push(`Character name: ${charName}`);
+    if (charDescr?.trim()) {
+      sysParts.push(`Character description: ${charDescr.trim()}`);
+    }
+    if (isDefaultOrStatic) {
+      sysParts.push('This is the reference/default portrait. The character must have a neutral, expressionless face: mouth closed, lips together and relaxed, jaw unclenched, eyes open and calm. Stoic, blank reference pose — no smile, no raised eyebrows, no emotional expression of any kind.');
+    } else {
+      if (referencePrompt?.trim()) {
+        sysParts.push(
+          'This is a variant portrait of the same character.\n' +
+          'Keep ALL physical descriptors IDENTICAL to the reference (face shape, hair, skin, clothing, body).\n' +
+          'Only change what the hint specifies — typically the facial expression, eye state, or emotional cues.\n' +
+          `Reference portrait:\n${referencePrompt.trim()}`,
+        );
+      }
+      sysParts.push(`Avatar variant / emotional state: ${slotLabel}`);
+    }
   }
 
   const systemPrompt = sysParts.join('\n\n');

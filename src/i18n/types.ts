@@ -335,6 +335,9 @@ export interface Translations {
     paperdollDefaultItemNone: string;
     paperdollSlotClickable: string;
     paperdollPlaceholderIcon: string;
+    paperdollPlaceholderStatic: string;
+    paperdollPlaceholderBound: string;
+    paperdollPlaceholderSelectVar: string;
     paperdollConfirmDelete: (label: string) => string;
   };
 
@@ -690,6 +693,24 @@ export interface Translations {
     errorNoPrompt: string;
     errorGenerateImage: string;
     errorGeneratePrompt: string;
+    errorApprove: string;
+  };
+
+  // ─── Item icon generation modal (overrides for item context) ───────────────
+  itemIconGen: {
+    promptPlaceholder: string;
+    hintPlaceholder: string;
+    generateFromHintNoRef: string;
+    approveSuccess: string;
+    errorApprove: string;
+  };
+
+  // ─── Paperdoll slot generation modal (overrides for paperdoll-slot context) ──
+  paperdollSlotGen: {
+    promptPlaceholder: string;
+    hintPlaceholder: string;
+    generateFromHintNoRef: string;
+    approveSuccess: string;
     errorApprove: string;
   };
 
@@ -1140,6 +1161,8 @@ export interface Translations {
     fieldIcon: string;
     iconStatic: string;
     iconGenerated: string;
+    iconBound: string;
+    iconBoundSelectVar: string;
     consumableFuncHint: string;
     customVarsSection: string;
     customVarsAdd: string;

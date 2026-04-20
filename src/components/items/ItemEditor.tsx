@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useProjectStore, charToVarPrefix } from '../../store/projectStore';
 import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
-import { ImageAssetPicker } from '../shared/ImageMappingEditor';
+import { ImageAssetPicker, ImageMappingEditor } from '../shared/ImageMappingEditor';
+import { VariablePicker } from '../shared/VariablePicker';
 import { AvatarGenModal } from '../characters/AvatarGenModal';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
@@ -29,17 +30,24 @@ function resolveEditorSrc(src: string, projectDir: string | null): string {
 /** Build a minimal AvatarConfig from an ItemIconConfig so we can reuse AvatarGenModal */
 function iconToAvatarConfig(iconCfg: ItemIconConfig): AvatarConfig {
   return {
-    mode: 'static',
+    mode: iconCfg.mode === 'bound' ? 'bound' : 'static',
     src: iconCfg.src,
-    variableId: '',
-    mapping: [],
-    defaultSrc: '',
+    variableId: iconCfg.variableId ?? '',
+    mapping: iconCfg.mapping ?? [],
+    defaultSrc: iconCfg.defaultSrc ?? '',
     genSettings: iconCfg.genSettings,
   };
 }
 
 function avatarConfigToIconCfg(avatar: AvatarConfig, mode: ItemIconMode): ItemIconConfig {
-  return { mode, src: avatar.src, genSettings: avatar.genSettings };
+  return {
+    mode,
+    src: avatar.src,
+    variableId: avatar.variableId ?? '',
+    mapping: avatar.mapping ?? [],
+    defaultSrc: avatar.defaultSrc ?? '',
+    genSettings: avatar.genSettings,
+  };
 }
 
 // ─── Local tree helpers (same pattern as CharacterModal) ──────────────────────
@@ -227,7 +235,13 @@ export function ItemEditor({ mode, initial, takenNames, takenVarNames, onSave, o
 
   const { projectDir } = useProjectStore();
   const assetNodes = project.assetNodes;
-  const iconPreviewSrc = resolveEditorSrc(iconCfg.src, projectDir);
+  const iconPreviewRaw = iconCfg.mode === 'bound'
+    ? (iconCfg.defaultSrc || iconCfg.mapping?.[0]?.src || '')
+    : iconCfg.src;
+  const iconPreviewSrc = resolveEditorSrc(iconPreviewRaw, projectDir);
+
+  // Variable nodes from this item's own group (custom props only) — used for bound icon variable picker
+  const itemOwnNodes: VariableTreeNode[] = mode === 'edit' ? itemUserNodes : pendingNodes;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
@@ -266,7 +280,7 @@ export function ItemEditor({ mode, initial, takenNames, takenVarNames, onSave, o
             {/* Icon mode + picker */}
             <div className="flex-1 flex flex-col gap-1.5">
               <label className="text-xs text-slate-400">{t.items.fieldIcon}:</label>
-              <div className="flex gap-1">
+              <div className="flex gap-1 flex-wrap">
                 <button
                   className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
                     iconCfg.mode === 'static'
@@ -279,11 +293,24 @@ export function ItemEditor({ mode, initial, takenNames, takenVarNames, onSave, o
                 </button>
                 <button
                   className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
+                    iconCfg.mode === 'bound'
+                      ? 'bg-indigo-600 border-indigo-500 text-white'
+                      : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200'
+                  }`}
+                  onClick={() => setIconCfg({ ...iconCfg, mode: 'bound' })}
+                >
+                  {t.items.iconBound}
+                </button>
+                <button
+                  className={`text-xs px-2 py-1 rounded border transition-colors cursor-pointer ${
                     iconCfg.mode === 'generated'
                       ? 'bg-indigo-600 border-indigo-500 text-white'
                       : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200'
                   }`}
-                  onClick={() => { setIconCfg({ ...iconCfg, mode: 'generated' }); setGenModalOpen(true); }}
+                  onClick={() => {
+                    if (iconCfg.mode !== 'bound') setIconCfg({ ...iconCfg, mode: 'generated' });
+                    setGenModalOpen(true);
+                  }}
                 >
                   {t.items.iconGenerated}
                 </button>
@@ -310,6 +337,32 @@ export function ItemEditor({ mode, initial, takenNames, takenVarNames, onSave, o
               )}
             </div>
           </div>
+
+          {/* Bound icon config */}
+          {iconCfg.mode === 'bound' && (
+            <div className="flex flex-col gap-1.5 pl-1 border-l border-slate-700/60">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] text-slate-500 shrink-0">{t.characters.fieldVariable}:</span>
+                {itemOwnNodes.length === 0 ? (
+                  <span className="text-[10px] text-slate-600 italic">{t.items.customVarsEmpty}</span>
+                ) : (
+                  <VariablePicker
+                    value={iconCfg.variableId ?? ''}
+                    onChange={id => setIconCfg({ ...iconCfg, variableId: id })}
+                    nodes={itemOwnNodes}
+                    placeholder={t.items.iconBoundSelectVar}
+                  />
+                )}
+              </div>
+              <ImageMappingEditor
+                mapping={iconCfg.mapping ?? []}
+                onChange={mapping => setIconCfg({ ...iconCfg, mapping })}
+                defaultSrc={iconCfg.defaultSrc ?? ''}
+                onDefaultSrcChange={defaultSrc => setIconCfg({ ...iconCfg, defaultSrc })}
+                assetNodes={assetNodes}
+              />
+            </div>
+          )}
 
           {/* Name */}
           <Field label={t.items.fieldName}>
@@ -445,8 +498,11 @@ export function ItemEditor({ mode, initial, takenNames, takenVarNames, onSave, o
           charName={name}
           charLlmDescr=""
           assetSubfolder="items"
-          modalTitle={t.items.iconGenerated}
-          onSave={avatar => setIconCfg(avatarConfigToIconCfg(avatar, 'generated'))}
+          modalTitle={iconCfg.mode === 'bound' ? `${name} — ${t.items.iconGenerated}` : t.items.iconGenerated}
+          slotLabelStatic={t.items.fieldIcon}
+          slotLabelDefault={t.items.fieldIcon}
+          entityKind="item"
+          onSave={avatar => setIconCfg(avatarConfigToIconCfg(avatar, iconCfg.mode === 'bound' ? 'bound' : 'generated'))}
           onClose={() => setGenModalOpen(false)}
         />
       )}

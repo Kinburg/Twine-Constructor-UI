@@ -164,7 +164,7 @@ export function buildPassages(project: Project): {
   }
 
   // StoryCaption (sidebar panel)
-  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName, project.characters);
+  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName, project.characters, project.items);
   if (captionSC) {
     passages.push({
       pid: pid++, name: 'StoryCaption', tags: '',

@@ -313,6 +313,9 @@ const en: Translations = {
     paperdollDefaultItemNone: '— none —',
     paperdollSlotClickable:   'Click to equip/unequip',
     paperdollPlaceholderIcon: 'Placeholder icon',
+    paperdollPlaceholderStatic: '🖼️ Static',
+    paperdollPlaceholderBound: '🔗 Dynamic',
+    paperdollPlaceholderSelectVar: '— select variable —',
     paperdollConfirmDelete:   (label) => `Remove slot "${label}"?`,
   },
 
@@ -661,6 +664,22 @@ const en: Translations = {
     errorGenerateImage: 'Failed to generate image.',
     errorGeneratePrompt: 'Failed to generate prompt.',
     errorApprove: 'Failed to save avatar.',
+  },
+
+  itemIconGen: {
+    promptPlaceholder:    'Describe the item appearance…',
+    hintPlaceholder:      'Visual variant, e.g. glowing, cracked, ancient…',
+    generateFromHintNoRef:'Generate the Default icon prompt first to use as a reference',
+    approveSuccess:       'All icons approved.',
+    errorApprove:         'Failed to save icon.',
+  },
+
+  paperdollSlotGen: {
+    promptPlaceholder:    'Describe the body part / clothing for this slot…',
+    hintPlaceholder:      'Visual variant, e.g. armored, damaged, glowing…',
+    generateFromHintNoRef:'Generate the Default slot prompt first to use as a reference',
+    approveSuccess:       'All slot images approved.',
+    errorApprove:         'Failed to save slot image.',
   },
 
   cellBoundGen: {
@@ -1110,6 +1129,8 @@ const en: Translations = {
     fieldIcon:              'Icon',
     iconStatic:             '🖼️ From assets',
     iconGenerated:          '✨ Generate',
+    iconBound:              '🔗 Dynamic',
+    iconBoundSelectVar:     '— select variable —',
     consumableFuncHint:     'A [func] scene was created for use-effects:',
     customVarsSection:      'Custom variables',
     customVarsAdd:          '+ Add variable',

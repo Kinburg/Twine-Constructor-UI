@@ -313,6 +313,9 @@ const ua: Translations = {
     paperdollDefaultItemNone: '— немає —',
     paperdollSlotClickable:   'Клік: екіпірувати/зняти',
     paperdollPlaceholderIcon: 'Іконка-заповнювач',
+    paperdollPlaceholderStatic: '🖼️ Статична',
+    paperdollPlaceholderBound: '🔗 Динамічна',
+    paperdollPlaceholderSelectVar: '— оберіть змінну —',
     paperdollConfirmDelete:   (label) => `Видалити слот "${label}"?`,
   },
 
@@ -661,6 +664,22 @@ const ua: Translations = {
     errorGenerateImage: 'Не вдалося згенерувати зображення.',
     errorGeneratePrompt: 'Не вдалося згенерувати промпт.',
     errorApprove: 'Не вдалося зберегти аватарку.',
+  },
+
+  itemIconGen: {
+    promptPlaceholder:    'Опишіть вигляд предмету…',
+    hintPlaceholder:      'Візуальний варіант, напр. світиться, зламаний, стародавній…',
+    generateFromHintNoRef:'Спочатку згенеруйте промпт для слоту Icon як референс',
+    approveSuccess:       'Всі іконки затверджено.',
+    errorApprove:         'Не вдалося зберегти іконку.',
+  },
+
+  paperdollSlotGen: {
+    promptPlaceholder:    'Опишіть частину тіла / одяг для цього слоту…',
+    hintPlaceholder:      'Візуальний варіант, напр. в обладунку, пошкоджений, світиться…',
+    generateFromHintNoRef:'Спочатку згенеруйте промпт для слоту Default як референс',
+    approveSuccess:       'Всі зображення слотів затверджено.',
+    errorApprove:         'Не вдалося зберегти зображення слоту.',
   },
 
   cellBoundGen: {
@@ -1109,6 +1128,8 @@ const ua: Translations = {
     fieldIcon:              'Іконка',
     iconStatic:             '🖼️ З ресурсів',
     iconGenerated:          '✨ Генерувати',
+    iconBound:              '🔗 Динамічна',
+    iconBoundSelectVar:     '— оберіть змінну —',
     consumableFuncHint:     'Для ефектів використання створено [func]-сцену:',
     customVarsSection:      'Кастомні змінні',
     customVarsAdd:          '+ Додати змінну',

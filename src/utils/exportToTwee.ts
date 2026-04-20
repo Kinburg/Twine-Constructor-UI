@@ -4,7 +4,7 @@ import type {
   Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
   ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList, CellDateTime, DateTimeDisplayMode,
   Watcher, WatcherCondition, AudioBlock, ContainerBlock, TimeManipulationBlock,
-  VariableTreeNode, VariableGroup,
+  VariableTreeNode, VariableGroup, ItemDefinition,
 } from '../types';
 import { START_TAG } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
@@ -1080,7 +1080,7 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
 
 // ─── Panel → StoryCaption markup ──────────────────────────────────────────────
 
-function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>, characters?: Character[]): string {
+function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>, characters?: Character[], items?: ItemDefinition[]): string {
   const c = cell.content;
   // Use flex: N (proportional) so CSS gap is respected without overflow.
   // cell.width is a percentage (e.g. 40), flex: 40 gives the same 40:60 ratio.
@@ -1190,7 +1190,7 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
     case 'paperdoll': {
       const char = characters?.find(ch => ch.id === c.charId);
       if (!char?.paperdoll || !char.varName) { inner = ''; break; }
-      inner = buildPaperdollCellSC(char.varName, char.paperdoll, c.showLabels);
+      inner = buildPaperdollCellSC(char.varName, char.paperdoll, c.showLabels, vars, nodes, items);
       break;
     }
   }
@@ -1198,16 +1198,16 @@ function cellToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[]
   return `<span class="tg-cell" style="${flex}">${inner}</span>`;
 }
 
-function rowToSC(row: SidebarRow, vars: Variable[], nodes: VariableTreeNode[], style: PanelStyle, idToName?: Map<string, string>, characters?: Character[]): string {
+function rowToSC(row: SidebarRow, vars: Variable[], nodes: VariableTreeNode[], style: PanelStyle, idToName?: Map<string, string>, characters?: Character[], items?: ItemDefinition[]): string {
   if (row.cells.length === 0) return '';
-  const cells = row.cells.map(c => cellToSC(c, vars, nodes, idToName, characters)).join('');
+  const cells = row.cells.map(c => cellToSC(c, vars, nodes, idToName, characters, items)).join('');
   const borderStyle = style.showCellBorders
     ? ` border: ${style.borderWidth}px solid ${style.borderColor};`
     : '';
   return `<div class="tg-row" style="height: ${row.height}px;${borderStyle}">${cells}</div>`;
 }
 
-export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>, characters?: Character[]): string {
+export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>, characters?: Character[], items?: ItemDefinition[]): string {
   if (panel.tabs.length === 0) return '';
 
   const style: PanelStyle = panel.style ?? DEFAULT_PANEL_STYLE;
@@ -1231,7 +1231,7 @@ export function buildStoryCaptionSC(panel: SidebarPanel, vars: Variable[], nodes
     lines.push(`${kw} $__tgTab eq ${i}>>`);
     // Concatenate rows WITHOUT \n between them — SugarCube's wiki parser converts
     // \n between block-level elements into <p></p> tags (adding 1em vertical space).
-    const rowsHTML = tab.rows.map(r => rowToSC(r, vars, nodes, style, idToName, characters)).filter(Boolean).join('');
+    const rowsHTML = tab.rows.map(r => rowToSC(r, vars, nodes, style, idToName, characters, items)).filter(Boolean).join('');
     lines.push(outerOpen + rowsHTML + '</div>');
   });
 
@@ -1937,7 +1937,7 @@ export function exportToTwee(project: Project): string {
   if (storyScript) parts.push(`::StoryScript [script]\n${storyScript}\n`);
 
   // StoryCaption
-  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName, characters);
+  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName, characters, project.items);
   if (captionSC) parts.push(`::StoryCaption\n${captionSC}\n`);
 
   // Scene passages
@@ -2213,6 +2213,36 @@ export function buildContainerScript(project: Project): string {
 // ─── Paperdoll export helpers ─────────────────────────────────────────────────
 
 /**
+/**
+ * Generate a SugarCube <<if>>/<<elseif>>/<<else>> chain for a bound image mapping.
+ * Returns the full conditional block including <</if>>.
+ */
+function buildBoundMappingHtml(
+  vname: string,
+  varType: string,
+  mapping: { matchType?: string; value: string; rangeMin?: string; rangeMax?: string; src: string }[],
+  defaultSrc: string,
+  imgStyle: string,
+): string {
+  const imgTag = (src: string) => `<img src="${src}" style="${imgStyle}"/>`;
+  const cases = mapping.map((m, i) => {
+    const kw = i === 0 ? '<<if' : '<<elseif';
+    const mt = m.matchType ?? 'exact';
+    let cond: string;
+    if (mt === 'range') {
+      cond = `${vname} >= ${m.rangeMin ?? '0'} && ${vname} <= ${m.rangeMax ?? '0'}`;
+    } else {
+      const val = varType === 'string' ? `"${m.value}"` : m.value;
+      cond = `${vname} eq ${val}`;
+    }
+    return `${kw} ${cond}>>${imgTag(m.src)}`;
+  });
+  if (defaultSrc) cases.push(`<<else>>${imgTag(defaultSrc)}`);
+  if (cases.length > 0) cases.push('<</if>>');
+  return cases.join('');
+}
+
+/**
  * Build SugarCube HTML for a paperdoll grid cell in the sidebar panel.
  * Generates a static CSS-grid container with <<if>> expressions for each slot.
  */
@@ -2220,6 +2250,9 @@ function buildPaperdollCellSC(
   charVarName: string,
   pd: import('../types').PaperdollConfig,
   showLabels?: boolean,
+  vars?: Variable[],
+  nodes?: VariableTreeNode[],
+  items?: ItemDefinition[],
 ): string {
   const { gridCols, gridRows, cellSize, slots } = pd;
   const gridStyle = [
@@ -2249,23 +2282,65 @@ function buildPaperdollCellSC(
       ? ` onclick="tgSlotMenu('${charVarName}','${slot.id}','${slotLabelNorm}',event)"`
       : '';
 
-    // Empty slot — placeholder icon or subtle indicator
-    // pointer-events:none so clicks bubble to the wrapping cell div
-    const emptySlotContent = slot.placeholderIcon
-      ? `<img src="${slot.placeholderIcon}" style="width:100%;height:100%;object-fit:contain;opacity:0.3;pointer-events:none;" />`
-      : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:1.4em;opacity:0.2;color:#94a3b8;">○</span></div>`;
+    const phImgStyle = 'width:100%;height:100%;object-fit:contain;opacity:0.3;pointer-events:none;';
+    const imgStyle   = 'width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;';
+
+    // ── Empty-slot placeholder ────────────────────────────────────────────────
+    const ph = slot.placeholder;
+    let emptySlotContent: string;
+    if (ph && ph.mode === 'bound' && ph.variableId && ph.mapping?.length && vars && nodes) {
+      const boundVar = vars.find(v => v.id === ph.variableId);
+      if (boundVar) {
+        const vname = `$${varPath(boundVar, nodes)}`;
+        emptySlotContent = buildBoundMappingHtml(vname, boundVar.varType, ph.mapping, ph.defaultSrc ?? '', phImgStyle);
+      } else {
+        emptySlotContent = ph.defaultSrc
+          ? `<img src="${ph.defaultSrc}" style="${phImgStyle}"/>`
+          : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:1.4em;opacity:0.2;color:#94a3b8;">○</span></div>`;
+      }
+    } else {
+      const staticSrc = ph?.src || slot.placeholderIcon;
+      emptySlotContent = staticSrc
+        ? `<img src="${staticSrc}" style="${phImgStyle}"/>`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;"><span style="font-size:1.4em;opacity:0.2;color:#94a3b8;">○</span></div>`;
+    }
 
     // Label overlay (optional)
     const label = showLabels
       ? `<div style="position:absolute;bottom:0;left:0;right:0;font-size:0.6em;text-align:center;background:rgba(0,0,0,0.6);color:#cbd5e1;pointer-events:none;padding:1px 0;">${slot.label}</div>`
       : '';
 
-    // Equipped image — pointer-events:none so clicks bubble up to the cell div (which has the onclick)
-    const imgStyle = 'width:100%;height:100%;object-fit:contain;display:block;pointer-events:none;';
+    // ── Equipped item image (supports bound icon mode) ────────────────────────
+    const boundItems = vars && nodes
+      ? (items ?? []).filter(i =>
+          i.iconConfig.mode === 'bound' &&
+          i.iconConfig.variableId &&
+          (i.iconConfig.mapping?.length ?? 0) > 0,
+        )
+      : [];
+
+    let equippedImg: string;
+    if (boundItems.length > 0) {
+      const branches = boundItems.map((item, idx) => {
+        const kw = idx === 0
+          ? `<<if ${equipVar} eq "${item.varName}">>`
+          : `<<elseif ${equipVar} eq "${item.varName}">>`;
+        const bv = vars!.find(v => v.id === item.iconConfig.variableId);
+        if (!bv) return `${kw}<img @src="$items[${equipVar}].icon" style="${imgStyle}"/>`;
+        const vname = `$${varPath(bv, nodes!)}`;
+        const chain = buildBoundMappingHtml(vname, bv.varType, item.iconConfig.mapping ?? [], item.iconConfig.defaultSrc ?? '', imgStyle);
+        return `${kw}${chain}`;
+      });
+      branches.push(`<<else>><img @src="$items[${equipVar}].icon" style="${imgStyle}"/>`);
+      branches.push('<</if>>');
+      equippedImg = branches.join('');
+    } else {
+      equippedImg = `<img @src="$items[${equipVar}].icon" style="${imgStyle}"/>`;
+    }
 
     const equipped = [
       `<<if ${equipVar} neq "">>`,
-      `<img @src="$items[${equipVar}].icon" style="${imgStyle}"/>`,
+      equippedImg,
       label,
       `<<else>>`,
       emptySlotContent,

@@ -4,7 +4,7 @@ import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
-import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds, CharacterInventorySlot, ItemDefinition, PaperdollConfig, PaperdollSlot } from '../../types';
+import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds, CharacterInventorySlot, ItemDefinition, PaperdollConfig, PaperdollSlot, SlotPlaceholderConfig } from '../../types';
 import { useT } from '../../i18n';
 import { AvatarGenModal } from './AvatarGenModal';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
@@ -422,6 +422,10 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
             localConfig={localPaperdoll}
             onChange={setLocalPaperdoll}
             items={project.items ?? []}
+            charNodes={avatarPickerNodes}
+            charName={name}
+            charLlmDescr={llmDescr}
+            charVarName={varName}
             addPaperdollSlot={addPaperdollSlot}
             updatePaperdollSlot={updatePaperdollSlot}
             deletePaperdollSlot={deletePaperdollSlot}
@@ -793,12 +797,39 @@ function InitialInventoryEditor({
 
 // ─── Paperdoll Editor ─────────────────────────────────────────────────────────
 
+function placeholderToAvatarConfig(ph: SlotPlaceholderConfig): AvatarConfig {
+  return {
+    mode: ph.mode,
+    src: ph.src,
+    variableId: ph.variableId,
+    mapping: ph.mapping,
+    defaultSrc: ph.defaultSrc,
+    genSettings: ph.genSettings,
+  };
+}
+
+function avatarConfigToPlaceholder(cfg: AvatarConfig, ph: SlotPlaceholderConfig): SlotPlaceholderConfig {
+  return {
+    ...ph,
+    mode: cfg.mode as 'static' | 'bound',
+    src: cfg.src,
+    variableId: cfg.variableId,
+    mapping: cfg.mapping,
+    defaultSrc: cfg.defaultSrc,
+    genSettings: cfg.genSettings,
+  };
+}
+
 function PaperdollEditor({
   mode,
   charId,
   localConfig,
   onChange,
   items,
+  charNodes,
+  charName,
+  charLlmDescr,
+  charVarName,
   addPaperdollSlot,
   updatePaperdollSlot,
   deletePaperdollSlot,
@@ -810,6 +841,11 @@ function PaperdollEditor({
   localConfig?: PaperdollConfig;
   onChange: (c: PaperdollConfig | undefined) => void;
   items: ItemDefinition[];
+  /** Variable nodes belonging to this character — used for bound placeholder variable picker */
+  charNodes: VariableTreeNode[];
+  charName?: string;
+  charLlmDescr?: string;
+  charVarName?: string;
   addPaperdollSlot: (charId: string, slot: Omit<PaperdollSlot, 'id'>) => void;
   updatePaperdollSlot: (charId: string, slotId: string, patch: Partial<Omit<PaperdollSlot, 'id'>>) => void;
   deletePaperdollSlot: (charId: string, slotId: string) => void;
@@ -817,7 +853,9 @@ function PaperdollEditor({
   liveChar?: Character;
 }) {
   const t = useT();
+  const { project } = useProjectStore();
   const [open, setOpen] = useState(false);
+  const [genModalSlotId, setGenModalSlotId] = useState<string | null>(null);
 
   // In edit mode, source of truth is the live store char; in create mode, local state
   const config = mode === 'edit' ? liveChar?.paperdoll : localConfig;
@@ -977,6 +1015,81 @@ function PaperdollEditor({
                       <span className="text-[10px] text-slate-400">{t.characters.paperdollSlotClickable}</span>
                     </label>
                   </div>
+
+                  {/* Placeholder config */}
+                  {(() => {
+                    const ph: SlotPlaceholderConfig = slot.placeholder ?? {
+                      mode: 'static',
+                      src: slot.placeholderIcon ?? '',
+                      variableId: '',
+                      mapping: [],
+                      defaultSrc: '',
+                    };
+                    const setPh = (patch: Partial<SlotPlaceholderConfig>) =>
+                      handleUpdateSlot(slot.id, { placeholder: { ...ph, ...patch } });
+                    return (
+                      <div className="flex flex-col gap-1.5 pl-1 border-l border-slate-700/60 mt-0.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] text-slate-500 shrink-0">{t.characters.paperdollPlaceholderIcon}:</span>
+                          <button
+                            type="button"
+                            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                              ph.mode === 'static'
+                                ? 'bg-indigo-600 border-indigo-500 text-white'
+                                : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200'
+                            }`}
+                            onClick={() => setPh({ mode: 'static' })}
+                          >
+                            {t.characters.paperdollPlaceholderStatic}
+                          </button>
+                          <button
+                            type="button"
+                            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
+                              ph.mode === 'bound'
+                                ? 'bg-indigo-600 border-indigo-500 text-white'
+                                : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200'
+                            }`}
+                            onClick={() => setPh({ mode: 'bound' })}
+                          >
+                            {t.characters.paperdollPlaceholderBound}
+                          </button>
+                          <button
+                            type="button"
+                            className="text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200"
+                            onClick={() => setGenModalSlotId(slot.id)}
+                          >
+                            {t.avatarGen.generateBtn}
+                          </button>
+                        </div>
+
+                        {ph.mode === 'static' && (
+                          <ImageAssetPicker
+                            assetNodes={project.assetNodes}
+                            value={ph.src}
+                            onChange={src => setPh({ src })}
+                          />
+                        )}
+
+                        {ph.mode === 'bound' && (
+                          <div className="flex flex-col gap-1">
+                            <VariablePicker
+                              value={ph.variableId}
+                              onChange={variableId => setPh({ variableId })}
+                              nodes={charNodes}
+                              placeholder={t.characters.paperdollPlaceholderSelectVar}
+                            />
+                            <ImageMappingEditor
+                              mapping={ph.mapping}
+                              onChange={mapping => setPh({ mapping })}
+                              defaultSrc={ph.defaultSrc}
+                              onDefaultSrcChange={defaultSrc => setPh({ defaultSrc })}
+                              assetNodes={project.assetNodes}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))}
             </div>
@@ -991,6 +1104,38 @@ function PaperdollEditor({
           </button>
         </div>
       )}
+
+      {/* Generate modal for placeholder slot */}
+      {genModalSlotId !== null && (() => {
+        const genSlot = slots.find(s => s.id === genModalSlotId);
+        if (!genSlot) return null;
+        const ph: SlotPlaceholderConfig = genSlot.placeholder ?? {
+          mode: 'static',
+          src: genSlot.placeholderIcon ?? '',
+          variableId: '',
+          mapping: [],
+          defaultSrc: '',
+        };
+        const avatarCfg = placeholderToAvatarConfig(ph);
+        return (
+          <AvatarGenModal
+            cfg={avatarCfg}
+            charVarName={`${charVarName || 'char'}_${genSlot.id}`}
+            charName={charName ?? ''}
+            charLlmDescr={charLlmDescr}
+            assetSubfolder={`paperdoll/${charVarName || 'char'}`}
+            modalTitle={`✨ ${genSlot.label}`}
+            slotLabelStatic={genSlot.label}
+            slotLabelDefault={genSlot.label}
+            entityKind="paperdoll-slot"
+            onSave={updatedCfg => {
+              const updatedPh = avatarConfigToPlaceholder(updatedCfg, ph);
+              handleUpdateSlot(genSlot.id, { placeholder: updatedPh });
+            }}
+            onClose={() => setGenModalSlotId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

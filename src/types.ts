@@ -598,6 +598,25 @@ export interface CharacterVarIds {
 
 // ─── Paperdoll ───────────────────────────────────────────────────────────────
 
+/**
+ * Config for the image shown in an empty paperdoll slot.
+ * mode 'static' — fixed image path.
+ * mode 'bound'  — image chosen via if/elseif chain based on a character variable.
+ */
+export interface SlotPlaceholderConfig {
+  mode: 'static' | 'bound';
+  /** Static image path, or default fallback image for bound mode */
+  src: string;
+  /** Which character variable drives the image (bound mode) */
+  variableId: string;
+  /** if/elseif mapping entries (bound mode) */
+  mapping: ImageBoundMapping[];
+  /** Fallback image when no mapping matches (bound mode) */
+  defaultSrc: string;
+  /** AI generation settings (reuses AvatarGenSettings infrastructure) */
+  genSettings?: AvatarGenSettings;
+}
+
 /** One named slot in a paperdoll grid (e.g. head, chest, weapon) */
 export interface PaperdollSlot {
   id: string;                   // used as key in $chars.hero.equipment and as variable name
@@ -606,7 +625,10 @@ export interface PaperdollSlot {
   col: number;                  // grid column (1-based)
   defaultItemVarName?: string;  // item varName that starts equipped in this slot
   clickable?: boolean;          // whether clicking this slot unequips the item at runtime
-  placeholderIcon?: string;     // asset path for empty-slot placeholder image
+  /** @deprecated use placeholder instead */
+  placeholderIcon?: string;
+  /** Config for the image shown when this slot is empty */
+  placeholder?: SlotPlaceholderConfig;
 }
 
 /** Paperdoll layout config attached to a Character */
@@ -706,13 +728,24 @@ export interface Character {
 export type ItemCategory = 'wearable' | 'consumable' | 'misc';
 
 /** How the item icon is sourced */
-export type ItemIconMode = 'static' | 'generated';
+export type ItemIconMode = 'static' | 'generated' | 'bound';
 
-/** Item icon config — mirrors AvatarConfig but for a single image */
+/**
+ * Item icon config.
+ * mode 'static'    — fixed image path.
+ * mode 'generated' — AI-generated image.
+ * mode 'bound'     — image chosen via if/elseif chain based on one of the item's own variables.
+ */
 export interface ItemIconConfig {
   mode: ItemIconMode;
   /** Current image path (relative to project root) */
   src: string;
+  /** Which variable drives the image (bound mode) — must be a variable from this item's own group */
+  variableId?: string;
+  /** if/elseif mapping entries (bound mode) */
+  mapping?: ImageBoundMapping[];
+  /** Fallback image when no mapping matches (bound mode) */
+  defaultSrc?: string;
   /** AI generation settings (reuses AvatarGenSettings infrastructure) */
   genSettings?: AvatarGenSettings;
 }
