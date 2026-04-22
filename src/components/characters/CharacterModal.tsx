@@ -4,10 +4,11 @@ import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
-import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds, CharacterInventorySlot, ItemDefinition, PaperdollConfig, PaperdollSlot, SlotPlaceholderConfig } from '../../types';
+import type { Character, AvatarConfig, Variable, AssetTreeNode, VariableTreeNode, VariableGroup, CharacterVarIds, CharacterInventorySlot, ItemDefinition, PaperdollConfig } from '../../types';
 import { useT } from '../../i18n';
 import { AvatarGenModal } from './AvatarGenModal';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
+import { PaperdollModal } from './PaperdollModal';
 
 function resolveEditorSrc(src: string, projectDir: string | null): string {
   if (!src) return '';
@@ -143,6 +144,7 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
   );
   const [initialInventory, setInitialInventory] = useState<CharacterInventorySlot[]>(initial.initialInventory ?? []);
   const [localPaperdoll, setLocalPaperdoll] = useState<PaperdollConfig | undefined>(initial.paperdoll);
+  const [paperdollOpen, setPaperdollOpen] = useState(false);
   const [isHero, setIsHero] = useState(initial.isHero ?? false);
 
   const handleNameChange = (v: string) => {
@@ -416,22 +418,48 @@ export function CharacterModal({ mode, charId, initial, takenNames, takenVarName
           />
 
           {/* Paperdoll */}
-          <PaperdollEditor
-            mode={mode}
-            charId={charId}
-            localConfig={localPaperdoll}
-            onChange={setLocalPaperdoll}
-            items={project.items ?? []}
-            charNodes={avatarPickerNodes}
-            charName={name}
-            charLlmDescr={llmDescr}
-            charVarName={varName}
-            addPaperdollSlot={addPaperdollSlot}
-            updatePaperdollSlot={updatePaperdollSlot}
-            deletePaperdollSlot={deletePaperdollSlot}
-            setPaperdollConfig={setPaperdollConfig}
-            liveChar={mode === 'edit' && charId ? project.characters.find(c => c.id === charId) : undefined}
-          />
+          {(() => {
+            const paperdollSlots = (mode === 'edit'
+              ? project.characters.find(c => c.id === charId)?.paperdoll?.slots
+              : localPaperdoll?.slots) ?? [];
+            return (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-slate-400 w-20 shrink-0">{t.characters.paperdollSection}:</span>
+                <button
+                  type="button"
+                  onClick={() => setPaperdollOpen(true)}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded text-xs bg-slate-700 border border-slate-600 hover:bg-slate-600 hover:border-slate-500 text-slate-300 transition-colors cursor-pointer"
+                >
+                  <span>⊞</span>
+                  <span>
+                    {paperdollSlots.length > 0
+                      ? `${paperdollSlots.length} slot${paperdollSlots.length !== 1 ? 's' : ''}`
+                      : 'Configure'}
+                  </span>
+                </button>
+              </div>
+            );
+          })()}
+
+          {paperdollOpen && (
+            <PaperdollModal
+              mode={mode}
+              charId={charId}
+              localConfig={localPaperdoll}
+              onChange={setLocalPaperdoll}
+              items={project.items ?? []}
+              charNodes={avatarPickerNodes}
+              charName={name}
+              charLlmDescr={llmDescr}
+              charVarName={varName}
+              addPaperdollSlot={addPaperdollSlot}
+              updatePaperdollSlot={updatePaperdollSlot}
+              deletePaperdollSlot={deletePaperdollSlot}
+              setPaperdollConfig={setPaperdollConfig}
+              liveChar={mode === 'edit' && charId ? project.characters.find(c => c.id === charId) : undefined}
+              onClose={() => setPaperdollOpen(false)}
+            />
+          )}
 
           {/* Custom variables */}
           <CharacterVarsEditor
@@ -795,350 +823,6 @@ function InitialInventoryEditor({
   );
 }
 
-// ─── Paperdoll Editor ─────────────────────────────────────────────────────────
-
-function placeholderToAvatarConfig(ph: SlotPlaceholderConfig): AvatarConfig {
-  return {
-    mode: ph.mode,
-    src: ph.src,
-    variableId: ph.variableId,
-    mapping: ph.mapping,
-    defaultSrc: ph.defaultSrc,
-    genSettings: ph.genSettings,
-  };
-}
-
-function avatarConfigToPlaceholder(cfg: AvatarConfig, ph: SlotPlaceholderConfig): SlotPlaceholderConfig {
-  return {
-    ...ph,
-    mode: cfg.mode as 'static' | 'bound',
-    src: cfg.src,
-    variableId: cfg.variableId,
-    mapping: cfg.mapping,
-    defaultSrc: cfg.defaultSrc,
-    genSettings: cfg.genSettings,
-  };
-}
-
-function PaperdollEditor({
-  mode,
-  charId,
-  localConfig,
-  onChange,
-  items,
-  charNodes,
-  charName,
-  charLlmDescr,
-  charVarName,
-  addPaperdollSlot,
-  updatePaperdollSlot,
-  deletePaperdollSlot,
-  setPaperdollConfig,
-  liveChar,
-}: {
-  mode: 'create' | 'edit';
-  charId?: string;
-  localConfig?: PaperdollConfig;
-  onChange: (c: PaperdollConfig | undefined) => void;
-  items: ItemDefinition[];
-  /** Variable nodes belonging to this character — used for bound placeholder variable picker */
-  charNodes: VariableTreeNode[];
-  charName?: string;
-  charLlmDescr?: string;
-  charVarName?: string;
-  addPaperdollSlot: (charId: string, slot: Omit<PaperdollSlot, 'id'>) => void;
-  updatePaperdollSlot: (charId: string, slotId: string, patch: Partial<Omit<PaperdollSlot, 'id'>>) => void;
-  deletePaperdollSlot: (charId: string, slotId: string) => void;
-  setPaperdollConfig: (charId: string, config: PaperdollConfig | undefined) => void;
-  liveChar?: Character;
-}) {
-  const t = useT();
-  const { project } = useProjectStore();
-  const [open, setOpen] = useState(false);
-  const [genModalSlotId, setGenModalSlotId] = useState<string | null>(null);
-
-  // In edit mode, source of truth is the live store char; in create mode, local state
-  const config = mode === 'edit' ? liveChar?.paperdoll : localConfig;
-  const slots = config?.slots ?? [];
-
-  const defaultConfig = (): PaperdollConfig => ({ gridCols: 3, gridRows: 4, cellSize: 64, slots: [] });
-
-  const handleAddSlot = () => {
-    const slotData: Omit<PaperdollSlot, 'id'> = { label: 'New Slot', row: 1, col: 1 };
-    if (mode === 'edit' && charId) {
-      addPaperdollSlot(charId, slotData);
-    } else {
-      const cur = localConfig ?? defaultConfig();
-      // Derive a clean ID (store logic mirrors addPaperdollSlot)
-      const base = 'new_slot';
-      let id = base;
-      let n = 2;
-      while (cur.slots.some(s => s.id === id)) { id = `${base}${n++}`; }
-      onChange({ ...cur, slots: [...cur.slots, { ...slotData, id }] });
-    }
-    if (!open) setOpen(true);
-  };
-
-  const handleDeleteSlot = (slotId: string) => {
-    if (mode === 'edit' && charId) {
-      deletePaperdollSlot(charId, slotId);
-    } else {
-      const cur = localConfig ?? defaultConfig();
-      onChange({ ...cur, slots: cur.slots.filter(s => s.id !== slotId) });
-    }
-  };
-
-  const handleUpdateSlot = (slotId: string, patch: Partial<Omit<PaperdollSlot, 'id'>>) => {
-    if (mode === 'edit' && charId) {
-      updatePaperdollSlot(charId, slotId, patch);
-    } else {
-      const cur = localConfig ?? defaultConfig();
-      onChange({ ...cur, slots: cur.slots.map(s => s.id === slotId ? { ...s, ...patch } : s) });
-    }
-  };
-
-  const handleGridChange = (patch: Partial<Pick<PaperdollConfig, 'gridCols' | 'gridRows' | 'cellSize'>>) => {
-    const cur = config ?? defaultConfig();
-    const next: PaperdollConfig = { ...cur, ...patch };
-    if (mode === 'edit' && charId) {
-      setPaperdollConfig(charId, next);
-    } else {
-      onChange(next);
-    }
-  };
-
-  return (
-    <div className="flex flex-col gap-1">
-      <button
-        type="button"
-        className="flex items-center gap-1.5 text-xs text-slate-400 hover:text-slate-200 transition-colors cursor-pointer py-0.5 text-left"
-        onClick={() => setOpen(v => !v)}
-      >
-        <span className="text-slate-600 text-[10px]">{open ? '▼' : '▶'}</span>
-        <span className="font-medium">{t.characters.paperdollSection}</span>
-        {slots.length > 0 && <span className="text-slate-600 font-mono">({slots.length})</span>}
-      </button>
-
-      {open && (
-        <div className="flex flex-col gap-2 pl-1 border-l border-slate-700/60 mt-0.5">
-          {/* Grid settings */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {([
-              { key: 'gridCols' as const, label: t.characters.paperdollGridCols, def: 3 },
-              { key: 'gridRows' as const, label: t.characters.paperdollGridRows, def: 4 },
-              { key: 'cellSize' as const, label: t.characters.paperdollCellSize, def: 64 },
-            ] as const).map(({ key, label, def }) => (
-              <div key={key} className="flex items-center gap-1 shrink-0">
-                <span className="text-[10px] text-slate-500">{label}</span>
-                <input
-                  type="number"
-                  min={1}
-                  className="w-14 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-                  value={config?.[key] ?? def}
-                  onChange={e => handleGridChange({ [key]: Math.max(1, parseInt(e.target.value) || 1) })}
-                />
-              </div>
-            ))}
-          </div>
-
-          {/* Slot list */}
-          {slots.length === 0 ? (
-            <p className="text-xs text-slate-600 italic py-1 pl-2">{t.characters.paperdollNoSlots}</p>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              {slots.map(slot => (
-                <div key={slot.id} className="flex flex-col gap-1 border border-slate-700/50 rounded p-1.5 bg-slate-800/40">
-                  <div className="flex items-center gap-1.5">
-                    <input
-                      type="text"
-                      placeholder={t.characters.paperdollSlotLabel}
-                      className="flex-1 min-w-0 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-                      value={slot.label}
-                      onChange={e => handleUpdateSlot(slot.id, { label: e.target.value })}
-                    />
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <span className="text-[10px] text-slate-500">{t.characters.paperdollRowLabel}</span>
-                      <input
-                        type="number"
-                        min={1}
-                        className="w-10 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-                        value={slot.row}
-                        onChange={e => handleUpdateSlot(slot.id, { row: Math.max(1, parseInt(e.target.value) || 1) })}
-                      />
-                    </div>
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      <span className="text-[10px] text-slate-500">{t.characters.paperdollColLabel}</span>
-                      <input
-                        type="number"
-                        min={1}
-                        className="w-10 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-                        value={slot.col}
-                        onChange={e => handleUpdateSlot(slot.id, { col: Math.max(1, parseInt(e.target.value) || 1) })}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className="text-slate-600 hover:text-red-400 transition-colors cursor-pointer text-xs shrink-0"
-                      onClick={() => handleDeleteSlot(slot.id)}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-slate-600">{t.characters.paperdollSlotId}:</span>
-                    <span className="text-[10px] text-slate-500 font-mono">{slot.id}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[10px] text-slate-500 shrink-0">{t.characters.paperdollDefaultItem}:</span>
-                    <select
-                      className="flex-1 min-w-0 bg-slate-700 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-                      value={slot.defaultItemVarName ?? ''}
-                      onChange={e => handleUpdateSlot(slot.id, { defaultItemVarName: e.target.value || undefined })}
-                    >
-                      <option value="">{t.characters.paperdollDefaultItemNone}</option>
-                      {items.filter(i => {
-                        if (i.category !== 'wearable') return false;
-                        const norm = (s: string) => (s || '').toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-                        return norm(i.targetSlot ?? '') === slot.id ||
-                               (i.targetSlot ?? '').toLowerCase() === (slot.label ?? '').toLowerCase();
-                      }).map(it => (
-                        <option key={it.id} value={it.varName}>{it.name}</option>
-                      ))}
-                    </select>
-                    <label className="flex items-center gap-0.5 shrink-0 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="accent-indigo-500"
-                        checked={slot.clickable ?? false}
-                        onChange={e => handleUpdateSlot(slot.id, { clickable: e.target.checked })}
-                      />
-                      <span className="text-[10px] text-slate-400">{t.characters.paperdollSlotClickable}</span>
-                    </label>
-                  </div>
-
-                  {/* Placeholder config */}
-                  {(() => {
-                    const ph: SlotPlaceholderConfig = slot.placeholder ?? {
-                      mode: 'static',
-                      src: slot.placeholderIcon ?? '',
-                      variableId: '',
-                      mapping: [],
-                      defaultSrc: '',
-                    };
-                    const setPh = (patch: Partial<SlotPlaceholderConfig>) =>
-                      handleUpdateSlot(slot.id, { placeholder: { ...ph, ...patch } });
-                    return (
-                      <div className="flex flex-col gap-1.5 pl-1 border-l border-slate-700/60 mt-0.5">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] text-slate-500 shrink-0">{t.characters.paperdollPlaceholderIcon}:</span>
-                          <button
-                            type="button"
-                            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
-                              ph.mode === 'static'
-                                ? 'bg-indigo-600 border-indigo-500 text-white'
-                                : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200'
-                            }`}
-                            onClick={() => setPh({ mode: 'static' })}
-                          >
-                            {t.characters.paperdollPlaceholderStatic}
-                          </button>
-                          <button
-                            type="button"
-                            className={`text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer ${
-                              ph.mode === 'bound'
-                                ? 'bg-indigo-600 border-indigo-500 text-white'
-                                : 'bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200'
-                            }`}
-                            onClick={() => setPh({ mode: 'bound' })}
-                          >
-                            {t.characters.paperdollPlaceholderBound}
-                          </button>
-                          <button
-                            type="button"
-                            className="text-[10px] px-1.5 py-0.5 rounded border transition-colors cursor-pointer bg-slate-700 border-slate-600 text-slate-400 hover:text-slate-200"
-                            onClick={() => setGenModalSlotId(slot.id)}
-                          >
-                            {t.avatarGen.generateBtn}
-                          </button>
-                        </div>
-
-                        {ph.mode === 'static' && (
-                          <ImageAssetPicker
-                            assetNodes={project.assetNodes}
-                            value={ph.src}
-                            onChange={src => setPh({ src })}
-                          />
-                        )}
-
-                        {ph.mode === 'bound' && (
-                          <div className="flex flex-col gap-1">
-                            <VariablePicker
-                              value={ph.variableId}
-                              onChange={variableId => setPh({ variableId })}
-                              nodes={charNodes}
-                              placeholder={t.characters.paperdollPlaceholderSelectVar}
-                            />
-                            <ImageMappingEditor
-                              mapping={ph.mapping}
-                              onChange={mapping => setPh({ mapping })}
-                              defaultSrc={ph.defaultSrc}
-                              onDefaultSrcChange={defaultSrc => setPh({ defaultSrc })}
-                              assetNodes={project.assetNodes}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <button
-            type="button"
-            className="text-xs text-slate-500 hover:text-indigo-400 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600 mt-0.5"
-            onClick={handleAddSlot}
-          >
-            {t.characters.paperdollAddSlot}
-          </button>
-        </div>
-      )}
-
-      {/* Generate modal for placeholder slot */}
-      {genModalSlotId !== null && (() => {
-        const genSlot = slots.find(s => s.id === genModalSlotId);
-        if (!genSlot) return null;
-        const ph: SlotPlaceholderConfig = genSlot.placeholder ?? {
-          mode: 'static',
-          src: genSlot.placeholderIcon ?? '',
-          variableId: '',
-          mapping: [],
-          defaultSrc: '',
-        };
-        const avatarCfg = placeholderToAvatarConfig(ph);
-        return (
-          <AvatarGenModal
-            cfg={avatarCfg}
-            charVarName={`${charVarName || 'char'}_${genSlot.id}`}
-            charName={charName ?? ''}
-            charLlmDescr={charLlmDescr}
-            assetSubfolder={`paperdoll/${charVarName || 'char'}`}
-            modalTitle={`✨ ${genSlot.label}`}
-            slotLabelStatic={genSlot.label}
-            slotLabelDefault={genSlot.label}
-            entityKind="paperdoll-slot"
-            onSave={updatedCfg => {
-              const updatedPh = avatarConfigToPlaceholder(updatedCfg, ph);
-              handleUpdateSlot(genSlot.id, { placeholder: updatedPh });
-            }}
-            onClose={() => setGenModalSlotId(null)}
-          />
-        );
-      })()}
-    </div>
-  );
-}
 
 // ─── Field helper ──────────────────────────────────────────────────────────────
 
