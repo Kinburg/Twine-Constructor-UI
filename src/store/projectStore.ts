@@ -364,7 +364,7 @@ interface ItemVarBuildResult {
  * Places the group under the root 'items' group (via rootGroupId).
  */
 function buildItemVarNodes(
-  item: { name: string; varName: string; category: ItemCategory; stackable: boolean; targetSlot?: string; iconSrc?: string },
+  item: { name: string; varName: string; category: ItemCategory; stackable: boolean; targetSlot?: string; iconSrc?: string; description?: string },
   rootGroupId: string,
 ): ItemVarBuildResult {
   const nameVarId      = uuid();
@@ -397,7 +397,7 @@ function buildItemVarNodes(
     {
       kind: 'variable', id: descVarId,
       name: 'description', varType: 'string',
-      defaultValue: '',
+      defaultValue: item.description ?? '',
       description: `Description of item "${item.name}"`,
     },
     {
@@ -1055,6 +1055,8 @@ interface ProjectState {
   setActiveScene: (id: string) => void;
   addScene: () => void;
   addSceneWithData: (data: { name: string; tags: string[]; notes?: string }) => void;
+  /** Find or create a popup scene containing an InventoryBlock for the given character. Returns sceneId. */
+  findOrCreateInventoryPopup: (charId: string) => string;
   deleteScene: (id: string) => void;
   renameScene: (id: string, name: string) => void;
   updateSceneNote: (id: string, notes: string | undefined) => void;
@@ -1325,6 +1327,35 @@ export const useProjectStore = create<ProjectState>()(
             project: { ...s.project, scenes: [...s.project.scenes, scene] },
             activeSceneId: id,
           }));
+        },
+
+        findOrCreateInventoryPopup: (charId) => {
+          const state = get();
+          // 1. Reuse an existing popup scene that already has an inventory block for this character.
+          const existing = state.project.scenes.find(sc =>
+            sc.tags.includes('popup') &&
+            sc.blocks.some(b => b.type === 'inventory' && (b as { charId?: string }).charId === charId)
+          );
+          if (existing) return existing.id;
+
+          // 2. Otherwise create a new popup scene with an InventoryBlock inside.
+          get().saveSnapshot();
+          const char = state.project.characters.find(c => c.id === charId);
+          const baseName = char ? `Inventory: ${char.name}` : 'Inventory';
+          // Ensure unique scene name
+          const existingNames = new Set(state.project.scenes.map(s => s.name));
+          let sceneName = baseName;
+          let i = 2;
+          while (existingNames.has(sceneName)) sceneName = `${baseName} ${i++}`;
+
+          const sceneId = uuid();
+          const block: Block = { id: uuid(), type: 'inventory', charId };
+          const scene: Scene = {
+            id: sceneId, name: sceneName, tags: ['popup'],
+            blocks: [block],
+          };
+          set(s => ({ project: { ...s.project, scenes: [...s.project.scenes, scene] } }));
+          return sceneId;
         },
 
         deleteScene: (id) => {
@@ -2186,6 +2217,12 @@ export const useProjectStore = create<ProjectState>()(
                 variableNodes = updateVarInTree(variableNodes, varIds.nameVarId, {
                   defaultValue: patch.name,
                   description: `Display name for item "${patch.name}"`,
+                });
+              }
+              // Sync description variable
+              if (patch.description !== undefined && varIds.descVarId) {
+                variableNodes = updateVarInTree(variableNodes, varIds.descVarId, {
+                  defaultValue: patch.description,
                 });
               }
               // Sync icon variable

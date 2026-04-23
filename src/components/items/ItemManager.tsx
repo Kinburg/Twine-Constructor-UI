@@ -85,6 +85,7 @@ export function ItemManager() {
       {modalState && (
         <ItemEditor
           mode={modalState.mode}
+          itemId={modalState.mode === 'edit' ? (modalState as { mode: 'edit'; item: ItemDefinition }).item.id : undefined}
           initial={modalState.mode === 'create' ? modalState.draft : modalState.item}
           takenNames={items
             .filter(i => modalState.mode !== 'edit' || i.id !== (modalState as { mode: 'edit'; item: ItemDefinition }).item.id)

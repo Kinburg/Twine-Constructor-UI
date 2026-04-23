@@ -29,6 +29,8 @@ import { PopupBlockEditor } from './PopupBlockEditor';
 import { AudioBlockEditor } from './AudioBlockEditor';
 import { ContainerBlockEditor } from './ContainerBlockEditor';
 import { TimeManipulationBlockEditor } from './TimeManipulationBlockEditor';
+import { PaperdollBlockEditor } from './PaperdollBlockEditor';
+import { InventoryBlockEditor } from './InventoryBlockEditor';
 
 const BLOCK_COLORS: Record<Block['type'], string> = {
   'text':              'bg-slate-700',
@@ -54,6 +56,8 @@ const BLOCK_COLORS: Record<Block['type'], string> = {
   'audio':             'bg-amber-900/40',
   'container':         'bg-teal-900/40',
   'time-manipulation': 'bg-indigo-950/50',
+  'paperdoll':         'bg-violet-900/40',
+  'inventory':         'bg-teal-900/40',
 };
 
 interface Props {
@@ -164,6 +168,8 @@ export function BlockItem({ block, sceneId, collapsed, onToggleCollapse }: Props
         {block.type === 'audio'             && <AudioBlockEditor            block={block} sceneId={sceneId} />}
         {block.type === 'container'         && <ContainerBlockEditor        block={block} sceneId={sceneId} />}
         {block.type === 'time-manipulation' && <TimeManipulationBlockEditor block={block} sceneId={sceneId} />}
+        {block.type === 'paperdoll'         && <PaperdollBlockEditor         block={block} sceneId={sceneId} />}
+        {block.type === 'inventory'         && <InventoryBlockEditor         block={block} sceneId={sceneId} />}
       </div>}
     </div>
     {confirmModal}

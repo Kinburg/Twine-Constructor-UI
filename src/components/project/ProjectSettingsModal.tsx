@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import { useProjectStore, DEFAULT_PROJECT_SETTINGS } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
@@ -6,7 +6,11 @@ import { useT } from '../../i18n';
 import { fsApi, joinPath, safeName, toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { toast } from 'sonner';
 import type { Project, ProjectSettings, SidebarPanel, SidebarTab, SidebarRow } from '../../types';
-import { AISettingsModal } from '../editor/LLMSettingsModal';
+import {
+  ModalShell, ModalBody,
+  ModalField, ModalRow, ModalSection, Toggle, Segmented,
+  PrimaryButton, SecondaryButton, ColorSwatchInput, INPUT_CLS,
+} from '../shared/ModalShell';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
 import {
   expandDescriptionWithLlm,
@@ -14,7 +18,9 @@ import {
   generateHeaderImagePromptWithLlm,
 } from '../../utils/imageGen/llmPrompt';
 
-// ─── Workflow file collector (mirrors ImageGenBlockEditor) ─────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+//  Helpers
+// ═══════════════════════════════════════════════════════════════════════════
 
 async function collectWorkflowFiles(absDir: string, relDir: string): Promise<string[]> {
   const entries = await fsApi.listDir(absDir);
@@ -39,8 +45,6 @@ function detectExt(imageUrl: string, contentType: string | null): string {
   const byUrl = imageUrl.split('?')[0].split('.').pop()?.toLowerCase();
   return byUrl || 'png';
 }
-
-// ─── Header image helpers ──────────────────────────────────────────────────────
 
 function buildHeaderRow(rowId: string, src: string, objectFit: 'cover' | 'contain'): SidebarRow {
   return {
@@ -100,57 +104,60 @@ function applyHeaderImageToPanel(
   return { panel: { ...panel, tabs: updatedTabs }, rowId };
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════
+//  Component
+// ═══════════════════════════════════════════════════════════════════════════
+
+type TabId = 'general' | 'appearance' | 'aiImage' | 'advanced';
 
 interface Props {
   mode: 'create' | 'edit';
   onClose: () => void;
+  /** Initial tab to show. */
+  initialTab?: TabId;
 }
 
-export function ProjectSettingsModal({ mode, onClose }: Props) {
+export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: Props) {
   const t = useT();
   const ps = t.projectSettings;
   const ig = t.imageGenBlock;
+
   const { project, projectDir, updateProjectMeta, loadProject } = useProjectStore();
   const { setProjectSettingsOpen } = useEditorStore();
+  const prefs = useEditorPrefsStore();
   const {
-    llmEnabled,
-    llmProvider,
+    llmEnabled, llmProvider,
     llmUrl,
-    llmGeminiApiKey,
-    llmGeminiModel,
-    llmOpenaiUrl,
-    llmOpenaiApiKey,
-    llmOpenaiModel,
-    llmMaxTokens,
-    llmTemperature,
-    llmSystemPrompt,
-    imageGenProvider,
-    comfyUiUrl,
-    comfyUiWorkflowsDir,
-    pollinationsModel,
-    pollinationsToken,
-  } = useEditorPrefsStore();
+    llmGeminiApiKey, llmGeminiModel,
+    llmOpenaiUrl, llmOpenaiApiKey, llmOpenaiModel,
+    llmMaxTokens, llmTemperature, llmSystemPrompt,
+    imageGenProvider, comfyUiUrl, comfyUiWorkflowsDir,
+    pollinationsModel, pollinationsToken,
+  } = prefs;
 
-  // ─── Form state ─────────────────────────────────────────────────────────────
+  // ─── Tabs ───────────────────────────────────────────────────────────────────
 
-  const [title, setTitle]               = useState(mode === 'edit' ? project.title : '');
-  const [author, setAuthor]             = useState(mode === 'edit' ? (project.author ?? '') : '');
-  const [description, setDescription]  = useState(mode === 'edit' ? (project.description ?? '') : '');
-  const [lore, setLore]                 = useState(mode === 'edit' ? (project.lore ?? '') : '');
+  const [tab, setTab] = useState<TabId>(initialTab);
+
+  // ─── Form state — project fields ────────────────────────────────────────────
+
+  const [title, setTitle]             = useState(mode === 'edit' ? project.title : '');
+  const [author, setAuthor]           = useState(mode === 'edit' ? (project.author ?? '') : '');
+  const [description, setDescription] = useState(mode === 'edit' ? (project.description ?? '') : '');
+  const [lore, setLore]               = useState(mode === 'edit' ? (project.lore ?? '') : '');
 
   // Header image
   const [headerPendingPath, setHeaderPendingPath] = useState<string | null>(null);
   const [headerPreviewUrl, setHeaderPreviewUrl]   = useState<string | null>(
     mode === 'edit' && project.settings.headerImageSrc && projectDir
       ? toLocalFileUrl(resolveAssetPath(projectDir, project.settings.headerImageSrc))
-      : null
+      : null,
   );
-  const [headerRemoved,    setHeaderRemoved]    = useState(false);
-  const [headerObjectFit,  setHeaderObjectFit]  = useState<'cover' | 'contain'>(() => {
+  const [headerRemoved, setHeaderRemoved] = useState(false);
+  const [headerObjectFit, setHeaderObjectFit] = useState<'cover' | 'contain'>(() => {
     if (mode === 'edit' && project.settings.headerRowId) {
-      for (const tab of project.sidebarPanel.tabs) {
-        const row = tab.rows.find(r => r.id === project.settings.headerRowId);
+      for (const tabEl of project.sidebarPanel.tabs) {
+        const row = tabEl.rows.find(r => r.id === project.settings.headerRowId);
         if (row?.cells[0]?.content.type === 'image-static') {
           return (row.cells[0].content as { objectFit: 'cover' | 'contain' }).objectFit;
         }
@@ -161,39 +168,32 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
 
   // Generated image bytes (in-memory, no file written until save)
   const [headerGenBytes, setHeaderGenBytes] = useState<number[] | null>(null);
-  const [headerGenExt,   setHeaderGenExt]   = useState('png');
+  const [headerGenExt, setHeaderGenExt]     = useState('png');
 
   // Appearance
   const existing = mode === 'edit' ? project.settings : DEFAULT_PROJECT_SETTINGS;
   const [bgColor,      setBgColor]      = useState(existing.bgColor      ?? '');
   const [sidebarColor, setSidebarColor] = useState(existing.sidebarColor ?? '');
   const [titleColor,   setTitleColor]   = useState(existing.titleColor   ?? '');
-  const [titleFont,    setTitleFont]    = useState(existing.titleFont     ?? '');
+  const [titleFont,    setTitleFont]    = useState(existing.titleFont    ?? '');
 
   // Advanced
-  const [historyControls,  setHistoryControls]  = useState(existing.historyControls);
-  const [saveLoadMenu,     setSaveLoadMenu]      = useState(existing.saveLoadMenu);
-  const [audioUnlockText,  setAudioUnlockText]  = useState(existing.audioUnlockText ?? '');
+  const [historyControls, setHistoryControls] = useState(existing.historyControls);
+  const [saveLoadMenu,    setSaveLoadMenu]    = useState(existing.saveLoadMenu);
+  const [audioUnlockText, setAudioUnlockText] = useState(existing.audioUnlockText ?? '');
 
-  // UI sections
-  const [appearanceOpen, setAppearanceOpen] = useState(false);
-  const [advancedOpen,   setAdvancedOpen]   = useState(false);
-  const [aiImageOpen,    setAiImageOpen]    = useState(false);
-  const [titleError,     setTitleError]     = useState<string | null>(null);
-  const [busy,           setBusy]           = useState(false);
-
-  // LLM settings modal
-  const [llmSettingsOpen, setLlmSettingsOpen] = useState(false);
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [busy, setBusy]             = useState(false);
 
   // Image lightbox
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   // AI busy states
-  const [busyExpandDesc,   setBusyExpandDesc]   = useState(false);
+  const [busyExpandDesc, setBusyExpandDesc]     = useState(false);
   const [busyGenerateLore, setBusyGenerateLore] = useState(false);
-  const [busyGenPrompt,    setBusyGenPrompt]    = useState(false);
-  const [busyGenImage,     setBusyGenImage]     = useState(false);
-  const [genProgress,      setGenProgress]      = useState<ComfyProgress | null>(null);
+  const [busyGenPrompt, setBusyGenPrompt]       = useState(false);
+  const [busyGenImage, setBusyGenImage]         = useState(false);
+  const [genProgress, setGenProgress]           = useState<ComfyProgress | null>(null);
 
   // Abort refs
   const descAbortRef   = useRef<AbortController | null>(null);
@@ -201,26 +201,24 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
   const promptAbortRef = useRef<AbortController | null>(null);
   const imgAbortRef    = useRef<AbortController | null>(null);
 
-  // Image gen local state (workflow per-session; provider/URL from global store)
-  const [imgWorkflowFile, setImgWorkflowFile] = useState('');
-  const [imgPrompt,           setImgPrompt]           = useState('');
-  const [imgNegativePrompt,   setImgNegativePrompt]   = useState('');
-  const [imgWidth,            setImgWidth]            = useState(768);
-  const [imgHeight,           setImgHeight]           = useState(512);
-  const [imgSeedMode,         setImgSeedMode]         = useState<'random' | 'manual'>('random');
-  const [imgSeed,             setImgSeed]             = useState(0);
-  const [workflows,           setWorkflows]           = useState<string[]>([]);
+  // Image-gen local state
+  const [imgWorkflowFile, setImgWorkflowFile]   = useState('');
+  const [imgPrompt, setImgPrompt]               = useState('');
+  const [imgNegativePrompt, setImgNegativePrompt] = useState('');
+  const [imgWidth, setImgWidth]                 = useState(768);
+  const [imgHeight, setImgHeight]               = useState(512);
+  const [imgSeedMode, setImgSeedMode]           = useState<'random' | 'manual'>('random');
+  const [imgSeed, setImgSeed]                   = useState(0);
+  const [workflows, setWorkflows]               = useState<string[]>([]);
 
-  // ─── Validate title live ─────────────────────────────────────────────────────
+  // ─── Title validation ───────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (title.trim()) setTitleError(null);
-  }, [title]);
+  useEffect(() => { if (title.trim()) setTitleError(null); }, [title]);
 
-  // ─── Load ComfyUI workflows when AI image section opens ──────────────────────
+  // ─── Load workflows for AI image tab ────────────────────────────────────────
 
   useEffect(() => {
-    if (!aiImageOpen || imageGenProvider !== 'comfyui') return;
+    if (tab !== 'aiImage' || imageGenProvider !== 'comfyui') return;
     let alive = true;
     async function run() {
       const useGlobal = comfyUiWorkflowsDir.trim() !== '';
@@ -233,7 +231,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     }
     run().catch(() => {});
     return () => { alive = false; };
-  }, [aiImageOpen, imageGenProvider, projectDir, comfyUiWorkflowsDir]);
+  }, [tab, imageGenProvider, projectDir, comfyUiWorkflowsDir]);
 
   const refreshImgWorkflows = async () => {
     const useGlobal = comfyUiWorkflowsDir.trim() !== '';
@@ -244,15 +242,17 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     setWorkflows(list.sort((a, b) => a.localeCompare(b)));
   };
 
-  // ─── LLM options helper ───────────────────────────────────────────────────────
+  // ─── LLM options helper ─────────────────────────────────────────────────────
 
   const getLlmOptions = () => ({
-    provider:    llmProvider,
-    urlOrApiKey: llmProvider === 'openai' ? llmOpenaiUrl : llmProvider === 'gemini' ? llmGeminiApiKey : llmUrl,
-    apiKey:      llmProvider === 'openai' ? llmOpenaiApiKey : undefined,
-    model:       llmProvider === 'openai' ? llmOpenaiModel : llmGeminiModel,
-    maxTokens:   llmMaxTokens,
-    temperature: llmTemperature,
+    provider:     llmProvider,
+    urlOrApiKey:  llmProvider === 'openai' ? llmOpenaiUrl
+                : llmProvider === 'gemini' ? llmGeminiApiKey
+                : llmUrl,
+    apiKey:       llmProvider === 'openai' ? llmOpenaiApiKey : undefined,
+    model:        llmProvider === 'openai' ? llmOpenaiModel : llmGeminiModel,
+    maxTokens:    llmMaxTokens,
+    temperature:  llmTemperature,
     systemPrompt: llmSystemPrompt,
   });
 
@@ -374,7 +374,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     setHeaderPreviewUrl(null);
   };
 
-  // ─── Header image picker ─────────────────────────────────────────────────────
+  // ─── Header image picker ────────────────────────────────────────────────────
 
   const handlePickHeaderImage = async () => {
     const filePath = await fsApi.openFileDialog({
@@ -395,24 +395,19 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     setHeaderGenBytes(null);
   };
 
-  // ─── Build final settings object ─────────────────────────────────────────────
+  // ─── Build settings / save / create ─────────────────────────────────────────
 
   function buildSettings(headerSrc: string | null, rowId: string | null): ProjectSettings {
-    const s: ProjectSettings = {
-      historyControls,
-      saveLoadMenu,
-    };
+    const s: ProjectSettings = { historyControls, saveLoadMenu };
     if (bgColor.trim())      s.bgColor      = bgColor.trim();
     if (sidebarColor.trim()) s.sidebarColor = sidebarColor.trim();
     if (titleColor.trim())   s.titleColor   = titleColor.trim();
     if (titleFont.trim())    s.titleFont    = titleFont.trim();
-    if (headerSrc)                    s.headerImageSrc   = headerSrc;
-    if (rowId)                        s.headerRowId      = rowId;
-    if (audioUnlockText.trim())       s.audioUnlockText  = audioUnlockText.trim();
+    if (headerSrc)           s.headerImageSrc = headerSrc;
+    if (rowId)               s.headerRowId = rowId;
+    if (audioUnlockText.trim()) s.audioUnlockText = audioUnlockText.trim();
     return s;
   }
-
-  // ─── Copy / write header image ────────────────────────────────────────────────
 
   async function copyHeaderImage(dir: string, filePath: string): Promise<string> {
     const fileName = filePath.replace(/.*[/\\]/, '');
@@ -432,8 +427,6 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     return `assets/project/${fileName}`;
   }
 
-  // ─── Resolve header source on save ───────────────────────────────────────────
-
   async function resolveHeaderSrc(dir: string, existingSrc: string | null): Promise<string | null> {
     if (headerRemoved) return null;
     if (headerGenBytes && headerGenBytes.length > 0) return writeHeaderImageBytes(dir, headerGenBytes, headerGenExt);
@@ -441,39 +434,31 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     return existingSrc;
   }
 
-  // ─── Save (edit mode) ────────────────────────────────────────────────────────
-
   const handleSave = async () => {
     const trimmedTitle = title.trim();
-    if (!trimmedTitle) { setTitleError(ps.titleEmpty); return; }
+    if (!trimmedTitle) { setTitleError(ps.titleEmpty); setTab('general'); return; }
 
     setBusy(true);
     try {
-      const headerSrc = await resolveHeaderSrc(
-        projectDir!,
-        project.settings.headerImageSrc ?? null,
-      );
+      const headerSrc = await resolveHeaderSrc(projectDir!, project.settings.headerImageSrc ?? null);
       const existingRowId = project.settings.headerRowId ?? null;
 
       const { panel: updatedPanel, rowId: newRowId } = applyHeaderImageToPanel(
-        project.sidebarPanel,
-        headerSrc,
-        existingRowId,
-        headerObjectFit,
+        project.sidebarPanel, headerSrc, existingRowId, headerObjectFit,
       );
 
       updateProjectMeta({
-        title:       trimmedTitle,
-        author:      author.trim() || undefined,
-        description: description.trim() || undefined,
-        lore:        lore.trim() || undefined,
-        settings:    buildSettings(headerSrc, newRowId),
+        title:        trimmedTitle,
+        author:       author.trim() || undefined,
+        description:  description.trim() || undefined,
+        lore:         lore.trim() || undefined,
+        settings:     buildSettings(headerSrc, newRowId),
         sidebarPanel: updatedPanel,
       });
 
       setProjectSettingsOpen(false);
       onClose();
-      toast.success(t.projectSettings.successSave);
+      toast.success(ps.successSave);
     } catch (e) {
       alert(String(e));
     } finally {
@@ -481,11 +466,9 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     }
   };
 
-  // ─── Create (create mode) ────────────────────────────────────────────────────
-
   const handleCreate = async () => {
     const trimmedTitle = title.trim();
-    if (!trimmedTitle) { setTitleError(ps.titleEmpty); return; }
+    if (!trimmedTitle) { setTitleError(ps.titleEmpty); setTab('general'); return; }
 
     setBusy(true);
     try {
@@ -500,11 +483,11 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
         id:    crypto.randomUUID(),
         title: trimmedTitle,
         ifid:  (crypto.randomUUID()).toUpperCase(),
-        author:      author.trim()      || undefined,
-        description: description.trim() || undefined,
-        lore:        lore.trim()        || undefined,
-        settings:    buildSettings(null, null),
-        scenes:      [{ id: crypto.randomUUID(), name: 'Start', tags: ['start'], blocks: [] }],
+        author:       author.trim()      || undefined,
+        description:  description.trim() || undefined,
+        lore:         lore.trim()        || undefined,
+        settings:     buildSettings(null, null),
+        scenes:       [{ id: crypto.randomUUID(), name: 'Start', tags: ['start'], blocks: [] }],
         sceneGroups:  [],
         characters:   [],
         items:        [],
@@ -516,10 +499,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
       };
 
       const { panel: updatedPanel, rowId } = applyHeaderImageToPanel(
-        newProject.sidebarPanel,
-        headerSrc,
-        null,
-        headerObjectFit,
+        newProject.sidebarPanel, headerSrc, null, headerObjectFit,
       );
 
       newProject.sidebarPanel = updatedPanel;
@@ -531,7 +511,7 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
       loadProject(newProject, folder);
       setProjectSettingsOpen(false);
       onClose();
-      toast.success(t.projectSettings.successCreate);
+      toast.success(ps.successCreate);
     } catch (e) {
       alert(String(e));
     } finally {
@@ -539,123 +519,220 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
     }
   };
 
-  // ─── Render ──────────────────────────────────────────────────────────────────
+  // ─── Render ─────────────────────────────────────────────────────────────────
 
   const hasHeaderImage = headerPreviewUrl && !headerRemoved;
 
+  const tabs: { id: TabId; label: string; icon: ReactNode }[] = [
+    { id: 'general',    label: ps.tabGeneral,    icon: <IconDocument /> },
+    { id: 'appearance', label: ps.tabAppearance, icon: <IconPalette /> },
+    { id: 'aiImage',    label: ps.tabAiImage,    icon: <IconImage /> },
+    { id: 'advanced',   label: ps.tabAdvanced,   icon: <IconCog /> },
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop — no onClick to prevent accidental close */}
-      <div className="absolute inset-0 bg-black/60" />
-
-      {/* Modal */}
-      <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-[520px] flex flex-col max-h-[90vh]">
-
+    <>
+      <ModalShell width={900} onClose={onClose} dismissOnBackdrop={false}>
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
-          <h2 className="text-sm font-semibold text-white">
-            {mode === 'create' ? ps.createTitle : ps.editTitle}
-          </h2>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setLlmSettingsOpen(true)}
-              className="text-xs px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors cursor-pointer border border-slate-600"
-            >
-              ⚙ {ps.aiLlmSettingsBtn}
-            </button>
-            <button
-              onClick={onClose}
-              className="text-slate-500 hover:text-white transition-colors cursor-pointer text-base leading-none"
-            >
-              ✕
-            </button>
+        <div className="flex items-start gap-3 px-5 py-4 border-b border-slate-700">
+          <div className="w-9 h-9 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shrink-0">
+            <IconBook />
           </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold text-slate-100 leading-tight">
+              {mode === 'create' ? ps.createTitle : ps.editTitle}
+            </h2>
+            {mode === 'edit' && title && (
+              <p className="text-xs text-slate-400 mt-0.5 truncate">{title}</p>
+            )}
+          </div>
+          <button
+            onClick={onClose}
+            className="text-slate-400 hover:text-slate-100 transition-colors p-1 -m-1 cursor-pointer"
+            aria-label="Close"
+          >
+            <IconX />
+          </button>
         </div>
 
-        {/* Body */}
-        <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-4">
+        {/* Body: sidebar + content */}
+        <div className="flex min-h-0 flex-1">
+          <nav className="w-52 shrink-0 border-r border-slate-700 py-3 flex flex-col gap-0.5">
+            {tabs.map(item => {
+              const active = item.id === tab;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setTab(item.id)}
+                  className={`flex items-center gap-2.5 px-4 py-2 text-sm text-left transition-colors cursor-pointer border-l-2 ${
+                    active
+                      ? 'bg-indigo-600/10 border-indigo-500 text-indigo-200'
+                      : 'border-transparent text-slate-300 hover:bg-slate-700/40 hover:text-slate-100'
+                  }`}
+                >
+                  <span className={active ? 'text-indigo-300' : 'text-slate-400'}>{item.icon}</span>
+                  <span className="flex-1 truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
 
-          {/* Title */}
-          <Field label={ps.fieldTitle} required>
-            <input
-              autoFocus
-              className={`w-full bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border ${titleError ? 'border-red-500' : 'border-slate-600 focus:border-indigo-500'}`}
-              placeholder={ps.fieldTitlePlaceholder}
-              value={title}
-              onChange={e => setTitle(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') { if (mode === 'create') handleCreate(); else handleSave(); } }}
-            />
-            {titleError && <span className="text-xs text-red-400">{titleError}</span>}
-          </Field>
+          <ModalBody className="flex-1 gap-5 px-6 py-5">
+          {/* ── General ────────────────────────────────────────────────── */}
+          {tab === 'general' && (
+            <>
+              <ModalField label={ps.fieldTitle} required error={titleError ?? undefined}>
+                <input
+                  autoFocus
+                  className={INPUT_CLS}
+                  placeholder={ps.fieldTitlePlaceholder}
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { if (mode === 'create') handleCreate(); else handleSave(); } }}
+                />
+              </ModalField>
 
-          {/* Author */}
-          <Field label={ps.fieldAuthor}>
-            <input
-              className="w-full bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder={ps.fieldAuthorPlaceholder}
-              value={author}
-              onChange={e => setAuthor(e.target.value)}
-            />
-          </Field>
+              <ModalField label={ps.fieldAuthor}>
+                <input
+                  className={INPUT_CLS}
+                  placeholder={ps.fieldAuthorPlaceholder}
+                  value={author}
+                  onChange={e => setAuthor(e.target.value)}
+                />
+              </ModalField>
 
-          {/* Description */}
-          <Field label={ps.fieldDescription}>
-            <textarea
-              className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-none placeholder-slate-500"
-              rows={2}
-              placeholder={ps.fieldDescPlaceholder}
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-            />
-            <button
-              type="button"
-              disabled={busyExpandDesc || !llmEnabled}
-              onClick={handleExpandDescription}
-              className="self-start text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
-            >
-              {busyExpandDesc ? ps.aiExpandDescBusy : ps.aiExpandDesc}
-            </button>
-          </Field>
+              <ModalField label={ps.fieldDescription}>
+                <textarea
+                  className={INPUT_CLS + ' resize-none min-h-[60px]'}
+                  rows={3}
+                  placeholder={ps.fieldDescPlaceholder}
+                  value={description}
+                  onChange={e => setDescription(e.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={busyExpandDesc || !llmEnabled}
+                  onClick={handleExpandDescription}
+                  className="self-start text-[11px] px-2 py-0.5 mt-1 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
+                >
+                  {busyExpandDesc ? ps.aiExpandDescBusy : `✨ ${ps.aiExpandDesc}`}
+                </button>
+              </ModalField>
 
-          {/* Lore */}
-          <Field label="Lore / Story Context" note="Extra context for LLM generation">
-            <textarea
-              className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-none placeholder-slate-500"
-              rows={3}
-              placeholder="Describe the world, plot, and key facts..."
-              value={lore}
-              onChange={e => setLore(e.target.value)}
-            />
-            <button
-              type="button"
-              disabled={busyGenerateLore || !llmEnabled || !description.trim()}
-              onClick={handleGenerateLore}
-              className="self-start text-xs px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
-            >
-              {busyGenerateLore ? ps.aiGenerateLoreBusy : ps.aiGenerateLore}
-            </button>
-          </Field>
+              <ModalField label={ps.fieldLore} note={ps.fieldLoreNote}>
+                <textarea
+                  className={INPUT_CLS + ' resize-none min-h-[80px]'}
+                  rows={4}
+                  placeholder={ps.fieldLorePlaceholder}
+                  value={lore}
+                  onChange={e => setLore(e.target.value)}
+                />
+                <button
+                  type="button"
+                  disabled={busyGenerateLore || !llmEnabled || !description.trim()}
+                  onClick={handleGenerateLore}
+                  className="self-start text-[11px] px-2 py-0.5 mt-1 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
+                >
+                  {busyGenerateLore ? ps.aiGenerateLoreBusy : `✨ ${ps.aiGenerateLore}`}
+                </button>
+              </ModalField>
+            </>
+          )}
 
-          {/* Header image */}
-          <Field label={ps.fieldHeaderImage} note={ps.headerImageNote}>
-            {hasHeaderImage ? (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2">
-                  <img
-                    src={headerPreviewUrl!}
-                    alt=""
-                    className="h-14 rounded border border-slate-600 flex-shrink-0 cursor-zoom-in"
-                    style={{ maxWidth: '200px', objectFit: headerObjectFit }}
-                    onDoubleClick={() => setLightboxOpen(true)}
-                    title={t.imageGenBlock.doubleClickToExpand}
+          {/* ── Appearance ─────────────────────────────────────────────── */}
+          {tab === 'appearance' && (
+            <>
+              <ModalSection title={ps.sectionColors}>
+                <ModalRow label={ps.fieldBgColor}>
+                  <ColorSwatchInput value={bgColor} onChange={setBgColor} allowClear />
+                </ModalRow>
+                <ModalRow label={ps.fieldSidebarColor}>
+                  <ColorSwatchInput value={sidebarColor} onChange={setSidebarColor} allowClear />
+                </ModalRow>
+                <ModalRow label={ps.fieldTitleColor}>
+                  <ColorSwatchInput value={titleColor} onChange={setTitleColor} allowClear />
+                </ModalRow>
+
+                <ModalField label={ps.fieldTitleFont}>
+                  <input
+                    className={INPUT_CLS}
+                    placeholder={ps.fieldTitleFontPlaceholder}
+                    value={titleFont}
+                    onChange={e => setTitleFont(e.target.value)}
                   />
-                  <div className="flex flex-col gap-1">
-                    <button
-                      className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
-                      onClick={handlePickHeaderImage}
-                    >
-                      {ps.headerImageChange}
-                    </button>
+                </ModalField>
+              </ModalSection>
+
+              <ModalSection title={ps.fieldHeaderImage} note={ps.headerImageNote}>
+                {hasHeaderImage ? (
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start gap-3">
+                      <img
+                        src={headerPreviewUrl!}
+                        alt=""
+                        className="h-20 w-auto rounded border border-slate-600 flex-shrink-0 cursor-zoom-in"
+                        style={{ maxWidth: '260px', objectFit: headerObjectFit }}
+                        onDoubleClick={() => setLightboxOpen(true)}
+                        title={t.imageGenBlock.doubleClickToExpand}
+                      />
+                      <div className="flex flex-col gap-1 pt-1">
+                        <button
+                          className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer text-left"
+                          onClick={handlePickHeaderImage}
+                        >
+                          {ps.headerImageChange}
+                        </button>
+                        <button
+                          className="text-xs text-red-400 hover:text-red-300 cursor-pointer text-left"
+                          onClick={handleRemoveHeaderImage}
+                        >
+                          {ps.headerImageRemove}
+                        </button>
+                      </div>
+                    </div>
+                    <ModalRow label={t.cellModal.objectFit}>
+                      <Segmented
+                        value={headerObjectFit}
+                        onChange={setHeaderObjectFit}
+                        options={[
+                          { value: 'cover', label: t.cellModal.fitCover },
+                          { value: 'contain', label: t.cellModal.fitContain },
+                        ]}
+                      />
+                    </ModalRow>
+                  </div>
+                ) : (
+                  <button
+                    className="self-start text-xs text-indigo-400 hover:text-indigo-300 px-3 py-1.5 rounded border border-slate-600 hover:border-indigo-500 transition-colors cursor-pointer"
+                    onClick={handlePickHeaderImage}
+                  >
+                    {ps.headerImageAdd}
+                  </button>
+                )}
+                <p className="text-[10px] text-slate-500 mt-1">{ps.headerImageAiHint}</p>
+              </ModalSection>
+            </>
+          )}
+
+          {/* ── AI Image ───────────────────────────────────────────────── */}
+          {tab === 'aiImage' && (
+            <>
+              {!llmEnabled && (
+                <div className="text-xs text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded px-3 py-2">
+                  {ps.aiLlmDisabledHint}
+                </div>
+              )}
+
+              {hasHeaderImage && (
+                <ModalSection title={ps.currentHeaderImage}>
+                  <div className="flex items-start gap-3">
+                    <img
+                      src={headerPreviewUrl!}
+                      alt=""
+                      className="h-20 rounded border border-slate-600 cursor-zoom-in"
+                      style={{ maxWidth: '200px', objectFit: headerObjectFit }}
+                      onDoubleClick={() => setLightboxOpen(true)}
+                    />
                     <button
                       className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
                       onClick={handleRemoveHeaderImage}
@@ -663,268 +740,186 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
                       {ps.headerImageRemove}
                     </button>
                   </div>
-                </div>
-                {/* objectFit selector */}
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-slate-400">{t.cellModal.objectFit}:</span>
-                  <div className="flex gap-1">
-                    {(['cover', 'contain'] as const).map(fit => (
-                      <button
-                        key={fit}
-                        onClick={() => setHeaderObjectFit(fit)}
-                        className={`px-2 py-0.5 rounded text-xs cursor-pointer transition-colors border ${
-                          headerObjectFit === fit
-                            ? 'bg-indigo-600 border-indigo-500 text-white'
-                            : 'bg-slate-700 border-slate-600 text-slate-300 hover:border-slate-400'
-                        }`}
+                </ModalSection>
+              )}
+
+              <ModalSection title={ps.sectionAiImage}>
+                {imageGenProvider === 'comfyui' && (
+                  <ModalField label={ig.workflowLabel}>
+                    <div className="flex items-center gap-2">
+                      <select
+                        className={INPUT_CLS + ' flex-1'}
+                        value={imgWorkflowFile}
+                        onChange={e => setImgWorkflowFile(e.target.value)}
                       >
-                        {fit === 'cover' ? t.cellModal.fitCover : t.cellModal.fitContain}
+                        <option value="">{ig.workflowNone}</option>
+                        {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+                      </select>
+                      <button
+                        type="button"
+                        className="px-2 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-slate-200 cursor-pointer shrink-0"
+                        onClick={refreshImgWorkflows}
+                      >
+                        {ig.workflowRefresh}
                       </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <button
-                className="text-xs text-indigo-400 hover:text-indigo-300 px-3 py-1.5 rounded border border-slate-600 hover:border-indigo-500 transition-colors cursor-pointer"
-                onClick={handlePickHeaderImage}
-              >
-                {ps.headerImageAdd}
-              </button>
-            )}
-          </Field>
-
-          {/* ── AI Header Image section ──────────────────────────────────────── */}
-          <CollapsibleSection
-            title={ps.sectionAiImage}
-            open={aiImageOpen}
-            onToggle={() => setAiImageOpen(v => !v)}
-          >
-            <div className="flex flex-col gap-3 pt-1">
-
-              {imageGenProvider === 'comfyui' && (
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-400 w-24 shrink-0">{ig.workflowLabel}</label>
-                  <select
-                    className="flex-1 bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-                    value={imgWorkflowFile}
-                    onChange={e => setImgWorkflowFile(e.target.value)}
-                  >
-                    <option value="">{ig.workflowNone}</option>
-                    {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
-                  </select>
-                  <button
-                    type="button"
-                    className="px-2 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-slate-200 cursor-pointer"
-                    onClick={refreshImgWorkflows}
-                  >
-                    {ig.workflowRefresh}
-                  </button>
-                </div>
-              )}
-
-              {/* Prompt */}
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{ig.promptLabel}</label>
-                <textarea
-                  className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-none placeholder-slate-500"
-                  rows={3}
-                  placeholder={ig.promptPlaceholder}
-                  value={imgPrompt}
-                  onChange={e => setImgPrompt(e.target.value)}
-                />
-                <button
-                  type="button"
-                  disabled={busyGenPrompt || !llmEnabled}
-                  onClick={handleGeneratePrompt}
-                  className="self-start text-xs px-2.5 py-1 rounded bg-slate-600 hover:bg-slate-500 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
-                >
-                  {busyGenPrompt ? ps.aiGeneratePromptBusy : ps.aiGeneratePrompt}
-                </button>
-              </div>
-
-              {/* Negative prompt */}
-              <div className="flex flex-col gap-1">
-                <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{ig.negativePromptLabel}</label>
-                <textarea
-                  className="w-full bg-slate-700 text-xs text-slate-200 rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 resize-none placeholder-slate-500"
-                  rows={2}
-                  placeholder={ig.negativePromptPlaceholder}
-                  value={imgNegativePrompt}
-                  onChange={e => setImgNegativePrompt(e.target.value)}
-                />
-              </div>
-
-              {/* Width × Height */}
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-400 w-24 shrink-0">{ig.genSizeLabel}</label>
-                <input
-                  type="number" min={0}
-                  className="w-20 bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
-                  placeholder={ig.genWidthPlaceholder}
-                  value={imgWidth || ''}
-                  onChange={e => setImgWidth(parseInt(e.target.value, 10) || 0)}
-                />
-                <span className="text-xs text-slate-500">×</span>
-                <input
-                  type="number" min={0}
-                  className="w-20 bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
-                  placeholder={ig.genHeightPlaceholder}
-                  value={imgHeight || ''}
-                  onChange={e => setImgHeight(parseInt(e.target.value, 10) || 0)}
-                />
-              </div>
-
-              {/* Seed mode */}
-              <div className="flex items-center gap-2">
-                <label className="text-xs text-slate-400 w-24 shrink-0">{ig.seedModeLabel}</label>
-                <div className="flex gap-1">
-                  {(['random', 'manual'] as const).map(smode => (
-                    <button
-                      key={smode}
-                      type="button"
-                      onClick={() => setImgSeedMode(smode)}
-                      className={`px-2 py-0.5 text-xs rounded cursor-pointer transition-colors ${
-                        imgSeedMode === smode ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                      }`}
-                    >
-                      {smode === 'random' ? ig.seedModeRandom : ig.seedModeManual}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {imgSeedMode === 'manual' && (
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-400 w-24 shrink-0">{ig.seedLabel}</label>
-                  <input
-                    type="number" min={0} max={4294967295}
-                    className="w-32 bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
-                    placeholder={ig.seedPlaceholder}
-                    value={imgSeed}
-                    onChange={e => setImgSeed(parseInt(e.target.value, 10) || 0)}
-                  />
-                </div>
-              )}
-
-              {/* Generate button */}
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={busyGenImage}
-                  className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer"
-                  onClick={handleGenerateImage}
-                >
-                  {busyGenImage ? ig.generatingImage : ig.generateImage}
-                </button>
-                {busyGenImage && (
-                  <button
-                    type="button"
-                    className="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white cursor-pointer"
-                    onClick={() => imgAbortRef.current?.abort()}
-                  >
-                    {ig.cancelGeneration}
-                  </button>
+                    </div>
+                  </ModalField>
                 )}
-              </div>
 
-              {/* Progress bar */}
-              {busyGenImage && (
-                <div className="w-full h-1 rounded-full bg-slate-700 overflow-hidden">
-                  {genProgress ? (
-                    <div
-                      className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                      style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
+                <ModalField label={ig.promptLabel}>
+                  <textarea
+                    className={INPUT_CLS + ' resize-none min-h-[70px]'}
+                    rows={3}
+                    placeholder={ig.promptPlaceholder}
+                    value={imgPrompt}
+                    onChange={e => setImgPrompt(e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    disabled={busyGenPrompt || !llmEnabled}
+                    onClick={handleGeneratePrompt}
+                    className="self-start text-[11px] px-2 py-0.5 mt-1 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
+                  >
+                    {busyGenPrompt ? ps.aiGeneratePromptBusy : `✨ ${ps.aiGeneratePrompt}`}
+                  </button>
+                </ModalField>
+
+                <ModalField label={ig.negativePromptLabel}>
+                  <textarea
+                    className={INPUT_CLS + ' resize-none min-h-[50px]'}
+                    rows={2}
+                    placeholder={ig.negativePromptPlaceholder}
+                    value={imgNegativePrompt}
+                    onChange={e => setImgNegativePrompt(e.target.value)}
+                  />
+                </ModalField>
+
+                <ModalRow label={ig.genSizeLabel}>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number" min={0}
+                      className={INPUT_CLS + ' w-24'}
+                      placeholder={ig.genWidthPlaceholder}
+                      value={imgWidth || ''}
+                      onChange={e => setImgWidth(parseInt(e.target.value, 10) || 0)}
                     />
-                  ) : (
-                    <div className="h-full w-full bg-emerald-500/40 animate-pulse" />
+                    <span className="text-xs text-slate-500">×</span>
+                    <input
+                      type="number" min={0}
+                      className={INPUT_CLS + ' w-24'}
+                      placeholder={ig.genHeightPlaceholder}
+                      value={imgHeight || ''}
+                      onChange={e => setImgHeight(parseInt(e.target.value, 10) || 0)}
+                    />
+                  </div>
+                </ModalRow>
+
+                <ModalRow label={ig.seedModeLabel}>
+                  <Segmented
+                    value={imgSeedMode}
+                    onChange={setImgSeedMode}
+                    options={[
+                      { value: 'random', label: ig.seedModeRandom },
+                      { value: 'manual', label: ig.seedModeManual },
+                    ]}
+                  />
+                </ModalRow>
+
+                {imgSeedMode === 'manual' && (
+                  <ModalRow label={ig.seedLabel}>
+                    <input
+                      type="number" min={0} max={4294967295}
+                      className={INPUT_CLS + ' w-40'}
+                      placeholder={ig.seedPlaceholder}
+                      value={imgSeed}
+                      onChange={e => setImgSeed(parseInt(e.target.value, 10) || 0)}
+                    />
+                  </ModalRow>
+                )}
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    disabled={busyGenImage}
+                    className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer"
+                    onClick={handleGenerateImage}
+                  >
+                    {busyGenImage ? ig.generatingImage : `✨ ${ig.generateImage}`}
+                  </button>
+                  {busyGenImage && (
+                    <button
+                      type="button"
+                      className="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white cursor-pointer"
+                      onClick={() => imgAbortRef.current?.abort()}
+                    >
+                      {ig.cancelGeneration}
+                    </button>
                   )}
                 </div>
-              )}
 
-              {/* Generated image confirmation */}
-              {headerGenBytes && !headerRemoved && (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="text-emerald-400">✓ {ps.aiImageReady}</span>
-                  <button
-                    type="button"
-                    onClick={handleRemoveGeneratedImage}
-                    className="text-red-400 hover:text-red-300 cursor-pointer"
-                  >
-                    {ps.aiImageRemove}
-                  </button>
-                </div>
-              )}
+                {busyGenImage && (
+                  <div className="w-full h-1 rounded-full bg-slate-700 overflow-hidden">
+                    {genProgress ? (
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
+                      />
+                    ) : (
+                      <div className="h-full w-full bg-emerald-500/40 animate-pulse" />
+                    )}
+                  </div>
+                )}
 
-              {!llmEnabled && (
-                <p className="text-xs text-slate-500">{ps.aiLlmDisabledHint}</p>
-              )}
-            </div>
-          </CollapsibleSection>
+                {headerGenBytes && !headerRemoved && (
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-emerald-400">✓ {ps.aiImageReady}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveGeneratedImage}
+                      className="text-red-400 hover:text-red-300 cursor-pointer"
+                    >
+                      {ps.aiImageRemove}
+                    </button>
+                  </div>
+                )}
+              </ModalSection>
+            </>
+          )}
 
-          {/* ── Appearance section ──────────────────────────────────────────── */}
-          <CollapsibleSection
-            title={ps.sectionAppearance}
-            open={appearanceOpen}
-            onToggle={() => setAppearanceOpen(v => !v)}
-          >
-            <div className="flex flex-col gap-3 pt-1">
-              <ColorField label={ps.fieldBgColor}      value={bgColor}      onChange={setBgColor} />
-              <ColorField label={ps.fieldSidebarColor} value={sidebarColor} onChange={setSidebarColor} />
-              <ColorField label={ps.fieldTitleColor}   value={titleColor}   onChange={setTitleColor} />
+          {/* ── Advanced ───────────────────────────────────────────────── */}
+          {tab === 'advanced' && (
+            <ModalSection title={ps.sectionAdvanced}>
+              <ModalRow label={ps.fieldHistoryControls}>
+                <Toggle value={historyControls} onChange={() => setHistoryControls(v => !v)} />
+              </ModalRow>
+              <ModalRow label={ps.fieldSaveLoadMenu}>
+                <Toggle value={saveLoadMenu} onChange={() => setSaveLoadMenu(v => !v)} />
+              </ModalRow>
 
-              <Field label={ps.fieldTitleFont}>
+              <ModalField label={ps.fieldAudioUnlockText} note={ps.fieldAudioUnlockTextNote}>
                 <input
-                  className="w-full bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
-                  placeholder={ps.fieldTitleFontPlaceholder}
-                  value={titleFont}
-                  onChange={e => setTitleFont(e.target.value)}
-                />
-              </Field>
-            </div>
-          </CollapsibleSection>
-
-          {/* ── Advanced section ────────────────────────────────────────────── */}
-          <CollapsibleSection
-            title={ps.sectionAdvanced}
-            open={advancedOpen}
-            onToggle={() => setAdvancedOpen(v => !v)}
-          >
-            <div className="flex flex-col gap-3 pt-1">
-              <ToggleField label={ps.fieldHistoryControls} value={historyControls} onChange={setHistoryControls} />
-              <ToggleField label={ps.fieldSaveLoadMenu}    value={saveLoadMenu}    onChange={setSaveLoadMenu} />
-
-              <Field label={ps.fieldAudioUnlockText}>
-                <input
-                  className="w-full bg-slate-700 text-xs text-white rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
+                  className={INPUT_CLS}
                   placeholder={ps.fieldAudioUnlockTextPlaceholder}
                   value={audioUnlockText}
                   onChange={e => setAudioUnlockText(e.target.value)}
                 />
-                <p className="text-xs text-slate-500 mt-1">{ps.fieldAudioUnlockTextNote}</p>
-              </Field>
-            </div>
-          </CollapsibleSection>
-
+              </ModalField>
+            </ModalSection>
+          )}
+        </ModalBody>
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-slate-700 shrink-0 flex gap-2">
-          <button
-            className="flex-1 py-1.5 text-xs rounded transition-colors cursor-pointer bg-slate-700 hover:bg-slate-600 text-slate-200"
-            onClick={onClose}
-          >
-            {t.common.cancel}
-          </button>
-          <button
-            className="flex-1 py-1.5 text-xs rounded transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed bg-indigo-600 hover:bg-indigo-500 text-white"
+        <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-slate-700">
+          <SecondaryButton onClick={onClose}>{t.common.cancel}</SecondaryButton>
+          <PrimaryButton
             onClick={mode === 'create' ? handleCreate : handleSave}
             disabled={busy}
           >
             {busy ? '...' : (mode === 'create' ? `${ps.create} →` : ps.save)}
-          </button>
+          </PrimaryButton>
         </div>
-      </div>
+      </ModalShell>
 
       {/* Image lightbox */}
       {lightboxOpen && headerPreviewUrl && (
@@ -940,114 +935,58 @@ export function ProjectSettingsModal({ mode, onClose }: Props) {
           />
         </div>
       )}
-
-      {/* LLM Settings modal — renders on top (later in DOM, same z-index) */}
-      {llmSettingsOpen && (
-        <AISettingsModal onClose={() => setLlmSettingsOpen(false)} />
-      )}
-    </div>
+    </>
   );
 }
 
-// ─── Small helpers ────────────────────────────────────────────────────────────
+// ─── Icons ──────────────────────────────────────────────────────────────────
+// 16×16 line icons, currentColor. Matches the visual weight of other modal icons.
 
-function Field({ label, required, note, children }: {
-  label: string;
-  required?: boolean;
-  note?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
-      </label>
-      {note && <span className="text-xs text-slate-500 -mt-0.5">{note}</span>}
-      {children}
-    </div>
-  );
-}
+const IconBook = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  </svg>
+);
 
-function ColorField({ label, value, onChange }: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <label className="text-xs text-slate-400 flex-1">{label}</label>
-      <div className="flex items-center gap-1.5">
-        <input
-          type="color"
-          value={value || '#1e293b'}
-          onChange={e => onChange(e.target.value)}
-          className="w-7 h-7 rounded cursor-pointer border-0 bg-transparent p-0"
-          title={label}
-        />
-        <input
-          className="w-24 bg-slate-700 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder="—"
-        />
-        {value && (
-          <button
-            className="text-slate-500 hover:text-slate-300 cursor-pointer text-xs leading-none"
-            onClick={() => onChange('')}
-            title="Clear"
-          >
-            ✕
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+const IconDocument = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="8" y1="13" x2="16" y2="13" />
+    <line x1="8" y1="17" x2="14" y2="17" />
+  </svg>
+);
 
-function ToggleField({ label, value, onChange }: {
-  label: string;
-  value: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <span className="text-xs text-slate-300">{label}</span>
-      <button
-        onClick={() => onChange(!value)}
-        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${
-          value ? 'bg-indigo-600' : 'bg-slate-600'
-        }`}
-      >
-        <span
-          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-            value ? 'translate-x-4' : 'translate-x-0'
-          }`}
-        />
-      </button>
-    </div>
-  );
-}
+const IconPalette = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="13.5" cy="6.5" r="0.5" fill="currentColor" />
+    <circle cx="17.5" cy="10.5" r="0.5" fill="currentColor" />
+    <circle cx="8.5" cy="7.5" r="0.5" fill="currentColor" />
+    <circle cx="6.5" cy="12.5" r="0.5" fill="currentColor" />
+    <path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.8 0 1.5-.7 1.5-1.5 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.8.7-1.5 1.5-1.5H16c3.3 0 6-2.7 6-6 0-5-4.5-9-10-9z" />
+  </svg>
+);
 
-function CollapsibleSection({ title, open, onToggle, children }: {
-  title: string;
-  open: boolean;
-  onToggle: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="border border-slate-700 rounded">
-      <button
-        className="w-full flex items-center justify-between px-3 py-2 text-xs font-semibold text-slate-400 uppercase tracking-wider hover:text-slate-200 transition-colors cursor-pointer"
-        onClick={onToggle}
-      >
-        {title}
-        <span className="text-slate-500 text-sm">{open ? '▴' : '▾'}</span>
-      </button>
-      {open && (
-        <div className="px-3 pb-3">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
+const IconImage = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2" />
+    <circle cx="8.5" cy="8.5" r="1.5" />
+    <polyline points="21 15 16 10 5 21" />
+  </svg>
+);
+
+const IconCog = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="3" />
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+  </svg>
+);
+
+const IconX = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+

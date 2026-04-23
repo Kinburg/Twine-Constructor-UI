@@ -85,6 +85,8 @@ export interface Translations {
     audio: string;
     container: string;
     timeManipulation: string;
+    paperdoll: string;
+    inventory: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -130,6 +132,8 @@ export interface Translations {
     audio:       { label: string; desc: string };
     container:   { label: string; desc: string };
     timeManipulation: { label: string; desc: string };
+    paperdoll:        { label: string; desc: string };
+    inventory:        { label: string; desc: string };
   };
 
   includeBlock: {
@@ -714,6 +718,15 @@ export interface Translations {
     errorApprove: string;
   };
 
+  // ─── Container background generation modal (overrides for container context) ─
+  containerGen: {
+    promptPlaceholder: string;
+    hintPlaceholder: string;
+    generateFromHintNoRef: string;
+    approveSuccess: string;
+    errorApprove: string;
+  };
+
   // ─── Cell image-bound generation modal (overrides for non-avatar context) ───
   cellBoundGen: {
     modalTitle: string;
@@ -985,6 +998,35 @@ export interface Translations {
     popupTitle:  string;
     popupTitlePlaceholder: string;
     noPopupScenes: string;
+    createInventoryPopup: string;
+    createInventoryPopupTitle: string;
+  };
+
+  // ─── Inventory block ──────────────────────────────────────────────────────────
+  inventoryBlock: {
+    charLabel:       string;
+    charNone:        string;
+    titleLabel:      string;
+    titlePlaceholder: string;
+    noHeroHint:      string;
+    // Runtime dialog strings (injected into exported HTML)
+    runtimeAll:            string;
+    runtimeCategoryWear:   string;
+    runtimeCategoryConsume:string;
+    runtimeCategoryMisc:   string;
+    runtimeEquip:          string;
+    runtimeUnequip:        string;
+    runtimeUse:            string;
+    runtimeDrop:           string;
+    runtimeEmpty:          string;
+    runtimeDropConfirmTitle: string;
+    runtimeDropConfirmMsg:   string;  // supports {name} {qty} placeholders
+    runtimeDropConfirmYes:   string;
+    runtimeDropConfirmNo:    string;
+    runtimeSlotMissingTitle: string;
+    runtimeSlotMissingMsg:   string;  // supports {slot} placeholder
+    runtimeQty:            string;   // "Qty: {n}"
+    runtimeEquipped:       string;
   };
 
   // ─── Editor preferences modal ────────────────────────────────────────────────
@@ -1052,6 +1094,28 @@ export interface Translations {
     pollinationsModelPlaceholder: string;
     pollinationsTokenLabel: string;
     pollinationsTokenPlaceholder: string;
+    // Merged from standalone AI Settings modal into Project Settings > LLM tab
+    sectionLlm: string;
+    sectionParams: string;
+    providerLabel: string;
+    geminiApiKeyLabel: string;
+    geminiApiKeyPlaceholder: string;
+    geminiModelLabel: string;
+    refreshModels: string;
+    refreshingModels: string;
+    customModelPlaceholder: string;
+    openaiUrlLabel: string;
+    openaiUrlHint: string;
+    openaiApiKeyLabel: string;
+    openaiModelLabel: string;
+    filterThoughtLabel: string;
+    filterThoughtHint: string;
+    presetsLabel: string;
+    generationHistoryLabel: string;
+    generationHistoryMemory: string;
+    generationHistoryProject: string;
+    generationHistoryDisabled: string;
+    autoSaveHint: string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────
@@ -1103,6 +1167,17 @@ export interface Translations {
     aiLoreError:            string;
     aiImageErrorNoPrompt:   string;
     aiImageError:           string;
+    // Tabbed layout (merged AI Settings)
+    tabGeneral:             string;
+    tabAppearance:          string;
+    tabAiImage:             string;
+    tabAdvanced:            string;
+    sectionColors:          string;
+    fieldLore:              string;
+    fieldLorePlaceholder:   string;
+    fieldLoreNote:          string;
+    headerImageAiHint:      string;
+    currentHeaderImage:     string;
   };
 
   // ─── Scene settings modal ────────────────────────────────────────────────────
@@ -1169,6 +1244,28 @@ export interface Translations {
     customVarsEmpty: string;
     customVarsNamePlaceholder: string;
     customVarsConfirmDelete: (name: string) => string;
+    // tabbed modal
+    tabBasics: string;
+    tabIcon: string;
+    tabUsage: string;
+    tabProps: string;
+    sectionIdentity: string;
+    sectionCategory: string;
+    sectionSlot: string;
+    previewLabel: string;
+    modalSubtitle: string;
+    fieldDescription: string;
+    descriptionPlaceholder: string;
+    categoryWearableSubtitle: string;
+    categoryConsumableSubtitle: string;
+    categoryMiscSubtitle: string;
+    usageSection: string;
+    usageSectionDesc: string;
+    usageNotApplicable: string;
+    usageFuncCreatedOnSave: string;
+    usageFuncOpenBtn: string;
+    stackableLabel: string;
+    stackableHint: string;
   };
 
   // ─── Containers ─────────────────────────────────────────────────────────────
@@ -1207,6 +1304,22 @@ export interface Translations {
     blockContainerLabel: string;
     blockCharLabel: string;
     blockTitleLabel: string;
+    // tabbed modal
+    tabBasics: string;
+    tabAppearance: string;
+    tabStock: string;
+    sectionIdentity: string;
+    sectionMode: string;
+    sectionBgImage: string;
+    previewLabel: string;
+    modalSubtitle: string;
+    modeShopSubtitle: string;
+    modeChestSubtitle: string;
+    modeLootSubtitle: string;
+    bgImageStatic: string;
+    bgImageGenerate: string;
+    bgImageHint: string;
+    bgImageNone: string;
   };
 
   insertToolbar: {

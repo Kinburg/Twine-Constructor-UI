@@ -487,7 +487,7 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70" />
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-[700px] max-w-[95vw] flex flex-col max-h-[90vh]">
 
         {/* Header */}

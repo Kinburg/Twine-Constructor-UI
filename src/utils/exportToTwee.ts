@@ -472,7 +472,21 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       return '';
 
     case 'table':
-      return tableBlockToSC(block, vars, nodes, indent, idToName);
+      return tableBlockToSC(block, vars, nodes, indent, idToName, chars, project?.items);
+
+    case 'paperdoll': {
+      const char = chars.find(ch => ch.id === block.charId);
+      if (!char?.paperdoll || !char.varName) return '';
+      const html = buildPaperdollCellSC(char.varName, char.paperdoll, block.showLabels, vars, nodes, project?.items);
+      return `${indent}${html}`;
+    }
+
+    case 'inventory': {
+      const char = chars.find(ch => ch.id === block.charId);
+      if (!char?.varName) return '';
+      const title = (block.title ?? '').replace(/"/g, '\\"');
+      return `${indent}<<tgInventory "${char.varName}"${title ? ` "${title}"` : ''}>>`;
+    }
 
     case 'button': {
       const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
@@ -975,7 +989,7 @@ export function buildDateTimeScript(): string {
 
 // ─── Table block → inline HTML (fully self-contained, no class deps) ──────────
 
-function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
+function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>, characters?: Character[], items?: ItemDefinition[]): string {
   const c = cell.content;
   switch (c.type) {
     case 'text': return c.value;
@@ -1037,11 +1051,17 @@ function tableCellInnerToSC(cell: SidebarCell, vars: Variable[], nodes: Variable
       return buildDateTimeCellSC(c as CellDateTime, vname);
     }
 
+    case 'paperdoll': {
+      const char = characters?.find(ch => ch.id === c.charId);
+      if (!char?.paperdoll || !char.varName) return '';
+      return buildPaperdollCellSC(char.varName, char.paperdoll, c.showLabels, vars, nodes, items);
+    }
+
     default: return '';
   }
 }
 
-function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>): string {
+function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTreeNode[], indent = '', idToName?: Map<string, string>, characters?: Character[], items?: ItemDefinition[]): string {
   if (block.rows.length === 0) return '';
   const s = block.style;
 
@@ -1069,7 +1089,7 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
       if (s.showCellBorders && ci > 0) {
         cellParts.push(`border-left:${s.borderWidth}px solid ${s.borderColor}`);
       }
-      return `<span style="${cellParts.join(';')}">${tableCellInnerToSC(cell, vars, nodes, idToName)}</span>`;
+      return `<span style="${cellParts.join(';')}">${tableCellInnerToSC(cell, vars, nodes, idToName, characters, items)}</span>`;
     }).join('');
     return `<div style="${rowParts.join(';')}">${cellsHTML}</div>`;
   }).filter(Boolean).join('');
@@ -1912,7 +1932,8 @@ export function exportToTwee(project: Project): string {
   const tipCSS       = buildTooltipCSS();
   const containerCSS = buildContainerCSS();
   const paperdollCSS = buildPaperdollCSS(project);
-  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS, tipCSS, containerCSS, paperdollCSS].filter(Boolean).join('\n\n');
+  const inventoryCSS = buildInventoryCSS(project);
+  const allCSS    = [charCSS, panelCSS, buttonCSS, animCSS, tipCSS, containerCSS, paperdollCSS, inventoryCSS].filter(Boolean).join('\n\n');
   if (allCSS) parts.push(`::StoryStylesheet [stylesheet]\n${allCSS}\n`);
 
   // StoryScript (lightbox + input debounce) — single passage
@@ -2350,7 +2371,7 @@ function buildPaperdollCellSC(
     return `<div class="tg-pd-slot" style="${cellStyle}"${cellClick}>${equipped}</div>`;
   }).join('');
 
-  return `<div class="tg-paperdoll" style="${gridStyle}">${slotDivs}</div>`;
+  return `<div style="display:flex;justify-content:center;width:100%"><div class="tg-paperdoll" style="${gridStyle}">${slotDivs}</div></div>`;
 }
 
 export function buildPaperdollCSS(project: Project): string {
@@ -2505,6 +2526,21 @@ export function buildPaperdollScript(project: Project): string {
   ].join('\n');
 }
 
+export function buildInventoryCSS(project: Project): string {
+  if (!project.characters.length) return '';
+  return [
+    '.tg-inv-tabs { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }',
+    '.tg-inv-tab { padding: 4px 10px; border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; background: transparent; color: #e2e8f0; cursor: pointer; font-size: 12px; transition: background 0.1s, border-color 0.1s; }',
+    '.tg-inv-tab:hover { border-color: rgba(255,255,255,0.4); }',
+    '.tg-inv-tab.tg-active { background: rgba(99,102,241,0.25); border-color: #6366f1; }',
+    '.tg-cont-cell.tg-inv-equipped { box-shadow: inset 0 0 0 2px #10b981; }',
+    '.tg-cont-cell.tg-inv-equipped::after { content: "✔"; position: absolute; top: 2px; right: 4px; font-size: 11px; color: #10b981; text-shadow: 0 0 2px rgba(0,0,0,0.6); }',
+    '.tg-detail-actions { display: flex; gap: 6px; flex-wrap: wrap; }',
+    '.tg-detail-action.tg-inv-drop { background: #dc2626; }',
+    '.tg-detail-action.tg-inv-drop:hover:not(:disabled) { background: #b91c1c; }',
+  ].join('\n');
+}
+
 export function buildInventoryScript(project: Project): string {
   if (!project.characters.length) return '';
 
@@ -2549,6 +2585,259 @@ export function buildInventoryScript(project: Project): string {
     '  var entry = charVar.inventory.find(function(e) { return e.item === itemName; });',
     '  return entry ? entry.qty : 0;',
     '};',
+    '',
+    '// ── Inventory UI (tgInventory) ──',
+    'window._tgInvState = window._tgInvState || {};',
+    'window._tgInvDialog = function(title, bodyHtml) {',
+    '  if (typeof Dialog === "undefined") { alert(bodyHtml.replace(/<[^>]+>/g, "")); return; }',
+    '  Dialog.setup(title);',
+    '  Dialog.wiki(bodyHtml);',
+    '  Dialog.open();',
+    '};',
+    '',
+    'window._tgInvNormSlot = function(s) {',
+    '  return String(s || "").toLowerCase().replace(/\\s+/g, "_").replace(/[^a-z0-9_]/g, "");',
+    '};',
+    '',
+    'window._tgInvCharHasSlot = function(ch, slotName) {',
+    '  if (!ch || !ch.equipment) return false;',
+    '  var norm = window._tgInvNormSlot(slotName);',
+    '  var keys = Object.keys(ch.equipment);',
+    '  for (var i = 0; i < keys.length; i++) {',
+    '    if (window._tgInvNormSlot(keys[i]) === norm) return true;',
+    '  }',
+    '  return false;',
+    '};',
+    '',
+    'window._tgInvRender = function(wrap) {',
+    '  var charName = wrap.dataset.char;',
+    '  var ch = State.variables[charName];',
+    '  if (!ch) return;',
+    '  if (!ch.inventory) ch.inventory = [];',
+    '  var state = window._tgInvState[wrap.id] || { cat: "all", selected: "" };',
+    '  window._tgInvState[wrap.id] = state;',
+    '  var items = State.variables["items"] || {};',
+    '  var filtered = ch.inventory.filter(function(e) {',
+    '    if (state.cat === "all") return true;',
+    '    var it = items[e.item] || {};',
+    '    return (it.category || "misc") === state.cat;',
+    '  });',
+    '  var grid = wrap.querySelector(".tg-cont-grid");',
+    '  var detail = wrap.querySelector(".tg-cont-detail");',
+    '  var empty = wrap.querySelector(".tg-inv-empty");',
+    '  // Tabs',
+    '  wrap.querySelectorAll(".tg-inv-tab").forEach(function(t) {',
+    '    t.classList.toggle("tg-active", t.dataset.cat === state.cat);',
+    '  });',
+    '  if (!filtered.length) {',
+    '    if (grid) grid.innerHTML = "";',
+    '    if (empty) empty.style.display = "";',
+    '    if (detail) detail.innerHTML = \'<div class="tg-detail-placeholder">\' + (state.cat === "all" ? "Inventory is empty" : "No items in this category") + \'</div>\';',
+    '    return;',
+    '  }',
+    '  if (empty) empty.style.display = "none";',
+    '  var cellsHtml = filtered.map(function(e) {',
+    '    var it = items[e.item] || {};',
+    '    var name = it.name || e.item;',
+    '    var icon = it.icon ? \'<img src="\' + it.icon + \'" alt="">\' : \'<span style="font-size:28px;line-height:1">📦</span>\';',
+    '    var eqCls = e.equipped ? " tg-inv-equipped" : "";',
+    '    var sel = (state.selected === e.item) ? " tg-selected" : "";',
+    '    return \'<div class="tg-cont-cell\' + eqCls + sel + \'" data-item="\' + e.item + \'" onclick="window._tgInvCellClick(this)">\' + icon + \'<span class="tg-cell-qty">&times;\' + e.qty + \'</span><span class="tg-cell-name">\' + name + \'</span></div>\';',
+    '  }).join("");',
+    '  if (grid) grid.innerHTML = cellsHtml;',
+    '  // Detail panel',
+    '  if (!detail) return;',
+    '  var selEntry = state.selected ? ch.inventory.find(function(x) { return x.item === state.selected; }) : null;',
+    '  if (!selEntry) {',
+    '    detail.innerHTML = \'<div class="tg-detail-placeholder">Select an item</div>\';',
+    '    return;',
+    '  }',
+    '  var it = items[selEntry.item] || {};',
+    '  var name = it.name || selEntry.item;',
+    '  var desc = it.description || "";',
+    '  var icon = it.icon ? \'<img src="\' + it.icon + \'">\' : "";',
+    '  var html = "";',
+    '  if (icon) html += \'<div class="tg-detail-icon">\' + icon + \'</div>\';',
+    '  html += \'<div class="tg-detail-name">\' + name + \'</div>\';',
+    '  if (desc) html += \'<div class="tg-detail-desc">\' + desc + \'</div>\';',
+    '  html += \'<div class="tg-detail-meta">Qty: \' + selEntry.qty + (selEntry.equipped ? " &nbsp;|&nbsp; Equipped" : "") + \'</div>\';',
+    '  html += \'<div class="tg-detail-actions">\';',
+    '  var cat = it.category || "misc";',
+    '  if (cat === "wearable") {',
+    '    if (selEntry.equipped) {',
+    '      html += \'<button class="tg-detail-action" onclick="window._tgInvUnequip(this)">Unequip</button>\';',
+    '    } else {',
+    '      html += \'<button class="tg-detail-action" onclick="window._tgInvEquip(this)">Equip</button>\';',
+    '    }',
+    '  } else if (cat === "consumable") {',
+    '    html += \'<button class="tg-detail-action" onclick="window._tgInvUse(this)">Use</button>\';',
+    '  }',
+    '  html += \'<button class="tg-detail-action tg-inv-drop" onclick="window._tgInvDrop(this)">Drop</button>\';',
+    '  html += \'</div>\';',
+    '  detail.innerHTML = html;',
+    '};',
+    '',
+    'window._tgInvTabClick = function(el) {',
+    '  var wrap = el.closest(".tg-container");',
+    '  if (!wrap) return;',
+    '  var st = window._tgInvState[wrap.id] || (window._tgInvState[wrap.id] = { cat: "all", selected: "" });',
+    '  st.cat = el.dataset.cat || "all";',
+    '  st.selected = "";',
+    '  window._tgInvRender(wrap);',
+    '};',
+    '',
+    'window._tgInvCellClick = function(el) {',
+    '  var wrap = el.closest(".tg-container");',
+    '  if (!wrap) return;',
+    '  var st = window._tgInvState[wrap.id] || (window._tgInvState[wrap.id] = { cat: "all", selected: "" });',
+    '  st.selected = el.dataset.item;',
+    '  window._tgInvRender(wrap);',
+    '};',
+    '',
+    'window._tgInvCtx = function(el) {',
+    '  var wrap = el.closest(".tg-container");',
+    '  if (!wrap) return null;',
+    '  var st = window._tgInvState[wrap.id];',
+    '  if (!st || !st.selected) return null;',
+    '  var ch = State.variables[wrap.dataset.char];',
+    '  if (!ch) return null;',
+    '  var items = State.variables["items"] || {};',
+    '  var it = items[st.selected] || {};',
+    '  return { wrap: wrap, ch: ch, st: st, it: it, itemName: st.selected };',
+    '};',
+    '',
+    'window._tgInvEquip = function(el) {',
+    '  var ctx = window._tgInvCtx(el);',
+    '  if (!ctx) return;',
+    '  var slot = ctx.it.targetSlot || ctx.it.slot;',
+    '  if (!slot) { window._tgInvDialog("Cannot equip", "This item has no target slot."); return; }',
+    '  if (!window._tgInvCharHasSlot(ctx.ch, slot)) {',
+    '    window._tgInvDialog("Cannot equip", \'Paperdoll has no slot named "\' + slot + \'".\');',
+    '    return;',
+    '  }',
+    '  if (!ctx.ch.equipment) ctx.ch.equipment = {};',
+    '  var norm = window._tgInvNormSlot(slot);',
+    '  var targetKey = slot;',
+    '  Object.keys(ctx.ch.equipment).forEach(function(k) {',
+    '    if (window._tgInvNormSlot(k) === norm) targetKey = k;',
+    '  });',
+    '  var prev = ctx.ch.equipment[targetKey];',
+    '  if (prev) {',
+    '    var pe = ctx.ch.inventory.find(function(e) { return e.item === prev; });',
+    '    if (pe) pe.equipped = false;',
+    '  }',
+    '  ctx.ch.equipment[targetKey] = ctx.itemName;',
+    '  var e = ctx.ch.inventory.find(function(x) { return x.item === ctx.itemName; });',
+    '  if (e) e.equipped = true;',
+    '  window._tgInvRender(ctx.wrap);',
+    '  UIBar.update();',
+    '};',
+    '',
+    'window._tgInvUnequip = function(el) {',
+    '  var ctx = window._tgInvCtx(el);',
+    '  if (!ctx || !ctx.ch.equipment) return;',
+    '  Object.keys(ctx.ch.equipment).forEach(function(k) {',
+    '    if (ctx.ch.equipment[k] === ctx.itemName) ctx.ch.equipment[k] = "";',
+    '  });',
+    '  var e = ctx.ch.inventory.find(function(x) { return x.item === ctx.itemName; });',
+    '  if (e) e.equipped = false;',
+    '  window._tgInvRender(ctx.wrap);',
+    '  UIBar.update();',
+    '};',
+    '',
+    'window._tgInvUse = function(el) {',
+    '  var ctx = window._tgInvCtx(el);',
+    '  if (!ctx) return;',
+    '  var idx = ctx.ch.inventory.findIndex(function(e) { return e.item === ctx.itemName; });',
+    '  if (idx === -1) return;',
+    '  ctx.ch.inventory[idx].qty -= 1;',
+    '  if (ctx.ch.inventory[idx].qty <= 0) {',
+    '    ctx.ch.inventory.splice(idx, 1);',
+    '    ctx.st.selected = "";',
+    '  }',
+    '  window._tgInvRender(ctx.wrap);',
+    '  UIBar.update();',
+    '};',
+    '',
+    'window._tgInvDrop = function(el) {',
+    '  var ctx = window._tgInvCtx(el);',
+    '  if (!ctx) return;',
+    '  var wrapId = ctx.wrap.id;',
+    '  var itemName = ctx.itemName;',
+    '  var name = ctx.it.name || itemName;',
+    '  var entry = ctx.ch.inventory.find(function(e) { return e.item === itemName; });',
+    '  if (!entry) return;',
+    '  var qty = entry.qty;',
+    '  if (typeof Dialog === "undefined") {',
+    '    if (!confirm("Drop " + qty + "× " + name + "?")) return;',
+    '    window._tgInvDoDrop(wrapId, itemName);',
+    '    return;',
+    '  }',
+    '  Dialog.setup("Drop item");',
+    '  var body = \'<p>Drop \' + qty + \'× \' + name + \'?</p>\' +',
+    '             \'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:10px">\' +',
+    '             \'<button class="tg-detail-action" onclick="Dialog.close()">Cancel</button>\' +',
+    '             \'<button class="tg-detail-action tg-inv-drop" onclick="Dialog.close();window._tgInvDoDrop(\\\'\' + wrapId + \'\\\',\\\'\' + itemName + \'\\\')">Drop</button>\' +',
+    '             \'</div>\';',
+    '  Dialog.wiki(body);',
+    '  Dialog.open();',
+    '};',
+    '',
+    'window._tgInvDoDrop = function(wrapId, itemName) {',
+    '  var wrap = document.getElementById(wrapId);',
+    '  if (!wrap) return;',
+    '  var ch = State.variables[wrap.dataset.char];',
+    '  if (!ch || !ch.inventory) return;',
+    '  var idx = ch.inventory.findIndex(function(e) { return e.item === itemName; });',
+    '  if (idx === -1) return;',
+    '  var entry = ch.inventory[idx];',
+    '  if (entry.equipped && ch.equipment) {',
+    '    Object.keys(ch.equipment).forEach(function(k) {',
+    '      if (ch.equipment[k] === itemName) ch.equipment[k] = "";',
+    '    });',
+    '  }',
+    '  ch.inventory.splice(idx, 1);',
+    '  var st = window._tgInvState[wrap.id];',
+    '  if (st) st.selected = "";',
+    '  window._tgInvRender(wrap);',
+    '  UIBar.update();',
+    '};',
+    '',
+    '// <<tgInventory "charVarName" ["Title"]>>',
+    'Macro.add("tgInventory", {',
+    '  handler: function() {',
+    '    var charName = this.args[0];',
+    '    var title    = this.args[1] || "";',
+    '    var ch = State.variables[charName];',
+    '    if (!ch) { this.error("tgInventory: character not found: " + charName); return; }',
+    '    if (!ch.inventory) ch.inventory = [];',
+    '    var wrapId = "tg-inv-" + charName + "-" + (Math.random().toString(36).substr(2, 6));',
+    '    var tabs = [',
+    '      { cat: "all",        label: "All" },',
+    '      { cat: "wearable",   label: "👕 Wearable" },',
+    '      { cat: "consumable", label: "🧪 Consumable" },',
+    '      { cat: "misc",       label: "📦 Misc" },',
+    '    ];',
+    '    var tabsHtml = \'<div class="tg-inv-tabs">\' + tabs.map(function(t) {',
+    '      return \'<button type="button" class="tg-inv-tab\' + (t.cat === "all" ? " tg-active" : "") + \'" data-cat="\' + t.cat + \'" onclick="window._tgInvTabClick(this)">\' + t.label + \'</button>\';',
+    '    }).join("") + \'</div>\';',
+    '    var html = \'<div class="tg-container" id="\' + wrapId + \'" data-char="\' + charName + \'">\';',
+    '    if (title) html += \'<div class="tg-cont-header">\' + title + \'</div>\';',
+    '    html += tabsHtml;',
+    '    html += \'<div class="tg-cont-body">\';',
+    '    html += \'<div class="tg-cont-grid"></div>\';',
+    '    html += \'<div class="tg-cont-detail"><div class="tg-detail-placeholder">Select an item</div></div>\';',
+    '    html += \'</div>\';',
+    '    html += \'<div class="tg-inv-empty tg-cont-empty" style="display:none">Inventory is empty</div>\';',
+    '    html += \'</div>\';',
+    '    var self = this;',
+    '    $(self.output).wiki(html);',
+    '    setTimeout(function() {',
+    '      var wrap = document.getElementById(wrapId);',
+    '      if (wrap) window._tgInvRender(wrap);',
+    '    }, 0);',
+    '  }',
+    '});',
   ].join('\n');
 }
 

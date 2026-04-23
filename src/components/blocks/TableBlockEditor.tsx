@@ -14,6 +14,7 @@ import { VariablePicker } from '../shared/VariablePicker';
 import { CellImageGenEditor } from '../shared/CellImageGenEditor';
 import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
 import { DateTimeCellEditor } from '../shared/DateTimeCellEditor';
+import { InventoryPopupShortcut } from './InventoryPopupShortcut';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -539,6 +540,11 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       <span className="text-[10px] text-slate-500 ml-1">({c.format})</span>
     </span>
   );
+  if (c.type === 'paperdoll') return (
+    <span className="text-xs text-violet-300 p-1 truncate flex-1">
+      🧩 {c.charId || <em className="text-slate-600 not-italic">—</em>}
+    </span>
+  );
   return null;
 }
 
@@ -571,6 +577,7 @@ function TCellEditModal({
     { value: 'button',         label: t.cellModal.typeButton },
     { value: 'list',           label: t.cellModal.typeList },
     { value: 'date-time',      label: t.cellModal.typeDateTime },
+    { value: 'paperdoll',      label: t.cellModal.typePaperdoll },
   ];
 
   const changeType = (type: CellContent['type']) => {
@@ -579,9 +586,8 @@ function TCellEditModal({
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3"
-        onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-white">{t.cellModal.title}</span>
           <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}>✕</button>
@@ -801,6 +807,30 @@ function TCellEditModal({
             onChange={patch => onUpdateContent({ ...(c as CellDateTime), ...patch })}
             Field={TMField}
           />
+        )}
+
+        {c.type === 'paperdoll' && (
+          <>
+            <TMField label={t.cellModal.paperdollCharLabel}>
+              <select
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                value={c.charId}
+                onChange={e => onUpdateContent({ ...c, charId: e.target.value })}
+              >
+                <option value="">{t.cellModal.paperdollNoChar}</option>
+                {project.characters.map(ch => (
+                  <option key={ch.id} value={ch.id}>
+                    {ch.name}{ch.paperdoll ? ` (${ch.paperdoll.slots.length})` : ''}
+                  </option>
+                ))}
+              </select>
+            </TMField>
+            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" checked={c.showLabels ?? false}
+                onChange={e => onUpdateContent({ ...c, showLabels: e.target.checked })} />
+              {t.cellModal.paperdollShowLabels}
+            </label>
+          </>
         )}
 
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"
@@ -1061,6 +1091,7 @@ function TCellButtonEditor({
                       {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   )}
+                  <InventoryPopupShortcut onResolved={sceneId => patchAction(a.id, { targetSceneId: sceneId } as Partial<ButtonAction>)} />
                   <button className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
                     onClick={() => removeAction(a.id)}>✕</button>
                 </div>

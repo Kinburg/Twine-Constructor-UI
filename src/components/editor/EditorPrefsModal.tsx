@@ -1,25 +1,32 @@
 import { useEditorPrefsStore, BUILTIN_PANEL_PRESETS } from '../../store/editorPrefsStore';
 import type { PanelLayoutPreset } from '../../store/editorPrefsStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
-import { useState, useEffect, type ReactNode } from 'react';
+import { useState, useEffect, useRef, type ReactNode } from 'react';
 import {
   ModalShell, ModalBody,
-  Toggle, Segmented,
+  Toggle, Segmented, PasswordInput,
   INPUT_CLS,
+  ModalField, ModalRow, ModalSection,
 } from '../shared/ModalShell';
+import {
+  type LLMProvider, fetchGeminiModels, classifyModel, type GeminiModelWithTier,
+} from '../../utils/llm';
+import { toast } from 'sonner';
 
 const AUTOSAVE_INTERVALS = [1, 5, 10, 30] as const;
 
-type TabId = 'appearance' | 'shortcuts' | 'workspace' | 'behavior';
+type TabId = 'appearance' | 'shortcuts' | 'workspace' | 'behavior' | 'ai';
 
 interface Props {
   onClose: () => void;
+  /** Tab to open on mount. Defaults to 'appearance'. */
+  initialTab?: TabId;
 }
 
-export function EditorPrefsModal({ onClose }: Props) {
+export function EditorPrefsModal({ onClose, initialTab = 'appearance' }: Props) {
   const t  = useT();
   const ep = t.editorPrefs;
-  const [tab, setTab] = useState<TabId>('appearance');
+  const [tab, setTab] = useState<TabId>(initialTab);
 
   // Tabs definition — labels from i18n if present, fallback to English
   const tabs: { id: TabId; label: string; icon: ReactNode }[] = [
@@ -27,10 +34,11 @@ export function EditorPrefsModal({ onClose }: Props) {
     { id: 'shortcuts',  label: (ep as any).tabShortcuts  ?? 'Shortcuts',  icon: <IconCommand /> },
     { id: 'workspace',  label: (ep as any).tabWorkspace  ?? 'Workspace',  icon: <IconLayout /> },
     { id: 'behavior',   label: (ep as any).tabBehavior   ?? 'Behavior',   icon: <IconCog /> },
+    { id: 'ai',         label: (ep as any).tabAi         ?? 'AI / LLM',   icon: <IconSparkle /> },
   ];
 
   return (
-    <ModalShell onClose={onClose} width={900} height={800}>
+    <ModalShell onClose={onClose} width={900}>
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex items-start gap-3 px-5 py-4 border-b border-slate-700">
         <div className="w-9 h-9 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shrink-0">
@@ -80,6 +88,7 @@ export function EditorPrefsModal({ onClose }: Props) {
           {tab === 'shortcuts'  && <ShortcutsTab />}
           {tab === 'workspace'  && <WorkspaceTab />}
           {tab === 'behavior'   && <BehaviorTab />}
+          {tab === 'ai'         && <AiTab />}
         </ModalBody>
       </div>
 
@@ -542,6 +551,393 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  AI / LLM TAB  (moved here from former standalone LLMSettingsModal)
+// ═══════════════════════════════════════════════════════════════════════════
+
+const SYSTEM_PROMPT_PRESETS = [
+  { label: 'Storyteller (default)', value: 'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.' },
+  { label: 'Literary novelist',     value: 'You are a literary author crafting immersive prose fiction. Continue the narrative with rich sensory detail, deep psychological insight, and elegant language. Match the established voice precisely.' },
+  { label: 'Visual novel writer',   value: 'You are writing dialogue and narration for a visual novel. Keep prose concise and punchy. Convey emotion through character reactions and subtext. End naturally for player pacing.' },
+  { label: 'Horror & suspense',     value: 'You are a horror writer. Build dread through atmosphere, ambiguity, and the unseen. Use short, tense sentences during high-stress moments. Never explain the horror fully.' },
+  { label: 'Fantasy & adventure',   value: 'You are writing high-fantasy adventure fiction. Embrace vivid world-building, heroic action, and mythic language. Keep the momentum going and the stakes clear.' },
+  { label: 'Dialogue-focused',      value: 'You are writing character dialogue for a visual novel. Each character must have a distinct voice and speech pattern. Dialogue should feel natural, emotionally resonant, and advance the relationship or plot.' },
+  { label: 'Romance',               value: 'You are writing a romance story. Focus on emotional tension, chemistry between characters, and meaningful moments. Use sensory detail to convey longing and connection.' },
+  { label: 'Sci-fi',                value: 'You are writing science fiction. Ground fantastical elements in consistent internal logic. Balance wonder with plausibility. Explore the human dimension of technological or cosmic themes.' },
+] as const;
+
+function AiTab() {
+  const t = useT();
+  const ep = t.editorPrefs;
+  const llm = t.llmSettingsModal;
+
+  const prefs = useEditorPrefsStore();
+  const {
+    setPrefs,
+    llmEnabled, llmProvider,
+    llmUrl,
+    llmGeminiApiKey, llmGeminiModel, llmGeminiModelsList,
+    llmOpenaiUrl, llmOpenaiApiKey, llmOpenaiModel,
+    llmMaxTokens, llmTemperature, llmSystemPrompt,
+    llmFilterThought, llmGenerationHistory,
+    imageGenProvider, comfyUiUrl, comfyUiWorkflowsDir,
+    pollinationsModel, pollinationsToken,
+  } = prefs;
+
+  const [fetchingModels, setFetchingModels] = useState(false);
+  const [fetchedModels, setFetchedModels]   = useState<GeminiModelWithTier[]>([]);
+  const [isCustomModel, setIsCustomModel]   = useState(!llmGeminiModelsList.includes(llmGeminiModel));
+  const [presetsOpen, setPresetsOpen]       = useState(false);
+  const presetsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!llmGeminiModelsList.includes(llmGeminiModel) && !isCustomModel) setIsCustomModel(true);
+  }, [isCustomModel, llmGeminiModel, llmGeminiModelsList]);
+
+  useEffect(() => {
+    if (!presetsOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (!presetsRef.current?.contains(e.target as Node)) setPresetsOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [presetsOpen]);
+
+  const handleRefreshModels = async () => {
+    if (!llmGeminiApiKey) { toast.error('Please enter an API Key first'); return; }
+    setFetchingModels(true);
+    try {
+      const models = await fetchGeminiModels(llmGeminiApiKey);
+      const modelNames = models.map(m => m.name);
+      setFetchedModels(models);
+      setPrefs({ llmGeminiModelsList: modelNames });
+      toast.success(`Fetched ${modelNames.length} text models`);
+      if (modelNames.includes(llmGeminiModel)) setIsCustomModel(false);
+    } catch {
+      toast.error('Failed to fetch models. Check your API Key.');
+    } finally {
+      setFetchingModels(false);
+    }
+  };
+
+  const handleModelChange = (val: string) => {
+    if (val === 'custom') setIsCustomModel(true);
+    else { setIsCustomModel(false); setPrefs({ llmGeminiModel: val }); }
+  };
+
+  return (
+    <>
+      <ModalSection title={llm.sectionLlm}>
+        <ModalRow label={ep.llmEnabled} hint={(llm as any).llmEnabledHint ?? 'Required for AI-assisted text & image generation'}>
+          <Toggle value={llmEnabled} onChange={() => setPrefs({ llmEnabled: !llmEnabled })} />
+        </ModalRow>
+
+        <div className={`flex flex-col gap-3 transition-opacity duration-200 ${llmEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
+          <ModalField label={llm.providerLabel}>
+            <select
+              value={llmProvider}
+              onChange={e => setPrefs({ llmProvider: e.target.value as LLMProvider })}
+              className={INPUT_CLS}
+            >
+              <option value="koboldcpp">KoboldCPP (Local)</option>
+              <option value="gemini">Google Gemini (Cloud)</option>
+              <option value="openai">OpenAI Compatible</option>
+            </select>
+          </ModalField>
+
+          {llmProvider === 'koboldcpp' && (
+            <ModalField label={llm.urlLabel}>
+              <input
+                type="text"
+                value={llmUrl}
+                onChange={e => setPrefs({ llmUrl: e.target.value })}
+                placeholder="http://localhost:5001/api/v1/generate"
+                className={INPUT_CLS}
+              />
+            </ModalField>
+          )}
+
+          {llmProvider === 'gemini' && (
+            <>
+              <ModalField label={llm.geminiApiKeyLabel}>
+                <PasswordInput
+                  value={llmGeminiApiKey}
+                  onChange={e => setPrefs({ llmGeminiApiKey: e.target.value })}
+                  placeholder={llm.geminiApiKeyPlaceholder}
+                />
+              </ModalField>
+
+              <ModalField
+                label={
+                  <div className="flex items-center justify-between w-full">
+                    <span>{llm.geminiModelLabel}</span>
+                    <button
+                      onClick={handleRefreshModels}
+                      disabled={fetchingModels}
+                      className="text-[10px] text-indigo-400 hover:text-indigo-300 disabled:opacity-50 transition-colors cursor-pointer normal-case tracking-normal font-normal"
+                    >
+                      {fetchingModels ? llm.refreshingModels : llm.refreshModels}
+                    </button>
+                  </div>
+                }
+              >
+                <div className="flex flex-col gap-2">
+                  <GeminiModelSelect
+                    modelNames={llmGeminiModelsList}
+                    fetchedModels={fetchedModels}
+                    value={isCustomModel ? 'custom' : llmGeminiModel}
+                    onChange={handleModelChange}
+                  />
+                  {isCustomModel && (
+                    <input
+                      type="text"
+                      value={llmGeminiModel}
+                      onChange={e => setPrefs({ llmGeminiModel: e.target.value })}
+                      placeholder={llm.customModelPlaceholder}
+                      className={INPUT_CLS}
+                      autoFocus
+                    />
+                  )}
+                </div>
+              </ModalField>
+            </>
+          )}
+
+          {llmProvider === 'openai' && (
+            <>
+              <ModalField label={llm.openaiUrlLabel} note={llm.openaiUrlHint}>
+                <input
+                  type="text"
+                  value={llmOpenaiUrl}
+                  onChange={e => setPrefs({ llmOpenaiUrl: e.target.value })}
+                  placeholder="https://api.openai.com/v1/chat/completions"
+                  className={INPUT_CLS}
+                />
+              </ModalField>
+
+              <ModalField label={llm.openaiApiKeyLabel}>
+                <PasswordInput
+                  value={llmOpenaiApiKey}
+                  onChange={e => setPrefs({ llmOpenaiApiKey: e.target.value })}
+                  placeholder="sk-..."
+                />
+              </ModalField>
+
+              <ModalField label={llm.openaiModelLabel}>
+                <input
+                  type="text"
+                  value={llmOpenaiModel}
+                  onChange={e => setPrefs({ llmOpenaiModel: e.target.value })}
+                  placeholder="gpt-4o-mini"
+                  className={INPUT_CLS}
+                />
+              </ModalField>
+            </>
+          )}
+        </div>
+      </ModalSection>
+
+      <ModalSection title={llm.sectionParams}>
+        <div className={`flex flex-col gap-3 ${llmEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
+          <ModalRow label={llm.filterThoughtLabel} hint={llm.filterThoughtHint}>
+            <Toggle value={llmFilterThought} onChange={() => setPrefs({ llmFilterThought: !llmFilterThought })} />
+          </ModalRow>
+
+          <div className="grid grid-cols-2 gap-3">
+            <ModalField label={llm.maxTokensLabel}>
+              <input
+                type="number"
+                value={llmMaxTokens}
+                onChange={e => setPrefs({ llmMaxTokens: parseInt(e.target.value) || 100 })}
+                className={INPUT_CLS}
+              />
+            </ModalField>
+            <ModalField label={llm.temperatureLabel}>
+              <input
+                type="number" step="0.1" min="0.1" max="2.0"
+                value={llmTemperature}
+                onChange={e => setPrefs({ llmTemperature: parseFloat(e.target.value) || 0.7 })}
+                className={INPUT_CLS}
+              />
+            </ModalField>
+          </div>
+
+          <ModalField
+            label={
+              <div className="flex items-center justify-between w-full">
+                <span>{llm.systemPromptLabel}</span>
+                <div className="relative" ref={presetsRef}>
+                  <button
+                    type="button"
+                    onClick={() => setPresetsOpen(v => !v)}
+                    className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors cursor-pointer normal-case tracking-normal font-normal"
+                  >
+                    {llm.presetsLabel} ▾
+                  </button>
+                  {presetsOpen && (
+                    <div className="absolute right-0 top-full mt-1 z-10 bg-slate-900 border border-slate-600 rounded shadow-lg min-w-[220px] py-1">
+                      {SYSTEM_PROMPT_PRESETS.map(p => (
+                        <button
+                          key={p.label}
+                          type="button"
+                          className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer normal-case tracking-normal font-normal"
+                          onClick={() => { setPrefs({ llmSystemPrompt: p.value }); setPresetsOpen(false); }}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            }
+          >
+            <textarea
+              value={llmSystemPrompt}
+              onChange={e => setPrefs({ llmSystemPrompt: e.target.value })}
+              placeholder={llm.systemPromptPlaceholder}
+              className={INPUT_CLS + ' min-h-[110px] resize-y'}
+            />
+            <div className="text-right text-[10px] text-slate-500 tabular-nums">
+              {llmSystemPrompt.length} chars
+            </div>
+          </ModalField>
+        </div>
+      </ModalSection>
+
+      <ModalSection title={llm.imageGenSectionLabel}>
+        <div className={`flex flex-col gap-3 ${llmEnabled ? '' : 'opacity-40 pointer-events-none'}`}>
+          <ModalField label={llm.generationHistoryLabel}>
+            <select
+              value={llmGenerationHistory}
+              onChange={e => setPrefs({ llmGenerationHistory: e.target.value as 'memory' | 'project' | 'disabled' })}
+              className={INPUT_CLS}
+            >
+              <option value="memory">{llm.generationHistoryMemory}</option>
+              <option value="project">{llm.generationHistoryProject}</option>
+              <option value="disabled">{llm.generationHistoryDisabled}</option>
+            </select>
+          </ModalField>
+
+          <ModalField label={llm.imageGenProviderLabel}>
+            <select
+              value={imageGenProvider}
+              onChange={e => setPrefs({ imageGenProvider: e.target.value as 'comfyui' | 'pollinations' })}
+              className={INPUT_CLS}
+            >
+              <option value="comfyui">ComfyUI</option>
+              <option value="pollinations">Pollinations.AI (free)</option>
+            </select>
+          </ModalField>
+
+          {imageGenProvider === 'comfyui' && (
+            <>
+              <ModalField label={llm.comfyUiUrlLabel}>
+                <input
+                  type="text"
+                  value={comfyUiUrl}
+                  onChange={e => setPrefs({ comfyUiUrl: e.target.value })}
+                  placeholder={llm.comfyUiUrlPlaceholder}
+                  className={INPUT_CLS}
+                />
+              </ModalField>
+
+              <ModalField label={llm.comfyUiWorkflowsDirLabel} note={llm.comfyUiWorkflowsDirHint}>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={comfyUiWorkflowsDir}
+                    onChange={e => setPrefs({ comfyUiWorkflowsDir: e.target.value })}
+                    placeholder={llm.comfyUiWorkflowsDirPlaceholder}
+                    className={INPUT_CLS + ' flex-1'}
+                  />
+                  <button
+                    type="button"
+                    className="px-2 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-slate-200 transition-colors cursor-pointer shrink-0"
+                    onClick={async () => {
+                      const dir = await window.electronAPI?.openFolderDialog?.();
+                      if (dir) setPrefs({ comfyUiWorkflowsDir: dir });
+                    }}
+                  >
+                    {llm.comfyUiWorkflowsDirBrowse}
+                  </button>
+                </div>
+              </ModalField>
+            </>
+          )}
+
+          {imageGenProvider === 'pollinations' && (
+            <>
+              <ModalField label={llm.pollinationsModelLabel}>
+                <input
+                  type="text"
+                  value={pollinationsModel}
+                  onChange={e => setPrefs({ pollinationsModel: e.target.value })}
+                  placeholder={llm.pollinationsModelPlaceholder}
+                  className={INPUT_CLS}
+                />
+              </ModalField>
+              <ModalField label={llm.pollinationsTokenLabel}>
+                <PasswordInput
+                  value={pollinationsToken}
+                  onChange={e => setPrefs({ pollinationsToken: e.target.value })}
+                  placeholder={llm.pollinationsTokenPlaceholder}
+                />
+              </ModalField>
+            </>
+          )}
+        </div>
+      </ModalSection>
+    </>
+  );
+}
+
+// Gemini model select (grouped by tier)
+const TIER_LABELS: Record<string, string> = {
+  free:           'Free',
+  'free-limited': 'Free (with limits)',
+  paid:           'Paid',
+  experimental:   'Experimental / Preview',
+};
+const TIER_ORDER = ['free', 'free-limited', 'paid', 'experimental'];
+
+function GeminiModelSelect({
+  modelNames, fetchedModels, value, onChange,
+}: {
+  modelNames: string[];
+  fetchedModels: GeminiModelWithTier[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const displayByName = new Map(fetchedModels.map(m => [m.name, m.displayName]));
+  const grouped = new Map<string, string[]>();
+  for (const name of modelNames) {
+    const tier = classifyModel(name);
+    if (!grouped.has(tier)) grouped.set(tier, []);
+    grouped.get(tier)!.push(name);
+  }
+  const hasGroups = grouped.size > 1;
+  const renderOption = (name: string) => (
+    <option key={name} value={name}>
+      {displayByName.get(name) ?? name.replace('models/', '')}
+    </option>
+  );
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} className={INPUT_CLS}>
+      {hasGroups ? (
+        TIER_ORDER.filter(t => grouped.has(t)).map(tier => (
+          <optgroup key={tier} label={TIER_LABELS[tier]}>
+            {grouped.get(tier)!.map(renderOption)}
+          </optgroup>
+        ))
+      ) : (
+        modelNames.map(renderOption)
+      )}
+      <option value="custom">-- Custom model name --</option>
+    </select>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  Icons (inline SVG)
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -576,5 +972,11 @@ const IconLayout   = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
     <rect x="3" y="3" width="18" height="18" rx="2" />
     <path d="M3 9h18M9 21V9" />
+  </svg>
+);
+const IconSparkle  = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M12 3l1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9L12 3z" />
+    <path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8L19 15z" />
   </svg>
 );

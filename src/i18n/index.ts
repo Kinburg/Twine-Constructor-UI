@@ -53,6 +53,8 @@ export function blockTypeLabel(t: Translations, type: Block['type']): string {
     'audio':             t.block.audio,
     'container':         t.block.container,
     'time-manipulation': t.block.timeManipulation,
+    'paperdoll':         t.block.paperdoll,
+    'inventory':         t.block.inventory,
   };
   return map[type] ?? type;
 }

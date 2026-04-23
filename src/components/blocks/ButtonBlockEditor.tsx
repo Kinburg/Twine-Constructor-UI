@@ -6,6 +6,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VarInsertButton } from '../shared/VarInsertButton';
 import { VariablePicker } from '../shared/VariablePicker';
+import { InventoryPopupShortcut } from './InventoryPopupShortcut';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -216,6 +217,7 @@ function ActionRow({ action, variables, onChange, onDelete, onFocusValue }: Acti
               ))}
             </select>
           )}
+          <InventoryPopupShortcut onResolved={sceneId => onChange({ targetSceneId: sceneId } as Partial<ButtonAction>)} />
           <button
             className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
             title={t.buttonBlock.deleteAction}

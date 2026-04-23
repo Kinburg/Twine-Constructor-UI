@@ -1,7 +1,7 @@
 import type { Project, ProjectSettings, Character } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS } from './exportToTwee';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -200,7 +200,8 @@ export function buildPassages(project: Project): {
   const globalCSS    = buildGlobalCSS(project.settings);
   const containerCSS = buildContainerCSS();
   const paperdollCSS = buildPaperdollCSS(project);
-  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS, containerCSS, paperdollCSS].filter(Boolean).join('\n\n');
+  const inventoryCSS = buildInventoryCSS(project);
+  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS, containerCSS, paperdollCSS, inventoryCSS].filter(Boolean).join('\n\n');
 
   const settingsScript = buildSettingsScript(project.settings);
   const scriptContent = [

@@ -28,6 +28,8 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'audio':             '🔊',
   'container':         '🏪',
   'time-manipulation': '🕒',
+  'paperdoll':         '🧩',
+  'inventory':         '🎒',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -95,6 +97,8 @@ export function makeBlock(type: BlockType): Block {
     case 'audio':        return { id, type, src: '', trigger: 'immediate' as const, loop: false, onLeave: 'stop' as const, stopOthers: false, volume: 100 };
     case 'container':    return { id, type, containerId: '', charId: '' };
     case 'time-manipulation': return { id, type, variableId: '', years: 0, months: 0, days: 0, hours: 0, minutes: 0 };
+    case 'paperdoll':         return { id, type, charId: '', showLabels: false };
+    case 'inventory':         return { id, type, charId: '' };
   }
 }
 
@@ -103,7 +107,7 @@ export function makeBlock(type: BlockType): Block {
 type CategoryKey = 'content' | 'interaction' | 'logic' | 'system';
 
 const BLOCK_CATEGORIES: { key: CategoryKey; types: BlockType[] }[] = [
-  { key: 'content',     types: ['text', 'dialogue', 'image', 'image-gen', 'video', 'audio', 'table', 'divider'] },
+  { key: 'content',     types: ['text', 'dialogue', 'image', 'image-gen', 'video', 'audio', 'table', 'paperdoll', 'inventory', 'divider'] },
   { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio'] },
   { key: 'logic',       types: ['condition', 'variable-set', 'time-manipulation', 'function', 'popup'] },
   { key: 'system',      types: ['raw', 'include', 'note', 'container'] },
@@ -138,6 +142,8 @@ function buildEntries(t: ReturnType<typeof useT>): BlockEntry[] {
     { type: 'audio',             icon: BLOCK_ICONS['audio'],             label: t.addBlock.audio.label,            desc: t.addBlock.audio.desc },
     { type: 'container',         icon: BLOCK_ICONS['container'],         label: t.addBlock.container.label,        desc: t.addBlock.container.desc },
     { type: 'time-manipulation', icon: BLOCK_ICONS['time-manipulation'], label: t.addBlock.timeManipulation.label, desc: t.addBlock.timeManipulation.desc },
+    { type: 'paperdoll',         icon: BLOCK_ICONS['paperdoll'],         label: t.addBlock.paperdoll.label,         desc: t.addBlock.paperdoll.desc },
+    { type: 'inventory',         icon: BLOCK_ICONS['inventory'],         label: t.addBlock.inventory.label,         desc: t.addBlock.inventory.desc },
   ];
 }
 

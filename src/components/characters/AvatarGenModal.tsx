@@ -159,7 +159,7 @@ interface Props {
   /** Override the label of the default (reference) slot in dynamic mode. Default: i18n slotLabelDefault */
   slotLabelDefault?: string;
   /** Controls context-specific UI strings and LLM system prompt. Default: 'character' */
-  entityKind?: 'character' | 'item' | 'paperdoll-slot';
+  entityKind?: 'character' | 'item' | 'paperdoll-slot' | 'container';
   onSave: (updatedCfg: AvatarConfig) => void;
   onClose: () => void;
 }
@@ -171,6 +171,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
   const ag = t.avatarGen;
   const ig = t.itemIconGen;
   const pg = t.paperdollSlotGen;
+  const cg = t.containerGen;
   const { project, projectDir, addAsset } = useProjectStore();
   const {
     llmEnabled,
@@ -479,7 +480,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
 
         anyApproved = true;
       } catch {
-        toast.error(entityKind === 'item' ? ig.errorApprove : entityKind === 'paperdoll-slot' ? pg.errorApprove : ag.errorApprove);
+        toast.error(entityKind === 'item' ? ig.errorApprove : entityKind === 'paperdoll-slot' ? pg.errorApprove : entityKind === 'container' ? cg.errorApprove : ag.errorApprove);
       }
     }
 
@@ -487,7 +488,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
       setSlots(updatedSlots);
       const finalCfg = { ...updatedCfg, genSettings: buildGenSettings(updatedSlots) };
       onSave(finalCfg);
-      toast.success(entityKind === 'item' ? ig.approveSuccess : entityKind === 'paperdoll-slot' ? pg.approveSuccess : ag.approveSuccess);
+      toast.success(entityKind === 'item' ? ig.approveSuccess : entityKind === 'paperdoll-slot' ? pg.approveSuccess : entityKind === 'container' ? cg.approveSuccess : ag.approveSuccess);
     }
   };
 
@@ -505,7 +506,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
 
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70" />
 
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-[700px] max-w-[95vw] flex flex-col max-h-[90vh]">
         {/* Header */}
@@ -650,6 +651,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
                 ag={ag}
                 ig={ig}
                 pg={pg}
+                cg={cg}
                 entityKind={entityKind}
               />
             ))}
@@ -700,6 +702,7 @@ function SlotPanel({
   ag,
   ig,
   pg,
+  cg,
   entityKind,
 }: {
   slot: ModalSlotState;
@@ -720,7 +723,8 @@ function SlotPanel({
   ag: ReturnType<typeof useT>['avatarGen'];
   ig: ReturnType<typeof useT>['itemIconGen'];
   pg: ReturnType<typeof useT>['paperdollSlotGen'];
-  entityKind: 'character' | 'item' | 'paperdoll-slot';
+  cg: ReturnType<typeof useT>['containerGen'];
+  entityKind: 'character' | 'item' | 'paperdoll-slot' | 'container';
 }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -767,14 +771,14 @@ function SlotPanel({
             <input
               type="text"
               className="flex-1 bg-slate-800 text-slate-200 text-xs rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500"
-              placeholder={entityKind === 'item' ? ig.hintPlaceholder : entityKind === 'paperdoll-slot' ? pg.hintPlaceholder : ag.hintPlaceholder}
+              placeholder={entityKind === 'item' ? ig.hintPlaceholder : entityKind === 'paperdoll-slot' ? pg.hintPlaceholder : entityKind === 'container' ? cg.hintPlaceholder : ag.hintPlaceholder}
               value={slot.hint}
               onChange={e => onHintChange(e.target.value)}
             />
             <button
               type="button"
               disabled={slot.busyPrompt || !defaultSlotHasPrompt}
-              title={!defaultSlotHasPrompt ? (entityKind === 'item' ? ig.generateFromHintNoRef : entityKind === 'paperdoll-slot' ? pg.generateFromHintNoRef : ag.generateFromHintNoRef) : undefined}
+              title={!defaultSlotHasPrompt ? (entityKind === 'item' ? ig.generateFromHintNoRef : entityKind === 'paperdoll-slot' ? pg.generateFromHintNoRef : entityKind === 'container' ? cg.generateFromHintNoRef : ag.generateFromHintNoRef) : undefined}
               className="px-2 py-1 text-[10px] rounded cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors border bg-indigo-700 border-indigo-600 text-white hover:bg-indigo-600 whitespace-nowrap"
               onClick={() => onGeneratePrompt('hint')}
             >
@@ -790,7 +794,7 @@ function SlotPanel({
         <div className="flex-1 flex flex-col gap-1">
           <textarea
             className="w-full bg-slate-800 text-slate-200 text-xs rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[60px] resize-y"
-            placeholder={entityKind === 'item' ? ig.promptPlaceholder : entityKind === 'paperdoll-slot' ? pg.promptPlaceholder : ag.promptPlaceholder}
+            placeholder={entityKind === 'item' ? ig.promptPlaceholder : entityKind === 'paperdoll-slot' ? pg.promptPlaceholder : entityKind === 'container' ? cg.promptPlaceholder : ag.promptPlaceholder}
             value={slot.prompt}
             onChange={e => onPromptChange(e.target.value)}
           />

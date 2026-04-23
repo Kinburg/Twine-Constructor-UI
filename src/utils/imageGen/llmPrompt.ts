@@ -143,7 +143,7 @@ export async function generateAvatarPromptWithLlm(
   _styleHints: string[] = [],
   signal?: AbortSignal,
   referencePrompt?: string,
-  entityKind: 'character' | 'item' | 'paperdoll-slot' = 'character',
+  entityKind: 'character' | 'item' | 'paperdoll-slot' | 'container' = 'character',
 ): Promise<string> {
   const isDefaultOrStatic = !slotLabel || slotLabel === 'default' || slotLabel === 'static';
 
@@ -177,6 +177,35 @@ export async function generateAvatarPromptWithLlm(
         );
       }
       sysParts.push(`Slot variant: ${slotLabel}`);
+    }
+  } else if (entityKind === 'container') {
+    sysParts = [
+      'You are an expert at writing text-to-image prompts for background environments in visual novels and RPGs.',
+      'Write a prompt for a background scene used as the backdrop of a container UI — a shop, a chest room, or a loot area.',
+      'Focus on: the type of location (tavern, dungeon, market stall, etc.), architectural details, furniture, lighting mood, atmosphere, depth, and color palette.',
+      'The scene should feel like a painted background plate — no characters, no UI elements, no text.',
+      'Do NOT include any art style, rendering style, or medium descriptions — style tags are appended separately by the user.',
+      'Keep the prompt between 2–4 sentences.',
+      'Output ONLY the prompt text in English. No markdown, no quotes, no commentary.',
+    ];
+    if (project.lore?.trim()) {
+      sysParts.push(`World setting (for visual context): ${project.lore.trim()}`);
+    }
+    sysParts.push(`Container name: ${charName}`);
+    if (charDescr?.trim()) {
+      sysParts.push(`Container description: ${charDescr.trim()}`);
+    }
+    if (isDefaultOrStatic) {
+      sysParts.push('This is the reference/default background. Show the location in its neutral daytime or standard lighting state.');
+    } else {
+      if (referencePrompt?.trim()) {
+        sysParts.push(
+          'This is an atmospheric variant of the same background.\n' +
+          'Keep the location, architecture, and composition IDENTICAL to the reference — only apply the atmospheric change described by the hint.\n' +
+          `Reference background:\n${referencePrompt.trim()}`,
+        );
+      }
+      sysParts.push(`Atmosphere variant: ${slotLabel}`);
     }
   } else if (entityKind === 'item') {
     sysParts = [

@@ -15,6 +15,7 @@ import { useConfirm } from '../shared/ConfirmModal';
 import { CellImageGenEditor } from '../shared/CellImageGenEditor';
 import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
 import { DateTimeCellEditor } from '../shared/DateTimeCellEditor';
+import { InventoryPopupShortcut } from '../blocks/InventoryPopupShortcut';
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -708,9 +709,8 @@ function CellEditModal({
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3"
-        onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-white">{t.cellModal.title}</span>
           <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}>✕</button>
@@ -1259,6 +1259,7 @@ function CellButtonEditor({
                       {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   )}
+                  <InventoryPopupShortcut onResolved={sceneId => patchAction(a.id, { targetSceneId: sceneId } as Partial<ButtonAction>)} />
                   <button className="text-slate-600 hover:text-red-400 text-sm cursor-pointer shrink-0"
                     title={t.cellModal.buttonDeleteAction} onClick={() => removeAction(a.id)}>✕</button>
                 </div>

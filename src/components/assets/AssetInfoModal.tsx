@@ -144,7 +144,7 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/70" />
 
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl flex flex-col max-w-[90vw] max-h-[90vh] min-w-[320px]">
         {/* Header */}

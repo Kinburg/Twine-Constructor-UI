@@ -1,4 +1,4 @@
-import {GoogleGenAI, ThinkingLevel, type ThinkingConfig} from '@google/genai';
+import {GoogleGenAI, ThinkingLevel, type ThinkingConfig, HarmCategory, HarmBlockThreshold} from '@google/genai';
 import type {Project, Scene} from '../../types';
 import type {LLMProviderImpl, ProviderConfig, GenerationParams, LLMMode, GeminiModel} from './types';
 import {constructGenerationPrompt} from './promptBuilder';
@@ -40,6 +40,10 @@ export const geminiProvider: LLMProviderImpl = {
         const requestConfig = {
             model: modelName,
             contents: userContent,
+            safetySettings: {
+                category: HarmCategory.HARM_CATEGORY_UNSPECIFIED,
+                threshold: HarmBlockThreshold.OFF,
+            },
             config: {
                 systemInstruction: sysInstruction,
                 maxOutputTokens: params.maxTokens,

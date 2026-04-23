@@ -379,6 +379,24 @@ export interface TableBlock {
   delay?: BlockDelay;
 }
 
+/** Displays a character's paperdoll (equipment grid) as a standalone scene block. */
+export interface PaperdollBlock {
+  id: string;
+  type: 'paperdoll';
+  charId: string;
+  showLabels?: boolean;
+  delay?: BlockDelay;
+}
+
+/** Displays a character's inventory (grid + detail panel + category filters) as a standalone scene block. */
+export interface InventoryBlock {
+  id: string;
+  type: 'inventory';
+  charId: string;
+  title?: string;
+  delay?: BlockDelay;
+}
+
 /**
  * Includes another passage/scene via <<include "PassageName">>.
  * Optionally wraps the result in a styled <div>.
@@ -539,6 +557,8 @@ export type Block =
   | RawBlock
   | NoteBlock
   | TableBlock
+  | PaperdollBlock
+  | InventoryBlock
   | IncludeBlock
   | DividerBlock
   | CheckboxBlock
@@ -789,6 +809,8 @@ export interface ItemDefinition {
   targetSlot?: string;
   /** ID of the auto-created [func] scene for use-effects — only for 'consumable' */
   useFuncSceneId?: string;
+  /** Short description shown in the item preview */
+  description?: string;
   iconConfig: ItemIconConfig;
   /** User-defined extra properties (become variables in the item's group) */
   customProps: ItemCustomProp[];
@@ -825,6 +847,8 @@ export interface ContainerDefinition {
   varName: string;
   mode: ContainerMode;
   initialItems: ContainerItemSlot[];
+  /** Optional background image path shown behind the container UI at runtime */
+  bgImage?: string;
   varIds?: ContainerVarIds;
 }
 
