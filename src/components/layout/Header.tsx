@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
+import { usePluginStore } from '../../store/pluginStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
@@ -214,7 +215,7 @@ export function Header() {
         const dir = await ensureProjectDir();
         if (!dir) return;
         const releaseDir = joinPath(dir, 'release');
-        const html = generateStandaloneHtml(project, template);
+        const html = generateStandaloneHtml(project, template, usePluginStore.getState().plugins);
         await fsApi.writeFile(joinPath(releaseDir, 'index.html'), html);
         toast.success(t.header.successExportHtml);
         if (confirmOpenFolderAfterExport) {
@@ -253,7 +254,7 @@ export function Header() {
     if (!filePath) return;
     setBusy(true);
     try {
-      const html = generateStandaloneHtml(project, template);
+      const html = generateStandaloneHtml(project, template, usePluginStore.getState().plugins);
       await fsApi.writeFile(filePath, html);
       toast.success(t.header.successExportHtml);
     } catch (e) {
@@ -275,7 +276,7 @@ export function Header() {
     if (!filePath) return;
     setBusy(true);
     try {
-      const twee = exportToTwee(project);
+      const twee = exportToTwee(project, usePluginStore.getState().plugins);
       await fsApi.writeFile(filePath, twee);
       toast.success(t.header.successExportTwee);
     } catch (e) {
@@ -346,7 +347,7 @@ export function Header() {
       if (!savePath) return;
       setBusy(true);
 
-      const html = generateStandaloneHtml(translatedProject, template);
+      const html = generateStandaloneHtml(translatedProject, template, usePluginStore.getState().plugins);
       await fsApi.writeFile(savePath, html);
       toast.success(`Exported ${langCode} version successfully!`);
     } catch (e) {

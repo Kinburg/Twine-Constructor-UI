@@ -7,6 +7,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VarInsertButton } from '../shared/VarInsertButton';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -160,6 +161,7 @@ function ActionRow({
 }) {
   const t = useT();
   const { project } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const isPopup = action.type === 'open-popup';
 
   if (isPopup) {
@@ -253,7 +255,7 @@ function ActionRow({
               ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
-          nodes={project.variableNodes}
+          nodes={variableNodes}
           placeholder={t.linkBlock.selectVariable}
           className="flex-1 min-w-0"
         />
@@ -313,26 +315,30 @@ function ActionRow({
 export function LinkBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: LinkBlock;
   sceneId: string;
+  onUpdate?: (patch: Partial<LinkBlock>) => void;
 }) {
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
-  const variables = flattenVariables(project.variableNodes);
+  const variableNodes = useVariableNodes();
+  const update = onUpdate ?? ((p: Partial<LinkBlock>) => updateBlock(sceneId, block.id, p));
+  const variables = flattenVariables(variableNodes);
   const labelRef = useRef<HTMLInputElement>(null);
   const scenes = project.scenes.filter(s => s.id !== sceneId && !s.tags.some(tag => (SYSTEM_TAGS as readonly string[]).includes(tag)));
 
   const patchStyle = (patch: Partial<ButtonStyle>) =>
-    updateBlock(sceneId, block.id, { style: { ...block.style, ...patch } });
+    update({ style: { ...block.style, ...patch } });
 
   const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: block.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) as ButtonAction[],
     });
 
   const addAction = () =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: [
         ...block.actions,
         { id: crypto.randomUUID(), variableId: '', operator: '=' as VarOperator, value: '' },
@@ -340,7 +346,7 @@ export function LinkBlockEditor({
     });
 
   const removeAction = (actionId: string) =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: block.actions.filter(a => a.id !== actionId),
     });
 
@@ -355,14 +361,14 @@ export function LinkBlockEditor({
           placeholder={t.linkBlock.labelPlaceholder}
           value={block.label}
           onFocus={saveSnapshot}
-          onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
+          onChange={e => update({ label: e.target.value })}
         />
         <VarInsertButton
           targetRef={labelRef}
           value={block.label}
-          onChange={label => updateBlock(sceneId, block.id, { label })}
+          onChange={label => update({ label })}
           vars={variables}
-          variableNodes={project.variableNodes}
+          variableNodes={variableNodes}
         />
       </div>
 
@@ -377,7 +383,7 @@ export function LinkBlockEditor({
             {(['scene', 'back'] as LinkTarget[]).map(tgt => (
               <button
                 key={tgt}
-                onClick={() => updateBlock(sceneId, block.id, { target: tgt })}
+                onClick={() => update({ target: tgt })}
                 className={`text-xs px-3 py-1 rounded border cursor-pointer transition-colors ${
                   block.target === tgt
                     ? 'bg-indigo-600 border-indigo-500 text-white'
@@ -397,7 +403,7 @@ export function LinkBlockEditor({
             <select
               className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
               value={block.targetSceneId ?? ''}
-              onChange={e => updateBlock(sceneId, block.id, { targetSceneId: e.target.value })}
+              onChange={e => update({ targetSceneId: e.target.value })}
             >
               <option value="">{t.linkBlock.noScene}</option>
               {scenes.map(s => (
@@ -445,7 +451,7 @@ export function LinkBlockEditor({
 
       <BlockEffectsPanel
         delay={block.delay}
-        onDelayChange={v => updateBlock(sceneId, block.id, { delay: v })}
+        onDelayChange={v => update({ delay: v })}
       />
     </div>
   );

@@ -9,8 +9,9 @@ import { WatcherManager } from '../watchers/WatcherManager';
 import { PanelEditor } from '../panel/PanelEditor';
 import { ItemManager } from '../items/ItemManager';
 import { ContainerManager } from '../containers/ContainerManager';
+import { PluginManager } from '../plugins/PluginManager';
 
-type Tab = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers' | 'items' | 'containers';
+type Tab = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers' | 'items' | 'containers' | 'plugins';
 
 export function Sidebar() {
   const { activeSidebarTab, setSidebarTab, sidebarWidth, setSidebarWidth } = useProjectStore();
@@ -22,6 +23,7 @@ export function Sidebar() {
     { id: 'characters', label: t.sidebar.characters, icon: '👤' },
     { id: 'items',      label: t.sidebar.items,      icon: '🎒' },
     { id: 'containers', label: t.sidebar.containers, icon: '🏪' },
+    { id: 'plugins',    label: t.sidebar.plugins,    icon: '🧩' },
     { id: 'variables',  label: t.sidebar.variables,  icon: '📊' },
     { id: 'assets',     label: t.sidebar.assets,     icon: '🖼️' },
     { id: 'panel',      label: t.sidebar.panel,      icon: '🗂️' },
@@ -87,6 +89,7 @@ export function Sidebar() {
         {activeSidebarTab === 'characters'  && <CharacterManager />}
         {activeSidebarTab === 'items'       && <ItemManager />}
         {activeSidebarTab === 'containers'  && <ContainerManager />}
+        {activeSidebarTab === 'plugins'     && <PluginManager />}
         {activeSidebarTab === 'variables'   && <VariableManager />}
         {activeSidebarTab === 'assets'      && <AssetManager />}
         {activeSidebarTab === 'panel'       && <PanelEditor />}

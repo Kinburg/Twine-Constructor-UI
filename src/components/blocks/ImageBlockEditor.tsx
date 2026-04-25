@@ -4,6 +4,7 @@ import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 
 // ─── Main editor ──────────────────────────────────────────────────────────────
@@ -18,6 +19,7 @@ export function ImageBlockEditor({
   onUpdate?: (patch: Partial<ImageBlock>) => void;
 }) {
   const { project, projectDir, updateBlock } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const update = onUpdate ?? ((p: Partial<ImageBlock>) => updateBlock(sceneId, block.id, p as never));
   const t = useT();
   const mode    = block.mode ?? 'static';
@@ -91,7 +93,7 @@ export function ImageBlockEditor({
             <VariablePicker
               value={block.variableId ?? ''}
               onChange={id => update({ variableId: id })}
-              nodes={project.variableNodes}
+              nodes={variableNodes}
               placeholder={t.imageBlock.selectVariable}
             />
           </div>

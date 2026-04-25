@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectStore, DEFAULT_PANEL_STYLE } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
+import { usePluginStore } from '../../store/pluginStore';
 import { useT } from '../../i18n';
-import type { Block, BlockType } from '../../types';
+import type { Block, BlockType, PluginBlock, PluginBlockDef } from '../../types';
 
 const BLOCK_ICONS: Record<BlockType, string> = {
   'text':              '📝',
@@ -30,6 +31,7 @@ const BLOCK_ICONS: Record<BlockType, string> = {
   'time-manipulation': '🕒',
   'paperdoll':         '🧩',
   'inventory':         '🎒',
+  'plugin':            '🧩',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -99,7 +101,15 @@ export function makeBlock(type: BlockType): Block {
     case 'time-manipulation': return { id, type, variableId: '', years: 0, months: 0, days: 0, hours: 0, minutes: 0 };
     case 'paperdoll':         return { id, type, charId: '', showLabels: false };
     case 'inventory':         return { id, type, charId: '' };
+    case 'plugin':            return { id, type, pluginId: '', values: {} };
   }
+}
+
+/** Create a plugin-block instance referencing a plugin def. Populates param defaults. */
+export function makePluginBlock(def: PluginBlockDef): PluginBlock {
+  const values: Record<string, string> = {};
+  for (const p of def.params) values[p.key] = p.default ?? '';
+  return { id: crypto.randomUUID(), type: 'plugin', pluginId: def.id, values };
 }
 
 // ── Category definitions ──────────────────────────────────────────────────────
@@ -196,6 +206,7 @@ interface Props {
 export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, onClose }: Props) {
   const { addBlock } = useProjectStore();
   const { recentBlockTypes, trackRecentBlock } = useEditorPrefsStore();
+  const plugins = usePluginStore((s) => s.plugins);
   const t = useT();
   const [open, setOpen] = useState(initialOpen ?? false);
   const [search, setSearch] = useState('');
@@ -224,6 +235,12 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, o
     } else {
       addBlock(sceneId, block);
     }
+    close();
+  };
+
+  const addPlugin = (def: PluginBlockDef) => {
+    const block = makePluginBlock(def);
+    if (onAdd) onAdd(block); else addBlock(sceneId, block);
     close();
   };
 
@@ -300,6 +317,43 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, o
                     <BlockButtonCompact key={e.type} entry={e} onClick={() => add(e.type)} />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Plugins category */}
+            {plugins.length > 0 && (
+              <div className="border-b border-slate-700">
+                <button
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700/50 transition-colors cursor-pointer"
+                  onClick={() => toggleCat('plugins')}
+                >
+                  <span className="font-medium">
+                    {expandedCats.has('plugins') ? '▾' : '▸'}{' '}
+                    {t.addBlock.categories.plugins}
+                  </span>
+                  <span className="text-slate-500">{plugins.length}</span>
+                </button>
+                {expandedCats.has('plugins') && (
+                  <div className="grid grid-cols-2">
+                    {plugins.map((def) => (
+                      <button
+                        key={def.id}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-slate-700 text-left transition-colors cursor-pointer border-b border-r border-slate-700 border-l-4"
+                        style={{ borderLeftColor: def.color }}
+                        onClick={() => addPlugin(def)}
+                        title={def.description}
+                      >
+                        <span className="text-base leading-none">{def.icon || '🧩'}</span>
+                        <div className="min-w-0">
+                          <div className="text-xs text-white font-medium truncate">{def.name}</div>
+                          {def.description && (
+                            <div className="text-xs text-slate-400 leading-tight truncate">{def.description}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

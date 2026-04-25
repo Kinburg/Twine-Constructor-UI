@@ -26,6 +26,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { TextInsertToolbar } from '../shared/TextInsertToolbar';
 import { LLMGenerateButton } from '../shared/LLMGenerateButton';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
+import { useVariableNodes } from '../shared/VariableScope';
 
 /**
  * Converts an avatar src value to a URL the editor renderer can actually load:
@@ -217,9 +218,10 @@ export function DialogueBlockEditor({
 }) {
   const { project, projectDir, updateBlock, saveSnapshot } = useProjectStore();
   const t = useT();
+  const variableNodes = useVariableNodes();
   const update = onUpdate ?? ((p: Partial<DialogueBlock>) => updateBlock(sceneId, block.id, p as never));
   const { characters } = project;
-  const vars = flattenVariables(project.variableNodes);
+  const vars = flattenVariables(variableNodes);
   const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
   const dialogueRef = useRef<HTMLTextAreaElement>(null);
 
@@ -375,7 +377,7 @@ export function DialogueBlockEditor({
               onChange={text => update({ text })}
               vars={vars}
               imageAssets={imgAssets}
-              variableNodes={project.variableNodes}
+              variableNodes={variableNodes}
               scenes={project.scenes}
             />
           </div>

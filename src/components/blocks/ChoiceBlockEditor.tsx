@@ -5,6 +5,7 @@ import { SYSTEM_TAGS } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VarInsertButton } from '../shared/VarInsertButton';
+import { useVariableNodes } from '../shared/VariableScope';
 import { flattenVariables } from '../../utils/treeUtils';
 
 /** Isolated component so each option gets its own ref (avoids reading refs during render). */
@@ -55,9 +56,10 @@ export function ChoiceBlockEditor({
   onUpdate?: (patch: Partial<ChoiceBlock>) => void;
 }) {
   const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption, saveSnapshot, updateBlock } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const scenes = project.scenes.filter(s => !s.tags.some(tag => (SYSTEM_TAGS as readonly string[]).includes(tag)));
   const t = useT();
-  const vars = flattenVariables(project.variableNodes);
+  const vars = flattenVariables(variableNodes);
 
   const handleAddOption = onUpdate
     ? () => {
@@ -90,7 +92,7 @@ export function ChoiceBlockEditor({
               value={opt.label}
               placeholder={t.choiceBlock.optionPlaceholder}
               vars={vars}
-              variableNodes={project.variableNodes}
+              variableNodes={variableNodes}
               onFocus={saveSnapshot}
               onChange={label => handleUpdateOption(opt.id, { label })}
             />

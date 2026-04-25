@@ -21,6 +21,7 @@ export interface Translations {
     watchers: string;
     items: string;
     containers: string;
+    plugins: string;
   };
 
   scene: {
@@ -87,6 +88,7 @@ export interface Translations {
     timeManipulation: string;
     paperdoll: string;
     inventory: string;
+    plugin: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -108,6 +110,7 @@ export interface Translations {
       interaction: string;
       logic: string;
       system: string;
+      plugins: string;
     };
     text:        { label: string; desc: string };
     dialogue:    { label: string; desc: string };
@@ -134,6 +137,64 @@ export interface Translations {
     timeManipulation: { label: string; desc: string };
     paperdoll:        { label: string; desc: string };
     inventory:        { label: string; desc: string };
+  };
+
+  pluginBlock: {
+    editPlugin: string;
+    editPluginTooltip: string;
+    notFound: string;
+    noParams: string;
+  };
+
+  pluginEditor: {
+    title: string;
+    newPlugin: string;
+    metaSection: string;
+    paramsSection: string;
+    blocksSection: string;
+    name: string;
+    icon: string;
+    color: string;
+    description: string;
+    version: string;
+    addParam: string;
+    paramKey: string;
+    paramLabel: string;
+    paramDefault: string;
+    moveUp: string;
+    moveDown: string;
+    noParams: string;
+    paramsHint: string;
+    blocksHint: string;
+    noBlocks: string;
+    unsupportedBlockType: string;
+    save: string;
+    delete: string;
+    confirmDelete: string;
+    savedToast: string;
+    deletedToast: string;
+    kind_text: string;
+    kind_number: string;
+    kind_bool: string;
+    kind_array: string;
+    kind_datetime: string;
+    kind_object: string;
+    kind_scene: string;
+    objectFields: string;
+    objectFieldsNone: string;
+    validationNameRequired: string;
+    validationKeyInvalid: string;
+    validationKeyDuplicate: string;
+  };
+
+  pluginManager: {
+    newPlugin: string;
+    importPlugin: string;
+    exportPlugin: string;
+    duplicatePlugin: string;
+    empty: string;
+    errorLoading: string;
+    confirmDelete: (name: string) => string;
   };
 
   includeBlock: {

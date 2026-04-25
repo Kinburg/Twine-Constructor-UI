@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useProjectStore } from '../../store/projectStore';
-import { blockToSC } from '../../utils/exportToTwee';
+import { usePluginStore } from '../../store/pluginStore';
+import { blockToSC, setPluginRegistry } from '../../utils/exportToTwee';
 import { flattenVariables } from '../../utils/treeUtils';
 
 // ── Syntax highlighting (ported from preview.html) ──────────────────────────
@@ -87,12 +88,14 @@ function highlight(code: string): string {
 export function PreviewPanel() {
   const project       = useProjectStore(s => s.project);
   const activeSceneId = useProjectStore(s => s.activeSceneId);
+  const plugins       = usePluginStore(s => s.plugins);
   const [copied, setCopied] = useState(false);
 
   const { code, sceneName } = useMemo(() => {
     const scene = project.scenes.find(s => s.id === activeSceneId);
     if (!scene) return { code: '', sceneName: '' };
 
+    setPluginRegistry(plugins);
     const vars = flattenVariables(project.variableNodes);
     const idToName = new Map(project.scenes.map(s => [s.id, s.name]));
     const tags = scene.tags.length > 0 ? ` [${scene.tags.join(' ')}]` : '';
@@ -105,7 +108,7 @@ export function PreviewPanel() {
       code: `::${scene.name}${tags}\n${body || '(empty scene)'}`,
       sceneName: scene.name,
     };
-  }, [project, activeSceneId]);
+  }, [project, activeSceneId, plugins]);
 
   const highlighted = useMemo(() => highlight(code), [code]);
 

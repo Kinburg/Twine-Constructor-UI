@@ -1,7 +1,8 @@
-import type { Project, ProjectSettings, Character } from '../types';
+import type { Project, ProjectSettings, Character, PluginBlockDef } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS, setPluginRegistry } from './exportToTwee';
+import { collectPluginIds, expandPluginDeps } from './pluginUtils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -97,12 +98,14 @@ interface PassageEntry {
   y: number;
 }
 
-export function buildPassages(project: Project): {
+export function buildPassages(project: Project, plugins: PluginBlockDef[] = []): {
   passages: PassageEntry[];
   startPid: number;
   combinedCSS: string;
   scriptContent: string;
 } {
+  setPluginRegistry(plugins);
+  const pluginById = new Map(plugins.map((p) => [p.id, p]));
   const variables = flattenVariables(project.variableNodes);
   const { scenes, characters, sidebarPanel } = project;
   const idToName = new Map(scenes.map(s => [s.id, s.name]));
@@ -193,6 +196,29 @@ export function buildPassages(project: Project): {
     });
   });
 
+  // Hidden plugin passages ─ ref'd by scene plugin-blocks via <<include "__plug_id">>.
+  {
+    const rootIds = new Set<string>();
+    for (const scene of scenes) collectPluginIds(scene.blocks, rootIds);
+    const allIds = expandPluginDeps(rootIds, (id) => pluginById.get(id));
+    for (const id of allIds) {
+      const def = pluginById.get(id);
+      if (!def) continue;
+      const body = def.blocks
+        .map((b) => blockToSC(b, characters, variables, variableNodes, '', idToName, project))
+        .filter(Boolean)
+        .join('\n');
+      passages.push({
+        pid: pid++,
+        name: `__plug_${def.id}`,
+        tags: 'nobr',
+        content: body,
+        x: colW * 7,
+        y: 100 + rowH * passages.length,
+      });
+    }
+  }
+
   const charCSS      = buildCharacterCSS(characters);
   const panelCSS     = buildPanelCSS(sidebarPanel);
   const buttonCSS    = buildButtonsCSS(scenes);
@@ -233,8 +259,8 @@ export function buildPassages(project: Project): {
 
 // ─── Standalone HTML generator ────────────────────────────────────────────────
 
-export function generateStandaloneHtml(project: Project, scTemplate: string): string {
-  const { passages, startPid, combinedCSS, scriptContent } = buildPassages(project);
+export function generateStandaloneHtml(project: Project, scTemplate: string, plugins: PluginBlockDef[] = []): string {
+  const { passages, startPid, combinedCSS, scriptContent } = buildPassages(project, plugins);
 
   const styleBlock  = `<style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css">${esc(combinedCSS)}</style>`;
   const scriptBlock = `<script role="script" id="twine-user-script" type="text/twine-javascript">${scriptContent}</script>`;

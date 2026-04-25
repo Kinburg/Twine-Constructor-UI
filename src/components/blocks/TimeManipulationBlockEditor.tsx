@@ -2,6 +2,7 @@ import { useProjectStore } from '../../store/projectStore';
 import type { TimeManipulationBlock } from '../../types';
 import { useT } from '../../i18n';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
 
 export function TimeManipulationBlockEditor({
   block,
@@ -13,7 +14,8 @@ export function TimeManipulationBlockEditor({
   onUpdate?: (patch: Partial<TimeManipulationBlock>) => void;
 }) {
   const t = useT();
-  const { project, updateBlock, saveSnapshot } = useProjectStore();
+  const { updateBlock, saveSnapshot } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const update = onUpdate ?? ((p: Partial<TimeManipulationBlock>) => updateBlock(sceneId, block.id, p as never));
   
   const patchField = (field: keyof TimeManipulationBlock, value: string) => {
@@ -36,7 +38,7 @@ export function TimeManipulationBlockEditor({
         <VariablePicker
           value={block.variableId}
           onChange={id => update({ variableId: id })}
-          nodes={project.variableNodes}
+          nodes={variableNodes}
           filter={v => v.varType === 'datetime'}
         />
       </div>

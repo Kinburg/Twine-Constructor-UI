@@ -6,6 +6,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { TextInsertToolbar } from '../shared/TextInsertToolbar';
 import { LLMGenerateButton } from '../shared/LLMGenerateButton';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
+import { useVariableNodes } from '../shared/VariableScope';
 
 export function TextBlockEditor({
   block,
@@ -18,8 +19,9 @@ export function TextBlockEditor({
 }) {
   const { updateBlock, saveSnapshot, project } = useProjectStore();
   const t = useT();
+  const variableNodes = useVariableNodes();
   const update = onUpdate ?? ((p: Partial<TextBlock>) => updateBlock(sceneId, block.id, p as never));
-  const vars = flattenVariables(project.variableNodes);
+  const vars = flattenVariables(variableNodes);
   const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -40,7 +42,7 @@ export function TextBlockEditor({
             onChange={content => update({ content })}
             vars={vars}
             imageAssets={imgAssets}
-            variableNodes={project.variableNodes}
+            variableNodes={variableNodes}
             scenes={project.scenes}
           />
         </div>

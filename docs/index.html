@@ -660,8 +660,8 @@
 <div class="section">
   <span class="section-label" lang-content="uk">Типи блоків</span>
   <span class="section-label" lang-content="en">Block types</span>
-  <h2 class="section-title" lang-content="uk">24 типи блоків</h2>
-  <h2 class="section-title" lang-content="en">24 block types</h2>
+  <h2 class="section-title" lang-content="uk">25 типи блоків</h2>
+  <h2 class="section-title" lang-content="en">25 block types</h2>
   <p class="section-desc" lang-content="uk">Кожен блок — готовий елемент сцени. Комбінуйте їх для будь-якого жанру.</p>
   <p class="section-desc" lang-content="en">Each block is a ready-to-use scene element. Combine them for any genre.</p>
   <div class="blocks-grid">
@@ -1074,6 +1074,24 @@
       <p class="block-card-desc" lang-content="en">Displays the contents of a container — chest, shop or loot bag. The player can pick up and place items. Contents are stored in a character or scene variable.</p>
     </div>
 
+    <!-- Plugin -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="10" width="20" height="18" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".1"/>
+          <rect x="10" y="4" width="4" height="8" rx="1" fill="var(--accent)" fill-opacity=".5" stroke="var(--accent)" stroke-width="1.3"/>
+          <rect x="18" y="4" width="4" height="8" rx="1" fill="var(--accent)" fill-opacity=".5" stroke="var(--accent)" stroke-width="1.3"/>
+          <rect x="2" y="16" width="6" height="4" rx="1" fill="var(--accent)" fill-opacity=".4" stroke="var(--accent)" stroke-width="1.3"/>
+          <rect x="24" y="16" width="6" height="4" rx="1" fill="var(--accent)" fill-opacity=".4" stroke="var(--accent)" stroke-width="1.3"/>
+          <circle cx="16" cy="19" r="2.5" fill="var(--accent)" opacity=".65"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Власні блоки (Плагіни)</span>
+        <span class="block-card-name" lang-content="en">Custom Blocks (Plagins)</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Конструктор власних блоків із параметрами. Збирайте плагін з будь-яких існуючих блоків, налаштовуйте параметри (текст, число, змінна, сцена, колір) — і повторно використовуйте його в будь-якій сцені. Плагіни експортуються та імпортуються як окремі файли.</p>
+      <p class="block-card-desc" lang-content="en">A constructor for custom parameterised blocks. Compose a plugin from any existing blocks, define its parameters (text, number, variable, scene, colour) — and reuse it across any scene. Plugins can be exported and imported as standalone files.</p>
+    </div>
+
   </div>
 </div>
 
@@ -1172,20 +1190,6 @@
       <h3 lang-content="en">Background Music Generation</h3>
       <p lang-content="uk">Генерація фонової музики для сцен через ComfyUI — локально, без хмарних сервісів та без ліцензійних обмежень.</p>
       <p lang-content="en">Generate background music for scenes via ComfyUI — locally, with no cloud services and no licensing restrictions.</p>
-    </div>
-    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="3" y="5" width="26" height="22" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <path d="M10 12 L7 16 L10 20" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M22 12 L25 16 L22 20" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M18 10 L14 22" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".6"/>
-        <circle cx="26" cy="8" r="4" fill="var(--accent)" fill-opacity=".25" stroke="var(--accent)" stroke-width="1.3"/>
-        <path d="M24.5 8 H27.5 M26 6.5 V9.5" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round"/>
-      </svg>
-      <h3 lang-content="uk">Власні блоки</h3>
-      <h3 lang-content="en">Custom Blocks</h3>
-      <p lang-content="uk">Можливість зберігати raw-код як іменований блок та повторно використовувати його в будь-якій сцені. Замість того, щоб щоразу копіювати блок з кодом — просто вставляєте власний блок з бібліотеки.</p>
-      <p lang-content="en">Save raw code as a named block and reuse it across any scene. Instead of copying a raw code block every time — just insert your custom block from a library.</p>
     </div>
     <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
       <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">

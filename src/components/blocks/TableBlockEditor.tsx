@@ -15,6 +15,7 @@ import { CellImageGenEditor } from '../shared/CellImageGenEditor';
 import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
 import { DateTimeCellEditor } from '../shared/DateTimeCellEditor';
 import { InventoryPopupShortcut } from './InventoryPopupShortcut';
+import { useVariableNodes } from '../shared/VariableScope';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,8 @@ export function TableBlockEditor({
   const t = useT();
   const { updateBlock, saveSnapshot } = useProjectStore();
   const project = useProjectStore(s => s.project);
-  const vars = flattenVariables(project.variableNodes);
+  const variableNodes = useVariableNodes();
+  const vars = flattenVariables(variableNodes);
   const assetNodes = project.assetNodes;
 
   const update = onUpdate ?? ((p: Partial<TableBlock>) => updateBlock(sceneId, block.id, p as never));
@@ -562,6 +564,7 @@ function TCellEditModal({
 }) {
   const t = useT();
   const { project } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const c = cell.content;
   const [genModalOpen, setGenModalOpen] = useState(false);
 
@@ -586,8 +589,8 @@ function TCellEditModal({
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={e => e.stopPropagation()}>
+      <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-white">{t.cellModal.title}</span>
           <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}>✕</button>
@@ -803,7 +806,7 @@ function TCellEditModal({
         {c.type === 'date-time' && (
           <DateTimeCellEditor
             c={c as CellDateTime}
-            nodes={project.variableNodes}
+            nodes={variableNodes}
             onChange={patch => onUpdateContent({ ...(c as CellDateTime), ...patch })}
             Field={TMField}
           />
@@ -907,13 +910,13 @@ function TVarSelect({ value, onChange }: {
   value: string; onChange: (id: string) => void;
 }) {
   const t = useT();
-  const { project } = useProjectStore();
+  const variableNodes = useVariableNodes();
   return (
     <TMField label={t.cellModal.typeVariable}>
       <VariablePicker
         value={value}
         onChange={onChange}
-        nodes={project.variableNodes}
+        nodes={variableNodes}
         placeholder={t.cellModal.selectVariable}
         className="flex-1"
       />
@@ -955,6 +958,7 @@ function TCellButtonEditor({
 }) {
   const t = useT();
   const { project } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const scenes = project.scenes;
 
   const patchStyle = (patch: Partial<ButtonStyle>) =>
@@ -1125,7 +1129,7 @@ function TCellButtonEditor({
               <VariablePicker
                 value={a.variableId}
                 onChange={id => patchAction(a.id, { variableId: id })}
-                nodes={project.variableNodes}
+                nodes={variableNodes}
                 placeholder={t.buttonBlock.selectVariable}
                 className="flex-1 min-w-0"
               />

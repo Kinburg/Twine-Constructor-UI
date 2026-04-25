@@ -6,6 +6,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VarInsertButton } from '../shared/VarInsertButton';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -159,6 +160,7 @@ function ActionRow({
 }) {
   const t = useT();
   const { project } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const isPopup = action.type === 'open-popup';
 
   if (isPopup) {
@@ -252,7 +254,7 @@ function ActionRow({
               ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
-          nodes={project.variableNodes}
+          nodes={variableNodes}
           placeholder={t.functionBlock.selectVariable}
           className="flex-1 min-w-0"
         />
@@ -312,14 +314,18 @@ function ActionRow({
 export function FunctionBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: FunctionBlock;
   sceneId: string;
+  onUpdate?: (patch: Partial<FunctionBlock>) => void;
 }) {
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
+  const variableNodes = useVariableNodes();
+  const update = onUpdate ?? ((p: Partial<FunctionBlock>) => updateBlock(sceneId, block.id, p));
   const labelRef = useRef<HTMLInputElement>(null);
-  const variables = flattenVariables(project.variableNodes);
+  const variables = flattenVariables(variableNodes);
 
   // Only func-tagged scenes (exclude current scene)
   const funcScenes = project.scenes.filter(
@@ -327,15 +333,15 @@ export function FunctionBlockEditor({
   );
 
   const patchStyle = (patch: Partial<ButtonStyle>) =>
-    updateBlock(sceneId, block.id, { style: { ...block.style, ...patch } });
+    update({ style: { ...block.style, ...patch } });
 
   const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: block.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) as ButtonAction[],
     });
 
   const addAction = () =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: [
         ...block.actions,
         { id: crypto.randomUUID(), variableId: '', operator: '=' as VarOperator, value: '' },
@@ -343,7 +349,7 @@ export function FunctionBlockEditor({
     });
 
   const removeAction = (actionId: string) =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: block.actions.filter(a => a.id !== actionId),
     });
 
@@ -358,14 +364,14 @@ export function FunctionBlockEditor({
           placeholder={t.functionBlock.labelPlaceholder}
           value={block.label}
           onFocus={saveSnapshot}
-          onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
+          onChange={e => update({ label: e.target.value })}
         />
         <VarInsertButton
           targetRef={labelRef}
           value={block.label}
-          onChange={label => updateBlock(sceneId, block.id, { label })}
+          onChange={label => update({ label })}
           vars={variables}
-          variableNodes={project.variableNodes}
+          variableNodes={variableNodes}
         />
       </div>
 
@@ -380,7 +386,7 @@ export function FunctionBlockEditor({
             <select
               className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
               value={block.targetSceneId}
-              onChange={e => updateBlock(sceneId, block.id, { targetSceneId: e.target.value })}
+              onChange={e => update({ targetSceneId: e.target.value })}
             >
               <option value="">— select —</option>
               {funcScenes.map(s => (
@@ -428,7 +434,7 @@ export function FunctionBlockEditor({
 
       <BlockEffectsPanel
         delay={block.delay}
-        onDelayChange={v => updateBlock(sceneId, block.id, { delay: v })}
+        onDelayChange={v => update({ delay: v })}
       />
     </div>
   );

@@ -4,6 +4,7 @@ import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
 
 // Badge showing the variable type and which SugarCube macro will be used
 function MacroBadge({ varType }: { varType: string | undefined }) {
@@ -22,13 +23,17 @@ function MacroBadge({ varType }: { varType: string | undefined }) {
 export function InputFieldBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: InputFieldBlock;
   sceneId: string;
+  onUpdate?: (patch: Partial<InputFieldBlock>) => void;
 }) {
   const t = useT();
-  const { project, updateBlock, saveSnapshot } = useProjectStore();
-  const variables = flattenVariables(project.variableNodes);
+  const { updateBlock, saveSnapshot } = useProjectStore();
+  const variableNodes = useVariableNodes();
+  const update = onUpdate ?? ((p: Partial<InputFieldBlock>) => updateBlock(sceneId, block.id, p));
+  const variables = flattenVariables(variableNodes);
   const selectedVar = variables.find(v => v.id === block.variableId);
 
   const isNumber  = selectedVar?.varType === 'number';
@@ -46,7 +51,7 @@ export function InputFieldBlockEditor({
           placeholder={t.inputFieldBlock.labelPlaceholder}
           value={block.label}
           onFocus={saveSnapshot}
-          onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
+          onChange={e => update({ label: e.target.value })}
         />
       </div>
 
@@ -58,13 +63,13 @@ export function InputFieldBlockEditor({
           onChange={id => {
             const v = variables.find(x => x.id === id);
             const leavingArray = isArray && v?.varType !== 'array';
-            updateBlock(sceneId, block.id, {
+            update({
               variableId: id,
               placeholder: v?.defaultValue ?? '',
               ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
-          nodes={project.variableNodes}
+          nodes={variableNodes}
           placeholder={t.inputFieldBlock.selectVariable}
         />
         {variables.length === 0 && (
@@ -76,7 +81,7 @@ export function InputFieldBlockEditor({
       {isArray && (
         <ArrayAccessorInput
           accessor={block.accessor}
-          onChange={acc => updateBlock(sceneId, block.id, { accessor: acc })}
+          onChange={acc => update({ accessor: acc })}
           vars={variables}
           allowLength={false}
         />
@@ -94,7 +99,7 @@ export function InputFieldBlockEditor({
             placeholder={isNumber ? t.inputFieldBlock.defaultNumberPlaceholder : t.inputFieldBlock.defaultTextPlaceholder}
             value={block.placeholder}
             onFocus={saveSnapshot}
-            onChange={e => updateBlock(sceneId, block.id, { placeholder: e.target.value })}
+            onChange={e => update({ placeholder: e.target.value })}
           />
         </div>
       )}
@@ -122,7 +127,7 @@ export function InputFieldBlockEditor({
       )}
       <BlockEffectsPanel
         delay={block.delay}
-        onDelayChange={v => updateBlock(sceneId, block.id, { delay: v })}
+        onDelayChange={v => update({ delay: v })}
       />
     </div>
   );

@@ -5,10 +5,23 @@ import type {
   ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList, CellDateTime, DateTimeDisplayMode,
   Watcher, WatcherCondition, AudioBlock, ContainerBlock, TimeManipulationBlock,
   VariableTreeNode, VariableGroup, ItemDefinition,
+  PluginBlockDef, PluginBlock,
 } from '../types';
 import { START_TAG } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables, getVariablePath, hasLeafVariables } from './treeUtils';
+import { collectPluginIds, expandPluginDeps, pluginValueLiteral } from './pluginUtils';
+import { paramsToVirtualNodes, rewriteParamRefs } from './pluginParamScope';
+
+// ─── Plugin registry (set by exportToTwee / buildPassages at start of export) ─
+// Keeps blockToSC* recursive calls simple — they look up defs through this module-scope map.
+let PLUGIN_DEFS: Map<string, PluginBlockDef> = new Map();
+export function setPluginRegistry(plugins: PluginBlockDef[] | undefined) {
+  PLUGIN_DEFS = new Map((plugins ?? []).map((p) => [p.id, p]));
+}
+function getPluginDef(id: string): PluginBlockDef | undefined {
+  return PLUGIN_DEFS.get(id);
+}
 
 // ─── Variable path helpers ────────────────────────────────────────────────────
 
@@ -671,6 +684,16 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       };
       return `${indent}<<run tgAddTime("${path}", ${JSON.stringify(delta)})>>`;
     }
+
+    case 'plugin': {
+      const pb = block as PluginBlock;
+      const def = getPluginDef(pb.pluginId);
+      if (!def) return `${indent}<!-- plugin ${pb.pluginId} not found -->`;
+      const setters = def.params
+        .map((p) => `<<set _${p.key} to ${pluginValueLiteral(p, pb.values[p.key], idToName)}>>`)
+        .join('');
+      return `${indent}${setters}<<include "__plug_${def.id}">>`;
+    }
   }
 }
 
@@ -690,6 +713,25 @@ function branchToSC(
 
   if (branch.branchType === 'else') {
     return `${indent}<<else>>\n${innerLines}`;
+  }
+
+  // Plugin param virtual variables: branch.variableId starts with 'param:'.
+  // Emit directly as a temp-var reference (_key) without going through the
+  // project variable tree — scene kind params are excluded from paramVars.
+  if (branch.variableId?.startsWith('param:')) {
+    const paramKey = branch.variableId.slice('param:'.length);
+    const varName  = `_${paramKey}`;
+    let val = branch.value;
+    // We don't know the param's runtime type here, so quote the value only
+    // when it isn't already a SC expression ($...) or temp-var (_...).
+    if (!val.startsWith('$') && !val.startsWith('_') && isNaN(Number(val)) && val !== 'true' && val !== 'false') {
+      val = `"${val}"`;
+    }
+    const expr = `${varName} ${branch.operator} ${val}`;
+    if (branch.branchType === 'if' || isFirst) {
+      return `${indent}<<if ${expr}>>\n${innerLines}`;
+    }
+    return `${indent}<<elseif ${expr}>>\n${innerLines}`;
   }
 
   const v = vars.find(x => x.id === branch.variableId);
@@ -1849,6 +1891,10 @@ function collectSceneTargets(blocks: Block[], idToName?: Map<string, string>): s
       }
     } else if (b.type === 'dialogue' && b.innerBlocks?.length) {
       targets.push(...collectSceneTargets(b.innerBlocks, idToName));
+    } else if (b.type === 'plugin') {
+      // Dive into plugin body so the Twine graph sees nav targets nested in plugins.
+      const def = getPluginDef(b.pluginId);
+      if (def) targets.push(...collectSceneTargets(def.blocks, idToName));
     }
   }
   // deduplicate
@@ -1857,7 +1903,8 @@ function collectSceneTargets(blocks: Block[], idToName?: Map<string, string>): s
 
 // ─── Main export ─────────────────────────────────────────────────────────────
 
-export function exportToTwee(project: Project): string {
+export function exportToTwee(project: Project, plugins: PluginBlockDef[] = []): string {
+  setPluginRegistry(plugins);
   const variableNodes = project.variableNodes;
   const variables = flattenVariables(variableNodes);
   const { title, ifid, scenes, characters, sidebarPanel } = project;
@@ -1979,6 +2026,36 @@ export function exportToTwee(project: Project): string {
       : '';
 
     parts.push(`::${scene.name}${tags}\n${body || '(empty scene)'}${graphHint}\n`);
+  }
+
+  // ── Hidden plugin passages ────────────────────────────────────────────────
+  // Collect every plugin referenced anywhere in the scenes, then recursively
+  // expand to include plugins-used-by-plugins. Emit each as `__plug_<id>`.
+  const rootPluginIds = new Set<string>();
+  for (const scene of scenes) collectPluginIds(scene.blocks, rootPluginIds);
+  const allPluginIds = expandPluginDeps(rootPluginIds, getPluginDef);
+  for (const id of allPluginIds) {
+    const def = getPluginDef(id);
+    if (!def) continue;
+
+    // Build virtual variable/group nodes for plugin params so `blockToSC` can
+    // resolve `param:<key>` ids. Node names use the path-marker prefix
+    // (`__tgParam__key`) so emitted paths like `$__tgParam__key.field` are
+    // rewritten to `_key.field` by `rewriteParamRefs` in the final pass.
+    // For `object` params with a linked project group, a virtual GROUP node is
+    // created whose children mirror the real group — allowing field-level refs.
+    const virtualParamNodes: VariableTreeNode[] = paramsToVirtualNodes(
+      def.params, variableNodes, /* useMarkerNames */ true,
+    );
+    const paramVars: Variable[] = flattenVariables(virtualParamNodes);
+    const mergedVars: Variable[] = [...variables, ...paramVars];
+    const mergedNodes: VariableTreeNode[] = [...variableNodes, ...virtualParamNodes];
+
+    const body = def.blocks
+      .map((b) => blockToSC(b, characters, mergedVars, mergedNodes, '', idToName, project))
+      .filter(Boolean)
+      .join('\n');
+    parts.push(`::__plug_${def.id} [nobr]\n${rewriteParamRefs(body) || ''}\n`);
   }
 
   return parts.join('\n\n') + '\n';

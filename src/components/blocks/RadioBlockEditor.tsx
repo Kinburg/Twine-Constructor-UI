@@ -3,17 +3,21 @@ import type { RadioBlock, RadioOption } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
 
 export function RadioBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: RadioBlock;
   sceneId: string;
+  onUpdate?: (patch: Partial<RadioBlock>) => void;
 }) {
   const t = useT();
-  const { project, updateBlock, saveSnapshot } = useProjectStore();
-  const patch = (p: Partial<RadioBlock>) => updateBlock(sceneId, block.id, p);
+  const { updateBlock, saveSnapshot } = useProjectStore();
+  const variableNodes = useVariableNodes();
+  const patch = onUpdate ?? ((p: Partial<RadioBlock>) => updateBlock(sceneId, block.id, p));
 
   const patchOption = (optId: string, p: Partial<RadioOption>) =>
     patch({ options: block.options.map(o => o.id === optId ? { ...o, ...p } : o) });
@@ -50,7 +54,7 @@ export function RadioBlockEditor({
         <VariablePicker
           value={block.variableId}
           onChange={id => patch({ variableId: id })}
-          nodes={project.variableNodes}
+          nodes={variableNodes}
           placeholder={t.radioBlock.selectVariable}
           filterType="string"
         />

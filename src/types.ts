@@ -567,9 +567,46 @@ export type Block =
   | PopupBlock
   | AudioBlock
   | ContainerBlock
-  | TimeManipulationBlock;
+  | TimeManipulationBlock
+  | PluginBlock;
 
 export type BlockType = Block['type'];
+
+// ─── Plugin (custom block) types ─────────────────────────────────────────────
+
+/** Instance of a custom plugin block inside a scene. */
+export interface PluginBlock {
+  id: string;
+  type: 'plugin';
+  pluginId: string;                     // ref to PluginBlockDef.id (= filename slug)
+  values: Record<string, string>;       // param key → value string
+  delay?: BlockDelay;
+}
+
+export type PluginParamKind =
+  | 'text' | 'number' | 'bool' | 'array' | 'datetime' | 'object' | 'scene';
+
+export interface PluginParam {
+  key: string;                          // [a-zA-Z_][a-zA-Z0-9_]* — used as SugarCube `_key` temp-var
+  label: string;
+  kind: PluginParamKind;
+  default?: string;
+  /** For `object` kind: the id of the project variable-group whose fields are exposed
+   *  as navigable sub-variables inside the plugin body editor. */
+  typeGroupId?: string;
+}
+
+/** Definition of a reusable plugin block (stored as JSON on disk). */
+export interface PluginBlockDef {
+  id: string;                           // slug, matches filename ("hp-bar")
+  name: string;                         // display name
+  color: string;                        // #hex, card + instance border tint
+  icon?: string;                        // emoji, default '🧩'
+  description?: string;
+  version?: string;                     // default "1.0.0"
+  params: PluginParam[];
+  blocks: Block[];                      // plugin body — rendered as hidden passage
+}
 
 // ─── Scene ──────────────────────────────────────────────────────────────────
 

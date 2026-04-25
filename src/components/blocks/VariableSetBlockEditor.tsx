@@ -5,6 +5,7 @@ import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
 
 /** Default RandomConfig strictly matching the variable type */
 function defaultRandomConfig(varType: string): RandomConfig {
@@ -41,9 +42,10 @@ export function VariableSetBlockEditor({
   onUpdate?: (patch: Partial<VariableSetBlock>) => void;
 }) {
   const t = useT();
-  const { project, updateBlock, saveSnapshot } = useProjectStore();
+  const { updateBlock, saveSnapshot } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const update = onUpdate ?? ((p: Partial<VariableSetBlock>) => updateBlock(sceneId, block.id, p as never));
-  const variables   = flattenVariables(project.variableNodes);
+  const variables   = flattenVariables(variableNodes);
   const selectedVar = variables.find(v => v.id === block.variableId);
   const exprInputRef = useRef<HTMLInputElement>(null);
 
@@ -217,7 +219,7 @@ export function VariableSetBlockEditor({
               ...(switchingFromArray ? { accessor: undefined } : {}),
             });
           }}
-          nodes={project.variableNodes}
+          nodes={variableNodes}
           placeholder={t.variableSetBlock.selectVariable}
         />
         {variables.length === 0 && (
@@ -340,7 +342,7 @@ export function VariableSetBlockEditor({
             <VariablePicker
               value={block.dynamicVariableId ?? ''}
               onChange={id => update({ dynamicVariableId: id })}
-              nodes={project.variableNodes}
+              nodes={variableNodes}
               placeholder={t.variableSetBlock.selectControlVariable}
             />
           </div>
