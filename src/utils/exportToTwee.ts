@@ -1,5 +1,5 @@
 import type {
-  Project, Block, Character, Variable, ConditionBranch,
+  Project, Block, Character, Variable, ConditionBranch, ChoiceOption,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
   Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
   ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList, CellDateTime, DateTimeDisplayMode,
@@ -80,12 +80,70 @@ function varRefWithAccessor(path: string, accessor: ArrayAccessor | undefined, v
   return `$${path}`;
 }
 
+/**
+ * Resolve a stored scene reference to a SugarCube passage argument.
+ * If the raw value starts with `param:`, returns an unquoted temp-var reference
+ * (e.g. `_myScene`). Otherwise resolves the UUID through idToName and returns a
+ * quoted passage name (e.g. `"Chapter 2"`).
+ */
+function sceneTarget(raw: string, idToName?: Map<string, string>): string {
+  if (raw.startsWith('param:')) return `_${raw.slice('param:'.length)}`;
+  return `"${idToName?.get(raw) ?? raw}"`;
+}
+
+/**
+ * Build a SugarCube condition expression from the structured fields of a ChoiceOption.
+ * Returns '' when no structured condition is set (caller falls back to opt.condition).
+ */
+function choiceConditionExpr(opt: ChoiceOption, vars: Variable[], nodes: VariableTreeNode[]): string {
+  if (!opt.conditionVariableId || !opt.conditionOperator) return '';
+
+  // Plugin param virtual variable (prefix 'param:')
+  if (opt.conditionVariableId.startsWith('param:')) {
+    const paramKey = opt.conditionVariableId.slice('param:'.length);
+    const varName  = `_${paramKey}`;
+    let val = opt.conditionValue ?? '';
+    if (val && !val.startsWith('$') && !val.startsWith('_') && isNaN(Number(val)) && val !== 'true' && val !== 'false') {
+      val = `"${val}"`;
+    }
+    return `${varName} ${opt.conditionOperator} ${val}`;
+  }
+
+  const v = vars.find(x => x.id === opt.conditionVariableId);
+  if (!v) return '';
+  const vPath   = varPath(v, nodes);
+  const varName = `$${vPath}`;
+  const op  = opt.conditionOperator;
+  const val = opt.conditionValue ?? '';
+
+  // Range mode (numeric variables only)
+  if (opt.conditionRangeMode && v.varType === 'number') {
+    const lo = opt.conditionRangeMin ?? '0';
+    const hi = opt.conditionRangeMax ?? '0';
+    return `${varName} >= ${lo} && ${varName} <= ${hi}`;
+  }
+
+  if (v.varType === 'array') {
+    switch (op) {
+      case 'contains':  return `${varName}.includes("${val}")`;
+      case '!contains': return `!${varName}.includes("${val}")`;
+      case 'empty':     return `${varName}.length === 0`;
+      case '!empty':    return `${varName}.length > 0`;
+      default: return `${varName} ${op} ${val}`;
+    }
+  }
+
+  let quotedVal = val;
+  if (v.varType === 'string' || v.varType === 'datetime') quotedVal = `"${val}"`;
+  return `${varName} ${op} ${quotedVal}`;
+}
+
 /** Convert a single ButtonAction to SugarCube macro, handling array operators. */
 function actionToSC(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[], lineIndent: string, idToName?: Map<string, string>): string {
   if (a.type === 'open-popup') {
-    const name = (idToName?.get(a.targetSceneId) ?? a.targetSceneId) || '???';
+    const target = sceneTarget(a.targetSceneId ?? '', idToName);
     const title = a.title ?? '';
-    return `${lineIndent}<<run Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();>>`;
+    return `${lineIndent}<<run Dialog.setup("${title}"); Dialog.wiki(Story.get(${target}).processText()); Dialog.open();>>`;
   }
   const v = vars.find(x => x.id === a.variableId);
   if (!v) return '';
@@ -278,9 +336,11 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     case 'choice': {
       if (block.options.length === 0) return '';
       const lines = block.options.map(opt => {
-        const cond = opt.condition.trim();
-        const target = (idToName?.get(opt.targetSceneId) ?? opt.targetSceneId) || 'Start';
-        const link = `<<link "${opt.label}" "${target}">><</link>>`;
+        // Structured condition takes priority; fall back to legacy free-text field
+        const cond = choiceConditionExpr(opt, vars, nodes) || opt.condition.trim();
+        const raw = opt.targetSceneId || '';
+        const target = raw ? sceneTarget(raw, idToName) : '"Start"';
+        const link = `<<link "${opt.label}" ${target}>><</link>>`;
         if (cond) return `${indent}<<if ${cond}>>${link}<</if>>`;
         return `${indent}${link}`;
       });
@@ -449,10 +509,10 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
     case 'include': {
       const raw = (block as IncludeBlock).passageName.trim();
-      const name = (idToName?.get(raw) ?? raw);
-      if (!name) return '';
+      if (!raw) return '';
+      const includeArg = sceneTarget(raw, idToName);
 
-      const include = `<<include "${name}">>`;
+      const include = `<<include ${includeArg}>>`;
 
       const styles: string[] = [];
       if (block.maxWidth && block.maxWidth > 0)
@@ -529,8 +589,11 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       if (block.target === 'back') {
         actionLines.push(`${indent}  <<run Engine.backward()>>`);
       } else {
-        const linkTarget = (idToName?.get(block.targetSceneId ?? '') ?? block.targetSceneId) ?? '';
-        actionLines.push(`${indent}  <<goto "${linkTarget}">>`);
+        const rawTarget = block.targetSceneId ?? '';
+        const gotoArg = rawTarget.startsWith('param:')
+          ? `_${rawTarget.slice('param:'.length)}`          // temp-var ref, unquoted
+          : `"${idToName?.get(rawTarget) ?? rawTarget}"`;   // scene name, quoted
+        actionLines.push(`${indent}  <<goto ${gotoArg}>>`);
       }
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
@@ -545,8 +608,8 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       const actionLines = block.actions
         .map(a => actionToSC(a, vars, nodes, `${indent}  `, idToName))
         .filter(Boolean);
-      const sceneName = (idToName?.get(block.targetSceneId) ?? block.targetSceneId) || '???';
-      actionLines.push(`${indent}  <<include "${sceneName}">>`);
+      const funcTarget = block.targetSceneId ? sceneTarget(block.targetSceneId, idToName) : '"???"';
+      actionLines.push(`${indent}  <<include ${funcTarget}>>`);
       actionLines.push(`${indent}  <<run $('.tg-live[data-wiki]').each(function(){$(this).empty().wiki($(this).attr('data-wiki'));})>>`);
       actionLines.push(`${indent}  <<run window._tgCheckWatchers && window._tgCheckWatchers()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
@@ -868,8 +931,7 @@ function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[], node
   if (c.navigate?.type === 'back') {
     macros.push('<<run Engine.backward()>>');
   } else if (c.navigate?.type === 'scene' && c.navigate.sceneId) {
-    const navTarget = idToName?.get(c.navigate.sceneId) ?? c.navigate.sceneId;
-    macros.push(`<<goto "${navTarget}">>`);
+    macros.push(`<<goto ${sceneTarget(c.navigate.sceneId, idToName)}>>`);
   }
 
   const label = c.label || '';
@@ -1459,9 +1521,9 @@ function conditionToJS(cond: WatcherCondition, vars: Variable[], nodes: Variable
 /** Convert a single ButtonAction to a JS statement for use in the watcher script. */
 function actionToJS(a: ButtonAction, vars: Variable[], nodes: VariableTreeNode[], idToName?: Map<string, string>): string {
   if (a.type === 'open-popup') {
-    const name = (idToName?.get(a.targetSceneId) ?? a.targetSceneId) || '???';
+    const target = sceneTarget(a.targetSceneId ?? '', idToName);
     const title = a.title ?? '';
-    return `Dialog.setup("${title}"); Dialog.wiki(Story.get("${name}").processText()); Dialog.open();`;
+    return `Dialog.setup("${title}"); Dialog.wiki(Story.get(${target}).processText()); Dialog.open();`;
   }
   const v = vars.find(x => x.id === a.variableId);
   if (!v) return '';
@@ -1524,8 +1586,11 @@ export function buildWatcherScript(watchers: Watcher[], vars: Variable[], nodes:
 
     let navLine = '';
     if (w.navigate?.type === 'scene' && w.navigate.sceneId) {
-      const navTarget = idToName?.get(w.navigate.sceneId) ?? w.navigate.sceneId;
-      navLine = `    Engine.play(${JSON.stringify(navTarget)});`;
+      const raw = w.navigate.sceneId;
+      const navTarget = raw.startsWith('param:')
+        ? `State.temporary["${raw.slice('param:'.length)}"]`
+        : JSON.stringify(idToName?.get(raw) ?? raw);
+      navLine = `    Engine.play(${navTarget});`;
     } else if (w.navigate?.type === 'back') {
       navLine = '    Engine.backward();';
     }

@@ -6,7 +6,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VarInsertButton } from '../shared/VarInsertButton';
 import { VariablePicker } from '../shared/VariablePicker';
-import { useVariableNodes } from '../shared/VariableScope';
+import { useVariableNodes, usePluginParams } from '../shared/VariableScope';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -161,6 +161,8 @@ function ActionRow({
   const t = useT();
   const { project } = useProjectStore();
   const variableNodes = useVariableNodes();
+  const pluginParams = usePluginParams();
+  const sceneParams = pluginParams.filter(p => p.kind === 'scene');
   const isPopup = action.type === 'open-popup';
 
   if (isPopup) {
@@ -180,7 +182,7 @@ function ActionRow({
             <option value="set-variable">{t.actionType.setVariable}</option>
             <option value="open-popup">{t.actionType.openPopup}</option>
           </select>
-          {popupScenes.length === 0 ? (
+          {popupScenes.length === 0 && sceneParams.length === 0 ? (
             <span className="flex-1 text-xs text-slate-500 italic">{t.actionType.noPopupScenes}</span>
           ) : (
             <select
@@ -189,9 +191,20 @@ function ActionRow({
               onChange={e => onChange({ targetSceneId: e.target.value } as Partial<ButtonAction>)}
             >
               <option value="">— select —</option>
-              {popupScenes.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {sceneParams.length > 0 ? (
+                <>
+                  <optgroup label="— params —">
+                    {sceneParams.map(p => (
+                      <option key={p.key} value={`param:${p.key}`}>_{p.key}{p.label ? ` (${p.label})` : ''}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="— popups —">
+                    {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </optgroup>
+                </>
+              ) : (
+                popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+              )}
             </select>
           )}
           <button
@@ -323,6 +336,8 @@ export function FunctionBlockEditor({
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
   const variableNodes = useVariableNodes();
+  const pluginParams = usePluginParams();
+  const sceneParams = pluginParams.filter(p => p.kind === 'scene');
   const update = onUpdate ?? ((p: Partial<FunctionBlock>) => updateBlock(sceneId, block.id, p));
   const labelRef = useRef<HTMLInputElement>(null);
   const variables = flattenVariables(variableNodes);
@@ -380,7 +395,7 @@ export function FunctionBlockEditor({
         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.functionBlock.functionTitle}</div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-24 shrink-0">{t.functionBlock.sceneLabel}</label>
-          {funcScenes.length === 0 ? (
+          {funcScenes.length === 0 && sceneParams.length === 0 ? (
             <span className="text-xs text-slate-500 italic">{t.functionBlock.noFuncScenes}</span>
           ) : (
             <select
@@ -389,9 +404,20 @@ export function FunctionBlockEditor({
               onChange={e => update({ targetSceneId: e.target.value })}
             >
               <option value="">— select —</option>
-              {funcScenes.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {sceneParams.length > 0 ? (
+                <>
+                  <optgroup label="— params —">
+                    {sceneParams.map(p => (
+                      <option key={p.key} value={`param:${p.key}`}>_{p.key}{p.label ? ` (${p.label})` : ''}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="— func scenes —">
+                    {funcScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </optgroup>
+                </>
+              ) : (
+                funcScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+              )}
             </select>
           )}
         </div>

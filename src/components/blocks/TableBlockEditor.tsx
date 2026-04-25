@@ -15,7 +15,7 @@ import { CellImageGenEditor } from '../shared/CellImageGenEditor';
 import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
 import { DateTimeCellEditor } from '../shared/DateTimeCellEditor';
 import { InventoryPopupShortcut } from './InventoryPopupShortcut';
-import { useVariableNodes } from '../shared/VariableScope';
+import { useVariableNodes, usePluginParams } from '../shared/VariableScope';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -959,6 +959,8 @@ function TCellButtonEditor({
   const t = useT();
   const { project } = useProjectStore();
   const variableNodes = useVariableNodes();
+  const pluginParams = usePluginParams();
+  const sceneParams = pluginParams.filter(p => p.kind === 'scene');
   const scenes = project.scenes;
 
   const patchStyle = (patch: Partial<ButtonStyle>) =>
@@ -1048,7 +1050,20 @@ function TCellButtonEditor({
               onChange={e => onUpdateContent({ ...c, navigate: { type: 'scene', sceneId: e.target.value } })}
             >
               <option value="">{t.linkBlock.noScene}</option>
-              {scenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              {sceneParams.length > 0 ? (
+                <>
+                  <optgroup label="— params —">
+                    {sceneParams.map(p => (
+                      <option key={p.key} value={`param:${p.key}`}>_{p.key}{p.label ? ` (${p.label})` : ''}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="— scenes —">
+                    {scenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </optgroup>
+                </>
+              ) : (
+                scenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+              )}
             </select>
           </TMField>
         )}
@@ -1083,7 +1098,7 @@ function TCellButtonEditor({
                     <option value="set-variable">{t.actionType.setVariable}</option>
                     <option value="open-popup">{t.actionType.openPopup}</option>
                   </select>
-                  {popupScenes.length === 0 ? (
+                  {popupScenes.length === 0 && sceneParams.length === 0 ? (
                     <span className="flex-1 text-xs text-slate-500 italic">{t.actionType.noPopupScenes}</span>
                   ) : (
                     <select
@@ -1092,7 +1107,20 @@ function TCellButtonEditor({
                       onChange={e => patchAction(a.id, { targetSceneId: e.target.value } as Partial<ButtonAction>)}
                     >
                       <option value="">— select —</option>
-                      {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                      {sceneParams.length > 0 ? (
+                        <>
+                          <optgroup label="— params —">
+                            {sceneParams.map(p => (
+                              <option key={p.key} value={`param:${p.key}`}>_{p.key}{p.label ? ` (${p.label})` : ''}</option>
+                            ))}
+                          </optgroup>
+                          <optgroup label="— popups —">
+                            {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                          </optgroup>
+                        </>
+                      ) : (
+                        popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+                      )}
                     </select>
                   )}
                   <InventoryPopupShortcut onResolved={sceneId => patchAction(a.id, { targetSceneId: sceneId } as Partial<ButtonAction>)} />

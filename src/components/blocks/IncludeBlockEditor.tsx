@@ -2,6 +2,7 @@ import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type { IncludeBlock } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
+import { usePluginParams } from '../shared/VariableScope';
 
 export function IncludeBlockEditor({
   block,
@@ -14,6 +15,8 @@ export function IncludeBlockEditor({
 }) {
   const { updateBlock, saveSnapshot, project } = useProjectStore();
   const t = useT();
+  const pluginParams = usePluginParams();
+  const sceneParams = pluginParams.filter(p => p.kind === 'scene');
   const update = onUpdate ?? ((p: Partial<IncludeBlock>) => updateBlock(sceneId, block.id, p as never));
 
   const inputCls = 'bg-slate-800 text-slate-200 text-xs rounded px-2 py-0.5 border border-slate-600 outline-none focus:border-indigo-500';
@@ -32,9 +35,22 @@ export function IncludeBlockEditor({
           onChange={e => update({ passageName: e.target.value })}
         >
           <option value="">— select —</option>
-          {availableScenes.map(s => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
+          {sceneParams.length > 0 ? (
+            <>
+              <optgroup label="— params —">
+                {sceneParams.map(p => (
+                  <option key={p.key} value={`param:${p.key}`}>
+                    _{p.key}{p.label ? ` (${p.label})` : ''}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="— scenes —">
+                {availableScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </optgroup>
+            </>
+          ) : (
+            availableScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+          )}
         </select>
       </div>
 

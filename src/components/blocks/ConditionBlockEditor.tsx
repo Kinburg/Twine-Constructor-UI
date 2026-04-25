@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -16,6 +17,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore, flattenVariables, deepCloneBlock } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
 import { VariablePicker } from '../shared/VariablePicker';
+import { VarInsertButton } from '../shared/VarInsertButton';
 import { useVariableNodes } from '../shared/VariableScope';
 import { useT, blockTypeLabel } from '../../i18n';
 import type {
@@ -34,6 +36,49 @@ import { TableBlockEditor } from './TableBlockEditor';
 import { IncludeBlockEditor } from './IncludeBlockEditor';
 import { DividerBlockEditor } from './DividerBlockEditor';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
+
+/**
+ * Single-line input with an adjacent VarInsertButton.
+ * Extracted as a component so it can own a ref even inside a .map().
+ */
+function ConditionValueInput({
+  value,
+  placeholder,
+  className,
+  vars,
+  variableNodes,
+  onFocus,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  className: string;
+  vars: import('../../types').Variable[];
+  variableNodes: import('../../types').VariableTreeNode[];
+  onFocus: () => void;
+  onChange: (v: string) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <input
+        ref={ref}
+        className={className}
+        placeholder={placeholder}
+        value={value}
+        onFocus={onFocus}
+        onChange={e => onChange(e.target.value)}
+      />
+      <VarInsertButton
+        targetRef={ref}
+        value={value}
+        onChange={onChange}
+        vars={vars}
+        variableNodes={variableNodes}
+      />
+    </>
+  );
+}
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: '==', label: '==' },
@@ -404,24 +449,24 @@ export function ConditionBlockEditor({
 
                 {rangeMode ? (
                   <>
-                    <input
+                    <ConditionValueInput
                       className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
                       placeholder={t.condition.rangeMinPlaceholder}
                       value={branch.rangeMin ?? ''}
+                      vars={variables}
+                      variableNodes={variableNodes}
                       onFocus={saveSnapshot}
-                      onChange={e =>
-                        doUpdateBranch(branch.id, { rangeMin: e.target.value })
-                      }
+                      onChange={v => doUpdateBranch(branch.id, { rangeMin: v })}
                     />
                     <span className="text-xs text-slate-500 shrink-0">≤ x ≤</span>
-                    <input
+                    <ConditionValueInput
                       className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
                       placeholder={t.condition.rangeMaxPlaceholder}
                       value={branch.rangeMax ?? ''}
+                      vars={variables}
+                      variableNodes={variableNodes}
                       onFocus={saveSnapshot}
-                      onChange={e =>
-                        doUpdateBranch(branch.id, { rangeMax: e.target.value })
-                      }
+                      onChange={v => doUpdateBranch(branch.id, { rangeMax: v })}
                     />
                   </>
                 ) : (
@@ -441,16 +486,16 @@ export function ConditionBlockEditor({
                       ))}
                     </select>
 
-                    {/* Value input — hidden for empty/!empty */}
+                    {/* Value input + var insert — hidden for empty/!empty */}
                     {showValue && (
-                      <input
+                      <ConditionValueInput
                         className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
                         placeholder={t.condition.valuePlaceholder}
                         value={branch.value}
+                        vars={variables}
+                        variableNodes={variableNodes}
                         onFocus={saveSnapshot}
-                        onChange={e =>
-                          doUpdateBranch(branch.id, { value: e.target.value })
-                        }
+                        onChange={v => doUpdateBranch(branch.id, { value: v })}
                       />
                     )}
                   </>

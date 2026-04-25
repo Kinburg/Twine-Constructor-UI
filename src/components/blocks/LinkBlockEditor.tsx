@@ -7,7 +7,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VarInsertButton } from '../shared/VarInsertButton';
 import { VariablePicker } from '../shared/VariablePicker';
-import { useVariableNodes } from '../shared/VariableScope';
+import { useVariableNodes, usePluginParams } from '../shared/VariableScope';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -324,10 +324,13 @@ export function LinkBlockEditor({
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
   const variableNodes = useVariableNodes();
+  const pluginParams = usePluginParams();
   const update = onUpdate ?? ((p: Partial<LinkBlock>) => updateBlock(sceneId, block.id, p));
   const variables = flattenVariables(variableNodes);
   const labelRef = useRef<HTMLInputElement>(null);
   const scenes = project.scenes.filter(s => s.id !== sceneId && !s.tags.some(tag => (SYSTEM_TAGS as readonly string[]).includes(tag)));
+  const sceneParams = pluginParams.filter(p => p.kind === 'scene');
+  const isParamTarget = (block.targetSceneId ?? '').startsWith('param:');
 
   const patchStyle = (patch: Partial<ButtonStyle>) =>
     update({ style: { ...block.style, ...patch } });
@@ -406,10 +409,32 @@ export function LinkBlockEditor({
               onChange={e => update({ targetSceneId: e.target.value })}
             >
               <option value="">{t.linkBlock.noScene}</option>
-              {scenes.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {sceneParams.length > 0 ? (
+                // Inside a plugin body: group params first, then project scenes
+                <>
+                  <optgroup label="— params —">
+                    {sceneParams.map(p => (
+                      <option key={p.key} value={`param:${p.key}`}>
+                        _{p.key}{p.label ? ` (${p.label})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="— scenes —">
+                    {scenes.map(s => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </optgroup>
+                </>
+              ) : (
+                scenes.map(s => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))
+              )}
             </select>
+            {/* Hint when a param is selected */}
+            {isParamTarget && (
+              <span className="text-[10px] text-indigo-400 shrink-0">_param</span>
+            )}
           </div>
         )}
       </div>

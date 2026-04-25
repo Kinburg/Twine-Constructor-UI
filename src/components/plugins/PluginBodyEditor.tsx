@@ -108,7 +108,7 @@ export function PluginBodyEditor({ blocks, onChange, params }: Props) {
 
   if (blocks.length === 0) {
     return (
-      <VariableScopeProvider nodes={virtualNodes}>
+      <VariableScopeProvider nodes={virtualNodes} params={params}>
         <div className="flex flex-col gap-1">
           <div className="text-slate-600 text-xs text-center py-4 border border-dashed border-slate-700 rounded">
             {t.scene.empty}
@@ -127,7 +127,7 @@ export function PluginBodyEditor({ blocks, onChange, params }: Props) {
   }
 
   return (
-    <VariableScopeProvider nodes={virtualNodes}>
+    <VariableScopeProvider nodes={virtualNodes} params={params}>
     <div className="flex flex-col gap-0">
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={blocks.map(b => b.id)} strategy={verticalListSortingStrategy}>

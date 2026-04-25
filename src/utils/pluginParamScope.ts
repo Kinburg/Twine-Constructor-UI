@@ -125,7 +125,7 @@ export function paramsToVirtualNodes(
   for (const p of params) {
     if (!p.key) continue;
     const include = p.kind === 'text' || p.kind === 'number' || p.kind === 'bool'
-      || p.kind === 'array' || p.kind === 'datetime' || p.kind === 'object';
+      || p.kind === 'array' || p.kind === 'datetime' || p.kind === 'object' || p.kind === 'scene';
     if (!include) continue;
 
     const nodeName = useMarkerNames ? paramPathMarker(p.key) : p.key;
@@ -166,7 +166,7 @@ export function paramsToVirtualNodes(
  */
 export function rewriteParamRefs(source: string): string {
   return source
-    .replace(/State\.variables\[\s*["']__tgParam__([A-Za-z_][A-Za-z0-9_]*)["']\s*\]/g, 'State.temporary["$1"]')
+    .replace(/State\.variables\[\s*["']__tgParam__([A-Za-z_][A-Za-z0-9_]*)["']\s*]/g, 'State.temporary["$1"]')
     .replace(/State\.variables\.__tgParam__([A-Za-z_][A-Za-z0-9_]*)/g, 'State.temporary.$1')
     .replace(/\$__tgParam__([A-Za-z_][A-Za-z0-9_]*)/g, '_$1');
 }

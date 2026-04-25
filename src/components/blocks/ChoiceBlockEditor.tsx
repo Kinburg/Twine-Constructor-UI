@@ -1,14 +1,47 @@
 import { useRef } from 'react';
 import { useProjectStore } from '../../store/projectStore';
-import type { ChoiceBlock, ChoiceOption, Variable, VariableTreeNode } from '../../types';
+import type { ChoiceBlock, ChoiceOption, ConditionOperator, Variable, VariableTreeNode } from '../../types';
 import { SYSTEM_TAGS } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VarInsertButton } from '../shared/VarInsertButton';
-import { useVariableNodes } from '../shared/VariableScope';
+import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes, usePluginParams } from '../shared/VariableScope';
 import { flattenVariables } from '../../utils/treeUtils';
 
-/** Isolated component so each option gets its own ref (avoids reading refs during render). */
+// ─── Operators ────────────────────────────────────────────────────────────────
+
+const CHOICE_OPERATORS: { value: ConditionOperator; label: string }[] = [
+  { value: '==', label: '==' },
+  { value: '!=', label: '!=' },
+  { value: '>',  label: '>'  },
+  { value: '<',  label: '<'  },
+  { value: '>=', label: '>=' },
+  { value: '<=', label: '<=' },
+];
+
+function operatorsForType(varType?: string): { value: ConditionOperator; label: string }[] {
+  if (varType === 'array') {
+    return [
+      { value: 'contains',  label: 'contains' },
+      { value: '!contains', label: '!contains' },
+      { value: 'empty',     label: 'is empty' },
+      { value: '!empty',    label: 'is not empty' },
+    ];
+  }
+  if (varType === 'boolean' || varType === 'string') {
+    return CHOICE_OPERATORS.filter(op => op.value === '==' || op.value === '!=');
+  }
+  return CHOICE_OPERATORS;
+}
+
+function operatorNeedsValue(op: ConditionOperator): boolean {
+  return op !== 'empty' && op !== '!empty';
+}
+
+// ─── Option label input ───────────────────────────────────────────────────────
+
+/** Isolated so each option gets its own ref (avoids reading refs during render). */
 function OptionLabelInput({
   value,
   placeholder,
@@ -46,6 +79,168 @@ function OptionLabelInput({
   );
 }
 
+// ─── Structured condition builder ─────────────────────────────────────────────
+
+/** Full variable-picker + operator + value condition UI for a choice option. */
+function ChoiceConditionBuilder({
+  opt,
+  vars,
+  variableNodes,
+  condLabel,
+  onFocus,
+  onUpdate,
+}: {
+  opt: ChoiceOption;
+  vars: Variable[];
+  variableNodes: VariableTreeNode[];
+  condLabel: string;
+  onFocus: () => void;
+  onUpdate: (patch: Partial<ChoiceOption>) => void;
+}) {
+  const valueRef    = useRef<HTMLInputElement>(null);
+  const rangeMinRef = useRef<HTMLInputElement>(null);
+  const rangeMaxRef = useRef<HTMLInputElement>(null);
+
+  const condVar        = vars.find(v => v.id === opt.conditionVariableId);
+  const isNumeric      = condVar?.varType === 'number';
+  const rangeMode      = !!opt.conditionRangeMode && isNumeric;
+  const availableOps   = operatorsForType(condVar?.varType);
+  const currentOp      = (opt.conditionOperator ?? '==') as ConditionOperator;
+  const showValue      = !rangeMode && operatorNeedsValue(currentOp);
+
+  const baseInputCls = 'bg-slate-700 text-xs text-slate-300 rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono focus:border-indigo-500';
+  const inputCls     = `w-16 ${baseInputCls}`;
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      <label className="text-xs text-slate-400 w-16 shrink-0">{condLabel}</label>
+
+      {/* Variable picker */}
+      <VariablePicker
+        value={opt.conditionVariableId ?? ''}
+        onChange={id => {
+          const newVar = vars.find(v => v.id === id);
+          const newOps = operatorsForType(newVar?.varType);
+          const opStillValid = newOps.some(op => op.value === opt.conditionOperator);
+          onUpdate({
+            conditionVariableId: id,
+            ...(!opStillValid ? { conditionOperator: newOps[0].value as ConditionOperator } : {}),
+            // reset range mode when switching to a non-numeric variable
+            ...(newVar?.varType !== 'number' ? { conditionRangeMode: false } : {}),
+          });
+        }}
+        nodes={variableNodes}
+        placeholder="— variable —"
+        className="flex-1 min-w-0"
+      />
+
+      {opt.conditionVariableId && (
+        <>
+          {/* Range toggle — only for numeric variables */}
+          {isNumeric && (
+            <button
+              title="Range (a ≤ x ≤ b)"
+              className={`text-xs rounded px-1.5 py-0.5 border cursor-pointer font-mono shrink-0 transition-colors ${
+                rangeMode
+                  ? 'bg-amber-800/50 text-amber-300 border-amber-600'
+                  : 'bg-slate-700 text-slate-500 border-slate-600 hover:text-slate-300'
+              }`}
+              onClick={() => onUpdate({ conditionRangeMode: !opt.conditionRangeMode })}
+            >
+              a≤x≤b
+            </button>
+          )}
+
+          {rangeMode ? (
+            /* ── Range mode: min ≤ x ≤ max ── */
+            <>
+              <input
+                ref={rangeMinRef}
+                className={inputCls}
+                placeholder="min"
+                value={opt.conditionRangeMin ?? ''}
+                onFocus={onFocus}
+                onChange={e => onUpdate({ conditionRangeMin: e.target.value })}
+              />
+              <VarInsertButton
+                targetRef={rangeMinRef}
+                value={opt.conditionRangeMin ?? ''}
+                onChange={v => onUpdate({ conditionRangeMin: v })}
+                vars={vars}
+                variableNodes={variableNodes}
+              />
+              <span className="text-xs text-slate-500 shrink-0">≤ x ≤</span>
+              <input
+                ref={rangeMaxRef}
+                className={inputCls}
+                placeholder="max"
+                value={opt.conditionRangeMax ?? ''}
+                onFocus={onFocus}
+                onChange={e => onUpdate({ conditionRangeMax: e.target.value })}
+              />
+              <VarInsertButton
+                targetRef={rangeMaxRef}
+                value={opt.conditionRangeMax ?? ''}
+                onChange={v => onUpdate({ conditionRangeMax: v })}
+                vars={vars}
+                variableNodes={variableNodes}
+              />
+            </>
+          ) : (
+            /* ── Normal mode: operator + value ── */
+            <>
+              <select
+                className="bg-slate-700 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono cursor-pointer"
+                value={currentOp}
+                onChange={e => onUpdate({ conditionOperator: e.target.value as ConditionOperator })}
+              >
+                {availableOps.map(op => (
+                  <option key={op.value} value={op.value}>{op.label}</option>
+                ))}
+              </select>
+
+              {showValue && (
+                <>
+                  <input
+                    ref={valueRef}
+                    className={`w-20 ${baseInputCls}`}
+                    placeholder="value"
+                    value={opt.conditionValue ?? ''}
+                    onFocus={onFocus}
+                    onChange={e => onUpdate({ conditionValue: e.target.value })}
+                  />
+                  <VarInsertButton
+                    targetRef={valueRef}
+                    value={opt.conditionValue ?? ''}
+                    onChange={v => onUpdate({ conditionValue: v })}
+                    vars={vars}
+                    variableNodes={variableNodes}
+                  />
+                </>
+              )}
+            </>
+          )}
+
+          {/* Clear condition */}
+          <button
+            className="text-slate-600 hover:text-red-400 text-xs cursor-pointer transition-colors shrink-0"
+            title="Clear condition"
+            onClick={() => onUpdate({
+              conditionVariableId: '', conditionOperator: undefined,
+              conditionValue: '', conditionRangeMode: false,
+              conditionRangeMin: '', conditionRangeMax: '',
+            })}
+          >
+            ✕
+          </button>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Main editor ──────────────────────────────────────────────────────────────
+
 export function ChoiceBlockEditor({
   block,
   sceneId,
@@ -57,6 +252,8 @@ export function ChoiceBlockEditor({
 }) {
   const { project, addChoiceOption, updateChoiceOption, deleteChoiceOption, saveSnapshot, updateBlock } = useProjectStore();
   const variableNodes = useVariableNodes();
+  const pluginParams = usePluginParams();
+  const sceneParams = pluginParams.filter(p => p.kind === 'scene');
   const scenes = project.scenes.filter(s => !s.tags.some(tag => (SYSTEM_TAGS as readonly string[]).includes(tag)));
   const t = useT();
   const vars = flattenVariables(variableNodes);
@@ -86,6 +283,7 @@ export function ChoiceBlockEditor({
 
       {block.options.map((opt, idx) => (
         <div key={opt.id} className="flex flex-col gap-1.5 bg-slate-800/60 rounded p-2 border border-slate-700">
+          {/* Label row */}
           <div className="flex items-center gap-2">
             <span className="text-xs text-slate-500 shrink-0">#{idx + 1}</span>
             <OptionLabelInput
@@ -105,6 +303,7 @@ export function ChoiceBlockEditor({
             </button>
           </div>
 
+          {/* Target scene */}
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-400 w-16 shrink-0">{t.choiceBlock.targetScene}</label>
             <select
@@ -113,22 +312,34 @@ export function ChoiceBlockEditor({
               onChange={e => handleUpdateOption(opt.id, { targetSceneId: e.target.value })}
             >
               <option value="">{t.choiceBlock.noScene}</option>
-              {scenes.map(sc => (
-                <option key={sc.id} value={sc.id}>{sc.name}</option>
-              ))}
+              {sceneParams.length > 0 ? (
+                <>
+                  <optgroup label="— params —">
+                    {sceneParams.map(p => (
+                      <option key={p.key} value={`param:${p.key}`}>
+                        _{p.key}{p.label ? ` (${p.label})` : ''}
+                      </option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="— scenes —">
+                    {scenes.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)}
+                  </optgroup>
+                </>
+              ) : (
+                scenes.map(sc => <option key={sc.id} value={sc.id}>{sc.name}</option>)
+              )}
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-400 w-16 shrink-0">{t.choiceBlock.conditionLabel}</label>
-            <input
-              className="flex-1 bg-slate-700 text-xs text-slate-300 rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-              placeholder={t.choiceBlock.conditionPlaceholder}
-              value={opt.condition}
-              onFocus={saveSnapshot}
-              onChange={e => handleUpdateOption(opt.id, { condition: e.target.value })}
-            />
-          </div>
+          {/* Structured condition builder */}
+          <ChoiceConditionBuilder
+            opt={opt}
+            vars={vars}
+            variableNodes={variableNodes}
+            condLabel={t.choiceBlock.conditionLabel}
+            onFocus={saveSnapshot}
+            onUpdate={patch => handleUpdateOption(opt.id, patch)}
+          />
         </div>
       ))}
 

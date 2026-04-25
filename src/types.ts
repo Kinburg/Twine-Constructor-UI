@@ -53,7 +53,15 @@ export interface ChoiceOption {
   id: string;
   label: string;
   targetSceneId: string;
-  condition: string; // SugarCube expression, empty = always shown
+  condition: string; // legacy free-text SugarCube expression (kept for backward compat)
+  // ── Structured condition (mirrors ConditionBranch) ──────────────────────────
+  conditionVariableId?: string;
+  conditionOperator?: ConditionOperator;
+  conditionValue?: string;
+  /** Range mode: generates `$var >= rangeMin && $var <= rangeMax` (numbers only) */
+  conditionRangeMode?: boolean;
+  conditionRangeMin?: string;
+  conditionRangeMax?: string;
 }
 
 export interface ChoiceBlock {
