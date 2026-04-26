@@ -472,7 +472,32 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     case 'image-gen': {
       const w   = block.width > 0 ? ` width="${block.width}"` : '';
       const alt = block.alt ? ` alt="${block.alt}"` : '';
-      return `${indent}<img src="${block.src}"${alt}${w} />`;
+      const imgTag = (src: string) => `<img src="${src}"${alt}${w} />`;
+      const mode = block.mode ?? 'static';
+
+      if (mode === 'bound' && block.mapping && block.mapping.length > 0) {
+        const bv = vars.find(x => x.id === block.variableId);
+        const vname = bv ? `$${varPath(bv, nodes)}` : '$???';
+
+        const cases = block.mapping.map((m, i) => {
+          const kw = i === 0 ? '<<if' : '<<elseif';
+          const mt = m.matchType ?? 'exact';
+          let cond: string;
+          if (mt === 'range') {
+            cond = `${vname} >= ${m.rangeMin ?? '0'} && ${vname} <= ${m.rangeMax ?? '0'}`;
+          } else {
+            const val = bv?.varType === 'string' ? `"${m.value}"` : m.value;
+            cond = `${vname} eq ${val}`;
+          }
+          return `${indent}${kw} ${cond}>>${imgTag(m.src)}`;
+        });
+
+        if (block.defaultSrc) cases.push(`${indent}<<else>>${imgTag(block.defaultSrc)}`);
+        cases.push(`${indent}<</if>>`);
+        return cases.join('\n');
+      }
+
+      return `${indent}${imgTag(block.src)}`;
     }
 
     case 'video': {

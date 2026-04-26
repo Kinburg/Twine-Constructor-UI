@@ -20,12 +20,14 @@ import { fsApi, joinPath, toLocalFileUrl, resolveAssetPath } from '../../lib/fsA
 import type {
   CellImageBound, ImageBoundMapping,
   AvatarGenSettings, AvatarGenSlotData, AvatarGenHistoryEntry,
+  AssetTreeNode,
 } from '../../types';
 import { useT } from '../../i18n';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
 import { generateAvatarPromptWithLlm } from '../../utils/imageGen/llmPrompt';
 import { getVariablePath, flattenVariables } from '../../utils/treeUtils';
 import { StyleChipsEditor } from './StyleChipsEditor';
+import { ImageAssetPicker } from './ImageMappingEditor';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -167,9 +169,70 @@ interface Props {
   onClose: () => void;
 }
 
-// ─── main component ───────────────────────────────────────────────────────────
+export interface SharedGenSettings {
+  workflowFile: string;
+  genWidth: number;
+  genHeight: number;
+  styleHints: string[];
+  seedLocked: boolean;
+  lockedSeed: number;
+  useRefImage: boolean;
+}
 
-export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, sceneId, onSave, onClose }: Props) {
+interface PanelProps {
+  cell: CellImageBound;
+  cellId: string;
+  variableId: string;
+  sceneId: string;
+  onSave: (updated: CellImageBound) => void;
+  /**
+   * Path category under history/ and assets/. Default 'cells' preserves
+   * existing layout for table/panel cells; the inline image-gen block uses 'blocks'.
+   */
+  pathCategory?: string;
+  /** Controlled shared settings — when omitted, panel manages its own state. */
+  shared?: SharedGenSettings;
+  onSharedChange?: (patch: Partial<SharedGenSettings>) => void;
+  /** Hide the panel's built-in shared-settings header (parent renders its own). */
+  hideSharedSettings?: boolean;
+}
+
+// ─── modal wrapper ────────────────────────────────────────────────────────────
+
+export function CellImageBoundGenModal({ cell, cellId, variableId, sceneId, onSave, onClose }: Props) {
+  const t = useT();
+  const cb = t.cellBoundGen;
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/70" onClick={onClose} />
+      <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-[700px] max-w-[95vw] flex flex-col max-h-[90vh]">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
+          <h2 className="text-sm font-semibold text-white">{cb.modalTitle}</h2>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors cursor-pointer text-base leading-none">✕</button>
+        </div>
+        <div className="overflow-y-auto flex-1">
+          <CellImageBoundGenPanel
+            cell={cell}
+            cellId={cellId}
+            variableId={variableId}
+            sceneId={sceneId}
+            onSave={onSave}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── inline panel ─────────────────────────────────────────────────────────────
+
+export function CellImageBoundGenPanel({
+  cell, cellId: _cellId, variableId, sceneId, onSave,
+  pathCategory = 'cells',
+  shared: sharedExternal,
+  onSharedChange,
+  hideSharedSettings = false,
+}: PanelProps) {
   const t = useT();
   const ag = t.avatarGen;   // generic strings shared with avatar gen
   const cb = t.cellBoundGen; // overrides for cell-specific context
@@ -206,18 +269,79 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
   }, [sceneId, project.scenes]);
 
   // ── Provider settings ────────────────────────────────────────────────────
+  // Either controlled (via `shared` + `onSharedChange` props) or self-managed.
 
-  const [workflowFile, setWorkflowFile] = useState(cell.genSettings?.workflowFile ?? '');
-  const [genWidth,  setGenWidth]  = useState(cell.genSettings?.genWidth  ?? 0);
-  const [genHeight, setGenHeight] = useState(cell.genSettings?.genHeight ?? 0);
-  const [styleHints, setStyleHints] = useState<string[]>(cell.genSettings?.styleHints ?? []);
-  const [seedLocked, setSeedLocked] = useState(cell.genSettings?.lockedSeed !== undefined);
-  const [lockedSeed, setLockedSeed] = useState(cell.genSettings?.lockedSeed ?? randomSeed());
-  const [useRefImage, setUseRefImage] = useState(cell.genSettings?.useRefImage ?? false);
+  const isControlled = !!sharedExternal && !!onSharedChange;
+  const [internalShared, setInternalShared] = useState<SharedGenSettings>(() => ({
+    workflowFile: cell.genSettings?.workflowFile ?? '',
+    genWidth: cell.genSettings?.genWidth ?? 0,
+    genHeight: cell.genSettings?.genHeight ?? 0,
+    styleHints: cell.genSettings?.styleHints ?? [],
+    seedLocked: cell.genSettings?.lockedSeed !== undefined,
+    lockedSeed: cell.genSettings?.lockedSeed ?? randomSeed(),
+    useRefImage: cell.genSettings?.useRefImage ?? false,
+  }));
+  const shared = isControlled ? sharedExternal! : internalShared;
+  const updateShared = (patch: Partial<SharedGenSettings>) => {
+    if (isControlled) onSharedChange!(patch);
+    else setInternalShared(prev => ({ ...prev, ...patch }));
+  };
+  const { workflowFile, genWidth, genHeight, styleHints, seedLocked, lockedSeed, useRefImage } = shared;
+  const setWorkflowFile = (v: string)       => updateShared({ workflowFile: v });
+  const setGenWidth     = (v: number)       => updateShared({ genWidth: v });
+  const setGenHeight    = (v: number)       => updateShared({ genHeight: v });
+  const setStyleHints   = (v: string[])     => updateShared({ styleHints: v });
+  const setSeedLocked   = (v: boolean)      => updateShared({ seedLocked: v });
+  const setLockedSeed   = (v: number)       => updateShared({ lockedSeed: v });
+  const setUseRefImage  = (v: boolean)      => updateShared({ useRefImage: v });
 
   const [slots, setSlots] = useState<SlotState[]>(() => initSlots(cell, defaultLabel));
   const abortRefs = useRef<Map<string, AbortController>>(new Map());
   const [workflows, setWorkflows] = useState<string[]>([]);
+
+  // Sync slots when cell.mapping changes externally (e.g. user edits mapping editor inline).
+  useEffect(() => {
+    setSlots(prev => {
+      const findPrev = (id: string) => prev.find(s => s.slotId === id);
+      const findSaved = (id: string) => cell.genSettings?.slots?.find(s => s.slotId === id);
+
+      const def = findPrev('default');
+      const saved = findSaved('default');
+      const defaultSlot: SlotState = def ?? {
+        slotId: 'default',
+        label: defaultLabel,
+        mappingEntry: null,
+        prompt: saved?.prompt ?? '',
+        negativePrompt: saved?.negativePrompt ?? '',
+        hint: '',
+        history: saved?.history ?? [],
+        currentSrc: saved?.currentSrc ?? cell.defaultSrc ?? '',
+        llmMode: 'hint',
+        busy: false, busyPrompt: false, progress: null,
+      };
+
+      const variantSlots: SlotState[] = cell.mapping.map(m => {
+        const id = m.id ?? crypto.randomUUID();
+        const existing = findPrev(id);
+        const label = slotLabel(id, m, defaultLabel);
+        if (existing) return { ...existing, label, mappingEntry: m };
+        const e = findSaved(id);
+        return {
+          slotId: id, label, mappingEntry: m,
+          prompt: e?.prompt ?? '',
+          negativePrompt: e?.negativePrompt ?? '',
+          hint: e?.hint ?? '',
+          history: e?.history ?? [],
+          currentSrc: e?.currentSrc ?? m.src ?? '',
+          llmMode: 'hint',
+          busy: false, busyPrompt: false, progress: null,
+        };
+      });
+
+      return [defaultSlot, ...variantSlots];
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cell.mapping]);
 
   useEffect(() => {
     let alive = true;
@@ -298,7 +422,7 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
         : slot.prompt;
 
       // Load reference image (default slot) if enabled — ComfyUI only
-      let charImageBase64: string | undefined;
+      let imageBase64: string | undefined;
       if (imageGenProvider === 'comfyui' && useRefImage && slotId !== 'default') {
         const defaultSlot = slots.find(s => s.slotId === 'default');
         if (defaultSlot?.currentSrc && projectDir) {
@@ -312,7 +436,7 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
               for (let i = 0; i < uint8.length; i += 8192) {
                 chunks.push(String.fromCharCode(...uint8.subarray(i, i + 8192)));
               }
-              charImageBase64 = btoa(chunks.join(''));
+              imageBase64 = btoa(chunks.join(''));
             }
           } catch { /* non-fatal */ }
         }
@@ -328,7 +452,7 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
         pollinationsToken: pollinationsToken || undefined,
         genWidth: genWidth || undefined,
         genHeight: genHeight || undefined,
-        charImageBase64,
+        imageBase64,
         onProgress: imageGenProvider === 'comfyui'
           ? (p) => updateSlot(slotId, { progress: p })
           : undefined,
@@ -348,7 +472,7 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
 
       const genId = crypto.randomUUID();
       // history/cells/{location}/{varPath}/{slotId}/{genId}.{ext}
-      const histDir  = `history/cells/${locationPrefix}/${safeVarPath}/${slotId}`;
+      const histDir  = `history/${pathCategory}/${locationPrefix}/${safeVarPath}/${slotId}`;
       const relPath  = `${histDir}/${genId}.${ext}`;
       const absPath  = joinPath(projectDir, relPath);
       await fsApi.mkdir(joinPath(projectDir, histDir));
@@ -435,7 +559,7 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
       const ext      = slot.currentSrc.split('.').pop() ?? 'png';
       const filename = slotFilename(slot.slotId, slot.mappingEntry, ext);
       // assets/cells/{location}/{varPath}/{filename}
-      const subdir   = `assets/cells/${locationPrefix}/${safeVarPath}`;
+      const subdir   = `assets/${pathCategory}/${locationPrefix}/${safeVarPath}`;
       const relPath  = `${subdir}/${filename}`;
       const savePath = joinPath(projectDir, 'release', relPath);
       const srcAbs   = resolveAssetPath(projectDir, slot.currentSrc);
@@ -486,27 +610,10 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
   const defaultSlot = slots.find(s => s.slotId === 'default');
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/70" />
-      <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-[700px] max-w-[95vw] flex flex-col max-h-[90vh]">
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
-            <h2 className="text-sm font-semibold text-white shrink-0">{cb.modalTitle}</h2>
-            {varDotPath && (
-              <span className="text-xs text-slate-400 font-mono truncate">
-                ${varDotPath}
-              </span>
-            )}
-          </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors cursor-pointer text-base leading-none shrink-0 ml-2">✕</button>
-        </div>
-
-        {/* Body */}
-        <div className="overflow-y-auto flex-1 p-4 flex flex-col gap-4">
+    <div className="p-4 flex flex-col gap-4">
 
           {/* Provider settings */}
+          {!hideSharedSettings && (
           <div className="flex flex-col gap-2 p-3 rounded bg-slate-900/60 border border-slate-700/50">
             {imageGenProvider === 'comfyui' && (
               <div className="flex items-center gap-2">
@@ -580,9 +687,10 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
 
             {/* Save path hint */}
             <div className="text-[10px] text-slate-500 font-mono">
-              {`assets/cells/${locationPrefix}/${safeVarPath}/…`}
+              {`assets/${pathCategory}/${locationPrefix}/${safeVarPath}/…`}
             </div>
           </div>
+          )}
 
           {/* Slots */}
           <div className="flex flex-col gap-3">
@@ -597,6 +705,7 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
                 onRefImageChange={setUseRefImage}
                 defaultSlotHasImage={!!(defaultSlot?.currentSrc)}
                 defaultSlotHasPrompt={!!(defaultSlot?.prompt?.trim())}
+                assetNodes={project.assetNodes}
                 onPromptChange={v => updateSlot(slot.slotId, { prompt: v })}
                 onHintChange={v => updateSlot(slot.slotId, { hint: v })}
                 onNegativePromptChange={v => updateSlot(slot.slotId, { negativePrompt: v })}
@@ -604,26 +713,27 @@ export function CellImageBoundGenModal({ cell, cellId: _cellId, variableId, scen
                 onCancel={() => cancelForSlot(slot.slotId)}
                 onGeneratePrompt={m => generatePromptForSlot(slot.slotId, m)}
                 onHistorySelect={src => updateSlot(slot.slotId, { currentSrc: src })}
+                onPickDefaultAsset={src => {
+                  setSlots(prev => {
+                    const next = prev.map(s => s.slotId === 'default' ? { ...s, currentSrc: src } : s);
+                    onSave({ ...cell, defaultSrc: src, genSettings: buildGenSettings(next) });
+                    return next;
+                  });
+                }}
                 ag={ag}
                 cb={cb}
               />
             ))}
           </div>
-        </div>
 
-        {/* Footer */}
-        <div className="px-4 py-3 border-t border-slate-700 shrink-0 flex items-center justify-between">
-          <button type="button"
-            className="px-3 py-1.5 text-xs text-slate-300 hover:text-white rounded border border-slate-600 hover:border-slate-400 transition-colors cursor-pointer"
-            onClick={onClose}
-          >{t.common.cancel}</button>
-          <button type="button"
-            disabled={anyBusy || !hasPendingApprovals}
-            className="px-4 py-1.5 text-xs text-white rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
-            onClick={approveAll}
-          >{ag.approveAllBtn}</button>
-        </div>
-      </div>
+          {/* Approve all */}
+          <div className="flex items-center justify-end pt-2 border-t border-slate-700/50">
+            <button type="button"
+              disabled={anyBusy || !hasPendingApprovals}
+              className="px-4 py-1.5 text-xs text-white rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+              onClick={approveAll}
+            >{ag.approveAllBtn}</button>
+          </div>
     </div>
   );
 }
@@ -634,8 +744,9 @@ function CellBoundSlotPanel({
   slot, projectDir, llmEnabled,
   showRefImageCheckbox, useRefImage, onRefImageChange,
   defaultSlotHasImage, defaultSlotHasPrompt,
+  assetNodes,
   onPromptChange, onHintChange, onNegativePromptChange,
-  onGenerate, onCancel, onGeneratePrompt, onHistorySelect,
+  onGenerate, onCancel, onGeneratePrompt, onHistorySelect, onPickDefaultAsset,
   ag, cb,
 }: {
   slot: SlotState;
@@ -646,6 +757,7 @@ function CellBoundSlotPanel({
   onRefImageChange: (v: boolean) => void;
   defaultSlotHasImage: boolean;
   defaultSlotHasPrompt: boolean;
+  assetNodes: AssetTreeNode[];
   onPromptChange: (v: string) => void;
   onHintChange: (v: string) => void;
   onNegativePromptChange: (v: string) => void;
@@ -653,6 +765,7 @@ function CellBoundSlotPanel({
   onCancel: () => void;
   onGeneratePrompt: (mode: SlotState['llmMode']) => void;
   onHistorySelect: (src: string) => void;
+  onPickDefaultAsset?: (src: string) => void;
   ag: ReturnType<typeof useT>['avatarGen'];
   cb: ReturnType<typeof useT>['cellBoundGen'];
 }) {
@@ -684,6 +797,18 @@ function CellBoundSlotPanel({
           </label>
         )}
       </div>
+
+      {/* Pick from assets — default slot only */}
+      {!isVariant && (
+        <div className="flex items-start gap-2">
+          <label className="text-xs text-slate-400 w-16 shrink-0 pt-1">{ag.fromAssetsLabel}</label>
+          <ImageAssetPicker
+            assetNodes={assetNodes}
+            value={slot.currentSrc.startsWith('assets/') ? slot.currentSrc : ''}
+            onChange={src => { if (src && onPickDefaultAsset) onPickDefaultAsset(src); }}
+          />
+        </div>
+      )}
 
       {/* Hint field — variant slots only */}
       {isVariant && llmEnabled && (

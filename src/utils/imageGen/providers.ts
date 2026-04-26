@@ -18,8 +18,8 @@ export interface ImageGenerateParams {
   pollinationsToken?: string;
   // Progress callback (ComfyUI only, via WebSocket)
   onProgress?: (progress: ComfyProgress) => void;
-  /** Base64-encoded reference image injected as ${charImage} in ComfyUI workflow nodes. */
-  charImageBase64?: string;
+  /** Base64-encoded reference image injected as ${base64Image} in ComfyUI workflow nodes. */
+  imageBase64?: string;
 }
 
 export interface ImageGenerateResult {
@@ -62,17 +62,16 @@ function replaceTemplateTokens(
   seed?: number,
   genWidth?: number,
   genHeight?: number,
-  charImage?: string,
+  base64Image?: string,
 ): string {
   const neg = negativePrompt ?? '';
   const seedText = Number.isFinite(seed) ? String(seed) : '';
   const widthText = genWidth && genWidth > 0 ? String(genWidth) : '';
   const heightText = genHeight && genHeight > 0 ? String(genHeight) : '';
-  
   let res = value
     .replaceAll('${prompt}', prompt)
     .replaceAll('${negative_prompt}', neg)
-    .replaceAll('${charImage}', charImage ?? '');
+    .replaceAll('${base64Image}', base64Image ?? '');
   
   if (seedText) res = res.replaceAll('${seed}', seedText);
   if (widthText) res = res.replaceAll('${width}', widthText);
@@ -88,7 +87,7 @@ function withTemplateInjected(
   seed?: number,
   genWidth?: number,
   genHeight?: number,
-  charImage?: string,
+  base64Image?: string,
 ): Record<string, any> {
   // ComfyUI "API Format" often nested under a key or just a flat object of nodes.
   // If it's a full UI export, it has .nodes and .links which API doesn't use.
@@ -103,7 +102,7 @@ function withTemplateInjected(
       if (typeof val === 'string' && (
         val.includes('${prompt}') || val.includes('${negative_prompt}') ||
         val.includes('${seed}') || val.includes('${width}') || val.includes('${height}') ||
-        val.includes('${charImage}')
+        val.includes('${base64Image}')
       )) {
         const trimmed = val.trim();
         if (trimmed === '${seed}' && Number.isFinite(seed)) {
@@ -113,7 +112,7 @@ function withTemplateInjected(
         } else if (trimmed === '${height}' && genHeight && genHeight > 0) {
           inputs[key] = genHeight;
         } else {
-          inputs[key] = replaceTemplateTokens(val, prompt, negativePrompt, seed, genWidth, genHeight, charImage);
+          inputs[key] = replaceTemplateTokens(val, prompt, negativePrompt, seed, genWidth, genHeight, base64Image);
         }
       }
     }
@@ -194,11 +193,10 @@ function connectComfyWebSocket(
 
 async function generateWithComfy(params: ImageGenerateParams, signal?: AbortSignal): Promise<ImageGenerateResult> {
   const baseUrl = normalizeBaseUrl(params.baseUrl || 'http://127.0.0.1:8188');
-  
   // Strip any wrapping or extra data if the user provided a full export
   const promptWorkflow = withTemplateInjected(
     params.workflow, params.prompt, params.negativePrompt, params.seed, params.genWidth, params.genHeight,
-    params.charImageBase64,
+    params.imageBase64,
   );
 
   console.log('[ImageGen] Submitting prompt to ComfyUI:', promptWorkflow);

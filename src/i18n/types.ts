@@ -749,6 +749,7 @@ export interface Translations {
     seedRandomize: string;
     refImageCheckbox: string;
     refImageTooltip: string;
+    fromAssetsLabel: string;
     hintLabel: string;
     hintPlaceholder: string;
     generateFromHintBtn: string;

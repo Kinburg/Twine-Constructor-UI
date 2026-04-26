@@ -229,6 +229,15 @@ export interface ImageGenBlock {
   approvedHistoryId?: string;       // id of the history entry that was approved and copied to assets
   lastApprovedDir?: string;         // last folder used when approving (relative to release/), e.g. "assets/chars"
   history?: ImageGenHistoryEntry[]; // previous generations for this block
+  // ── Bound mode (image changes based on a variable's value) ────────────
+  mode?: ImageMode;
+  variableId?: string;
+  mapping?: ImageBoundMapping[];
+  defaultSrc?: string;              // fallback when no mapping matches
+  /** Per-slot AI generation settings (one slot per mapping entry + default) — used in bound mode */
+  genSettings?: AvatarGenSettings;
+  /** When true (bound + ComfyUI), pass the default-slot image as ${base64Image} into variant generations. */
+  useRefImage?: boolean;
 }
 
 export interface VideoBlock {
@@ -747,7 +756,7 @@ export interface AvatarGenSettings {
   genWidth?: number;
   genHeight?: number;
   styleHints?: string[];  // shared art style tags for all slots
-  useRefImage?: boolean;  // pass default slot image as ${charImage} to ComfyUI workflow
+  useRefImage?: boolean;  // pass default slot image as ${base64Image} to ComfyUI workflow
   lockedSeed?: number;    // fixed seed for all slot generations (undefined = random each time)
   slots: AvatarGenSlotData[];
 }

@@ -672,6 +672,7 @@ function AvatarTab({
               defaultSrc={cfg.defaultSrc}
               onDefaultSrcChange={defaultSrc => onChange({ ...cfg, defaultSrc })}
               assetNodes={assetNodes}
+              hideDefault
             />
           </Section>
         </>
@@ -1235,6 +1236,7 @@ function SlotDetail({
                 defaultSrc={ph.defaultSrc}
                 onDefaultSrcChange={defaultSrc => setPh({ defaultSrc })}
                 assetNodes={assetNodes}
+                hideDefault
               />
             </div>
           )}

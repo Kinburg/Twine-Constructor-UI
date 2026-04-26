@@ -841,6 +841,7 @@ function CellEditModal({
               defaultSrc={c.defaultSrc}
               onDefaultSrcChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })}
               assetNodes={assetNodes}
+              hideDefault
             />
             <button
               type="button"

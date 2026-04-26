@@ -468,7 +468,9 @@ ipcMain.handle('http:requestBinary', async (_e, req: {
   headers?: Record<string, string>;
   body?: string;
 }) => {
-  const res = await fetch(req.url, {
+  // net.fetch handles custom Electron protocols (e.g. localfile://); native fetch does not
+  const fetcher = req.url.startsWith('localfile://') ? net.fetch : fetch;
+  const res = await fetcher(req.url, {
     method: req.method ?? 'GET',
     headers: req.headers,
     body: req.body,

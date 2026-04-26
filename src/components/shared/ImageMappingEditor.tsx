@@ -437,12 +437,15 @@ export function ImageMappingEditor({
   defaultSrc,
   onDefaultSrcChange,
   assetNodes,
+  hideDefault = false,
 }: {
   mapping: ImageBoundMapping[];
   onChange: (mapping: ImageBoundMapping[]) => void;
   defaultSrc: string;
   onDefaultSrcChange: (src: string) => void;
   assetNodes: AssetTreeNode[];
+  /** When true, skip rendering the «Default (no match)» picker (parent renders it elsewhere). */
+  hideDefault?: boolean;
 }) {
   const t = useT();
   const [showGenerator, setShowGenerator] = useState(false);
@@ -516,10 +519,12 @@ export function ImageMappingEditor({
       ))}
 
       {/* Default / fallback */}
-      <div className="flex flex-col gap-1 mt-0.5">
-        <span className="text-xs text-slate-400">{t.imageMappingEditor.defaultLabel}</span>
-        <ImageAssetPicker assetNodes={assetNodes} value={defaultSrc} onChange={onDefaultSrcChange} />
-      </div>
+      {!hideDefault && (
+        <div className="flex flex-col gap-1 mt-0.5">
+          <span className="text-xs text-slate-400">{t.imageMappingEditor.defaultLabel}</span>
+          <ImageAssetPicker assetNodes={assetNodes} value={defaultSrc} onChange={onDefaultSrcChange} />
+        </div>
+      )}
     </div>
   );
 }

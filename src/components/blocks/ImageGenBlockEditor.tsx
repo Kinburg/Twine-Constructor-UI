@@ -9,6 +9,11 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
 import { generateImagePromptWithLlm } from '../../utils/imageGen/llmPrompt';
 import { StyleChipsEditor } from '../shared/StyleChipsEditor';
+import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
+import { ImageMappingEditor } from '../shared/ImageMappingEditor';
+import { CellImageBoundGenPanel } from '../shared/CellImageBoundGenModal';
+import type { CellImageBound } from '../../types';
 
 async function collectWorkflowFiles(absDir: string, relDir: string): Promise<string[]> {
   const entries = await fsApi.listDir(absDir);
@@ -58,6 +63,7 @@ export function ImageGenBlockEditor({
 }) {
   const t = useT();
   const ig = t.imageGenBlock;
+  const ag = t.avatarGen;
   const { project, projectDir, updateBlock, addAsset, deleteAssetNode, saveSnapshot } = useProjectStore();
   const {
     llmEnabled,
@@ -79,6 +85,9 @@ export function ImageGenBlockEditor({
   } = useEditorPrefsStore();
 
   const update = onUpdate ?? ((p: Partial<ImageGenBlock>) => updateBlock(sceneId, block.id, p as never));
+  const variableNodes = useVariableNodes();
+  const mode = block.mode ?? 'static';
+  const mapping = block.mapping ?? [];
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [busyImage, setBusyImage] = useState(false);
   const [busyPrompt, setBusyPrompt] = useState(false);
@@ -371,40 +380,22 @@ export function ImageGenBlockEditor({
 
   return (
     <div className="flex flex-col gap-2">
-      {imageGenProvider === 'comfyui' && (
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 w-20 shrink-0">{ig.workflowLabel}</label>
-          <select
-            className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-            value={block.workflowFile}
-            onChange={e => update({ workflowFile: e.target.value })}
-          >
-            <option value="">{ig.workflowNone}</option>
-            {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
-          </select>
-          <button
-            type="button"
-            className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
-            onClick={refreshWorkflows}
-          >
-            {ig.workflowRefresh}
-          </button>
-        </div>
-      )}
 
+      {/* ── Mode selector ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.promptModeLabel}</label>
+        <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.modeLabel}</label>
         <div className="flex gap-1">
           {([
-            ['manual', ig.promptModeManual],
-            ['llm', ig.promptModeLlm],
-          ] as const).map(([mode, label]) => (
+            ['static', t.imageBlock.modeStatic],
+            ['bound',  t.imageBlock.modeBound],
+          ] as const).map(([m, label]) => (
             <button
-              key={mode}
-              type="button"
-              onClick={() => update({ promptMode: mode })}
+              key={m}
+              onClick={() => update({ mode: m })}
               className={`px-2 py-0.5 text-xs rounded cursor-pointer transition-colors ${
-                block.promptMode === mode ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                mode === m
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
               }`}
             >
               {label}
@@ -413,235 +404,285 @@ export function ImageGenBlockEditor({
         </div>
       </div>
 
-      <div className="flex items-start gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0 pt-2">{ig.promptLabel}</label>
-        <div className="flex-1 flex flex-col gap-1.5">
-          <textarea
-            className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[70px]"
-            placeholder={ig.promptPlaceholder}
-            value={block.prompt}
-            onChange={e => update({ prompt: e.target.value })}
-          />
-          {block.promptMode === 'llm' && (
-            <div className="flex items-center gap-1 flex-wrap">
-              {([
-                ['continue', ig.llmModeContinue],
-                ['rephrase', ig.llmModeRephrase],
-                ['hint',     ig.llmModeHint],
-              ] as const).map(([mode, label]) => (
+      {/* ── Shared generation settings (both modes) ────────────────────── */}
+      <div className="flex flex-col gap-2 p-3 rounded bg-slate-900/40 border border-slate-700/50">
+        {imageGenProvider === 'comfyui' && (
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.workflowLabel}</label>
+            <select
+              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+              value={block.workflowFile}
+              onChange={e => update({ workflowFile: e.target.value })}
+            >
+              <option value="">{ig.workflowNone}</option>
+              {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+            </select>
+            <button
+              type="button"
+              className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
+              onClick={refreshWorkflows}
+            >
+              {ig.workflowRefresh}
+            </button>
+          </div>
+        )}
+
+        {/* Generation size */}
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400 w-20 shrink-0">{ig.genSizeLabel}</label>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <input
+              type="number"
+              min={0}
+              className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+              placeholder={ig.genWidthPlaceholder}
+              value={block.genWidth || ''}
+              onChange={e => update({ genWidth: parseInt(e.target.value, 10) || 0 })}
+            />
+            <span className="text-xs text-slate-500">×</span>
+            <input
+              type="number"
+              min={0}
+              className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+              placeholder={ig.genHeightPlaceholder}
+              value={block.genHeight || ''}
+              onChange={e => update({ genHeight: parseInt(e.target.value, 10) || 0 })}
+            />
+            <div className="flex gap-0.5">
+              {ASPECT_RATIOS.map(({ label, w, h }) => (
                 <button
-                  key={mode}
+                  key={label}
                   type="button"
-                  disabled={busyPrompt || !llmEnabled}
-                  className={`px-2.5 py-1 text-xs rounded disabled:opacity-50 cursor-pointer transition-colors ${
-                    (block.llmPromptMode ?? 'hint') === mode
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                  }`}
-                  onClick={() => generatePrompt(mode)}
+                  className="px-1.5 py-0.5 text-[10px] rounded bg-slate-700 hover:bg-slate-600 text-slate-300 cursor-pointer"
+                  onClick={() => applyAspectRatio(w, h)}
                 >
-                  {busyPrompt && (block.llmPromptMode ?? 'hint') === mode ? ig.llmGenerating : label}
+                  {label}
                 </button>
               ))}
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-start gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0 pt-2">{ig.negativePromptLabel}</label>
-        <textarea
-          className="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[50px]"
-          placeholder={ig.negativePromptPlaceholder}
-          value={block.negativePrompt ?? ''}
-          onChange={e => update({ negativePrompt: e.target.value })}
-        />
-      </div>
-
-      <StyleChipsEditor
-        value={block.styleHints ?? []}
-        onChange={v => update({ styleHints: v })}
-        label={ig.styleHintsLabel}
-        customPlaceholder={ig.styleHintsCustomPlaceholder}
-        addBtn={ig.styleHintsAddBtn}
-      />
-
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.seedModeLabel}</label>
-        <div className="flex gap-1">
-          {([
-            ['manual', ig.seedModeManual],
-            ['random', ig.seedModeRandom],
-          ] as const).map(([mode, label]) => (
-            <button
-              key={mode}
-              type="button"
-              onClick={() => update({ seedMode: mode })}
-              className={`px-2 py-0.5 text-xs rounded cursor-pointer transition-colors ${
-                seedMode === mode ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.seedLabel}</label>
-        <input
-          type="number"
-          min={0}
-          max={4294967295}
-          disabled={seedMode !== 'manual'}
-          className="w-48 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 disabled:opacity-50"
-          placeholder={ig.seedPlaceholder}
-          value={block.seed ?? ''}
-          onChange={e => update({ seed: parseInt(e.target.value, 10) || 0 })}
-        />
-      </div>
-
-      {/* Generation size */}
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.genSizeLabel}</label>
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <input
-            type="number"
-            min={0}
-            className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-            placeholder={ig.genWidthPlaceholder}
-            value={block.genWidth || ''}
-            onChange={e => update({ genWidth: parseInt(e.target.value, 10) || 0 })}
-          />
-          <span className="text-xs text-slate-500">×</span>
-          <input
-            type="number"
-            min={0}
-            className="w-20 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
-            placeholder={ig.genHeightPlaceholder}
-            value={block.genHeight || ''}
-            onChange={e => update({ genHeight: parseInt(e.target.value, 10) || 0 })}
-          />
-          <div className="flex gap-0.5">
-            {ASPECT_RATIOS.map(({ label, w, h }) => (
-              <button
-                key={label}
-                type="button"
-                className="px-1.5 py-0.5 text-[10px] rounded bg-slate-700 hover:bg-slate-600 text-slate-300 cursor-pointer"
-                onClick={() => applyAspectRatio(w, h)}
-              >
-                {label}
-              </button>
-            ))}
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-col gap-1.5">
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            disabled={busyImage}
-            className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer"
-            onClick={generateImage}
-          >
-            {busyImage ? ig.generatingImage : ig.generateImage}
-          </button>
-          {busyImage && (
+        {/* Seed (Lock-seed unified UI) */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <label className="text-xs text-slate-400 w-20 shrink-0">{ag.seedLabel}</label>
+          <label className="flex items-center gap-1.5 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              className="accent-indigo-500 cursor-pointer"
+              checked={seedMode === 'manual'}
+              onChange={e => update({ seedMode: e.target.checked ? 'manual' : 'random' })}
+            />
+            <span className="text-xs text-slate-300">{ag.seedLock}</span>
+          </label>
+          {seedMode === 'manual' && (
             <>
+              <input
+                type="number"
+                min={0}
+                max={4294967295}
+                className="w-32 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500"
+                value={block.seed ?? ''}
+                onChange={e => update({ seed: parseInt(e.target.value, 10) || 0 })}
+              />
               <button
                 type="button"
-                className="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white cursor-pointer"
-                onClick={cancelGeneration}
+                className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
+                title="Randomize seed"
+                onClick={() => update({ seed: randomSeed() })}
               >
-                {ig.cancelGeneration}
+                {ag.seedRandomize}
               </button>
-              {genProgress && (
-                <span className="text-[10px] text-slate-400">
-                  {genProgress.current}/{genProgress.total}
-                </span>
-              )}
             </>
           )}
         </div>
-        {busyImage && (
-          <div className="w-full h-1 rounded-full bg-slate-700 overflow-hidden">
-            {genProgress ? (
-              <div
-                className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
+
+        {/* Style hints */}
+        <StyleChipsEditor
+          value={block.styleHints ?? []}
+          onChange={v => update({ styleHints: v })}
+          label={ig.styleHintsLabel}
+          customPlaceholder={ig.styleHintsCustomPlaceholder}
+          addBtn={ig.styleHintsAddBtn}
+        />
+      </div>
+
+      {/* ── Static-mode prompt + generation UI ────────────────────────── */}
+      {mode === 'static' && (
+        <>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.promptModeLabel}</label>
+            <div className="flex gap-1">
+              {([
+                ['manual', ig.promptModeManual],
+                ['llm', ig.promptModeLlm],
+              ] as const).map(([m, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => update({ promptMode: m })}
+                  className={`px-2 py-0.5 text-xs rounded cursor-pointer transition-colors ${
+                    block.promptMode === m ? 'bg-indigo-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0 pt-2">{ig.promptLabel}</label>
+            <div className="flex-1 flex flex-col gap-1.5">
+              <textarea
+                className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[70px]"
+                placeholder={ig.promptPlaceholder}
+                value={block.prompt}
+                onChange={e => update({ prompt: e.target.value })}
               />
-            ) : (
-              <div className="h-full w-full bg-emerald-500/40 animate-pulse" />
+              {block.promptMode === 'llm' && (
+                <div className="flex items-center gap-1 flex-wrap">
+                  {([
+                    ['continue', ig.llmModeContinue],
+                    ['rephrase', ig.llmModeRephrase],
+                    ['hint',     ig.llmModeHint],
+                  ] as const).map(([m, label]) => (
+                    <button
+                      key={m}
+                      type="button"
+                      disabled={busyPrompt || !llmEnabled}
+                      className={`px-2.5 py-1 text-xs rounded disabled:opacity-50 cursor-pointer transition-colors ${
+                        (block.llmPromptMode ?? 'hint') === m
+                          ? 'bg-indigo-600 text-white'
+                          : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                      }`}
+                      onClick={() => generatePrompt(m)}
+                    >
+                      {busyPrompt && (block.llmPromptMode ?? 'hint') === m ? ig.llmGenerating : label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-start gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0 pt-2">{ig.negativePromptLabel}</label>
+            <textarea
+              className="flex-1 bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 outline-none border border-slate-600 focus:border-indigo-500 min-h-[50px]"
+              placeholder={ig.negativePromptPlaceholder}
+              value={block.negativePrompt ?? ''}
+              onChange={e => update({ negativePrompt: e.target.value })}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={busyImage}
+                className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer"
+                onClick={generateImage}
+              >
+                {busyImage ? ig.generatingImage : ig.generateImage}
+              </button>
+              {busyImage && (
+                <>
+                  <button
+                    type="button"
+                    className="px-3 py-1.5 text-xs rounded bg-slate-600 hover:bg-slate-500 text-white cursor-pointer"
+                    onClick={cancelGeneration}
+                  >
+                    {ig.cancelGeneration}
+                  </button>
+                  {genProgress && (
+                    <span className="text-[10px] text-slate-400">
+                      {genProgress.current}/{genProgress.total}
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
+            {busyImage && (
+              <div className="w-full h-1 rounded-full bg-slate-700 overflow-hidden">
+                {genProgress ? (
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.round((genProgress.current / genProgress.total) * 100)}%` }}
+                  />
+                ) : (
+                  <div className="h-full w-full bg-emerald-500/40 animate-pulse" />
+                )}
+              </div>
             )}
           </div>
-        )}
-      </div>
 
-      {/* History */}
-      <div className="flex items-center gap-2">
-        <label className="text-xs text-slate-400 w-20 shrink-0">{ig.historyLabel}</label>
-        <select
-          className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={block.src}
-          onChange={e => update({ src: e.target.value, approvedHistoryId: undefined })}
-        >
-          <option value="">{ig.historyEmpty}</option>
-          {[...history].reverse().map(h => (
-            <option key={h.id} value={h.src}>
-              {new Date(h.createdAt).toLocaleString()} · {h.id.slice(0, 8)}{h.seed !== undefined ? ` · seed ${h.seed}` : ''}
-            </option>
-          ))}
-        </select>
-        {history.length > 0 && (
-          <button
-            type="button"
-            className={`px-2 py-1 text-xs rounded cursor-pointer transition-colors ${
-              clearConfirm
-                ? 'bg-red-700 hover:bg-red-600 text-white'
-                : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
-            }`}
-            onClick={handleClearHistory}
-          >
-            {clearConfirm ? ig.clearHistoryConfirm : ig.clearHistory}
-          </button>
-        )}
-      </div>
-
-      {/* Approve / Unapprove */}
-      {block.src && (
-        <div className="flex items-center gap-2">
-          <label className="text-xs text-slate-400 w-20 shrink-0" />
-          {isApproved ? (
-            <>
-              <span className="text-xs px-2 py-0.5 rounded bg-emerald-900/50 border border-emerald-700 text-emerald-400">
-                ✓ {ig.approvedBadge}
-              </span>
+          {/* History */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">{ig.historyLabel}</label>
+            <select
+              className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+              value={block.src}
+              onChange={e => update({ src: e.target.value, approvedHistoryId: undefined })}
+            >
+              <option value="">{ig.historyEmpty}</option>
+              {[...history].reverse().map(h => (
+                <option key={h.id} value={h.src}>
+                  {new Date(h.createdAt).toLocaleString()} · {h.id.slice(0, 8)}{h.seed !== undefined ? ` · seed ${h.seed}` : ''}
+                </option>
+              ))}
+            </select>
+            {history.length > 0 && (
               <button
                 type="button"
-                title={ig.unapproveImageTitle}
-                className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-red-800 text-slate-300 hover:text-white cursor-pointer transition-colors"
-                onClick={unapproveImage}
+                className={`px-2 py-1 text-xs rounded cursor-pointer transition-colors ${
+                  clearConfirm
+                    ? 'bg-red-700 hover:bg-red-600 text-white'
+                    : 'bg-slate-700 hover:bg-slate-600 text-slate-200'
+                }`}
+                onClick={handleClearHistory}
               >
-                {ig.unapproveImage}
+                {clearConfirm ? ig.clearHistoryConfirm : ig.clearHistory}
               </button>
-            </>
-          ) : (
-            <>
-              <span className="text-xs px-2 py-0.5 rounded bg-amber-900/50 border border-amber-700 text-amber-400">
-                ⚠ {ig.draftBadge}
-              </span>
-              <button
-                type="button"
-                title={ig.approveImageTitle}
-                className="px-2 py-1 text-xs rounded bg-emerald-800 hover:bg-emerald-700 text-white cursor-pointer transition-colors"
-                onClick={approveImage}
-              >
-                {ig.approveImage}
-              </button>
-            </>
+            )}
+          </div>
+
+          {/* Approve / Unapprove */}
+          {block.src && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-slate-400 w-20 shrink-0" />
+              {isApproved ? (
+                <>
+                  <span className="text-xs px-2 py-0.5 rounded bg-emerald-900/50 border border-emerald-700 text-emerald-400">
+                    ✓ {ig.approvedBadge}
+                  </span>
+                  <button
+                    type="button"
+                    title={ig.unapproveImageTitle}
+                    className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-red-800 text-slate-300 hover:text-white cursor-pointer transition-colors"
+                    onClick={unapproveImage}
+                  >
+                    {ig.unapproveImage}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="text-xs px-2 py-0.5 rounded bg-amber-900/50 border border-amber-700 text-amber-400">
+                    ⚠ {ig.draftBadge}
+                  </span>
+                  <button
+                    type="button"
+                    title={ig.approveImageTitle}
+                    className="px-2 py-1 text-xs rounded bg-emerald-800 hover:bg-emerald-700 text-white cursor-pointer transition-colors"
+                    onClick={approveImage}
+                  >
+                    {ig.approveImage}
+                  </button>
+                </>
+              )}
+            </div>
           )}
-        </div>
+        </>
       )}
 
       <div className="flex items-center gap-2">
@@ -666,7 +707,7 @@ export function ImageGenBlockEditor({
         />
       </div>
 
-      {currentPreview && (
+      {mode === 'static' && currentPreview && (
         <>
           <img
             src={currentPreview}
@@ -690,6 +731,81 @@ export function ImageGenBlockEditor({
             </div>
           )}
         </>
+      )}
+
+      {/* ── Bound mode section ─────────────────────────────────────────── */}
+      {mode === 'bound' && (
+        <div className="flex flex-col gap-2 pl-2 border-l-2 border-indigo-800/50">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-400 w-20 shrink-0">{t.imageBlock.variableLabel}</label>
+            <VariablePicker
+              value={block.variableId ?? ''}
+              onChange={id => update({ variableId: id })}
+              nodes={variableNodes}
+              placeholder={t.imageBlock.selectVariable}
+            />
+          </div>
+
+          <ImageMappingEditor
+            mapping={mapping}
+            onChange={m => update({ mapping: m })}
+            defaultSrc={block.defaultSrc ?? ''}
+            onDefaultSrcChange={defaultSrc => update({ defaultSrc })}
+            assetNodes={project.assetNodes}
+            hideDefault
+          />
+
+          {block.variableId && (
+            <div className="rounded border border-slate-700/60 bg-slate-900/30">
+              <CellImageBoundGenPanel
+                cell={{
+                  type: 'image-bound',
+                  variableId: block.variableId,
+                  mapping,
+                  defaultSrc: block.defaultSrc ?? '',
+                  objectFit: 'cover',
+                  genSettings: block.genSettings,
+                } satisfies CellImageBound}
+                cellId={block.id}
+                variableId={block.variableId}
+                sceneId={sceneId}
+                pathCategory="blocks"
+                hideSharedSettings
+                shared={{
+                  workflowFile: block.workflowFile,
+                  genWidth: block.genWidth ?? 0,
+                  genHeight: block.genHeight ?? 0,
+                  styleHints: block.styleHints ?? [],
+                  seedLocked: seedMode === 'manual',
+                  lockedSeed: block.seed ?? 0,
+                  useRefImage: block.useRefImage ?? false,
+                }}
+                onSharedChange={patch => {
+                  const out: Partial<ImageGenBlock> = {};
+                  if (patch.workflowFile !== undefined) out.workflowFile = patch.workflowFile;
+                  if (patch.genWidth !== undefined)     out.genWidth = patch.genWidth;
+                  if (patch.genHeight !== undefined)    out.genHeight = patch.genHeight;
+                  if (patch.styleHints !== undefined)   out.styleHints = patch.styleHints;
+                  if (patch.seedLocked !== undefined)   out.seedMode = patch.seedLocked ? 'manual' : 'random';
+                  if (patch.lockedSeed !== undefined)   out.seed = patch.lockedSeed;
+                  if (patch.useRefImage !== undefined)  out.useRefImage = patch.useRefImage;
+                  update(out);
+                }}
+                onSave={updated => {
+                  update({
+                    variableId: updated.variableId,
+                    mapping: updated.mapping,
+                    defaultSrc: updated.defaultSrc,
+                    // Only persist `slots` from the panel's genSettings — shared settings live at block level.
+                    genSettings: updated.genSettings
+                      ? { provider: imageGenProvider, slots: updated.genSettings.slots }
+                      : undefined,
+                  });
+                }}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       <BlockEffectsPanel delay={block.delay} onDelayChange={v => update({ delay: v })} />

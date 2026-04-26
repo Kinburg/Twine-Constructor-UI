@@ -3,11 +3,12 @@ import { toast } from 'sonner';
 import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { fsApi, joinPath, toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
-import type { AvatarConfig, AvatarGenHistoryEntry, AvatarGenSettings, AvatarGenSlotData, ImageBoundMapping } from '../../types';
+import type { AvatarConfig, AvatarGenHistoryEntry, AvatarGenSettings, AvatarGenSlotData, ImageBoundMapping, AssetTreeNode } from '../../types';
 import { useT } from '../../i18n';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
 import { generateAvatarPromptWithLlm } from '../../utils/imageGen/llmPrompt';
 import { StyleChipsEditor } from '../shared/StyleChipsEditor';
+import { ImageAssetPicker } from '../shared/ImageMappingEditor';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -300,7 +301,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
         : slot.prompt;
 
       // Load reference image as Base64 if enabled (ComfyUI only, non-default slots)
-      let charImageBase64: string | undefined;
+      let imageBase64: string | undefined;
       if (imageGenProvider === 'comfyui' && useRefImage && slotId !== 'default') {
         const defaultSlot = slots.find(s => s.slotId === 'default');
         if (defaultSlot?.currentSrc && projectDir) {
@@ -309,7 +310,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
             const fileUrl = toLocalFileUrl(absPath);
             const imgRes = await fsApi.httpRequestBinary({ url: fileUrl });
             if (imgRes.status >= 200 && imgRes.status < 300) {
-              charImageBase64 = bytesToBase64(imgRes.bytes);
+              imageBase64 = bytesToBase64(imgRes.bytes);
             }
           } catch {
             // non-fatal: proceed without reference image
@@ -327,7 +328,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
         pollinationsToken: pollinationsToken || undefined,
         genWidth: genWidth || undefined,
         genHeight: genHeight || undefined,
-        charImageBase64,
+        imageBase64,
         onProgress: imageGenProvider === 'comfyui'
           ? (p) => updateSlot(slotId, { progress: p })
           : undefined,
@@ -641,6 +642,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
                 onRefImageChange={setUseRefImage}
                 defaultSlotHasImage={!!(defaultSlot?.currentSrc)}
                 defaultSlotHasPrompt={!!(defaultSlot?.prompt?.trim())}
+                assetNodes={project.assetNodes}
                 onPromptChange={v => updateSlot(slot.slotId, { prompt: v })}
                 onHintChange={v => updateSlot(slot.slotId, { hint: v })}
                 onNegativePromptChange={v => updateSlot(slot.slotId, { negativePrompt: v })}
@@ -648,6 +650,17 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
                 onCancel={() => cancelForSlot(slot.slotId)}
                 onGeneratePrompt={m => generatePromptForSlot(slot.slotId, m)}
                 onHistorySelect={src => updateSlot(slot.slotId, { currentSrc: src })}
+                onPickDefaultAsset={src => {
+                  setSlots(prev => {
+                    const next = prev.map(s => s.slotId === 'default' ? { ...s, currentSrc: src } : s);
+                    // Sync cfg.defaultSrc (or cfg.src for static mode) immediately so runtime/export uses this asset.
+                    const updatedCfg: AvatarConfig = mode === 'static'
+                      ? { ...cfg, src: src, genSettings: buildGenSettings(next) }
+                      : { ...cfg, defaultSrc: src, genSettings: buildGenSettings(next) };
+                    onSave(updatedCfg);
+                    return next;
+                  });
+                }}
                 ag={ag}
                 ig={ig}
                 pg={pg}
@@ -692,6 +705,7 @@ function SlotPanel({
   onRefImageChange,
   defaultSlotHasImage,
   defaultSlotHasPrompt,
+  assetNodes,
   onPromptChange,
   onHintChange,
   onNegativePromptChange,
@@ -699,6 +713,7 @@ function SlotPanel({
   onCancel,
   onGeneratePrompt,
   onHistorySelect,
+  onPickDefaultAsset,
   ag,
   ig,
   pg,
@@ -713,6 +728,7 @@ function SlotPanel({
   onRefImageChange: (v: boolean) => void;
   defaultSlotHasImage: boolean;
   defaultSlotHasPrompt: boolean;
+  assetNodes: AssetTreeNode[];
   onPromptChange: (v: string) => void;
   onHintChange: (v: string) => void;
   onNegativePromptChange: (v: string) => void;
@@ -720,6 +736,7 @@ function SlotPanel({
   onCancel: () => void;
   onGeneratePrompt: (mode: ModalSlotState['llmMode']) => void;
   onHistorySelect: (src: string) => void;
+  onPickDefaultAsset?: (src: string) => void;
   ag: ReturnType<typeof useT>['avatarGen'];
   ig: ReturnType<typeof useT>['itemIconGen'];
   pg: ReturnType<typeof useT>['paperdollSlotGen'];
@@ -762,6 +779,18 @@ function SlotPanel({
           </label>
         )}
       </div>
+
+      {/* Pick from assets — default/static slot only */}
+      {!isVariant && (
+        <div className="flex items-start gap-2">
+          <label className="text-xs text-slate-400 w-16 shrink-0 pt-1">{ag.fromAssetsLabel}</label>
+          <ImageAssetPicker
+            assetNodes={assetNodes}
+            value={slot.currentSrc.startsWith('assets/') ? slot.currentSrc : ''}
+            onChange={src => { if (src && onPickDefaultAsset) onPickDefaultAsset(src); }}
+          />
+        </div>
+      )}
 
       {/* Hint field — variant slots only */}
       {isVariant && llmEnabled && (

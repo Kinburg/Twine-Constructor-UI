@@ -298,6 +298,7 @@ function SlotDetail({
               defaultSrc={ph.defaultSrc}
               onDefaultSrcChange={defaultSrc => setPh({ defaultSrc })}
               assetNodes={assetNodes}
+              hideDefault
             />
           </div>
         )}

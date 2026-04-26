@@ -683,6 +683,7 @@ function IconTab({
               defaultSrc={iconCfg.defaultSrc ?? ''}
               onDefaultSrcChange={defaultSrc => onChange({ ...iconCfg, defaultSrc })}
               assetNodes={assetNodes}
+              hideDefault
             />
           </Section>
         </>
