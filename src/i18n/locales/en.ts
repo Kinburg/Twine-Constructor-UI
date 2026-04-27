@@ -101,7 +101,9 @@ const en: Translations = {
     search:      'Search blocks...',
     recent:      'Recent',
     categories: {
-      content:     'Content',
+      narrative:   'Narrative',
+      media:       'Media',
+      game:        'Game',
       interaction: 'Interaction',
       logic:       'Logic',
       system:      'System',

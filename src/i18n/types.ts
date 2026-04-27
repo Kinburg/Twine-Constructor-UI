@@ -106,7 +106,9 @@ export interface Translations {
     search: string;
     recent: string;
     categories: {
-      content: string;
+      narrative: string;
+      media: string;
+      game: string;
       interaction: string;
       logic: string;
       system: string;

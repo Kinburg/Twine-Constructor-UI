@@ -1,38 +1,13 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useProjectStore, DEFAULT_PANEL_STYLE } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { usePluginStore } from '../../store/pluginStore';
 import { useT } from '../../i18n';
+import { BLOCK_SVG_ICONS } from './BlockIcons';
 import type { Block, BlockType, PluginBlock, PluginBlockDef } from '../../types';
 
-const BLOCK_ICONS: Record<BlockType, string> = {
-  'text':              '📝',
-  'dialogue':          '💬',
-  'choice':            '🔀',
-  'condition':         '❓',
-  'variable-set':      '📊',
-  'button':            '🔘',
-  'link':              '🔗',
-  'input-field':       '✏️',
-  'image':             '🖼️',
-  'image-gen':         '🧠',
-  'video':             '🎥',
-  'raw':               '🧩',
-  'note':              '🗒️',
-  'table':             '🗂️',
-  'include':           '📎',
-  'divider':           '─',
-  'checkbox':          '☑',
-  'radio':             '🔵',
-  'function':          'ƒ',
-  'popup':             '🪟',
-  'audio':             '🔊',
-  'container':         '🏪',
-  'time-manipulation': '🕒',
-  'paperdoll':         '🧩',
-  'inventory':         '🎒',
-  'plugin':            '🧩',
-};
+// ── Block factory ─────────────────────────────────────────────────────────────
 
 export function makeBlock(type: BlockType): Block {
   const id = crypto.randomUUID();
@@ -44,8 +19,7 @@ export function makeBlock(type: BlockType): Block {
     case 'variable-set': return { id, type, variableId: '', operator: '=', value: '' };
     case 'image':        return { id, type, src: '', alt: '', width: 0 };
     case 'image-gen':    return {
-      id,
-      type,
+      id, type,
       provider: 'comfyui',
       providerUrl: '',
       workflowFile: '',
@@ -63,20 +37,12 @@ export function makeBlock(type: BlockType): Block {
     case 'input-field':  return { id, type, label: '', variableId: '', placeholder: '' };
     case 'button':       return {
       id, type, label: '',
-      style: {
-        bgColor: '#3b82f6', textColor: '#ffffff', borderColor: '#2563eb',
-        borderRadius: 4, paddingV: 6, paddingH: 14,
-        fontSize: 10, bold: false, fullWidth: false,
-      },
+      style: { bgColor: '#3b82f6', textColor: '#ffffff', borderColor: '#2563eb', borderRadius: 4, paddingV: 6, paddingH: 14, fontSize: 10, bold: false, fullWidth: false },
       actions: [],
     };
     case 'link':         return {
       id, type, label: '', target: 'scene' as const,
-      style: {
-        bgColor: '#059669', textColor: '#ffffff', borderColor: '#047857',
-        borderRadius: 4, paddingV: 6, paddingH: 14,
-        fontSize: 10, bold: false, fullWidth: false,
-      },
+      style: { bgColor: '#059669', textColor: '#ffffff', borderColor: '#047857', borderRadius: 4, paddingV: 6, paddingH: 14, fontSize: 10, bold: false, fullWidth: false },
       actions: [],
     };
     case 'raw':          return { id, type, code: '' };
@@ -88,104 +54,260 @@ export function makeBlock(type: BlockType): Block {
     case 'radio':        return { id, type, variableId: '', options: [] };
     case 'function':     return {
       id, type, label: '', targetSceneId: '',
-      style: {
-        bgColor: '#7c3aed', textColor: '#ffffff', borderColor: '#6d28d9',
-        borderRadius: 4, paddingV: 6, paddingH: 14,
-        fontSize: 10, bold: false, fullWidth: false,
-      },
+      style: { bgColor: '#7c3aed', textColor: '#ffffff', borderColor: '#6d28d9', borderRadius: 4, paddingV: 6, paddingH: 14, fontSize: 10, bold: false, fullWidth: false },
       actions: [],
     };
     case 'popup':        return { id, type, targetSceneId: '' };
     case 'audio':        return { id, type, src: '', trigger: 'immediate' as const, loop: false, onLeave: 'stop' as const, stopOthers: false, volume: 100 };
     case 'container':    return { id, type, containerId: '', charId: '' };
     case 'time-manipulation': return { id, type, variableId: '', years: 0, months: 0, days: 0, hours: 0, minutes: 0 };
-    case 'paperdoll':         return { id, type, charId: '', showLabels: false };
-    case 'inventory':         return { id, type, charId: '' };
-    case 'plugin':            return { id, type, pluginId: '', values: {} };
+    case 'paperdoll':    return { id, type, charId: '', showLabels: false };
+    case 'inventory':    return { id, type, charId: '' };
+    case 'plugin':       return { id, type, pluginId: '', values: {} };
   }
 }
 
-/** Create a plugin-block instance referencing a plugin def. Populates param defaults. */
 export function makePluginBlock(def: PluginBlockDef): PluginBlock {
   const values: Record<string, string> = {};
   for (const p of def.params) values[p.key] = p.default ?? '';
   return { id: crypto.randomUUID(), type: 'plugin', pluginId: def.id, values };
 }
 
-// ── Category definitions ──────────────────────────────────────────────────────
+// ── Categories ────────────────────────────────────────────────────────────────
 
-type CategoryKey = 'content' | 'interaction' | 'logic' | 'system';
+type CategoryKey = 'narrative' | 'media' | 'game' | 'interaction' | 'logic' | 'system';
 
 const BLOCK_CATEGORIES: { key: CategoryKey; types: BlockType[] }[] = [
-  { key: 'content',     types: ['text', 'dialogue', 'image', 'image-gen', 'video', 'audio', 'table', 'paperdoll', 'inventory', 'divider'] },
-  { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio'] },
-  { key: 'logic',       types: ['condition', 'variable-set', 'time-manipulation', 'function', 'popup'] },
-  { key: 'system',      types: ['raw', 'include', 'note', 'container'] },
+  { key: 'narrative',   types: ['text', 'dialogue', 'divider'] },
+  { key: 'media',       types: ['image', 'image-gen', 'video', 'audio'] },
+  { key: 'game',        types: ['paperdoll', 'inventory', 'container', 'table'] },
+  { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio', 'popup'] },
+  { key: 'logic',       types: ['condition', 'variable-set', 'time-manipulation', 'function'] },
+  { key: 'system',      types: ['raw', 'include', 'note'] },
 ];
+
+const CAT_COLORS: Record<string, { color: string; bg: string; ring: string }> = {
+  narrative:   { color: '#818cf8', bg: 'rgba(99,102,241,0.14)',  ring: 'rgba(99,102,241,0.5)'  },
+  media:       { color: '#2dd4bf', bg: 'rgba(45,212,191,0.14)',  ring: 'rgba(45,212,191,0.5)'  },
+  game:        { color: '#fb923c', bg: 'rgba(251,146,60,0.14)',  ring: 'rgba(251,146,60,0.5)'  },
+  interaction: { color: '#34d399', bg: 'rgba(16,185,129,0.14)',  ring: 'rgba(16,185,129,0.5)'  },
+  logic:       { color: '#a78bfa', bg: 'rgba(167,139,250,0.14)', ring: 'rgba(167,139,250,0.5)' },
+  system:      { color: '#94a3b8', bg: 'rgba(100,116,139,0.14)', ring: 'rgba(100,116,139,0.5)' },
+  plugins:     { color: '#c084fc', bg: 'rgba(168,85,247,0.14)',  ring: 'rgba(168,85,247,0.5)'  },
+};
+
+// ── Entry types ───────────────────────────────────────────────────────────────
+
+interface BlockEntry {
+  kind: 'block';
+  type: BlockType;
+  label: string;
+  desc: string;
+  category: string;
+}
+interface PluginEntry {
+  kind: 'plugin';
+  def: PluginBlockDef;
+}
+type Entry = BlockEntry | PluginEntry;
+
+function entryId(e: Entry) {
+  return e.kind === 'block' ? e.type : `plugin:${e.def.id}`;
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────────
+
+type SelectionItem = Entry;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-interface BlockEntry { type: BlockType; label: string; icon: string; desc: string }
-
-function buildEntries(t: ReturnType<typeof useT>): BlockEntry[] {
+function buildBlockEntries(t: ReturnType<typeof useT>): BlockEntry[] {
+  const make = (type: BlockType, label: string, desc: string, category: string): BlockEntry =>
+    ({ kind: 'block', type, label, desc, category });
   return [
-    { type: 'text',              icon: BLOCK_ICONS['text'],              label: t.addBlock.text.label,             desc: t.addBlock.text.desc },
-    { type: 'dialogue',          icon: BLOCK_ICONS['dialogue'],          label: t.addBlock.dialogue.label,         desc: t.addBlock.dialogue.desc },
-    { type: 'choice',            icon: BLOCK_ICONS['choice'],            label: t.addBlock.choice.label,           desc: t.addBlock.choice.desc },
-    { type: 'condition',         icon: BLOCK_ICONS['condition'],         label: t.addBlock.condition.label,        desc: t.addBlock.condition.desc },
-    { type: 'variable-set',      icon: BLOCK_ICONS['variable-set'],      label: t.addBlock.variableSet.label,      desc: t.addBlock.variableSet.desc },
-    { type: 'button',            icon: BLOCK_ICONS['button'],            label: t.addBlock.button.label,           desc: t.addBlock.button.desc },
-    { type: 'link',              icon: BLOCK_ICONS['link'],              label: t.addBlock.link.label,             desc: t.addBlock.link.desc },
-    { type: 'input-field',       icon: BLOCK_ICONS['input-field'],       label: t.addBlock.inputField.label,       desc: t.addBlock.inputField.desc },
-    { type: 'image',             icon: BLOCK_ICONS['image'],             label: t.addBlock.image.label,            desc: t.addBlock.image.desc },
-    { type: 'image-gen',         icon: BLOCK_ICONS['image-gen'],         label: t.addBlock.imageGen.label,         desc: t.addBlock.imageGen.desc },
-    { type: 'video',             icon: BLOCK_ICONS['video'],             label: t.addBlock.video.label,            desc: t.addBlock.video.desc },
-    { type: 'raw',               icon: BLOCK_ICONS['raw'],               label: t.addBlock.raw.label,              desc: t.addBlock.raw.desc },
-    { type: 'note',              icon: BLOCK_ICONS['note'],              label: t.addBlock.note.label,             desc: t.addBlock.note.desc },
-    { type: 'table',             icon: BLOCK_ICONS['table'],             label: t.addBlock.table.label,            desc: t.addBlock.table.desc },
-    { type: 'include',           icon: BLOCK_ICONS['include'],           label: t.addBlock.include.label,          desc: t.addBlock.include.desc },
-    { type: 'divider',           icon: BLOCK_ICONS['divider'],           label: t.addBlock.divider.label,          desc: t.addBlock.divider.desc },
-    { type: 'checkbox',          icon: BLOCK_ICONS['checkbox'],          label: t.addBlock.checkbox.label,         desc: t.addBlock.checkbox.desc },
-    { type: 'radio',             icon: BLOCK_ICONS['radio'],             label: t.addBlock.radio.label,            desc: t.addBlock.radio.desc },
-    { type: 'function',          icon: BLOCK_ICONS['function'],          label: t.addBlock.function.label,         desc: t.addBlock.function.desc },
-    { type: 'popup',             icon: BLOCK_ICONS['popup'],             label: t.addBlock.popup.label,            desc: t.addBlock.popup.desc },
-    { type: 'audio',             icon: BLOCK_ICONS['audio'],             label: t.addBlock.audio.label,            desc: t.addBlock.audio.desc },
-    { type: 'container',         icon: BLOCK_ICONS['container'],         label: t.addBlock.container.label,        desc: t.addBlock.container.desc },
-    { type: 'time-manipulation', icon: BLOCK_ICONS['time-manipulation'], label: t.addBlock.timeManipulation.label, desc: t.addBlock.timeManipulation.desc },
-    { type: 'paperdoll',         icon: BLOCK_ICONS['paperdoll'],         label: t.addBlock.paperdoll.label,         desc: t.addBlock.paperdoll.desc },
-    { type: 'inventory',         icon: BLOCK_ICONS['inventory'],         label: t.addBlock.inventory.label,         desc: t.addBlock.inventory.desc },
+    make('text',              t.addBlock.text.label,             t.addBlock.text.desc,             'narrative'),
+    make('dialogue',          t.addBlock.dialogue.label,         t.addBlock.dialogue.desc,         'narrative'),
+    make('divider',           t.addBlock.divider.label,          t.addBlock.divider.desc,          'narrative'),
+    make('image',             t.addBlock.image.label,            t.addBlock.image.desc,            'media'),
+    make('image-gen',         t.addBlock.imageGen.label,         t.addBlock.imageGen.desc,         'media'),
+    make('video',             t.addBlock.video.label,            t.addBlock.video.desc,            'media'),
+    make('audio',             t.addBlock.audio.label,            t.addBlock.audio.desc,            'media'),
+    make('paperdoll',         t.addBlock.paperdoll.label,        t.addBlock.paperdoll.desc,        'game'),
+    make('inventory',         t.addBlock.inventory.label,        t.addBlock.inventory.desc,        'game'),
+    make('container',         t.addBlock.container.label,        t.addBlock.container.desc,        'game'),
+    make('table',             t.addBlock.table.label,            t.addBlock.table.desc,            'game'),
+    make('choice',            t.addBlock.choice.label,           t.addBlock.choice.desc,           'interaction'),
+    make('button',            t.addBlock.button.label,           t.addBlock.button.desc,           'interaction'),
+    make('link',              t.addBlock.link.label,             t.addBlock.link.desc,             'interaction'),
+    make('input-field',       t.addBlock.inputField.label,       t.addBlock.inputField.desc,       'interaction'),
+    make('checkbox',          t.addBlock.checkbox.label,         t.addBlock.checkbox.desc,         'interaction'),
+    make('radio',             t.addBlock.radio.label,            t.addBlock.radio.desc,            'interaction'),
+    make('popup',             t.addBlock.popup.label,            t.addBlock.popup.desc,            'interaction'),
+    make('condition',         t.addBlock.condition.label,        t.addBlock.condition.desc,        'logic'),
+    make('variable-set',      t.addBlock.variableSet.label,      t.addBlock.variableSet.desc,      'logic'),
+    make('time-manipulation', t.addBlock.timeManipulation.label, t.addBlock.timeManipulation.desc, 'logic'),
+    make('function',          t.addBlock.function.label,         t.addBlock.function.desc,         'logic'),
+    make('raw',               t.addBlock.raw.label,              t.addBlock.raw.desc,              'system'),
+    make('include',           t.addBlock.include.label,          t.addBlock.include.desc,          'system'),
+    make('note',              t.addBlock.note.label,             t.addBlock.note.desc,             'system'),
   ];
 }
 
-// ── Block button (full — with desc) ──────────────────────────────────────────
+// ── Block tile ────────────────────────────────────────────────────────────────
 
-function BlockButton({ entry, onClick }: { entry: BlockEntry; onClick: () => void }) {
+function BlockTile({
+  entry, catColor, selOrder, highlighted,
+  onToggle, onHighlight,
+}: {
+  entry: BlockEntry;
+  catColor: { color: string; bg: string; ring: string };
+  selOrder: number | null;
+  highlighted: boolean;
+  onToggle: () => void;
+  onHighlight: () => void;
+}) {
+  const isSelected = selOrder !== null;
+
   return (
     <button
-      className="flex items-center gap-2 px-3 py-2 hover:bg-slate-700 text-left transition-colors cursor-pointer border-b border-r border-slate-700"
-      onClick={onClick}
+      className="relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg text-center cursor-pointer transition-all select-none"
+      style={{
+        background: highlighted ? catColor.bg : isSelected ? `${catColor.bg}` : 'rgba(255,255,255,0.03)',
+        outline: highlighted ? `2px solid ${catColor.ring}` : isSelected ? `1.5px solid ${catColor.color}` : '1.5px solid transparent',
+      }}
+      onMouseEnter={onHighlight}
+      onClick={onToggle}
     >
-      <span className="text-base leading-none">{entry.icon}</span>
-      <div>
-        <div className="text-xs text-white font-medium">{entry.label}</div>
-        <div className="text-xs text-slate-400 leading-tight">{entry.desc}</div>
-      </div>
+      {/* Selection badge */}
+      {isSelected && (
+        <span
+          className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
+          style={{ background: catColor.color }}
+        >
+          {selOrder}
+        </span>
+      )}
+
+      {/* Icon */}
+      <span className="w-8 h-8 flex items-center justify-center" style={{ color: catColor.color }}>
+        {BLOCK_SVG_ICONS[entry.type]({ className: 'w-full h-full' })}
+      </span>
+
+      {/* Label */}
+      <span className="text-[11px] text-slate-200 leading-tight font-medium line-clamp-2">{entry.label}</span>
     </button>
   );
 }
 
-// ── Block button (compact — icon + label only, for "Recent") ─────────────────
+// ── Plugin tile ───────────────────────────────────────────────────────────────
 
-function BlockButtonCompact({ entry, onClick }: { entry: BlockEntry; onClick: () => void }) {
+function PluginTile({
+  entry, selOrder, highlighted,
+  onToggle, onHighlight,
+}: {
+  entry: PluginEntry;
+  selOrder: number | null;
+  highlighted: boolean;
+  onToggle: () => void;
+  onHighlight: () => void;
+}) {
+  const { def } = entry;
+  const c = CAT_COLORS.plugins;
+  const color = def.color || c.color;
+  const isSelected = selOrder !== null;
+
   return (
     <button
-      className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-slate-700 rounded text-left transition-colors cursor-pointer"
-      onClick={onClick}
-      title={entry.desc}
+      className="relative flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg text-center cursor-pointer transition-all select-none"
+      style={{
+        background: highlighted ? `${color}22` : isSelected ? `${color}18` : 'rgba(255,255,255,0.03)',
+        outline: highlighted ? `2px solid ${color}80` : isSelected ? `1.5px solid ${color}` : '1.5px solid transparent',
+      }}
+      onMouseEnter={onHighlight}
+      onClick={onToggle}
     >
-      <span className="text-sm leading-none">{entry.icon}</span>
-      <span className="text-xs text-white">{entry.label}</span>
+      {isSelected && (
+        <span
+          className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full text-[9px] font-bold flex items-center justify-center text-white"
+          style={{ background: color }}
+        >
+          {selOrder}
+        </span>
+      )}
+      <span className="text-2xl leading-none">{def.icon || '🧩'}</span>
+      <span className="text-[11px] text-slate-200 leading-tight font-medium line-clamp-2">{def.name}</span>
     </button>
+  );
+}
+
+// ── Detail panel ──────────────────────────────────────────────────────────────
+
+function DetailPanel({
+  highlighted, selection, catColor,
+}: {
+  highlighted: Entry | null;
+  selection: SelectionItem[];
+  catColor: (e: Entry) => { color: string; bg: string; ring: string };
+}) {
+  if (!highlighted) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-slate-600 text-xs text-center px-4">
+        <span className="text-3xl mb-2 opacity-30">↖</span>
+        Hover over a block to see details
+      </div>
+    );
+  }
+
+  const isBlock = highlighted.kind === 'block';
+  const c = catColor(highlighted);
+  const label = isBlock ? highlighted.label : highlighted.def.name;
+  const desc = isBlock ? highlighted.desc : (highlighted.def.description || '');
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Block preview */}
+      <div className="p-4 flex flex-col items-center gap-3 border-b border-slate-700">
+        <div
+          className="w-14 h-14 rounded-xl flex items-center justify-center"
+          style={{ background: isBlock ? c.bg : `${(highlighted as PluginEntry).def.color || c.color}22` }}
+        >
+          {isBlock
+            ? <span className="w-9 h-9" style={{ color: c.color, display: 'flex' }}>
+                {BLOCK_SVG_ICONS[(highlighted as BlockEntry).type]({ className: 'w-full h-full' })}
+              </span>
+            : <span className="text-3xl">{(highlighted as PluginEntry).def.icon || '🧩'}</span>
+          }
+        </div>
+        <div className="text-center">
+          <div className="text-sm font-semibold text-white mb-1">{label}</div>
+          <div className="text-[11px] text-slate-400 leading-relaxed">{desc}</div>
+        </div>
+      </div>
+
+      {/* Selection queue */}
+      {selection.length > 0 && (
+        <div className="p-3 flex-1 overflow-y-auto">
+          <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-2">Queue ({selection.length})</div>
+          <ol className="flex flex-col gap-1">
+            {selection.map((item, i) => {
+              const c2 = catColor(item);
+              const lbl = item.kind === 'block' ? item.label : item.def.name;
+              return (
+                <li key={entryId(item)} className="flex items-center gap-2 text-[11px] text-slate-300">
+                  <span
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold text-white flex-shrink-0"
+                    style={{ background: item.kind === 'block' ? c2.color : (item.def.color || c2.color) }}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="truncate">{lbl}</span>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -193,13 +315,9 @@ function BlockButtonCompact({ entry, onClick }: { entry: BlockEntry; onClick: ()
 
 interface Props {
   sceneId: string;
-  /** Override the add handler — used for nested blocks inside conditions */
   onAdd?: (block: Block) => void;
-  /** Hide certain block types (e.g. prevent nesting conditions) */
   excludeTypes?: BlockType[];
-  /** Start in open state (used by InsertZone) */
   initialOpen?: boolean;
-  /** Called when cancel is clicked in initialOpen mode */
   onClose?: () => void;
 }
 
@@ -208,67 +326,119 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, o
   const { recentBlockTypes, trackRecentBlock } = useEditorPrefsStore();
   const plugins = usePluginStore((s) => s.plugins);
   const t = useT();
+
   const [open, setOpen] = useState(initialOpen ?? false);
   const [search, setSearch] = useState('');
-  const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
-  const ref = useRef<HTMLDivElement>(null);
+  const [activeCategory, setActiveCategory] = useState<string>('content');
+  const [highlighted, setHighlighted] = useState<Entry | null>(null);
+  const [selection, setSelection] = useState<SelectionItem[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const close = () => { setOpen(false); setSearch(''); setExpandedCats(new Set()); onClose?.(); };
+  const close = () => {
+    setOpen(false);
+    setSearch('');
+    setSelection([]);
+    setHighlighted(null);
+    setActiveCategory('content');
+    onClose?.();
+  };
 
-  // Auto-focus search when menu opens
   useEffect(() => {
-    if (open) searchRef.current?.focus();
+    if (open) setTimeout(() => searchRef.current?.focus(), 50);
   }, [open]);
 
-  const allEntries = buildEntries(t);
-  const entryMap = new Map(allEntries.map((e) => [e.type, e]));
+  // Close on Escape
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [open]);
 
   const excluded = new Set(excludeTypes);
-  const isVisible = (type: BlockType) => !excluded.has(type);
+  const allBlockEntries = buildBlockEntries(t).filter((e) => !excluded.has(e.type));
 
-  const add = (type: BlockType) => {
-    const block = makeBlock(type);
-    trackRecentBlock(type);
-    if (onAdd) {
-      onAdd(block);
-    } else {
-      addBlock(sceneId, block);
+  // ── Categories with counts ─────────────────────────────────────────────────
+  const cats = [
+    ...BLOCK_CATEGORIES.map((c) => ({
+      key: c.key,
+      label: t.addBlock.categories[c.key as keyof typeof t.addBlock.categories],
+      count: c.types.filter((type) => !excluded.has(type)).length,
+      color: CAT_COLORS[c.key],
+    })),
+    ...(plugins.length > 0
+      ? [{ key: 'plugins', label: t.addBlock.categories.plugins, count: plugins.length, color: CAT_COLORS.plugins }]
+      : []),
+  ];
+
+  // ── Recent (top-level, not a category) ────────────────────────────────────
+  const recentEntries: BlockEntry[] = recentBlockTypes
+    .filter((type) => !excluded.has(type))
+    .map((type) => allBlockEntries.find((e) => e.type === type))
+    .filter(Boolean) as BlockEntry[];
+
+  // ── Entries for current category / search ─────────────────────────────────
+  const q = search.trim().toLowerCase();
+
+  const visibleEntries: Entry[] = q
+    ? [
+        ...allBlockEntries.filter(
+          (e) => e.label.toLowerCase().includes(q) || e.desc.toLowerCase().includes(q),
+        ),
+        ...(activeCategory === 'plugins' || !activeCategory
+          ? plugins
+              .filter((d) => d.name.toLowerCase().includes(q) || (d.description || '').toLowerCase().includes(q))
+              .map((def): PluginEntry => ({ kind: 'plugin', def }))
+          : []),
+      ]
+    : activeCategory === 'plugins'
+    ? plugins.map((def): PluginEntry => ({ kind: 'plugin', def }))
+    : activeCategory === 'recent'
+    ? recentEntries
+    : allBlockEntries.filter((e) => e.category === activeCategory);
+
+  // ── Selection helpers ──────────────────────────────────────────────────────
+  const selectionIds = new Set(selection.map(entryId));
+
+  const toggleEntry = (entry: Entry) => {
+    const id = entryId(entry);
+    setHighlighted(entry);
+    setSelection((prev) =>
+      selectionIds.has(id) ? prev.filter((s) => entryId(s) !== id) : [...prev, entry],
+    );
+  };
+
+  // ── Commit ────────────────────────────────────────────────────────────────
+  const commit = () => {
+    const toAdd = selection.length > 0 ? selection : highlighted ? [highlighted] : [];
+    // When onAdd inserts at a fixed index each time, later calls push earlier ones down.
+    // Reversing ensures the first selected block ends up at the top of the inserted group.
+    const ordered = onAdd ? [...toAdd].reverse() : toAdd;
+    for (const item of ordered) {
+      if (item.kind === 'block') {
+        const block = makeBlock(item.type);
+        trackRecentBlock(item.type);
+        if (onAdd) onAdd(block); else addBlock(sceneId, block);
+      } else {
+        const block = makePluginBlock(item.def);
+        if (onAdd) onAdd(block); else addBlock(sceneId, block);
+      }
     }
     close();
   };
 
-  const addPlugin = (def: PluginBlockDef) => {
-    const block = makePluginBlock(def);
-    if (onAdd) onAdd(block); else addBlock(sceneId, block);
-    close();
+  const canAdd = selection.length > 0 || highlighted !== null;
+  const addLabel = selection.length > 1 ? `Add ${selection.length} blocks` : 'Add block';
+
+  const getCatColor = (e: Entry) => {
+    if (e.kind === 'plugin') return CAT_COLORS.plugins;
+    return CAT_COLORS[e.category] ?? CAT_COLORS.system;
   };
 
-  const toggleCat = (key: string) => {
-    setExpandedCats((prev) => {
-      const next = new Set(prev);
-      if (next.has(key)) next.delete(key); else next.add(key);
-      return next;
-    });
-  };
-
-  // ── Search filtering ────────────────────────────────────────────────────────
-  const q = search.trim().toLowerCase();
-  const searchResults = q
-    ? allEntries.filter(
-        (e) => isVisible(e.type) && (e.label.toLowerCase().includes(q) || e.desc.toLowerCase().includes(q)),
-      )
-    : null;
-
-  // ── Recent entries (only those not excluded) ────────────────────────────────
-  const recentEntries = recentBlockTypes
-    .filter((type) => isVisible(type) && entryMap.has(type))
-    .map((type) => entryMap.get(type)!);
-
-  // ── Closed state ────────────────────────────────────────────────────────────
+  // ── Trigger button (closed state) ─────────────────────────────────────────
   if (!open) {
     return (
-      <div ref={ref} className="mt-1">
+      <div className="mt-1">
         <button
           className="w-full py-1.5 border border-dashed border-slate-700 hover:border-indigo-500 text-slate-500 hover:text-indigo-400 rounded text-xs transition-colors cursor-pointer"
           onClick={() => setOpen(true)}
@@ -279,122 +449,154 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, o
     );
   }
 
-  // ── Open state ──────────────────────────────────────────────────────────────
-  return (
-    <div ref={ref} className="mt-1">
-      <div className="border border-slate-600 rounded bg-slate-800 overflow-hidden">
-        {/* Search */}
-        <div className="px-2 pt-2 pb-1">
+  // ── Modal ─────────────────────────────────────────────────────────────────
+  const modal = (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      {/* Backdrop */}
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={close} />
+
+      {/* Panel */}
+      <div
+        className="relative z-10 flex flex-col rounded-xl border border-slate-700 bg-slate-900 shadow-2xl overflow-hidden"
+        style={{ width: 740, height: 500 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Search bar */}
+        <div className="px-3 pt-3 pb-2 border-b border-slate-700/60 flex-shrink-0">
           <input
             ref={searchRef}
             type="text"
-            className="w-full px-2 py-1 text-xs bg-slate-900 border border-slate-600 rounded text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-colors"
+            className="w-full px-3 py-1.5 text-sm bg-slate-800 border border-slate-600 rounded-lg text-white placeholder-slate-500 outline-none focus:border-indigo-500 transition-colors"
             placeholder={t.addBlock.search}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
         </div>
 
-        {/* Search results (flat list) */}
-        {searchResults ? (
-          searchResults.length > 0 ? (
-            <div className="grid grid-cols-2">
-              {searchResults.map((e) => (
-                <BlockButton key={e.type} entry={e} onClick={() => add(e.type)} />
-              ))}
-            </div>
-          ) : (
-            <div className="px-3 py-2 text-xs text-slate-500 text-center">—</div>
-          )
-        ) : (
-          <>
+        {/* 3-column body */}
+        <div className="flex flex-1 min-h-0">
+          {/* Left: categories */}
+          <div className="w-36 flex-shrink-0 border-r border-slate-700/60 flex flex-col py-2 overflow-y-auto">
             {/* Recent */}
-            {recentEntries.length > 0 && (
-              <div className="px-2 py-1 border-b border-slate-700">
-                <div className="text-[10px] text-slate-500 uppercase tracking-wide mb-0.5">{t.addBlock.recent}</div>
-                <div className="flex flex-wrap">
-                  {recentEntries.map((e) => (
-                    <BlockButtonCompact key={e.type} entry={e} onClick={() => add(e.type)} />
-                  ))}
-                </div>
-              </div>
+            {recentEntries.length > 0 && !q && (
+              <button
+                className="flex items-center justify-between px-3 py-1.5 text-xs transition-colors cursor-pointer rounded-sm mx-1"
+                style={
+                  activeCategory === 'recent'
+                    ? { background: 'rgba(255,255,255,0.08)', color: '#e2e8f0' }
+                    : { color: '#64748b' }
+                }
+                onClick={() => setActiveCategory('recent')}
+              >
+                <span className="font-medium">{t.addBlock.recent}</span>
+                <span className="text-[10px]">{recentEntries.length}</span>
+              </button>
             )}
 
-            {/* Plugins category */}
-            {plugins.length > 0 && (
-              <div className="border-b border-slate-700">
-                <button
-                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700/50 transition-colors cursor-pointer"
-                  onClick={() => toggleCat('plugins')}
-                >
-                  <span className="font-medium">
-                    {expandedCats.has('plugins') ? '▾' : '▸'}{' '}
-                    {t.addBlock.categories.plugins}
-                  </span>
-                  <span className="text-slate-500">{plugins.length}</span>
-                </button>
-                {expandedCats.has('plugins') && (
-                  <div className="grid grid-cols-2">
-                    {plugins.map((def) => (
-                      <button
-                        key={def.id}
-                        className="flex items-center gap-2 px-3 py-2 hover:bg-slate-700 text-left transition-colors cursor-pointer border-b border-r border-slate-700 border-l-4"
-                        style={{ borderLeftColor: def.color }}
-                        onClick={() => addPlugin(def)}
-                        title={def.description}
-                      >
-                        <span className="text-base leading-none">{def.icon || '🧩'}</span>
-                        <div className="min-w-0">
-                          <div className="text-xs text-white font-medium truncate">{def.name}</div>
-                          {def.description && (
-                            <div className="text-xs text-slate-400 leading-tight truncate">{def.description}</div>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
+            {/* Divider */}
+            {recentEntries.length > 0 && !q && <div className="mx-3 my-1 border-t border-slate-700/60" />}
+
+            {cats.map((cat) => (
+              <button
+                key={cat.key}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs transition-colors cursor-pointer rounded-sm mx-1"
+                style={
+                  activeCategory === cat.key && !q
+                    ? { background: `${cat.color.color}18`, color: cat.color.color }
+                    : { color: '#64748b' }
+                }
+                onClick={() => { setActiveCategory(cat.key); setSearch(''); }}
+              >
+                <span
+                  className="w-2 h-2 rounded-full flex-shrink-0"
+                  style={{ background: cat.color.color }}
+                />
+                <span className="font-medium truncate">{cat.label}</span>
+                <span className="text-[10px] ml-auto flex-shrink-0">{cat.count}</span>
+              </button>
+            ))}
+          </div>
+
+          {/* Center: block grid */}
+          <div className="flex-1 overflow-y-auto p-3">
+            {visibleEntries.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-slate-600 text-xs">
+                No blocks found
+              </div>
+            ) : (
+              <div className="grid gap-2" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+                {visibleEntries.map((entry) => {
+                  const id = entryId(entry);
+                  const order = selection.findIndex((s) => entryId(s) === id);
+                  const c = getCatColor(entry);
+                  return entry.kind === 'block' ? (
+                    <BlockTile
+                      key={id}
+                      entry={entry}
+                      catColor={c}
+                      selOrder={order >= 0 ? order + 1 : null}
+                      highlighted={highlighted ? entryId(highlighted) === id : false}
+                      onToggle={() => toggleEntry(entry)}
+                      onHighlight={() => setHighlighted(entry)}
+                    />
+                  ) : (
+                    <PluginTile
+                      key={id}
+                      entry={entry}
+                      selOrder={order >= 0 ? order + 1 : null}
+                      highlighted={highlighted ? entryId(highlighted) === id : false}
+                      onToggle={() => toggleEntry(entry)}
+                      onHighlight={() => setHighlighted(entry)}
+                    />
+                  );
+                })}
               </div>
             )}
+          </div>
 
-            {/* Categories accordion */}
-            {BLOCK_CATEGORIES.map((cat) => {
-              const catEntries = cat.types.filter(isVisible).map((type) => entryMap.get(type)!);
-              if (catEntries.length === 0) return null;
-              const isExpanded = expandedCats.has(cat.key);
-              return (
-                <div key={cat.key} className="border-b border-slate-700 last:border-b-0">
-                  <button
-                    className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700/50 transition-colors cursor-pointer"
-                    onClick={() => toggleCat(cat.key)}
-                  >
-                    <span className="font-medium">
-                      {isExpanded ? '▾' : '▸'}{' '}
-                      {t.addBlock.categories[cat.key]}
-                    </span>
-                    <span className="text-slate-500">{catEntries.length}</span>
-                  </button>
-                  {isExpanded && (
-                    <div className="grid grid-cols-2">
-                      {catEntries.map((e) => (
-                        <BlockButton key={e.type} entry={e} onClick={() => add(e.type)} />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </>
-        )}
+          {/* Right: details */}
+          <div className="w-48 flex-shrink-0 border-l border-slate-700/60 overflow-y-auto">
+            <DetailPanel
+              highlighted={highlighted}
+              selection={selection}
+              catColor={getCatColor}
+            />
+          </div>
+        </div>
 
-        {/* Cancel */}
-        <button
-          className="w-full py-1 text-xs text-slate-500 hover:text-slate-300 hover:bg-slate-700 transition-colors cursor-pointer"
-          onClick={close}
-        >
-          {t.addBlock.cancel}
-        </button>
+        {/* Footer */}
+        <div className="flex items-center justify-between px-3 py-2 border-t border-slate-700/60 flex-shrink-0 bg-slate-900">
+          <button
+            className="text-xs text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+            onClick={close}
+          >
+            {t.addBlock.cancel}
+          </button>
+          <button
+            disabled={!canAdd}
+            className="px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer disabled:opacity-30 disabled:cursor-default"
+            style={canAdd ? { background: '#6366f1', color: '#fff' } : { background: '#334155', color: '#94a3b8' }}
+            onClick={commit}
+          >
+            {addLabel}
+          </button>
+        </div>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Keep the trigger area visible */}
+      <div className="mt-1">
+        <button
+          className="w-full py-1.5 border border-dashed border-indigo-500 text-indigo-400 rounded text-xs cursor-pointer"
+          onClick={close}
+        >
+          {t.addBlock.trigger}
+        </button>
+      </div>
+      {createPortal(modal, document.body)}
+    </>
   );
 }

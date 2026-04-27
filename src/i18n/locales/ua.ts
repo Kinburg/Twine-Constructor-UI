@@ -101,7 +101,9 @@ const ua: Translations = {
     search:      'Пошук блоків...',
     recent:      'Нещодавні',
     categories: {
-      content:     'Контент',
+      narrative:   'Нарратив',
+      media:       'Медіа',
+      game:        'Ігрові',
       interaction: 'Взаємодія',
       logic:       'Логіка',
       system:      'Системні',
