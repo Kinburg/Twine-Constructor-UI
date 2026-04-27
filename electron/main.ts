@@ -209,7 +209,7 @@ function createSplashWindow() {
 function createWindow() {
   const iconPath = path.join(process.env.VITE_PUBLIC!, 'Icon.ico');
   const frameless = appConfig.titleBarStyle === 'custom';
-  const MIN = { minWidth: 900, minHeight: 600 };
+  const MIN = { minWidth: 1300, minHeight: 600 };
   const saved = appConfig.windowLayout?.main;
   const restored = saved ? relToBounds(saved, MIN) : null;
 

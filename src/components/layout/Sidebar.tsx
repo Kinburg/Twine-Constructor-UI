@@ -10,6 +10,7 @@ import { PanelEditor } from '../panel/PanelEditor';
 import { ItemManager } from '../items/ItemManager';
 import { ContainerManager } from '../containers/ContainerManager';
 import { PluginManager } from '../plugins/PluginManager';
+import { SIDEBAR_SVG_ICONS } from './SidebarIcons';
 
 type Tab = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers' | 'items' | 'containers' | 'plugins';
 
@@ -18,16 +19,16 @@ export function Sidebar() {
   const t = useT();
   const dragging = useRef(false);
 
-  const TABS: { id: Tab; label: string; icon: string }[] = [
-    { id: 'scenes',     label: t.sidebar.scenes,     icon: '🎬' },
-    { id: 'characters', label: t.sidebar.characters, icon: '👤' },
-    { id: 'items',      label: t.sidebar.items,      icon: '🎒' },
-    { id: 'containers', label: t.sidebar.containers, icon: '🏪' },
-    { id: 'plugins',    label: t.sidebar.plugins,    icon: '🧩' },
-    { id: 'variables',  label: t.sidebar.variables,  icon: '📊' },
-    { id: 'assets',     label: t.sidebar.assets,     icon: '🖼️' },
-    { id: 'panel',      label: t.sidebar.panel,      icon: '🗂️' },
-    { id: 'watchers',   label: t.sidebar.watchers,   icon: '⚡' },
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'scenes',     label: t.sidebar.scenes },
+    { id: 'characters', label: t.sidebar.characters },
+    { id: 'items',      label: t.sidebar.items },
+    { id: 'containers', label: t.sidebar.containers },
+    { id: 'plugins',    label: t.sidebar.plugins },
+    { id: 'variables',  label: t.sidebar.variables },
+    { id: 'assets',     label: t.sidebar.assets },
+    { id: 'panel',      label: t.sidebar.panel },
+    { id: 'watchers',   label: t.sidebar.watchers },
   ];
 
   const onMouseDown = useCallback((e: React.MouseEvent) => {
@@ -59,19 +60,19 @@ export function Sidebar() {
       style={{ width: sidebarWidth }}
     >
       {/* Tab bar */}
-      <div className="flex border-b border-slate-700">
+      <div className="flex border-b border-slate-700 h-9 shrink-0">
         {TABS.map(tab => (
           <button
             key={tab.id}
             title={tab.label}
             onClick={() => setSidebarTab(tab.id)}
-            className={`flex-1 py-2 text-base transition-colors cursor-pointer ${
+            className={`flex-1 flex items-center justify-center transition-colors cursor-pointer ${
               activeSidebarTab === tab.id
                 ? 'bg-slate-800 text-indigo-400'
                 : 'text-slate-500 hover:text-slate-300 hover:bg-slate-800'
             }`}
           >
-            {tab.icon}
+            {SIDEBAR_SVG_ICONS[tab.id]({ className: 'w-5 h-5' })}
           </button>
         ))}
       </div>

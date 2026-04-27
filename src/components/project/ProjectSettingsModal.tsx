@@ -768,21 +768,21 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
                         value={imgWorkflowFile}
                         onChange={e => setImgWorkflowFile(e.target.value)}
                       >
-                        <option value="">{ag.workflowNone}</option>
+                        <option value="">{ig.workflowNone}</option>
                         {projectWorkflows.length > 0 && (
-                            <optgroup label={ag.workflowGroupProject}>
+                            <optgroup label={ig.workflowGroupProject}>
                               {projectWorkflows.map(wf => (
                                   <option key={wf} value={wf}>{wf.replace(/^comfyUI_workflows\//, '')}</option>
                               ))}
                             </optgroup>
                         )}
                         {workflows.length > 0 && (
-                            <optgroup label={ag.workflowGroupCustom}>
+                            <optgroup label={ig.workflowGroupCustom}>
                               {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
                             </optgroup>
                         )}
                         {exampleWorkflows.length > 0 && (
-                            <optgroup label={ag.workflowGroupExamples}>
+                            <optgroup label={ig.workflowGroupExamples}>
                               {exampleWorkflows.map(wf => (
                                   <option key={wf} value={wf}>{wf.slice(EXAMPLES_PREFIX.length)}</option>
                               ))}
