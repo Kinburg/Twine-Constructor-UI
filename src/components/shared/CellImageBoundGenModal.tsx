@@ -284,6 +284,7 @@ export function CellImageBoundGenPanel({
   const [slots, setSlots] = useState<SlotState[]>(() => initSlots(cell, defaultLabel));
   const abortRefs = useRef<Map<string, AbortController>>(new Map());
   const [exampleWorkflows, setExampleWorkflows] = useState<string[]>([]);
+  const [projectWorkflows, setProjectWorkflows] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState<string[]>([]);
 
   // Sync slots when cell.mapping changes externally (e.g. user edits mapping editor inline).
@@ -336,12 +337,27 @@ export function CellImageBoundGenPanel({
       const examples = await loadExampleWorkflows();
       if (alive) setExampleWorkflows(examples);
 
-      const useGlobal = comfyUiWorkflowsDir.trim() !== '';
-      const root = useGlobal ? comfyUiWorkflowsDir.trim() : (projectDir ? joinPath(projectDir, 'comfyUI_workflows') : null);
-      const relPrefix = useGlobal ? '' : 'comfyUI_workflows';
-      if (!root || !await fsApi.exists(root)) { if (alive) setWorkflows([]); return; }
-      const list = await collectWorkflowFiles(root, relPrefix);
-      if (alive) setWorkflows(list.sort((a, b) => a.localeCompare(b)));
+      if (projectDir) {
+        const projRoot = joinPath(projectDir, 'comfyUI_workflows');
+        if (await fsApi.exists(projRoot)) {
+          const projList = await collectWorkflowFiles(projRoot, 'comfyUI_workflows');
+          if (alive) setProjectWorkflows(projList.sort((a, b) => a.localeCompare(b)));
+        } else {
+          if (alive) setProjectWorkflows([]);
+        }
+      }
+
+      if (comfyUiWorkflowsDir.trim()) {
+        const globalRoot = comfyUiWorkflowsDir.trim();
+        if (await fsApi.exists(globalRoot)) {
+          const globalList = await collectWorkflowFiles(globalRoot, '');
+          if (alive) setWorkflows(globalList.sort((a, b) => a.localeCompare(b)));
+        } else {
+          if (alive) setWorkflows([]);
+        }
+      } else {
+        if (alive) setWorkflows([]);
+      }
     }
     run().catch(() => {});
     return () => { alive = false; };
@@ -351,12 +367,27 @@ export function CellImageBoundGenPanel({
     const examples = await loadExampleWorkflows();
     setExampleWorkflows(examples);
 
-    const useGlobal = comfyUiWorkflowsDir.trim() !== '';
-    const root = useGlobal ? comfyUiWorkflowsDir.trim() : (projectDir ? joinPath(projectDir, 'comfyUI_workflows') : null);
-    const relPrefix = useGlobal ? '' : 'comfyUI_workflows';
-    if (!root || !await fsApi.exists(root)) { setWorkflows([]); return; }
-    const list = await collectWorkflowFiles(root, relPrefix);
-    setWorkflows(list.sort((a, b) => a.localeCompare(b)));
+    if (projectDir) {
+      const projRoot = joinPath(projectDir, 'comfyUI_workflows');
+      if (await fsApi.exists(projRoot)) {
+        const projList = await collectWorkflowFiles(projRoot, 'comfyUI_workflows');
+        setProjectWorkflows(projList.sort((a, b) => a.localeCompare(b)));
+      } else {
+        setProjectWorkflows([]);
+      }
+    }
+
+    if (comfyUiWorkflowsDir.trim()) {
+      const globalRoot = comfyUiWorkflowsDir.trim();
+      if (await fsApi.exists(globalRoot)) {
+        const globalList = await collectWorkflowFiles(globalRoot, '');
+        setWorkflows(globalList.sort((a, b) => a.localeCompare(b)));
+      } else {
+        setWorkflows([]);
+      }
+    } else {
+      setWorkflows([]);
+    }
   };
 
   // ── helpers ──────────────────────────────────────────────────────────────
@@ -609,10 +640,10 @@ export function CellImageBoundGenPanel({
                   value={workflowFile} onChange={e => setWorkflowFile(e.target.value)}
                 >
                   <option value="">{ag.workflowNone}</option>
-                  {exampleWorkflows.length > 0 && (
-                    <optgroup label={ag.workflowGroupExamples}>
-                      {exampleWorkflows.map(wf => (
-                        <option key={wf} value={wf}>{wf.slice(EXAMPLES_PREFIX.length)}</option>
+                  {projectWorkflows.length > 0 && (
+                    <optgroup label={ag.workflowGroupProject}>
+                      {projectWorkflows.map(wf => (
+                        <option key={wf} value={wf}>{wf.replace(/^comfyUI_workflows\//, '')}</option>
                       ))}
                     </optgroup>
                   )}
@@ -620,6 +651,13 @@ export function CellImageBoundGenPanel({
                     <optgroup label={ag.workflowGroupCustom}>
                       {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
                     </optgroup>
+                  )}
+                  {exampleWorkflows.length > 0 && (
+                      <optgroup label={ag.workflowGroupExamples}>
+                        {exampleWorkflows.map(wf => (
+                            <option key={wf} value={wf}>{wf.slice(EXAMPLES_PREFIX.length)}</option>
+                        ))}
+                      </optgroup>
                   )}
                 </select>
                 <button type="button"

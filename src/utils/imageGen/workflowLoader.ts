@@ -39,9 +39,13 @@ export async function loadComfyWorkflow(
   if (workflowFile.startsWith(EXAMPLES_PREFIX)) {
     basePath = await fsApi.getExampleWorkflowsDir();
     relFile = workflowFile.slice(EXAMPLES_PREFIX.length);
+  } else if (workflowFile.startsWith('comfyUI_workflows/')) {
+    // Project-specific workflow — always resolved relative to projectDir
+    basePath = projectDir;
+    relFile = workflowFile;
   } else {
-    const useGlobal = comfyUiWorkflowsDir.trim() !== '';
-    basePath = useGlobal ? comfyUiWorkflowsDir.trim() : projectDir;
+    // Global user workflow — resolved from the configured workflows dir
+    basePath = comfyUiWorkflowsDir.trim() || projectDir;
     relFile = workflowFile;
   }
 

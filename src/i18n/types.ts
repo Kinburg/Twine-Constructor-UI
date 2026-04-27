@@ -646,6 +646,7 @@ export interface Translations {
     workflowNone: string;
     workflowRefresh: string;
     workflowGroupExamples: string;
+    workflowGroupProject: string;
     workflowGroupCustom: string;
     promptModeLabel: string;
     promptModeManual: string;
@@ -717,6 +718,7 @@ export interface Translations {
     workflowNone: string;
     workflowRefresh: string;
     workflowGroupExamples: string;
+    workflowGroupProject: string;
     workflowGroupCustom: string;
     pollinationsModelLabel: string;
     pollinationsModelPlaceholder: string;

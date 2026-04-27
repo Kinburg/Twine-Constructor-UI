@@ -75,6 +75,7 @@ export function ImageGenBlockEditor({
   const mode = block.mode ?? 'static';
   const mapping = block.mapping ?? [];
   const [exampleWorkflows, setExampleWorkflows] = useState<string[]>([]);
+  const [projectWorkflows, setProjectWorkflows] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [busyImage, setBusyImage] = useState(false);
   const [busyPrompt, setBusyPrompt] = useState(false);
@@ -102,32 +103,34 @@ export function ImageGenBlockEditor({
     return `${safeName}-${idx}.${ext}`;
   }, [project.scenes, sceneId, block]);
 
-  // Load workflow list from example dir and user dir (global if set, or project dir).
+  // Load workflow list from all three sources: examples, project dir, global user dir.
   useEffect(() => {
     let alive = true;
     async function run() {
       const examples = await loadExampleWorkflows();
       if (alive) setExampleWorkflows(examples);
 
-      const useGlobal = comfyUiWorkflowsDir.trim() !== '';
-      let root: string;
-      let relPrefix: string;
+      if (projectDir) {
+        const projRoot = joinPath(projectDir, 'comfyUI_workflows');
+        if (await fsApi.exists(projRoot)) {
+          const projList = await collectWorkflowFiles(projRoot, 'comfyUI_workflows');
+          if (alive) setProjectWorkflows(projList.sort((a, b) => a.localeCompare(b)));
+        } else {
+          if (alive) setProjectWorkflows([]);
+        }
+      }
 
-      if (useGlobal) {
-        root = comfyUiWorkflowsDir.trim();
-        relPrefix = '';
+      if (comfyUiWorkflowsDir.trim()) {
+        const globalRoot = comfyUiWorkflowsDir.trim();
+        if (await fsApi.exists(globalRoot)) {
+          const globalList = await collectWorkflowFiles(globalRoot, '');
+          if (alive) setWorkflows(globalList.sort((a, b) => a.localeCompare(b)));
+        } else {
+          if (alive) setWorkflows([]);
+        }
       } else {
-        if (!projectDir) { if (alive) setWorkflows([]); return; }
-        root = joinPath(projectDir, 'comfyUI_workflows');
-        relPrefix = 'comfyUI_workflows';
-      }
-
-      if (!await fsApi.exists(root)) {
         if (alive) setWorkflows([]);
-        return;
       }
-      const list = await collectWorkflowFiles(root, relPrefix);
-      if (alive) setWorkflows(list.sort((a, b) => a.localeCompare(b)));
     }
     run().catch(() => {});
     return () => { alive = false; };
@@ -137,25 +140,27 @@ export function ImageGenBlockEditor({
     const examples = await loadExampleWorkflows();
     setExampleWorkflows(examples);
 
-    const useGlobal = comfyUiWorkflowsDir.trim() !== '';
-    let root: string;
-    let relPrefix: string;
+    if (projectDir) {
+      const projRoot = joinPath(projectDir, 'comfyUI_workflows');
+      if (await fsApi.exists(projRoot)) {
+        const projList = await collectWorkflowFiles(projRoot, 'comfyUI_workflows');
+        setProjectWorkflows(projList.sort((a, b) => a.localeCompare(b)));
+      } else {
+        setProjectWorkflows([]);
+      }
+    }
 
-    if (useGlobal) {
-      root = comfyUiWorkflowsDir.trim();
-      relPrefix = '';
+    if (comfyUiWorkflowsDir.trim()) {
+      const globalRoot = comfyUiWorkflowsDir.trim();
+      if (await fsApi.exists(globalRoot)) {
+        const globalList = await collectWorkflowFiles(globalRoot, '');
+        setWorkflows(globalList.sort((a, b) => a.localeCompare(b)));
+      } else {
+        setWorkflows([]);
+      }
     } else {
-      if (!projectDir) { setWorkflows([]); return; }
-      root = joinPath(projectDir, 'comfyUI_workflows');
-      relPrefix = 'comfyUI_workflows';
-    }
-
-    if (!await fsApi.exists(root)) {
       setWorkflows([]);
-      return;
     }
-    const list = await collectWorkflowFiles(root, relPrefix);
-    setWorkflows(list.sort((a, b) => a.localeCompare(b)));
   };
 
   const history = block.history ?? [];
@@ -399,18 +404,25 @@ export function ImageGenBlockEditor({
               value={block.workflowFile}
               onChange={e => update({ workflowFile: e.target.value })}
             >
-              <option value="">{ig.workflowNone}</option>
-              {exampleWorkflows.length > 0 && (
-                <optgroup label={ig.workflowGroupExamples}>
-                  {exampleWorkflows.map(wf => (
-                    <option key={wf} value={wf}>{wf.slice(EXAMPLES_PREFIX.length)}</option>
-                  ))}
-                </optgroup>
+              <option value="">{ag.workflowNone}</option>
+              {projectWorkflows.length > 0 && (
+                  <optgroup label={ag.workflowGroupProject}>
+                    {projectWorkflows.map(wf => (
+                        <option key={wf} value={wf}>{wf.replace(/^comfyUI_workflows\//, '')}</option>
+                    ))}
+                  </optgroup>
               )}
               {workflows.length > 0 && (
-                <optgroup label={ig.workflowGroupCustom}>
-                  {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
-                </optgroup>
+                  <optgroup label={ag.workflowGroupCustom}>
+                    {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+                  </optgroup>
+              )}
+              {exampleWorkflows.length > 0 && (
+                  <optgroup label={ag.workflowGroupExamples}>
+                    {exampleWorkflows.map(wf => (
+                        <option key={wf} value={wf}>{wf.slice(EXAMPLES_PREFIX.length)}</option>
+                    ))}
+                  </optgroup>
               )}
             </select>
             <button
