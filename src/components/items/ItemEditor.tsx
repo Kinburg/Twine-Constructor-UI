@@ -238,7 +238,7 @@ export function ItemEditor({ mode, itemId, initial, takenNames, takenVarNames, o
   const iconPreviewSrc = resolveEditorSrc(iconPreviewRaw, projectDir);
 
   return (
-    <ModalShell onClose={onClose} width={1060}>
+    <ModalShell onClose={onClose} width={1060} height={600}>
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-5 py-3.5 border-b border-slate-700 shrink-0">
         <div className="w-9 h-9 rounded-lg border border-slate-600 bg-slate-700/80 flex items-center justify-center shrink-0 overflow-hidden text-xl">

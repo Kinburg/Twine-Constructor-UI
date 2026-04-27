@@ -134,6 +134,7 @@ export const openaiProvider: LLMProviderImpl = {
         }
     },
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     async abort(_config: ProviderConfig): Promise<void> {
         console.log("Abort request for OpenAI-compatible API is handled by AbortController.");
     }

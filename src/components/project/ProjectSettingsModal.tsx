@@ -548,7 +548,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
 
   return (
     <>
-      <ModalShell width={900} onClose={onClose} dismissOnBackdrop={false}>
+      <ModalShell width={900}  height={600} onClose={onClose} dismissOnBackdrop={false}>
         {/* Header */}
         <div className="flex items-start gap-3 px-5 py-4 border-b border-slate-700">
           <div className="w-9 h-9 rounded-lg bg-indigo-600/20 border border-indigo-500/40 flex items-center justify-center text-indigo-300 shrink-0">

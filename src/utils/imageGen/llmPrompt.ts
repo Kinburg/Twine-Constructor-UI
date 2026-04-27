@@ -62,6 +62,7 @@ export async function generateImagePromptWithLlm(
   blockId: string,
   currentPrompt: string,
   llmMode: LLMMode = 'hint',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _styleHints: string[] = [],
   signal?: AbortSignal,
 ): Promise<string> {
@@ -140,6 +141,7 @@ export async function generateAvatarPromptWithLlm(
   slotLabel: string,
   currentPrompt: string,
   llmMode: LLMMode = 'hint',
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   _styleHints: string[] = [],
   signal?: AbortSignal,
   referencePrompt?: string,
