@@ -1,15 +1,21 @@
 import { useState, useRef } from 'react';
-import { useProjectStore, flattenVariables, flattenAssets, DEFAULT_PANEL_STYLE, redistributeWidths } from '../../store/projectStore';
+import { useProjectStore, flattenVariables, DEFAULT_PANEL_STYLE, redistributeWidths } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type {
   SidebarTab, SidebarRow, SidebarCell, CellContent, PanelStyle,
   CellText, CellVariable, CellProgress, CellImageStatic, CellImageBound, CellRaw,
-  CellButton, CellList, CellAudioVolume, ButtonAction, ButtonStyle, VarOperator,
-  ImageBoundMapping,
-  Variable, Asset,
+  CellButton, CellList, CellAudioVolume, CellImageGen, CellImageFromVar, CellDateTime,
+  CellPaperdoll,
+  ButtonAction, ButtonStyle, VarOperator,
+  Variable, AssetTreeNode,
 } from '../../types';
+import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 import { VariablePicker } from '../shared/VariablePicker';
 import { useConfirm } from '../shared/ConfirmModal';
+import { CellImageGenEditor } from '../shared/CellImageGenEditor';
+import { CellImageBoundGenModal } from '../shared/CellImageBoundGenModal';
+import { DateTimeCellEditor } from '../shared/DateTimeCellEditor';
+import { InventoryPopupShortcut } from '../blocks/InventoryPopupShortcut';
 
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
@@ -32,7 +38,7 @@ export function PanelEditor() {
   const { ask, modal: confirmModal } = useConfirm();
 
   const vars = flattenVariables(project.variableNodes);
-  const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
+  const assetNodes = project.assetNodes;
   const activeTab = sidebarPanel.tabs.find(t => t.id === activeTabId) ?? null;
   const style: PanelStyle = sidebarPanel.style ?? DEFAULT_PANEL_STYLE;
 
@@ -136,7 +142,7 @@ export function PanelEditor() {
             {/* ── Panel style settings ── */}
             <PanelStyleEditor style={style} onChange={updatePanelStyle} />
 
-            <TabRowsEditor tab={activeTab} vars={vars} imgAssets={imgAssets} />
+            <TabRowsEditor tab={activeTab} vars={vars} assetNodes={assetNodes} />
           </>
         )}
       </div>
@@ -220,11 +226,11 @@ function PanelStyleEditor({
 // ─── Tab rows editor ──────────────────────────────────────────────────────────
 
 function TabRowsEditor({
-  tab, vars, imgAssets,
+  tab, vars, assetNodes,
 }: {
   tab: SidebarTab;
   vars: Variable[];
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
 }) {
   const t = useT();
   const { addPanelRow, updatePanelRow, deletePanelRow, addPanelCell } = useProjectStore();
@@ -290,7 +296,7 @@ function TabRowsEditor({
                   row={row}
                   cell={cell}
                   vars={vars}
-                  imgAssets={imgAssets}
+                  assetNodes={assetNodes}
                 />,
               ]).filter(Boolean)}
               {row.cells.length === 0 && (
@@ -376,7 +382,7 @@ function CellWidthBar({
             <input
               type="number"
               min={1} max={99}
-              className="w-full text-[10px] bg-slate-800 text-slate-300 rounded px-1 py-0.5 outline-none border border-slate-700 focus:border-indigo-500 font-mono text-center"
+              className="w-full text-[10px] bg-slate-800 text-slate-300 rounded px-1.5 py-0.5 outline-none border border-slate-700 focus:border-indigo-500 font-mono text-center"
               value={cell.width}
               onChange={e => handleWidthChange(cell.id, Number(e.target.value))}
             />
@@ -463,13 +469,13 @@ function DragDivider({
 // ─── Cell editor ──────────────────────────────────────────────────────────────
 
 function CellEditor({
-  tabId, row, cell, vars, imgAssets,
+  tabId, row, cell, vars, assetNodes,
 }: {
   tabId: string;
   row: SidebarRow;
   cell: SidebarCell;
   vars: Variable[];
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
 }) {
   const t = useT();
   const { deletePanelCell, updateCellContent } = useProjectStore();
@@ -497,7 +503,7 @@ function CellEditor({
 
       {editing && (
         <CellEditModal
-          cell={cell} vars={vars} imgAssets={imgAssets}
+          cell={cell} vars={vars} assetNodes={assetNodes}
           onUpdateContent={updateContent}
           onClose={() => setEditing(false)}
         />
@@ -510,15 +516,19 @@ function CellEditor({
 
 function cellTypeLabelFromT(t: ReturnType<typeof useT>, type: CellContent['type']): string {
   const m: Record<CellContent['type'], string> = {
-    text:           t.cellModal.typeText,
-    variable:       t.cellModal.typeVariable,
-    progress:       t.cellModal.typeProgress,
-    'image-static': t.cellModal.typeImageStatic,
-    'image-bound':  t.cellModal.typeImageBoundShort,
-    raw:            t.cellModal.typeRaw,
-    button:         t.cellModal.typeButton,
-    list:           t.cellModal.typeList,
-    'audio-volume': t.cellModal.typeAudioVolume,
+    text:             t.cellModal.typeText,
+    variable:         t.cellModal.typeVariable,
+    progress:         t.cellModal.typeProgress,
+    'image-static':   t.cellModal.typeImageStatic,
+    'image-bound':    t.cellModal.typeImageBoundShort,
+    'image-gen':      t.cellModal.typeImageGenShort,
+    'image-from-var': t.cellModal.typeImageFromVarShort,
+    raw:              t.cellModal.typeRaw,
+    button:           t.cellModal.typeButton,
+    list:             t.cellModal.typeList,
+    'audio-volume':   t.cellModal.typeAudioVolume,
+    'date-time':      t.cellModal.typeDateTime,
+    paperdoll:        t.cellModal.typePaperdoll,
   };
   return m[type];
 }
@@ -557,9 +567,39 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
       </div>
     );
   }
-  if (c.type === 'image-static' || c.type === 'image-bound') return (
-    <div className="flex-1 flex items-center justify-center p-1">
-      <span className="text-xs text-slate-500">🖼️</span>
+  if (c.type === 'image-static') {
+    const filename = c.src ? c.src.split('/').pop()! : '';
+    return (
+      <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+        <span className="text-slate-400 shrink-0">🖼️</span>
+        <span className="text-xs text-slate-300 font-mono truncate flex-1">
+          {filename || <em className="text-slate-600 not-italic">—</em>}
+        </span>
+      </div>
+    );
+  }
+  if (c.type === 'image-bound') return (
+    <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
+      {c.mapping.length > 0 && <span className="text-xs text-slate-500 shrink-0">×{c.mapping.length}</span>}
+    </div>
+  );
+  if (c.type === 'image-gen') {
+    const filename = c.src ? c.src.split('/').pop()! : '';
+    return (
+      <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+        <span className="text-slate-400 shrink-0">🖼️✨</span>
+        <span className="text-xs text-slate-300 truncate flex-1">
+          {filename || c.prompt || <em className="text-slate-600 not-italic">—</em>}
+        </span>
+      </div>
+    );
+  }
+  if (c.type === 'image-from-var') return (
+    <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
+      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
     </div>
   );
   if (c.type === 'raw') return (
@@ -597,6 +637,12 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   if (c.type === 'audio-volume') return (
     <span className="text-xs text-amber-300 p-1 truncate flex-1">🔊 Volume</span>
   );
+  if (c.type === 'date-time') return (
+    <span className="text-xs text-orange-300 p-1 font-mono truncate flex-1">
+      {c.prefix}{v ? `$${v.name}` : '?'}{c.suffix}
+      <span className="text-[10px] text-slate-500 ml-1">({c.format})</span>
+    </span>
+  );
   return null;
 }
 
@@ -610,24 +656,28 @@ const DEFAULT_BUTTON_STYLE: ButtonStyle = {
 
 function makeDefaultContent(type: CellContent['type']): CellContent {
   switch (type) {
-    case 'text':         return { type: 'text', value: '' } as CellText;
-    case 'variable':     return { type: 'variable', variableId: '', prefix: '', suffix: '' } as CellVariable;
-    case 'progress':     return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', emptyColor: '#333333', textColor: '', colorRange: null, showText: false } as CellProgress;
-    case 'image-static': return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
-    case 'image-bound':  return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
-    case 'raw':          return { type: 'raw', code: '' } as CellRaw;
-    case 'button':       return { type: 'button', label: '', style: { ...DEFAULT_BUTTON_STYLE }, actions: [] } as CellButton;
-    case 'list':         return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
-    case 'audio-volume': return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
+    case 'text':           return { type: 'text', value: '' } as CellText;
+    case 'variable':       return { type: 'variable', variableId: '', prefix: '', suffix: '' } as CellVariable;
+    case 'progress':       return { type: 'progress', variableId: '', maxValue: 100, color: '#4ade80', emptyColor: '#333333', textColor: '', colorRange: null, showText: false } as CellProgress;
+    case 'image-static':   return { type: 'image-static', src: '', objectFit: 'cover' } as CellImageStatic;
+    case 'image-bound':    return { type: 'image-bound', variableId: '', mapping: [], defaultSrc: '', objectFit: 'cover' } as CellImageBound;
+    case 'image-gen':      return { type: 'image-gen', promptMode: 'manual', prompt: '', seedMode: 'random', workflowFile: '', alt: '', src: '', width: 0 } as CellImageGen;
+    case 'image-from-var': return { type: 'image-from-var', variableId: '', objectFit: 'cover' } as CellImageFromVar;
+    case 'raw':            return { type: 'raw', code: '' } as CellRaw;
+    case 'button':         return { type: 'button', label: '', style: { ...DEFAULT_BUTTON_STYLE }, actions: [] } as CellButton;
+    case 'list':           return { type: 'list', variableId: '', separator: ', ', emptyText: '', prefix: '', suffix: '' } as CellList;
+    case 'audio-volume':   return { type: 'audio-volume', showMuteButton: true } as CellAudioVolume;
+    case 'date-time':      return { type: 'date-time', variableId: '', format: 'DD.MM.YYYY HH:mm', prefix: '', suffix: '' } as CellDateTime;
+    case 'paperdoll':      return { type: 'paperdoll', charId: '', showLabels: false } as CellPaperdoll;
   }
 }
 
 function CellEditModal({
-  cell, vars, imgAssets, onUpdateContent, onClose,
+  cell, vars, assetNodes, onUpdateContent, onClose,
 }: {
   cell: SidebarCell;
   vars: Variable[];
-  imgAssets: Asset[];
+  assetNodes: AssetTreeNode[];
   onUpdateContent: (c: CellContent) => void;
   onClose: () => void;
 }) {
@@ -635,16 +685,22 @@ function CellEditModal({
   const { project } = useProjectStore();
   const c = cell.content;
 
+  const [genModalOpen, setGenModalOpen] = useState(false);
+
   const CELL_TYPES: { value: CellContent['type']; label: string }[] = [
-    { value: 'text',         label: t.cellModal.typeText },
-    { value: 'variable',     label: t.cellModal.typeVariable },
-    { value: 'progress',     label: t.cellModal.typeProgress },
-    { value: 'image-static', label: t.cellModal.typeImageStatic },
-    { value: 'image-bound',  label: t.cellModal.typeImageBound },
-    { value: 'raw',          label: t.cellModal.typeRaw },
-    { value: 'button',       label: t.cellModal.typeButton },
-    { value: 'list',         label: t.cellModal.typeList },
-    { value: 'audio-volume', label: t.cellModal.typeAudioVolume },
+    { value: 'text',           label: t.cellModal.typeText },
+    { value: 'variable',       label: t.cellModal.typeVariable },
+    { value: 'progress',       label: t.cellModal.typeProgress },
+    { value: 'image-static',   label: t.cellModal.typeImageStatic },
+    { value: 'image-bound',    label: t.cellModal.typeImageBound },
+    { value: 'image-gen',      label: t.cellModal.typeImageGen },
+    { value: 'image-from-var', label: t.cellModal.typeImageFromVar },
+    { value: 'raw',            label: t.cellModal.typeRaw },
+    { value: 'button',         label: t.cellModal.typeButton },
+    { value: 'list',           label: t.cellModal.typeList },
+    { value: 'audio-volume',   label: t.cellModal.typeAudioVolume },
+    { value: 'date-time',      label: t.cellModal.typeDateTime },
+    { value: 'paperdoll',      label: t.cellModal.typePaperdoll },
   ];
 
   const handleTypeChange = (type: CellContent['type']) => {
@@ -652,9 +708,9 @@ function CellEditModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60" onClick={onClose}>
-      <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3"
-        onClick={e => e.stopPropagation()}>
+    <>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+      <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-white">{t.cellModal.title}</span>
           <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}>✕</button>
@@ -769,7 +825,7 @@ function CellEditModal({
         {c.type === 'image-static' && (
           <>
             <MField label={t.cellModal.imageLabel}>
-              <AssetImagePicker imgAssets={imgAssets} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
+              <ImageAssetPicker assetNodes={assetNodes} value={c.src} onChange={src => onUpdateContent({ ...c, src })} />
             </MField>
             <ObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
           </>
@@ -779,68 +835,42 @@ function CellEditModal({
           <>
             <VarSelect value={c.variableId} onChange={v => onUpdateContent({ ...c, variableId: v })} />
             <ObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-slate-400">{t.cellModal.mappingsLabel}</span>
-                <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer"
-                  onClick={() => onUpdateContent({
-                    ...c,
-                    mapping: [...c.mapping, {
-                      id: crypto.randomUUID(), matchType: 'exact', value: '', rangeMin: '', rangeMax: '', src: '',
-                    } satisfies ImageBoundMapping],
-                  })}>{t.cellModal.addMapping}</button>
-              </div>
+            <ImageMappingEditor
+              mapping={c.mapping}
+              onChange={mapping => onUpdateContent({ ...c, mapping })}
+              defaultSrc={c.defaultSrc}
+              onDefaultSrcChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })}
+              assetNodes={assetNodes}
+              hideDefault
+            />
+            <button
+              type="button"
+              className="self-start px-3 py-1.5 text-xs rounded bg-indigo-700 hover:bg-indigo-600 text-white cursor-pointer transition-colors"
+              onClick={() => setGenModalOpen(true)}
+            >{t.cellModal.openImageBoundGen}</button>
+          </>
+        )}
 
-              {c.mapping.map((m, i) => {
-                const patchM = (patch: Partial<ImageBoundMapping>) =>
-                  onUpdateContent({ ...c, mapping: c.mapping.map((x, j) => j === i ? { ...x, ...patch } : x) });
-                const mt = m.matchType ?? 'exact';
-                return (
-                  <div key={m.id ?? i} className="flex flex-col gap-1.5 border border-slate-700/60 rounded p-1.5">
-                    <div className="flex items-center gap-1">
-                      <span className="text-xs text-slate-500 shrink-0">{t.cellModal.matchMode}</span>
-                      <select className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer"
-                        value={mt} onChange={e => patchM({ matchType: e.target.value as 'exact' | 'range' })}>
-                        <option value="exact">{t.cellModal.matchExact}</option>
-                        <option value="range">{t.cellModal.matchRange}</option>
-                      </select>
-                      <button className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
-                        onClick={() => onUpdateContent({ ...c, mapping: c.mapping.filter((_, j) => j !== i) })}>✕</button>
-                    </div>
-                    {mt === 'exact' && (
-                      <div className="flex gap-1 items-center">
-                        <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.valueLabel}</span>
-                        <input className="flex-1 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                          placeholder="100" value={m.value} onChange={e => patchM({ value: e.target.value })} />
-                      </div>
-                    )}
-                    {mt === 'range' && (
-                      <div className="grid grid-cols-2 gap-1">
-                        <div className="flex gap-1 items-center">
-                          <span className="text-xs text-slate-500 shrink-0 w-10">{t.cellModal.fromLabel}</span>
-                          <input className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                            placeholder="0" value={m.rangeMin ?? ''} onChange={e => patchM({ rangeMin: e.target.value })} />
-                        </div>
-                        <div className="flex gap-1 items-center">
-                          <span className="text-xs text-slate-500 shrink-0">{t.cellModal.toLabel}</span>
-                          <input className="flex-1 min-w-0 bg-slate-800 text-xs text-white rounded px-1.5 py-1 outline-none border border-slate-600 font-mono"
-                            placeholder="20" value={m.rangeMax ?? ''} onChange={e => patchM({ rangeMax: e.target.value })} />
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex gap-1 items-start">
-                      <span className="text-xs text-slate-500 shrink-0 pt-1.5 w-10">{t.cellModal.fileLabel}</span>
-                      <AssetImagePicker imgAssets={imgAssets} value={m.src} onChange={src => patchM({ src })} />
-                    </div>
-                  </div>
-                );
-              })}
+        {c.type === 'image-gen' && (
+          <CellImageGenEditor
+            content={c}
+            cellId={cell.id}
+            sceneId=""
+            onUpdate={patch => onUpdateContent({ ...c, ...patch })}
+          />
+        )}
 
-              <MField label={t.cellModal.defaultLabel}>
-                <AssetImagePicker imgAssets={imgAssets} value={c.defaultSrc}
-                  onChange={defaultSrc => onUpdateContent({ ...c, defaultSrc })} />
-              </MField>
-            </div>
+        {c.type === 'image-from-var' && (
+          <>
+            <MField label={t.cellModal.variableLabel}>
+              <VariablePicker
+                value={c.variableId}
+                onChange={id => onUpdateContent({ ...c, variableId: id })}
+                nodes={project.variableNodes}
+                placeholder={t.cellModal.selectVariable}
+              />
+            </MField>
+            <ObjectFitSelect value={c.objectFit} onChange={v => onUpdateContent({ ...c, objectFit: v })} />
           </>
         )}
 
@@ -908,10 +938,55 @@ function CellEditModal({
           </label>
         )}
 
+        {c.type === 'date-time' && (
+          <DateTimeCellEditor
+            c={c}
+            nodes={project.variableNodes}
+            onChange={patch => onUpdateContent({ ...c, ...patch })}
+            Field={MField}
+          />
+        )}
+
+        {c.type === 'paperdoll' && (
+          <>
+            <MField label={t.cellModal.paperdollCharLabel}>
+              <select
+                className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
+                value={c.charId}
+                onChange={e => onUpdateContent({ ...c, charId: e.target.value })}
+              >
+                <option value="">{t.cellModal.paperdollNoChar}</option>
+                {project.characters.map(ch => (
+                  <option key={ch.id} value={ch.id}>
+                    {ch.name}{ch.paperdoll ? ` (${ch.paperdoll.slots.length})` : ''}
+                  </option>
+                ))}
+              </select>
+            </MField>
+            <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer select-none">
+              <input type="checkbox" checked={c.showLabels ?? false}
+                onChange={e => onUpdateContent({ ...c, showLabels: e.target.checked })} />
+              {t.cellModal.paperdollShowLabels}
+            </label>
+          </>
+        )}
+
         <button className="mt-2 px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium cursor-pointer self-end"
           onClick={onClose}>{t.cellModal.done}</button>
       </div>
     </div>
+
+    {genModalOpen && c.type === 'image-bound' && (
+      <CellImageBoundGenModal
+        cell={c}
+        cellId={cell.id}
+        variableId={c.variableId}
+        sceneId=""
+        onSave={updated => onUpdateContent(updated)}
+        onClose={() => setGenModalOpen(false)}
+      />
+    )}
+    </>
   );
 }
 
@@ -1004,34 +1079,6 @@ function ObjectFitSelect({ value, onChange }: { value: 'cover' | 'contain'; onCh
   );
 }
 
-function AssetImagePicker({
-  imgAssets, value, onChange,
-}: {
-  imgAssets: Asset[];
-  value: string;
-  onChange: (src: string) => void;
-}) {
-  const t = useT();
-  const matched = imgAssets.find(a => a.relativePath === value);
-  return (
-    <div className="flex-1 flex flex-col gap-1 min-w-0">
-      {imgAssets.length > 0 && (
-        <select className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer"
-          value={matched?.id ?? ''}
-          onChange={e => {
-            const asset = imgAssets.find(a => a.id === e.target.value);
-            if (asset) onChange(asset.relativePath);
-            else if (e.target.value === '') onChange('');
-          }}>
-          <option value="">{t.cellModal.selectAsset}</option>
-          {imgAssets.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-        </select>
-      )}
-      <input className="w-full bg-slate-800 text-xs text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
-        placeholder="assets/img.png" value={value} onChange={e => onChange(e.target.value)} />
-    </div>
-  );
-}
 
 // ─── Cell button editor ────────────────────────────────────────────────────────
 
@@ -1213,6 +1260,7 @@ function CellButtonEditor({
                       {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
                     </select>
                   )}
+                  <InventoryPopupShortcut onResolved={sceneId => patchAction(a.id, { targetSceneId: sceneId } as Partial<ButtonAction>)} />
                   <button className="text-slate-600 hover:text-red-400 text-sm cursor-pointer shrink-0"
                     title={t.cellModal.buttonDeleteAction} onClick={() => removeAction(a.id)}>✕</button>
                 </div>

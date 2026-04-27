@@ -19,6 +19,9 @@ export interface Translations {
     assets: string;
     panel: string;
     watchers: string;
+    items: string;
+    containers: string;
+    plugins: string;
   };
 
   scene: {
@@ -69,6 +72,7 @@ export interface Translations {
     link: string;
     inputField: string;
     image: string;
+    imageGen: string;
     video: string;
     raw: string;
     note: string;
@@ -80,6 +84,11 @@ export interface Translations {
     function: string;
     popup: string;
     audio: string;
+    container: string;
+    timeManipulation: string;
+    paperdoll: string;
+    inventory: string;
+    plugin: string;
     /** Action tooltips / labels */
     drag: string;
     copy: string;
@@ -101,6 +110,7 @@ export interface Translations {
       interaction: string;
       logic: string;
       system: string;
+      plugins: string;
     };
     text:        { label: string; desc: string };
     dialogue:    { label: string; desc: string };
@@ -111,6 +121,7 @@ export interface Translations {
     link:        { label: string; desc: string };
     inputField:  { label: string; desc: string };
     image:       { label: string; desc: string };
+    imageGen:    { label: string; desc: string };
     video:       { label: string; desc: string };
     raw:         { label: string; desc: string };
     note:        { label: string; desc: string };
@@ -122,6 +133,68 @@ export interface Translations {
     function:    { label: string; desc: string };
     popup:       { label: string; desc: string };
     audio:       { label: string; desc: string };
+    container:   { label: string; desc: string };
+    timeManipulation: { label: string; desc: string };
+    paperdoll:        { label: string; desc: string };
+    inventory:        { label: string; desc: string };
+  };
+
+  pluginBlock: {
+    editPlugin: string;
+    editPluginTooltip: string;
+    notFound: string;
+    noParams: string;
+  };
+
+  pluginEditor: {
+    title: string;
+    newPlugin: string;
+    metaSection: string;
+    paramsSection: string;
+    blocksSection: string;
+    name: string;
+    icon: string;
+    color: string;
+    description: string;
+    version: string;
+    addParam: string;
+    paramKey: string;
+    paramLabel: string;
+    paramDefault: string;
+    moveUp: string;
+    moveDown: string;
+    noParams: string;
+    paramsHint: string;
+    blocksHint: string;
+    noBlocks: string;
+    unsupportedBlockType: string;
+    save: string;
+    delete: string;
+    confirmDelete: string;
+    savedToast: string;
+    deletedToast: string;
+    kind_text: string;
+    kind_number: string;
+    kind_bool: string;
+    kind_array: string;
+    kind_datetime: string;
+    kind_object: string;
+    kind_scene: string;
+    objectFields: string;
+    objectFieldsNone: string;
+    validationNameRequired: string;
+    validationKeyInvalid: string;
+    validationKeyDuplicate: string;
+  };
+
+  pluginManager: {
+    newPlugin: string;
+    importPlugin: string;
+    exportPlugin: string;
+    duplicatePlugin: string;
+    empty: string;
+    errorLoading: string;
+    confirmDelete: (name: string) => string;
   };
 
   includeBlock: {
@@ -217,12 +290,16 @@ export interface Translations {
     projectSettingsDesc: string;
     editorPrefs: string;
     editorPrefsDesc: string;
+    llmSettings: string;
+    llmSettingsDesc: string;
     about: string;
     aboutDesc: string;
     aboutVersion: (v: string) => string;
     successSave: string;
     successExportHtml: string;
     successExportTwee: string;
+    unapprovedImagesTitle: string;
+    unapprovedImagesMessage: (scenes: string[]) => string;
   };
 
   // ─── Asset manager ──────────────────────────────────────────────────────────
@@ -270,6 +347,11 @@ export interface Translations {
     add: string;
     noName: string;
     fieldName: string;
+    fieldVarName: string;
+    varNameHint: string;
+    varNameInvalid: string;
+    varNameTaken: string;
+    varNameEmpty: string;
     fieldNameColor: string;
     fieldDialogBg: string;
     fieldAccent: string;
@@ -296,6 +378,32 @@ export interface Translations {
     customVarsEmpty: string;
     customVarsNameEmpty: string;
     customVarsConfirmDelete: (name: string) => string;
+    initialInventorySection: string;
+    initialInventoryAdd: string;
+    initialInventoryEmpty: string;
+    initialInventoryQty: string;
+    initialInventoryEquipped: string;
+    initialInventoryNoItems: string;
+    isHero: string;
+    heroTooltip: string;
+    paperdollSection: string;
+    paperdollAddSlot: string;
+    paperdollNoSlots: string;
+    paperdollSlotLabel: string;
+    paperdollSlotId: string;
+    paperdollRowLabel: string;
+    paperdollColLabel: string;
+    paperdollGridCols: string;
+    paperdollGridRows: string;
+    paperdollCellSize: string;
+    paperdollDefaultItem: string;
+    paperdollDefaultItemNone: string;
+    paperdollSlotClickable: string;
+    paperdollPlaceholderIcon: string;
+    paperdollPlaceholderStatic: string;
+    paperdollPlaceholderBound: string;
+    paperdollPlaceholderSelectVar: string;
+    paperdollConfirmDelete: (label: string) => string;
   };
 
   // ─── Variables ──────────────────────────────────────────────────────────────
@@ -314,6 +422,7 @@ export interface Translations {
     typeString: string;
     typeBoolean: string;
     typeArray: string;
+    typeDateTime: string;
     defaultPlaceholderNumber: string;
     defaultPlaceholderText: string;
     descriptionPlaceholder: string;
@@ -386,6 +495,36 @@ export interface Translations {
     // ── Audio volume cell fields ──
     typeAudioVolume: string;
     audioVolumeMuteButton: string;
+    // ── New image cell types ──
+    typeImageGen: string;
+    typeImageGenShort: string;
+    typeImageFromVar: string;
+    typeImageFromVarShort: string;
+    openImageBoundGen: string;
+    variableLabel: string;
+    // ── Date/Time cell fields ──
+    typeDateTime: string;
+    displayModeLabel: string;
+    displayModeText: string;
+    displayModeClock: string;
+    displayModeDigital: string;
+    displayModeCalendar: string;
+    displayModeClockCalendar: string;
+    displayModeDigitalCalendar: string;
+    fmtTime: string;
+    fmtDate: string;
+    fmtDateTime: string;
+    fmtWeekday: string;
+    fmtWeekdayTime: string;
+    fmtWeekdayDate: string;
+    fmtWeekdayFull: string;
+    fmtMonthYear: string;
+    fmtCustom: string;
+    // ── Paperdoll cell fields ──
+    typePaperdoll: string;
+    paperdollCharLabel: string;
+    paperdollShowLabels: string;
+    paperdollNoChar: string;
   };
 
   // ─── Shared: rows/cells editor UI (Panel + Table) ──────────────────────────
@@ -492,6 +631,178 @@ export interface Translations {
     altPlaceholder: string;
     widthLabel: string;
     widthPlaceholder: string;
+  };
+
+  imageGenBlock: {
+    providerLabel: string;
+    providerComfyui: string;
+    providerPollinations: string;
+    providerUrlLabel: string;
+    pollinationsModelLabel: string;
+    pollinationsModelPlaceholder: string;
+    pollinationsTokenLabel: string;
+    pollinationsTokenPlaceholder: string;
+    workflowLabel: string;
+    workflowNone: string;
+    workflowRefresh: string;
+    workflowGroupExamples: string;
+    workflowGroupProject: string;
+    workflowGroupCustom: string;
+    promptModeLabel: string;
+    promptModeManual: string;
+    promptModeLlm: string;
+    promptLabel: string;
+    promptPlaceholder: string;
+    negativePromptLabel: string;
+    negativePromptPlaceholder: string;
+    seedModeLabel: string;
+    seedModeManual: string;
+    seedModeRandom: string;
+    seedLabel: string;
+    seedPlaceholder: string;
+    llmGeneratePrompt: string;
+    llmGenerating: string;
+    generateImage: string;
+    generatingImage: string;
+    historyLabel: string;
+    historyEmpty: string;
+    currentImageLabel: string;
+    widthLabel: string;
+    widthPlaceholder: string;
+    altLabel: string;
+    altPlaceholder: string;
+    genWidthLabel: string;
+    genWidthPlaceholder: string;
+    genHeightLabel: string;
+    genHeightPlaceholder: string;
+    genSizeLabel: string;
+    cancelGeneration: string;
+    clearHistory: string;
+    clearHistoryConfirm: string;
+    approveImage: string;
+    approveImageTitle: string;
+    unapproveImage: string;
+    unapproveImageTitle: string;
+    approvedBadge: string;
+    draftBadge: string;
+    doubleClickToExpand: string;
+    approveSaveTitle: string;
+    approveFolderLabel: string;
+    approveFilenameLabel: string;
+    approveSaveButton: string;
+    approveOutsideRelease: string;
+    errorApprove: string;
+    errorUnapprove: string;
+    llmModeContinue: string;
+    llmModeRephrase: string;
+    llmModeHint: string;
+    styleHintsLabel: string;
+    styleHintsCustomPlaceholder: string;
+    styleHintsAddBtn: string;
+    errorNoProjectDir: string;
+    errorNoWorkflow: string;
+    errorNoPrompt: string;
+    errorGeneratePrompt: string;
+    errorGenerateImage: string;
+  };
+
+  avatarGen: {
+    modalTitleStatic: string;
+    modalTitleDynamic: string;
+    generateBtn: string;
+    providerLabel: string;
+    providerComfyui: string;
+    providerPollinations: string;
+    providerUrlLabel: string;
+    workflowLabel: string;
+    workflowNone: string;
+    workflowRefresh: string;
+    workflowGroupExamples: string;
+    workflowGroupProject: string;
+    workflowGroupCustom: string;
+    pollinationsModelLabel: string;
+    pollinationsModelPlaceholder: string;
+    pollinationsTokenLabel: string;
+    pollinationsTokenPlaceholder: string;
+    genSizeLabel: string;
+    genWidthPlaceholder: string;
+    genHeightPlaceholder: string;
+    slotLabelStatic: string;
+    slotLabelDefault: string;
+    promptLabel: string;
+    promptPlaceholder: string;
+    negativePromptLabel: string;
+    negativePromptPlaceholder: string;
+    generatePromptBtn: string;
+    generatingPrompt: string;
+    generateImageBtn: string;
+    generatingImage: string;
+    cancelBtn: string;
+    historyLabel: string;
+    historyEmpty: string;
+    approveAllBtn: string;
+    approveSuccess: string;
+    approvedBadge: string;
+    doubleClickToExpand: string;
+    llmModeContinue: string;
+    llmModeRephrase: string;
+    llmModeHint: string;
+    styleHintsLabel: string;
+    styleHintsCustomPlaceholder: string;
+    styleHintsAddBtn: string;
+    seedLabel: string;
+    seedLock: string;
+    seedRandomize: string;
+    refImageCheckbox: string;
+    refImageTooltip: string;
+    fromAssetsLabel: string;
+    hintLabel: string;
+    hintPlaceholder: string;
+    generateFromHintBtn: string;
+    generateFromHintNoRef: string;
+    errorNoProjectDir: string;
+    errorNoWorkflow: string;
+    errorNoPrompt: string;
+    errorGenerateImage: string;
+    errorGeneratePrompt: string;
+    errorApprove: string;
+  };
+
+  // ─── Item icon generation modal (overrides for item context) ───────────────
+  itemIconGen: {
+    promptPlaceholder: string;
+    hintPlaceholder: string;
+    generateFromHintNoRef: string;
+    approveSuccess: string;
+    errorApprove: string;
+  };
+
+  // ─── Paperdoll slot generation modal (overrides for paperdoll-slot context) ──
+  paperdollSlotGen: {
+    promptPlaceholder: string;
+    hintPlaceholder: string;
+    generateFromHintNoRef: string;
+    approveSuccess: string;
+    errorApprove: string;
+  };
+
+  // ─── Container background generation modal (overrides for container context) ─
+  containerGen: {
+    promptPlaceholder: string;
+    hintPlaceholder: string;
+    generateFromHintNoRef: string;
+    approveSuccess: string;
+    errorApprove: string;
+  };
+
+  // ─── Cell image-bound generation modal (overrides for non-avatar context) ───
+  cellBoundGen: {
+    modalTitle: string;
+    promptPlaceholder: string;
+    hintPlaceholder: string;
+    generateFromHintNoRef: string;
+    approveSuccess: string;
+    errorApprove: string;
   };
 
   videoBlock: {
@@ -646,6 +957,43 @@ export interface Translations {
     randomLengthSuffix: string;
   };
 
+  timeManipulationBlock: {
+    title: string;
+    variableLabel: string;
+    years: string;
+    months: string;
+    days: string;
+    hours: string;
+    minutes: string;
+  };
+
+  // ─── Shared image mapping editor ────────────────────────────────────────────
+  imageMappingEditor: {
+    mappingsLabel: string;
+    addOne: string;
+    generateBtn: string;
+    noMappings: string;
+    emptySlots: (count: number) => string;
+    matchExact: string;
+    matchRange: string;
+    valueLabel: string;
+    fromLabel: string;
+    toLabel: string;
+    fileLabel: string;
+    defaultLabel: string;
+    selectAsset: string;
+    genByRange: string;
+    genMin: string;
+    genMax: string;
+    genCount: string;
+    genStepPreview: (step: number, count: number) => string;
+    genReplace: string;
+    genAppend: string;
+    genByValues: string;
+    genValuesPlaceholder: string;
+    genValuesPreview: (count: number) => string;
+  };
+
   // ─── Array accessor UI ──────────────────────────────────────────────────────
   arrayAccessor: {
     label: string;
@@ -718,6 +1066,35 @@ export interface Translations {
     popupTitle:  string;
     popupTitlePlaceholder: string;
     noPopupScenes: string;
+    createInventoryPopup: string;
+    createInventoryPopupTitle: string;
+  };
+
+  // ─── Inventory block ──────────────────────────────────────────────────────────
+  inventoryBlock: {
+    charLabel:       string;
+    charNone:        string;
+    titleLabel:      string;
+    titlePlaceholder: string;
+    noHeroHint:      string;
+    // Runtime dialog strings (injected into exported HTML)
+    runtimeAll:            string;
+    runtimeCategoryWear:   string;
+    runtimeCategoryConsume:string;
+    runtimeCategoryMisc:   string;
+    runtimeEquip:          string;
+    runtimeUnequip:        string;
+    runtimeUse:            string;
+    runtimeDrop:           string;
+    runtimeEmpty:          string;
+    runtimeDropConfirmTitle: string;
+    runtimeDropConfirmMsg:   string;  // supports {name} {qty} placeholders
+    runtimeDropConfirmYes:   string;
+    runtimeDropConfirmNo:    string;
+    runtimeSlotMissingTitle: string;
+    runtimeSlotMissingMsg:   string;  // supports {slot} placeholder
+    runtimeQty:            string;   // "Qty: {n}"
+    runtimeEquipped:       string;
   };
 
   // ─── Editor preferences modal ────────────────────────────────────────────────
@@ -760,6 +1137,53 @@ export interface Translations {
     presetSaved: string;
     builtInPresets: string;
     userPresets: string;
+
+    sectionLLM: string;
+    llmEnabled: string;
+  };
+
+  // ─── LLM Settings modal ─────────────────────────────────────────────────────
+  llmSettingsModal: {
+    title: string;
+    urlLabel: string;
+    maxTokensLabel: string;
+    temperatureLabel: string;
+    systemPromptLabel: string;
+    systemPromptPlaceholder: string;
+    imageGenSectionLabel: string;
+    imageGenProviderLabel: string;
+    comfyUiUrlLabel: string;
+    comfyUiUrlPlaceholder: string;
+    comfyUiWorkflowsDirLabel: string;
+    comfyUiWorkflowsDirPlaceholder: string;
+    comfyUiWorkflowsDirHint: string;
+    comfyUiWorkflowsDirBrowse: string;
+    pollinationsModelLabel: string;
+    pollinationsModelPlaceholder: string;
+    pollinationsTokenLabel: string;
+    pollinationsTokenPlaceholder: string;
+    // Merged from standalone AI Settings modal into Project Settings > LLM tab
+    sectionLlm: string;
+    sectionParams: string;
+    providerLabel: string;
+    geminiApiKeyLabel: string;
+    geminiApiKeyPlaceholder: string;
+    geminiModelLabel: string;
+    refreshModels: string;
+    refreshingModels: string;
+    customModelPlaceholder: string;
+    openaiUrlLabel: string;
+    openaiUrlHint: string;
+    openaiApiKeyLabel: string;
+    openaiModelLabel: string;
+    filterThoughtLabel: string;
+    filterThoughtHint: string;
+    presetsLabel: string;
+    generationHistoryLabel: string;
+    generationHistoryMemory: string;
+    generationHistoryProject: string;
+    generationHistoryDisabled: string;
+    autoSaveHint: string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────
@@ -795,6 +1219,33 @@ export interface Translations {
     headerImageNote:        string;
     successSave:            string;
     successCreate:          string;
+    // AI features
+    aiLlmSettingsBtn:       string;
+    sectionAiImage:         string;
+    aiExpandDesc:           string;
+    aiExpandDescBusy:       string;
+    aiGenerateLore:         string;
+    aiGenerateLoreBusy:     string;
+    aiGeneratePrompt:       string;
+    aiGeneratePromptBusy:   string;
+    aiImageReady:           string;
+    aiImageRemove:          string;
+    aiLlmDisabledHint:      string;
+    aiExpandError:          string;
+    aiLoreError:            string;
+    aiImageErrorNoPrompt:   string;
+    aiImageError:           string;
+    // Tabbed layout (merged AI Settings)
+    tabGeneral:             string;
+    tabAppearance:          string;
+    tabAiImage:             string;
+    tabAdvanced:            string;
+    sectionColors:          string;
+    fieldLore:              string;
+    fieldLorePlaceholder:   string;
+    fieldLoreNote:          string;
+    headerImageAiHint:      string;
+    currentHeaderImage:     string;
   };
 
   // ─── Scene settings modal ────────────────────────────────────────────────────
@@ -823,6 +1274,120 @@ export interface Translations {
     addAction: string;
     unconditionalLabel: string;
     unconditionalHint: string;
+  };
+
+  // ─── Items ───────────────────────────────────────────────────────────────────
+  items: {
+    add: string;
+    empty: string;
+    confirmDelete: (name: string) => string;
+    noName: string;
+    defaultName: string;
+    createTitle: string;
+    editTitle: string;
+    save: string;
+    fieldName: string;
+    fieldVarName: string;
+    varNameHint: string;
+    varNameInvalid: string;
+    varNameTaken: string;
+    varNameEmpty: string;
+    nameTaken: string;
+    nameEmpty: string;
+    fieldCategory: string;
+    categoryWearable: string;
+    categoryConsumable: string;
+    categoryMisc: string;
+    fieldStackable: string;
+    fieldTargetSlot: string;
+    targetSlotHint: string;
+    fieldIcon: string;
+    iconStatic: string;
+    iconGenerated: string;
+    iconBound: string;
+    iconBoundSelectVar: string;
+    consumableFuncHint: string;
+    customVarsSection: string;
+    customVarsAdd: string;
+    customVarsEmpty: string;
+    customVarsNamePlaceholder: string;
+    customVarsConfirmDelete: (name: string) => string;
+    // tabbed modal
+    tabBasics: string;
+    tabIcon: string;
+    tabUsage: string;
+    tabProps: string;
+    sectionIdentity: string;
+    sectionCategory: string;
+    sectionSlot: string;
+    previewLabel: string;
+    modalSubtitle: string;
+    fieldDescription: string;
+    descriptionPlaceholder: string;
+    categoryWearableSubtitle: string;
+    categoryConsumableSubtitle: string;
+    categoryMiscSubtitle: string;
+    usageSection: string;
+    usageSectionDesc: string;
+    usageNotApplicable: string;
+    usageFuncCreatedOnSave: string;
+    usageFuncOpenBtn: string;
+    stackableLabel: string;
+    stackableHint: string;
+  };
+
+  // ─── Containers ─────────────────────────────────────────────────────────────
+  containers: {
+    add: string;
+    empty: string;
+    confirmDelete: (name: string) => string;
+    noName: string;
+    defaultName: string;
+    createTitle: string;
+    editTitle: string;
+    save: string;
+    fieldName: string;
+    fieldVarName: string;
+    varNameHint: string;
+    varNameEmpty: string;
+    varNameInvalid: string;
+    varNameTaken: string;
+    nameTaken: string;
+    nameEmpty: string;
+    fieldMode: string;
+    modeShop: string;
+    modeChest: string;
+    modeLoot: string;
+    stockSection: string;
+    stockAdd: string;
+    stockEmpty: string;
+    stockItem: string;
+    stockQty: string;
+    stockPrice: string;
+    stockInfinite: string;
+    noItemsDefined: string;
+    // ContainerBlock
+    blockNoContainer: string;
+    blockNoChar: string;
+    blockContainerLabel: string;
+    blockCharLabel: string;
+    blockTitleLabel: string;
+    // tabbed modal
+    tabBasics: string;
+    tabAppearance: string;
+    tabStock: string;
+    sectionIdentity: string;
+    sectionMode: string;
+    sectionBgImage: string;
+    previewLabel: string;
+    modalSubtitle: string;
+    modeShopSubtitle: string;
+    modeChestSubtitle: string;
+    modeLootSubtitle: string;
+    bgImageStatic: string;
+    bgImageGenerate: string;
+    bgImageHint: string;
+    bgImageNone: string;
   };
 
   insertToolbar: {

@@ -6,6 +6,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VarInsertButton } from '../shared/VarInsertButton';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes, usePluginParams } from '../shared/VariableScope';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -159,6 +160,9 @@ function ActionRow({
 }) {
   const t = useT();
   const { project } = useProjectStore();
+  const variableNodes = useVariableNodes();
+  const pluginParams = usePluginParams();
+  const sceneParams = pluginParams.filter(p => p.kind === 'scene');
   const isPopup = action.type === 'open-popup';
 
   if (isPopup) {
@@ -178,7 +182,7 @@ function ActionRow({
             <option value="set-variable">{t.actionType.setVariable}</option>
             <option value="open-popup">{t.actionType.openPopup}</option>
           </select>
-          {popupScenes.length === 0 ? (
+          {popupScenes.length === 0 && sceneParams.length === 0 ? (
             <span className="flex-1 text-xs text-slate-500 italic">{t.actionType.noPopupScenes}</span>
           ) : (
             <select
@@ -187,9 +191,20 @@ function ActionRow({
               onChange={e => onChange({ targetSceneId: e.target.value } as Partial<ButtonAction>)}
             >
               <option value="">— select —</option>
-              {popupScenes.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {sceneParams.length > 0 ? (
+                <>
+                  <optgroup label="— params —">
+                    {sceneParams.map(p => (
+                      <option key={p.key} value={`param:${p.key}`}>_{p.key}{p.label ? ` (${p.label})` : ''}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="— popups —">
+                    {popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </optgroup>
+                </>
+              ) : (
+                popupScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+              )}
             </select>
           )}
           <button
@@ -252,7 +267,7 @@ function ActionRow({
               ...(leavingArray ? { accessor: undefined } : {}),
             });
           }}
-          nodes={project.variableNodes}
+          nodes={variableNodes}
           placeholder={t.functionBlock.selectVariable}
           className="flex-1 min-w-0"
         />
@@ -312,14 +327,20 @@ function ActionRow({
 export function FunctionBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: FunctionBlock;
   sceneId: string;
+  onUpdate?: (patch: Partial<FunctionBlock>) => void;
 }) {
   const t = useT();
   const { project, updateBlock, saveSnapshot } = useProjectStore();
+  const variableNodes = useVariableNodes();
+  const pluginParams = usePluginParams();
+  const sceneParams = pluginParams.filter(p => p.kind === 'scene');
+  const update = onUpdate ?? ((p: Partial<FunctionBlock>) => updateBlock(sceneId, block.id, p));
   const labelRef = useRef<HTMLInputElement>(null);
-  const variables = flattenVariables(project.variableNodes);
+  const variables = flattenVariables(variableNodes);
 
   // Only func-tagged scenes (exclude current scene)
   const funcScenes = project.scenes.filter(
@@ -327,15 +348,15 @@ export function FunctionBlockEditor({
   );
 
   const patchStyle = (patch: Partial<ButtonStyle>) =>
-    updateBlock(sceneId, block.id, { style: { ...block.style, ...patch } });
+    update({ style: { ...block.style, ...patch } });
 
   const patchAction = (actionId: string, patch: Partial<ButtonAction>) =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: block.actions.map(a => a.id === actionId ? { ...a, ...patch } : a) as ButtonAction[],
     });
 
   const addAction = () =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: [
         ...block.actions,
         { id: crypto.randomUUID(), variableId: '', operator: '=' as VarOperator, value: '' },
@@ -343,7 +364,7 @@ export function FunctionBlockEditor({
     });
 
   const removeAction = (actionId: string) =>
-    updateBlock(sceneId, block.id, {
+    update({
       actions: block.actions.filter(a => a.id !== actionId),
     });
 
@@ -358,14 +379,14 @@ export function FunctionBlockEditor({
           placeholder={t.functionBlock.labelPlaceholder}
           value={block.label}
           onFocus={saveSnapshot}
-          onChange={e => updateBlock(sceneId, block.id, { label: e.target.value })}
+          onChange={e => update({ label: e.target.value })}
         />
         <VarInsertButton
           targetRef={labelRef}
           value={block.label}
-          onChange={label => updateBlock(sceneId, block.id, { label })}
+          onChange={label => update({ label })}
           vars={variables}
-          variableNodes={project.variableNodes}
+          variableNodes={variableNodes}
         />
       </div>
 
@@ -374,18 +395,29 @@ export function FunctionBlockEditor({
         <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{t.functionBlock.functionTitle}</div>
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-24 shrink-0">{t.functionBlock.sceneLabel}</label>
-          {funcScenes.length === 0 ? (
+          {funcScenes.length === 0 && sceneParams.length === 0 ? (
             <span className="text-xs text-slate-500 italic">{t.functionBlock.noFuncScenes}</span>
           ) : (
             <select
               className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
               value={block.targetSceneId}
-              onChange={e => updateBlock(sceneId, block.id, { targetSceneId: e.target.value })}
+              onChange={e => update({ targetSceneId: e.target.value })}
             >
               <option value="">— select —</option>
-              {funcScenes.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
+              {sceneParams.length > 0 ? (
+                <>
+                  <optgroup label="— params —">
+                    {sceneParams.map(p => (
+                      <option key={p.key} value={`param:${p.key}`}>_{p.key}{p.label ? ` (${p.label})` : ''}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="— func scenes —">
+                    {funcScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                  </optgroup>
+                </>
+              ) : (
+                funcScenes.map(s => <option key={s.id} value={s.id}>{s.name}</option>)
+              )}
             </select>
           )}
         </div>
@@ -428,7 +460,7 @@ export function FunctionBlockEditor({
 
       <BlockEffectsPanel
         delay={block.delay}
-        onDelayChange={v => updateBlock(sceneId, block.id, { delay: v })}
+        onDelayChange={v => update({ delay: v })}
       />
     </div>
   );

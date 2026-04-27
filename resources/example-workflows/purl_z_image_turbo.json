@@ -1,0 +1,458 @@
+{
+  "62": {
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "lumina2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP"
+    }
+  },
+  "63": {
+    "inputs": {
+      "vae_name": "ae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE"
+    }
+  },
+  "64": {
+    "inputs": {
+      "conditioning": [
+        "67",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "ConditioningZeroOut"
+    }
+  },
+  "65": {
+    "inputs": {
+      "samples": [
+        "70",
+        0
+      ],
+      "vae": [
+        "63",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "66": {
+    "inputs": {
+      "unet_name": "z_image_turbo_bf16.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model"
+    }
+  },
+  "67": {
+    "inputs": {
+      "text": [
+        "157:151:149",
+        0
+      ],
+      "clip": [
+        "62",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Prompt)"
+    }
+  },
+  "68": {
+    "inputs": {
+      "width": [
+        "174:172",
+        0
+      ],
+      "height": [
+        "170:168",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptySD3LatentImage",
+    "_meta": {
+      "title": "EmptySD3LatentImage"
+    }
+  },
+  "69": {
+    "inputs": {
+      "shift": 3,
+      "model": [
+        "66",
+        0
+      ]
+    },
+    "class_type": "ModelSamplingAuraFlow",
+    "_meta": {
+      "title": "ModelSamplingAuraFlow"
+    }
+  },
+  "70": {
+    "inputs": {
+      "seed": [
+        "166:161",
+        0
+      ],
+      "steps": 8,
+      "cfg": 1,
+      "sampler_name": "dpmpp_2m_sde_gpu",
+      "scheduler": "simple",
+      "denoise": 1,
+      "model": [
+        "69",
+        0
+      ],
+      "positive": [
+        "67",
+        0
+      ],
+      "negative": [
+        "64",
+        0
+      ],
+      "latent_image": [
+        "68",
+        0
+      ]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "72": {
+    "inputs": {
+      "value": "a cat"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Prompt Debug"
+    }
+  },
+  "73": {
+    "inputs": {
+      "value": "${prompt}"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "Prompt"
+    }
+  },
+  "74": {
+    "inputs": {
+      "value": "${width}"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "Width"
+    }
+  },
+  "75": {
+    "inputs": {
+      "value": "${height}"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "Height"
+    }
+  },
+  "76": {
+    "inputs": {
+      "value": "${seed}"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "Seed"
+    }
+  },
+  "147": {
+    "inputs": {
+      "value": 1024
+    },
+    "class_type": "easy int",
+    "_meta": {
+      "title": "Width Debug"
+    }
+  },
+  "148": {
+    "inputs": {
+      "value": 1024
+    },
+    "class_type": "easy int",
+    "_meta": {
+      "title": "Height Debug"
+    }
+  },
+  "155": {
+    "inputs": {
+      "images": [
+        "65",
+        0
+      ]
+    },
+    "class_type": "PreviewImage",
+    "_meta": {
+      "title": "Preview Image"
+    }
+  },
+  "156": {
+    "inputs": {
+      "value": "${"
+    },
+    "class_type": "PrimitiveString",
+    "_meta": {
+      "title": "Var flag"
+    }
+  },
+  "178": {
+    "inputs": {
+      "seed": 755410772037054
+    },
+    "class_type": "easy seed",
+    "_meta": {
+      "title": "Seed Debug"
+    }
+  },
+  "157:151:149": {
+    "inputs": {
+      "switch": [
+        "157:151:150",
+        0
+      ],
+      "on_false": [
+        "73",
+        0
+      ],
+      "on_true": [
+        "72",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch"
+    }
+  },
+  "157:151:150": {
+    "inputs": {
+      "string": [
+        "73",
+        0
+      ],
+      "substring": [
+        "156",
+        0
+      ],
+      "case_sensitive": false
+    },
+    "class_type": "StringContains",
+    "_meta": {
+      "title": "Contains"
+    }
+  },
+  "170:167": {
+    "inputs": {
+      "output_type": "string",
+      "*": [
+        "148",
+        0
+      ]
+    },
+    "class_type": "easy convertAnything",
+    "_meta": {
+      "title": "Convert Any"
+    }
+  },
+  "170:168": {
+    "inputs": {
+      "output_type": "int",
+      "*": [
+        "170:169:151:149",
+        0
+      ]
+    },
+    "class_type": "easy convertAnything",
+    "_meta": {
+      "title": "Convert Any"
+    }
+  },
+  "170:169:151:149": {
+    "inputs": {
+      "switch": [
+        "170:169:151:150",
+        0
+      ],
+      "on_false": [
+        "75",
+        0
+      ],
+      "on_true": [
+        "170:167",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch"
+    }
+  },
+  "170:169:151:150": {
+    "inputs": {
+      "string": [
+        "75",
+        0
+      ],
+      "substring": [
+        "156",
+        0
+      ],
+      "case_sensitive": false
+    },
+    "class_type": "StringContains",
+    "_meta": {
+      "title": "Contains"
+    }
+  },
+  "174:171": {
+    "inputs": {
+      "output_type": "string",
+      "*": [
+        "147",
+        0
+      ]
+    },
+    "class_type": "easy convertAnything",
+    "_meta": {
+      "title": "Convert Any"
+    }
+  },
+  "174:172": {
+    "inputs": {
+      "output_type": "int",
+      "*": [
+        "174:173:151:149",
+        0
+      ]
+    },
+    "class_type": "easy convertAnything",
+    "_meta": {
+      "title": "Convert Any"
+    }
+  },
+  "174:173:151:149": {
+    "inputs": {
+      "switch": [
+        "174:173:151:150",
+        0
+      ],
+      "on_false": [
+        "74",
+        0
+      ],
+      "on_true": [
+        "174:171",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch"
+    }
+  },
+  "174:173:151:150": {
+    "inputs": {
+      "string": [
+        "74",
+        0
+      ],
+      "substring": [
+        "156",
+        0
+      ],
+      "case_sensitive": false
+    },
+    "class_type": "StringContains",
+    "_meta": {
+      "title": "Contains"
+    }
+  },
+  "166:160": {
+    "inputs": {
+      "output_type": "string",
+      "*": [
+        "178",
+        0
+      ]
+    },
+    "class_type": "easy convertAnything",
+    "_meta": {
+      "title": "Convert Any"
+    }
+  },
+  "166:161": {
+    "inputs": {
+      "output_type": "int",
+      "*": [
+        "166:165:151:149",
+        0
+      ]
+    },
+    "class_type": "easy convertAnything",
+    "_meta": {
+      "title": "Convert Any"
+    }
+  },
+  "166:165:151:149": {
+    "inputs": {
+      "switch": [
+        "166:165:151:150",
+        0
+      ],
+      "on_false": [
+        "76",
+        0
+      ],
+      "on_true": [
+        "166:160",
+        0
+      ]
+    },
+    "class_type": "ComfySwitchNode",
+    "_meta": {
+      "title": "Switch"
+    }
+  },
+  "166:165:151:150": {
+    "inputs": {
+      "string": [
+        "76",
+        0
+      ],
+      "substring": [
+        "156",
+        0
+      ],
+      "case_sensitive": false
+    },
+    "class_type": "StringContains",
+    "_meta": {
+      "title": "Contains"
+    }
+  }
+}

@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" href="Icon.ico" type="image/x-icon" />
-  <title>Purl — No-code SugarCube 2 Story Builder</title>
-  <meta name="description" content="Purl — безкоштовний no-code редактор для створення інтерактивних історій на SugarCube 2. Free no-code editor for building interactive fiction with SugarCube 2." />
+  <title>Purl — No-code Interactive Fiction Builder</title>
+  <meta name="description" content="Purl — безкоштовний no-code редактор для створення інтерактивних історій з ШІ-генерацією зображень, інвентарем та папердолом. Free no-code editor for building interactive fiction with AI image generation, inventory and paperdoll systems." />
   <link rel="stylesheet" href="style.css" />
   <style>
     /* ── Hero ───────────────────────────────────────────── */
@@ -361,8 +361,8 @@
     <div class="hero-badge" style="margin-bottom:0;background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.3);color:#4ade80;"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px;"><path d="M7.5 1 L3.5 7 H6.5 L4.5 11 L8.5 5 H5.5 Z" fill="currentColor"/></svg><span lang-content="uk">Активна розробка</span><span lang-content="en">Actively developed</span></div>
   </div>
   <h1>Purl</h1>
-  <p class="hero-tagline" lang-content="uk">No-code редактор для створення інтерактивних історій на SugarCube&nbsp;2</p>
-  <p class="hero-tagline" lang-content="en">No-code editor for building interactive fiction with SugarCube&nbsp;2</p>
+  <p class="hero-tagline" lang-content="uk">No-code редактор для створення інтерактивних історій з ШІ-генерацією зображень, інвентарем та папердолом</p>
+  <p class="hero-tagline" lang-content="en">No-code editor for building interactive fiction with AI image generation, inventory and paperdoll systems</p>
   <div class="hero-actions">
     <a href="#download" class="btn-primary">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -403,10 +403,10 @@
   <h2 class="section-title" lang-content="uk">Що таке Purl?</h2>
   <h2 class="section-title" lang-content="en">What is Purl?</h2>
   <p class="section-desc" lang-content="uk">
-    Purl — це десктопний застосунок для Windows, macOS та Linux, який дозволяє створювати інтерактивні текстові ігри та візуальні новели у форматі SugarCube 2 без написання коду. Ви будуєте історію з візуальних блоків, а Purl генерує готовий .twee файл для Tweego або Twine, або .html файл та папку із файлами.
+    Purl — це десктопний застосунок для Windows, macOS та Linux для створення інтерактивних текстових ігор та візуальних новел без написання коду. Будуйте сцени з візуальних блоків, керуйте персонажами з інвентарем та папердолом, генеруйте зображення за допомогою ШІ прямо в редакторі. Purl генерує готовий .twee файл або самодостатній .html.
   </p>
   <p class="section-desc" lang-content="en">
-    Purl is a desktop app for Windows, macOS and Linux that lets you create interactive fiction and visual novels in SugarCube 2 format without writing code. Build your story from visual blocks, and Purl generates a ready-to-use .twee file for Tweego or Twine, or .html file and files folder.
+    Purl is a desktop app for Windows, macOS and Linux for building interactive fiction and visual novels without writing code. Compose scenes from visual blocks, manage characters with inventory and paperdoll systems, and generate images with AI right inside the editor. Purl exports a ready .twee file or a standalone .html.
   </p>
   <p class="section-desc" style="margin-top:-20px;" lang-content="uk">
     <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;"><path d="M8.5 1 L4 8 H7.5 L5.5 13 L10 6 H6.5 Z" fill="var(--green)"/></svg>
@@ -559,6 +559,100 @@
       <p lang-content="uk">Пошук по тексту сцен, блоків та по використанню змінних. Перехід до результату одним кліком.</p>
       <p lang-content="en">Search by scene text, blocks and variable usage. Click to navigate to any result.</p>
     </div>
+    <div class="feature-card">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="5" r="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".2"/>
+        <circle cx="5" cy="20" r="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".15"/>
+        <circle cx="27" cy="20" r="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".15"/>
+        <circle cx="16" cy="28" r="3" stroke="var(--accent)" stroke-width="1.4" fill="var(--accent)" fill-opacity=".1" opacity=".6"/>
+        <path d="M16 8 L16 12 M14 12 L5 17 M18 12 L27 17" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
+        <path d="M27 23 L16 25" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" opacity=".5"/>
+        <rect x="12" y="12" width="8" height="5" rx="1.5" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.2"/>
+      </svg>
+      <h3 lang-content="uk">Граф сцен</h3>
+      <h3 lang-content="en">Scene graph</h3>
+      <p lang-content="uk">Візуальна карта всієї історії: вузли сцен, розвилки сюжету, функції та попапи. Дозволяє швидко орієнтуватися в структурі проєкту та переходити до будь-якої сцени одним кліком.</p>
+      <p lang-content="en">Visual map of the entire story: scene nodes, story branches, functions and popups. Lets you navigate the project structure at a glance and jump to any scene in one click.</p>
+    </div>
+    <div class="feature-card">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="4" width="28" height="24" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <rect x="2" y="4" width="28" height="7" rx="3" fill="var(--accent)" fill-opacity=".15"/>
+        <circle cx="7" cy="7.5" r="1.2" fill="var(--accent)" opacity=".7"/>
+        <circle cx="11" cy="7.5" r="1.2" fill="var(--accent)" opacity=".45"/>
+        <path d="M8 15 L12 19 L8 23" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <rect x="14" y="21" width="10" height="2" rx="1" fill="var(--accent)" opacity=".4"/>
+        <rect x="14" y="15" width="7" height="2" rx="1" fill="var(--accent)" opacity=".3"/>
+      </svg>
+      <h3 lang-content="uk">Попередній перегляд коду</h3>
+      <h3 lang-content="en">Code preview</h3>
+      <p lang-content="uk">Перегляд згенерованого SugarCube-коду для будь-якої сцени прямо в редакторі — без потреби робити експорт. Зручно для налагодження логіки та перевірки результату.</p>
+      <p lang-content="en">Preview the generated SugarCube code for any scene right inside the editor — no export needed. Handy for debugging logic and verifying the output.</p>
+    </div>
+    <div class="feature-card">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="5" y="4" width="22" height="24" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <path d="M10 12 H22 M10 16 H18 M10 20 H20" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" opacity=".4"/>
+        <path d="M13 3 L15.3 8.6 L21 10 L15.3 11.4 L13 17 L10.7 11.4 L5 10 L10.7 8.6Z" fill="var(--accent)" opacity=".5"/>
+      </svg>
+      <h3 lang-content="uk">AI-асистент (текст)</h3>
+      <h3 lang-content="en">AI Assistant (Text)</h3>
+      <p lang-content="uk">Інтеграція з KoboldCPP, Google Gemini та OpenAI-сумісними API. Стрімінг, температура персонажів, історія генерацій.</p>
+      <p lang-content="en">Integration with KoboldCPP, Google Gemini and OpenAI-compatible APIs. Streaming, per-character temperature, generation history.</p>
+    </div>
+    <div class="feature-card">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <circle cx="16" cy="16" r="12" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <text x="8" y="14" font-size="7" font-weight="700" fill="var(--accent)" opacity=".7" font-family="sans-serif">UA</text>
+        <text x="15" y="24" font-size="7" font-weight="700" fill="var(--accent)" opacity=".4" font-family="sans-serif">EN</text>
+        <path d="M12 17 L20 11" stroke="var(--accent)" stroke-width="1.2" opacity=".3"/>
+      </svg>
+      <h3 lang-content="uk">Експорт для перекладу</h3>
+      <h3 lang-content="en">Localization Export</h3>
+      <p lang-content="uk">Вивантаження всіх текстів у .json / .csv для перекладу та імпорт назад як новий проєкт або мовний пакет.</p>
+      <p lang-content="en">Export all text strings to .json / .csv for translation, and import back as a new project or language pack.</p>
+    </div>
+    <div class="feature-card">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M13 3 L15.3 8.6 L21 10 L15.3 11.4 L13 17 L10.7 11.4 L5 10 L10.7 8.6Z" fill="var(--accent)" opacity=".8"/>
+        <rect x="12" y="18" width="16" height="11" rx="2" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".1"/>
+        <circle cx="16" cy="23" r="2" fill="var(--accent)" opacity=".55"/>
+        <circle cx="24" cy="23" r="2" fill="var(--accent)" opacity=".35"/>
+        <path d="M5 22 L11 22" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".4"/>
+        <path d="M5 26 L11 26" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".25"/>
+      </svg>
+      <h3 lang-content="uk">ШІ-генерація зображень</h3>
+      <h3 lang-content="en">AI Image Generation</h3>
+      <p lang-content="uk">Генеруйте аватарки персонажів, іконки айтемів та частини папердолу за допомогою ШІ прямо в редакторі. Підтримує Pollinations (безкоштовно) та ComfyUI для локальної генерації.</p>
+      <p lang-content="en">Generate character avatars, item icons and paperdoll parts with AI right inside the editor. Supports Pollinations (free) and ComfyUI for local generation.</p>
+    </div>
+    <div class="feature-card">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="4" y="6" width="24" height="20" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <rect x="8" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".5"/>
+        <rect x="8" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".35"/>
+        <rect x="17" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".3"/>
+        <rect x="17" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".2"/>
+        <path d="M8 8 H24" stroke="var(--accent)" stroke-width="1.2" opacity=".4"/>
+      </svg>
+      <h3 lang-content="uk">Інвентар та айтеми</h3>
+      <h3 lang-content="en">Inventory &amp; Items</h3>
+      <p lang-content="uk">Вбудована система айтемів з іконками та описом. Інвентар прив'язується до персонажів, відображається в сценах. Підтримує механіки магазинів та контейнерів.</p>
+      <p lang-content="en">Built-in item system with icons and descriptions. Inventory binds to characters, renders in scenes. Supports shop and container mechanics.</p>
+    </div>
+    <div class="feature-card">
+      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="16" cy="10" rx="5" ry="6" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".12"/>
+        <path d="M8 28 C8 21 24 21 24 28" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+        <rect x="10" y="15" width="4" height="5" rx="1" fill="var(--accent)" opacity=".4"/>
+        <rect x="18" y="15" width="4" height="5" rx="1" fill="var(--accent)" opacity=".4"/>
+        <circle cx="16" cy="17" r="1.5" fill="var(--accent)" opacity=".6"/>
+      </svg>
+      <h3 lang-content="uk">Папердол</h3>
+      <h3 lang-content="en">Paperdoll</h3>
+      <p lang-content="uk">Візуальна система екіпірування з налаштовуваними слотами. Зображення частин тіла змінюються залежно від характеристик персонажа — сили, спритності або будь-якої іншої змінної. Вигляд айтемів також динамічний: зброя може виглядати інакше залежно від рівня прокачки або лічильника вбивств, або будь-якої іншої змінної.</p>
+      <p lang-content="en">Visual equipment system with configurable slots. Body part images change based on character stats — strength, dexterity or any variable. Item appearance is dynamic too: a weapon can look different depending on its upgrade level or kill count or any other variable.</p>
+    </div>
   </div>
 </div>
 
@@ -566,8 +660,8 @@
 <div class="section">
   <span class="section-label" lang-content="uk">Типи блоків</span>
   <span class="section-label" lang-content="en">Block types</span>
-  <h2 class="section-title" lang-content="uk">20 типів блоків</h2>
-  <h2 class="section-title" lang-content="en">20 block types</h2>
+  <h2 class="section-title" lang-content="uk">25 типи блоків</h2>
+  <h2 class="section-title" lang-content="en">25 block types</h2>
   <p class="section-desc" lang-content="uk">Кожен блок — готовий елемент сцени. Комбінуйте їх для будь-якого жанру.</p>
   <p class="section-desc" lang-content="en">Each block is a ready-to-use scene element. Combine them for any genre.</p>
   <div class="blocks-grid">
@@ -910,6 +1004,94 @@
       <p class="block-card-desc" lang-content="en">Developer comment visible only in the editor, never exported. Useful for inline annotations and logic notes.</p>
     </div>
 
+    <!-- Inventory -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="4" y="6" width="24" height="20" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".08"/>
+          <rect x="8" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".5"/>
+          <rect x="8" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".35"/>
+          <rect x="17" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".3"/>
+          <rect x="17" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".2"/>
+          <path d="M8 8 H24" stroke="var(--accent)" stroke-width="1.2" opacity=".4"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Інвентар</span>
+        <span class="block-card-name" lang-content="en">Inventory</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Відображає інвентар персонажа в сцені. Підтримує підбір, видачу, екіпірування та передачу предметів між контейнерами.</p>
+      <p class="block-card-desc" lang-content="en">Displays a character's inventory in the scene. Supports picking up, dropping, equipping and transferring items between containers.</p>
+    </div>
+
+    <!-- Inventory Popup Shortcut -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="10" width="18" height="12" rx="6" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.8"/>
+          <rect x="7" y="14.5" width="8" height="2.5" rx="1.25" fill="var(--accent)" opacity=".75"/>
+          <rect x="20" y="8" width="10" height="16" rx="3" stroke="var(--accent)" stroke-width="1.4" fill="var(--accent)" fill-opacity=".08"/>
+          <rect x="22" y="12" width="6" height="3" rx="1" fill="var(--accent)" opacity=".4"/>
+          <rect x="22" y="17" width="6" height="3" rx="1" fill="var(--accent)" opacity=".25"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Ярлик інвентарю</span>
+        <span class="block-card-name" lang-content="en">Inventory Shortcut</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Кнопка-ярлик для швидкого відкриття інвентарю у вигляді попапу. Зручна для бокової панелі або будь-якої сцени.</p>
+      <p class="block-card-desc" lang-content="en">A shortcut button that opens an inventory popup. Handy for the sidebar or any scene that needs quick inventory access.</p>
+    </div>
+
+    <!-- Paperdoll -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="16" cy="9" rx="4.5" ry="5.5" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".12"/>
+          <path d="M8 28 C8 21 24 21 24 28" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+          <rect x="10" y="15" width="4" height="5" rx="1" fill="var(--accent)" opacity=".4"/>
+          <rect x="18" y="15" width="4" height="5" rx="1" fill="var(--accent)" opacity=".4"/>
+          <circle cx="16" cy="17" r="1.5" fill="var(--accent)" opacity=".6"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Папердол</span>
+        <span class="block-card-name" lang-content="en">Paperdoll</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Візуальний дисплей екіпірування зі слотами для частин тіла. Зображення частин тіла змінюються залежно від характеристик персонажа (сила, спритність, тощо), а вигляд айтемів — від їхніх змінних (рівень прокачки, лічильник вбивств, тощо).</p>
+      <p class="block-card-desc" lang-content="en">Equipment display with body part slots. Body images change based on character stats (strength, dexterity, etc.), and item appearance changes based on item variables (upgrade level, kill count, etc.).</p>
+    </div>
+
+    <!-- Container -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="3" y="10" width="26" height="18" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".08"/>
+          <path d="M3 15 H29" stroke="var(--accent)" stroke-width="1.3" opacity=".4"/>
+          <rect x="11" y="4" width="10" height="6" rx="2" stroke="var(--accent)" stroke-width="1.5" fill="var(--accent)" fill-opacity=".15"/>
+          <rect x="7" y="19" width="5" height="5" rx="1" fill="var(--accent)" opacity=".45"/>
+          <rect x="14" y="19" width="5" height="5" rx="1" fill="var(--accent)" opacity=".3"/>
+          <rect x="21" y="19" width="5" height="5" rx="1" fill="var(--accent)" opacity=".2"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Контейнер</span>
+        <span class="block-card-name" lang-content="en">Container</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Відображає вміст контейнера — скрині, магазину або лут-мішка. Гравець може брати та класти предмети. Вміст зберігається у змінній персонажа або сцени.</p>
+      <p class="block-card-desc" lang-content="en">Displays the contents of a container — chest, shop or loot bag. The player can pick up and place items. Contents are stored in a character or scene variable.</p>
+    </div>
+
+    <!-- Plugin -->
+    <div class="block-card">
+      <div class="block-card-header">
+        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect x="6" y="10" width="20" height="18" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".1"/>
+          <rect x="10" y="4" width="4" height="8" rx="1" fill="var(--accent)" fill-opacity=".5" stroke="var(--accent)" stroke-width="1.3"/>
+          <rect x="18" y="4" width="4" height="8" rx="1" fill="var(--accent)" fill-opacity=".5" stroke="var(--accent)" stroke-width="1.3"/>
+          <rect x="2" y="16" width="6" height="4" rx="1" fill="var(--accent)" fill-opacity=".4" stroke="var(--accent)" stroke-width="1.3"/>
+          <rect x="24" y="16" width="6" height="4" rx="1" fill="var(--accent)" fill-opacity=".4" stroke="var(--accent)" stroke-width="1.3"/>
+          <circle cx="16" cy="19" r="2.5" fill="var(--accent)" opacity=".65"/>
+        </svg>
+        <span class="block-card-name" lang-content="uk">Власні блоки (Плагіни)</span>
+        <span class="block-card-name" lang-content="en">Custom Blocks (Plugins)</span>
+      </div>
+      <p class="block-card-desc" lang-content="uk">Конструктор власних блоків із параметрами. Збирайте плагін з будь-яких існуючих блоків, налаштовуйте параметри (текст, число, змінна, сцена, колір) — і повторно використовуйте його в будь-якій сцені. Плагіни експортуються та імпортуються як окремі файли.</p>
+      <p class="block-card-desc" lang-content="en">A constructor for custom parameterised blocks. Compose a plugin from any existing blocks, define its parameters (text, number, variable, scene, colour) — and reuse it across any scene. Plugins can be exported and imported as standalone files.</p>
+    </div>
+
   </div>
 </div>
 
@@ -988,54 +1170,26 @@
     </div>
     <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
       <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="6" width="24" height="20" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <rect x="8" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".5"/>
-        <rect x="8" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".35"/>
-        <rect x="17" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".3"/>
-        <rect x="17" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".2"/>
-        <path d="M8 8 H24" stroke="var(--accent)" stroke-width="1.2" opacity=".4"/>
-      </svg>
-      <h3 lang-content="uk">Система інвентарю</h3>
-      <h3 lang-content="en">Inventory System</h3>
-      <p lang-content="uk">Вбудована система інвентарю: прив'язка до персонажів, відображення на екрані, редагування в готовій історії та механіки магазинів.</p>
-      <p lang-content="en">Built-in inventory system: bind to characters, display on screen, edit in published stories, and build shop mechanics.</p>
-    </div>
-    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="12" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
+        <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
         <text x="8" y="14" font-size="7" font-weight="700" fill="var(--accent)" opacity=".7" font-family="sans-serif">UA</text>
         <text x="15" y="24" font-size="7" font-weight="700" fill="var(--accent)" opacity=".4" font-family="sans-serif">EN</text>
-        <path d="M12 17 L20 11" stroke="var(--accent)" stroke-width="1.2" opacity=".3"/>
+        <path d="M13 3 L15.3 8.6 L21 10 L15.3 11.4 L13 17 L10.7 11.4 L5 10 L10.7 8.6Z" fill="var(--accent)" opacity=".55" transform="scale(0.5) translate(22, 22)"/>
       </svg>
-      <h3 lang-content="uk">Експорт для перекладу</h3>
-      <h3 lang-content="en">Localization Export</h3>
-      <p lang-content="uk">Вивантаження всіх текстів у .json / .csv для перекладу та імпорт назад як новий проєкт або мовний пакет.</p>
-      <p lang-content="en">Export all text strings to .json / .csv for translation, and import back as a new project or language pack.</p>
+      <h3 lang-content="uk">ШІ-переклад історії</h3>
+      <h3 lang-content="en">AI Story Translation</h3>
+      <p lang-content="uk">Переклад окремої сцени або всієї історії за допомогою ШІ через наявні інтеграції. Увага: переклад через KoboldCPP може бути дуже повільним, а через хмарні сервіси — потребує токенів за кошти користувача (не розробника).</p>
+      <p lang-content="en">Translate a single scene or the entire story using AI via existing integrations. Note: translation via KoboldCPP may be very slow; cloud-based providers consume tokens at the user's own expense — not the developer's.</p>
     </div>
     <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
       <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="4" width="22" height="24" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <path d="M10 12 H22 M10 16 H18 M10 20 H20" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" opacity=".4"/>
-        <circle cx="24" cy="24" r="6" fill="var(--accent)" fill-opacity=".2" stroke="var(--accent)" stroke-width="1.4"/>
-        <path d="M22 24 L24 22 L26 25" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
+        <path d="M5 12 H10 L18 5 V27 L10 20 H5 Z" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".18"/>
+        <path d="M21.5 10 C25 12.5 25 19.5 21.5 22" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
+        <path d="M13 3 L15.3 8.6 L21 10 L15.3 11.4 L13 17 L10.7 11.4 L5 10 L10.7 8.6Z" fill="var(--accent)" opacity=".6" transform="translate(16, 16) scale(0.45) translate(-13, -10)"/>
       </svg>
-      <h3 lang-content="uk">AI-асистент (текст)</h3>
-      <h3 lang-content="en">AI Assistant (Text)</h3>
-      <p lang-content="uk">Інтеграція з локальними LLM (koboldcpp) для генерації описів, діалогів та сцен прямо в редакторі.</p>
-      <p lang-content="en">Local LLM integration (koboldcpp) for generating descriptions, dialogues, and scenes right in the editor.</p>
-    </div>
-    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="4" width="24" height="24" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <circle cx="12" cy="20" r="3" fill="var(--accent)" opacity=".3"/>
-        <path d="M8 14 L14 8 L20 12 L28 6" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>
-        <circle cx="24" cy="24" r="6" fill="var(--accent)" fill-opacity=".2" stroke="var(--accent)" stroke-width="1.4"/>
-        <path d="M22 24 L24 22 L26 25" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" opacity=".8"/>
-      </svg>
-      <h3 lang-content="uk">AI-асистент (зображення)</h3>
-      <h3 lang-content="en">AI Assistant (Image)</h3>
-      <p lang-content="uk">Інтеграція з ComfyUI для генерації зображень до поточної сцени — локально, без хмарних сервісів.</p>
-      <p lang-content="en">ComfyUI integration for generating scene images locally, without cloud services.</p>
+      <h3 lang-content="uk">Генерація фонової музики</h3>
+      <h3 lang-content="en">Background Music Generation</h3>
+      <p lang-content="uk">Генерація фонової музики для сцен через ComfyUI — локально, без хмарних сервісів та без ліцензійних обмежень.</p>
+      <p lang-content="en">Generate background music for scenes via ComfyUI — locally, with no cloud services and no licensing restrictions.</p>
     </div>
     <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
       <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">

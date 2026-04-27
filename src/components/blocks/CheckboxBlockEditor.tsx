@@ -3,17 +3,21 @@ import type { CheckboxBlock, CheckboxOption } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
+import { useVariableNodes } from '../shared/VariableScope';
 
 export function CheckboxBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: CheckboxBlock;
   sceneId: string;
+  onUpdate?: (patch: Partial<CheckboxBlock>) => void;
 }) {
   const t = useT();
-  const { project, updateBlock, saveSnapshot } = useProjectStore();
-  const patch = (p: Partial<CheckboxBlock>) => updateBlock(sceneId, block.id, p);
+  const { updateBlock, saveSnapshot } = useProjectStore();
+  const variableNodes = useVariableNodes();
+  const patch = onUpdate ?? ((p: Partial<CheckboxBlock>) => updateBlock(sceneId, block.id, p));
 
   const patchOption = (optId: string, p: Partial<CheckboxOption>) =>
     patch({ options: block.options.map(o => o.id === optId ? { ...o, ...p } : o) });
@@ -68,7 +72,7 @@ export function CheckboxBlockEditor({
           <VariablePicker
             value={block.variableId ?? ''}
             onChange={id => patch({ variableId: id })}
-            nodes={project.variableNodes}
+            nodes={variableNodes}
             placeholder={t.checkboxBlock.selectVariable}
             filterType="array"
           />
@@ -107,7 +111,7 @@ export function CheckboxBlockEditor({
               <VariablePicker
                 value={opt.variableId ?? ''}
                 onChange={id => patchOption(opt.id, { variableId: id })}
-                nodes={project.variableNodes}
+                nodes={variableNodes}
                 placeholder={t.checkboxBlock.optionVarPlaceholder}
                 filterType="boolean"
                 className="flex-1"

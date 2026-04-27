@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -13,12 +14,14 @@ import {
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useProjectStore, flattenVariables } from '../../store/projectStore';
+import { useProjectStore, flattenVariables, deepCloneBlock } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
 import { VariablePicker } from '../shared/VariablePicker';
+import { VarInsertButton } from '../shared/VarInsertButton';
+import { useVariableNodes } from '../shared/VariableScope';
 import { useT, blockTypeLabel } from '../../i18n';
 import type {
-  ConditionBlock, ConditionBranchType, ConditionOperator, Block, ArrayAccessor,
+  ConditionBlock, ConditionBranch, ConditionBranchType, ConditionOperator, Block, ArrayAccessor,
   TextBlock, DialogueBlock, ChoiceBlock, VariableSetBlock, ImageBlock, VideoBlock, RawBlock, TableBlock, IncludeBlock, DividerBlock,
 } from '../../types';
 import { AddBlockMenu } from './AddBlockMenu';
@@ -33,6 +36,49 @@ import { TableBlockEditor } from './TableBlockEditor';
 import { IncludeBlockEditor } from './IncludeBlockEditor';
 import { DividerBlockEditor } from './DividerBlockEditor';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
+
+/**
+ * Single-line input with an adjacent VarInsertButton.
+ * Extracted as a component so it can own a ref even inside a .map().
+ */
+function ConditionValueInput({
+  value,
+  placeholder,
+  className,
+  vars,
+  variableNodes,
+  onFocus,
+  onChange,
+}: {
+  value: string;
+  placeholder: string;
+  className: string;
+  vars: import('../../types').Variable[];
+  variableNodes: import('../../types').VariableTreeNode[];
+  onFocus: () => void;
+  onChange: (v: string) => void;
+}) {
+  const ref = useRef<HTMLInputElement>(null);
+  return (
+    <>
+      <input
+        ref={ref}
+        className={className}
+        placeholder={placeholder}
+        value={value}
+        onFocus={onFocus}
+        onChange={e => onChange(e.target.value)}
+      />
+      <VarInsertButton
+        targetRef={ref}
+        value={value}
+        onChange={onChange}
+        vars={vars}
+        variableNodes={variableNodes}
+      />
+    </>
+  );
+}
 
 const OPERATORS: { value: ConditionOperator; label: string }[] = [
   { value: '==', label: '==' },
@@ -74,18 +120,14 @@ function operatorNeedsValue(op: ConditionOperator): boolean {
 function NestedBlockEditor({
   block,
   sceneId,
-  conditionBlockId,
-  branchId,
+  onUpdate,
 }: {
   block: Block;
   sceneId: string;
-  conditionBlockId: string;
-  branchId: string;
+  onUpdate: (patch: Partial<Block>) => void;
 }) {
-  const { updateNestedBlock } = useProjectStore();
   const t = useT();
 
-  const onUpdate = (patch: any) => updateNestedBlock(sceneId, conditionBlockId, branchId, block.id, patch);
   switch (block.type) {
     case 'text':         return <TextBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<TextBlock>) => void} />;
     case 'dialogue':     return <DialogueBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate as (p: Partial<DialogueBlock>) => void} />;
@@ -105,16 +147,14 @@ function NestedBlockEditor({
 function SortableNestedBlock({
   block,
   sceneId,
-  conditionBlockId,
-  branchId,
+  onUpdate,
   onDuplicate,
   onCopy,
   onDelete,
 }: {
   block: Block;
   sceneId: string;
-  conditionBlockId: string;
-  branchId: string;
+  onUpdate: (patch: Partial<Block>) => void;
   onDuplicate: () => void;
   onCopy: () => void;
   onDelete: () => void;
@@ -169,7 +209,7 @@ function SortableNestedBlock({
         </div>
       </div>
       <div className="p-2">
-        <NestedBlockEditor block={block} sceneId={sceneId} conditionBlockId={conditionBlockId} branchId={branchId} />
+        <NestedBlockEditor block={block} sceneId={sceneId} onUpdate={onUpdate} />
       </div>
     </div>
   );
@@ -178,16 +218,21 @@ function SortableNestedBlock({
 export function ConditionBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: ConditionBlock;
   sceneId: string;
+  /** When provided (e.g. inside a plugin body), all branch/nested mutations are routed
+   *  through this callback instead of projectStore, so the editor works on any parent
+   *  state container. */
+  onUpdate?: (patch: Partial<ConditionBlock>) => void;
 }) {
   const {
-    project,
     addConditionBranch,
     updateConditionBranch,
     deleteConditionBranch,
     addNestedBlock,
+    updateNestedBlock,
     deleteNestedBlock,
     duplicateNestedBlock,
     pasteToNested,
@@ -196,13 +241,94 @@ export function ConditionBlockEditor({
   } = useProjectStore();
   const { clipboardBlock, copyToClipboard } = useEditorStore();
   const t = useT();
-  const variables = flattenVariables(project.variableNodes);
+  const variableNodes = useVariableNodes();
+  const variables = flattenVariables(variableNodes);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const hasElse = block.branches.some(b => b.branchType === 'else');
+  const isLocal = !!onUpdate;
+
+  const setBranches = (branches: ConditionBranch[]) => onUpdate!({ branches });
+
+  // ── Unified branch/nested operations — use onUpdate when provided, else store ──
+  const doAddBranch = () => {
+    if (!isLocal) return addConditionBranch(sceneId, block.id);
+    if (hasElse) return;
+    const isFirst = block.branches.length === 0;
+    setBranches([
+      ...block.branches,
+      {
+        id: crypto.randomUUID(),
+        branchType: isFirst ? 'if' : 'elseif',
+        variableId: '', operator: '==', value: '', blocks: [],
+      },
+    ]);
+  };
+
+  const doUpdateBranch = (branchId: string, patch: Partial<ConditionBranch>) => {
+    if (!isLocal) return updateConditionBranch(sceneId, block.id, branchId, patch);
+    setBranches(block.branches.map(br => br.id === branchId ? { ...br, ...patch } : br));
+  };
+
+  const doDeleteBranch = (branchId: string) => {
+    if (!isLocal) return deleteConditionBranch(sceneId, block.id, branchId);
+    setBranches(block.branches.filter(br => br.id !== branchId));
+  };
+
+  const doAddNested = (branchId: string, nb: Block) => {
+    if (!isLocal) return addNestedBlock(sceneId, block.id, branchId, nb);
+    setBranches(block.branches.map(br => br.id === branchId ? { ...br, blocks: [...br.blocks, nb] } : br));
+  };
+
+  const doUpdateNested = (branchId: string, nbId: string, patch: Partial<Block>) => {
+    if (!isLocal) return updateNestedBlock(sceneId, block.id, branchId, nbId, patch);
+    setBranches(block.branches.map(br =>
+      br.id !== branchId ? br : { ...br, blocks: br.blocks.map(b => b.id === nbId ? ({ ...b, ...patch } as Block) : b) }
+    ));
+  };
+
+  const doDeleteNested = (branchId: string, nbId: string) => {
+    if (!isLocal) return deleteNestedBlock(sceneId, block.id, branchId, nbId);
+    setBranches(block.branches.map(br => br.id !== branchId ? br : { ...br, blocks: br.blocks.filter(b => b.id !== nbId) }));
+  };
+
+  const doDuplicateNested = (branchId: string, nbId: string) => {
+    if (!isLocal) return duplicateNestedBlock(sceneId, block.id, branchId, nbId);
+    setBranches(block.branches.map(br => {
+      if (br.id !== branchId) return br;
+      const idx = br.blocks.findIndex(b => b.id === nbId);
+      if (idx === -1) return br;
+      const blocks = [...br.blocks];
+      blocks.splice(idx + 1, 0, deepCloneBlock(br.blocks[idx]));
+      return { ...br, blocks };
+    }));
+  };
+
+  const doPasteNested = (branchId: string, src: Block) => {
+    if (!isLocal) return pasteToNested(sceneId, block.id, branchId, src);
+    setBranches(block.branches.map(br =>
+      br.id === branchId ? { ...br, blocks: [...br.blocks, deepCloneBlock(src)] } : br
+    ));
+  };
+
+  const doReorderNested = (branchId: string, blocks: Block[]) => {
+    if (!isLocal) return reorderNestedBlocks(sceneId, block.id, branchId, blocks);
+    setBranches(block.branches.map(br => br.id === branchId ? { ...br, blocks } : br));
+  };
 
   const addElseBranch = () => {
+    if (isLocal) {
+      setBranches([
+        ...block.branches,
+        {
+          id: crypto.randomUUID(),
+          branchType: 'else',
+          variableId: '', operator: '==', value: '', blocks: [],
+        },
+      ]);
+      return;
+    }
     addConditionBranch(sceneId, block.id);
     setTimeout(() => {
       const state = useProjectStore.getState();
@@ -224,7 +350,7 @@ export function ConditionBlockEditor({
     const oldIndex = branchBlocks.findIndex(b => b.id === active.id);
     const newIndex = branchBlocks.findIndex(b => b.id === over.id);
     if (oldIndex !== -1 && newIndex !== -1) {
-      reorderNestedBlocks(sceneId, block.id, branchId, arrayMove(branchBlocks, oldIndex, newIndex));
+      doReorderNested(branchId, arrayMove(branchBlocks, oldIndex, newIndex));
     }
   };
 
@@ -238,7 +364,7 @@ export function ConditionBlockEditor({
               className="bg-slate-800 text-xs text-amber-300 rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer font-mono"
               value={branch.branchType}
               onChange={e =>
-                updateConditionBranch(sceneId, block.id, branch.id, {
+                doUpdateBranch(branch.id, {
                   branchType: e.target.value as ConditionBranchType,
                 })
               }
@@ -274,13 +400,13 @@ export function ConditionBlockEditor({
                     const newOps = operatorsForType(newVar?.varType, newAccessorKind);
                     const opStillValid = newOps.some(op => op.value === branch.operator);
                     const newIsNumeric = newVar?.varType === 'number' || newVar?.varType === undefined;
-                    updateConditionBranch(sceneId, block.id, branch.id, {
+                    doUpdateBranch(branch.id, {
                       variableId: id,
                       ...(!opStillValid ? { operator: newOps[0].value } : {}),
                       ...(!newIsNumeric && newVar?.varType !== 'array' ? { rangeMode: false, accessor: undefined } : {}),
                     });
                   }}
-                  nodes={project.variableNodes}
+                  nodes={variableNodes}
                   placeholder={t.condition.varPlaceholder}
                   className="flex-1 min-w-0"
                 />
@@ -293,7 +419,7 @@ export function ConditionBlockEditor({
                       onChange={acc => {
                         const newOps = operatorsForType('array', acc.kind);
                         const opStillValid = newOps.some(op => op.value === branch.operator);
-                        updateConditionBranch(sceneId, block.id, branch.id, {
+                        doUpdateBranch(branch.id, {
                           accessor: acc,
                           ...(!opStillValid ? { operator: newOps[0].value, rangeMode: false } : {}),
                         });
@@ -314,7 +440,7 @@ export function ConditionBlockEditor({
                         : 'bg-slate-800 text-slate-500 border-slate-600 hover:text-slate-300'
                     }`}
                     onClick={() =>
-                      updateConditionBranch(sceneId, block.id, branch.id, { rangeMode: !branch.rangeMode })
+                      doUpdateBranch(branch.id, { rangeMode: !branch.rangeMode })
                     }
                   >
                     a≤x≤b
@@ -323,24 +449,24 @@ export function ConditionBlockEditor({
 
                 {rangeMode ? (
                   <>
-                    <input
+                    <ConditionValueInput
                       className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
                       placeholder={t.condition.rangeMinPlaceholder}
                       value={branch.rangeMin ?? ''}
+                      vars={variables}
+                      variableNodes={variableNodes}
                       onFocus={saveSnapshot}
-                      onChange={e =>
-                        updateConditionBranch(sceneId, block.id, branch.id, { rangeMin: e.target.value })
-                      }
+                      onChange={v => doUpdateBranch(branch.id, { rangeMin: v })}
                     />
                     <span className="text-xs text-slate-500 shrink-0">≤ x ≤</span>
-                    <input
+                    <ConditionValueInput
                       className="w-14 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
                       placeholder={t.condition.rangeMaxPlaceholder}
                       value={branch.rangeMax ?? ''}
+                      vars={variables}
+                      variableNodes={variableNodes}
                       onFocus={saveSnapshot}
-                      onChange={e =>
-                        updateConditionBranch(sceneId, block.id, branch.id, { rangeMax: e.target.value })
-                      }
+                      onChange={v => doUpdateBranch(branch.id, { rangeMax: v })}
                     />
                   </>
                 ) : (
@@ -350,7 +476,7 @@ export function ConditionBlockEditor({
                       className="bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 cursor-pointer font-mono"
                       value={branch.operator}
                       onChange={e =>
-                        updateConditionBranch(sceneId, block.id, branch.id, {
+                        doUpdateBranch(branch.id, {
                           operator: e.target.value as ConditionOperator,
                         })
                       }
@@ -360,16 +486,16 @@ export function ConditionBlockEditor({
                       ))}
                     </select>
 
-                    {/* Value input — hidden for empty/!empty */}
+                    {/* Value input + var insert — hidden for empty/!empty */}
                     {showValue && (
-                      <input
+                      <ConditionValueInput
                         className="w-16 bg-slate-800 text-xs text-white rounded px-1.5 py-0.5 outline-none border border-slate-600 font-mono"
                         placeholder={t.condition.valuePlaceholder}
                         value={branch.value}
+                        vars={variables}
+                        variableNodes={variableNodes}
                         onFocus={saveSnapshot}
-                        onChange={e =>
-                          updateConditionBranch(sceneId, block.id, branch.id, { value: e.target.value })
-                        }
+                        onChange={v => doUpdateBranch(branch.id, { value: v })}
                       />
                     )}
                   </>
@@ -380,7 +506,7 @@ export function ConditionBlockEditor({
 
             <button
               className="ml-auto text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0"
-              onClick={() => deleteConditionBranch(sceneId, block.id, branch.id)}
+              onClick={() => doDeleteBranch(branch.id)}
             >
               ✕
             </button>
@@ -402,11 +528,10 @@ export function ConditionBlockEditor({
                     key={nb.id}
                     block={nb}
                     sceneId={sceneId}
-                    conditionBlockId={block.id}
-                    branchId={branch.id}
-                    onDuplicate={() => duplicateNestedBlock(sceneId, block.id, branch.id, nb.id)}
+                    onUpdate={(patch) => doUpdateNested(branch.id, nb.id, patch)}
+                    onDuplicate={() => doDuplicateNested(branch.id, nb.id)}
                     onCopy={() => copyToClipboard(nb)}
-                    onDelete={() => deleteNestedBlock(sceneId, block.id, branch.id, nb.id)}
+                    onDelete={() => doDeleteNested(branch.id, nb.id)}
                   />
                 ))}
               </SortableContext>
@@ -415,14 +540,14 @@ export function ConditionBlockEditor({
             <AddBlockMenu
               sceneId={sceneId}
               excludeTypes={['condition', 'note']}
-              onAdd={(nb) => addNestedBlock(sceneId, block.id, branch.id, nb)}
+              onAdd={(nb) => doAddNested(branch.id, nb)}
             />
 
             {clipboardBlock && (
               <button
                 className="text-xs text-indigo-400 hover:text-indigo-300 hover:bg-slate-800/50 rounded px-2 py-1 transition-colors cursor-pointer text-left border border-dashed border-indigo-800/50"
                 title={t.block.paste(blockTypeLabel(t, clipboardBlock.type))}
-                onClick={() => pasteToNested(sceneId, block.id, branch.id, clipboardBlock)}
+                onClick={() => doPasteNested(branch.id, clipboardBlock)}
               >
                 {t.block.paste(blockTypeLabel(t, clipboardBlock.type))}
               </button>
@@ -435,7 +560,7 @@ export function ConditionBlockEditor({
         {!hasElse && (
           <button
             className="text-xs text-amber-400 hover:text-amber-300 hover:bg-slate-800 rounded px-2 py-1 transition-colors cursor-pointer"
-            onClick={() => addConditionBranch(sceneId, block.id)}
+            onClick={doAddBranch}
           >
             {t.condition.addBranch}
           </button>

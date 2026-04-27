@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Paths
   getProjectsDir: (): Promise<string> =>
     ipcRenderer.invoke('fs:getProjectsDir'),
+  getExampleWorkflowsDir: (): Promise<string> =>
+    ipcRenderer.invoke('fs:getExampleWorkflowsDir'),
 
   // Filesystem
   readFile: (filePath: string): Promise<string> =>
@@ -17,6 +19,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   writeFile: (filePath: string, content: string): Promise<void> =>
     ipcRenderer.invoke('fs:writeFile', filePath, content),
+
+  writeFileBinary: (filePath: string, bytes: number[]): Promise<void> =>
+    ipcRenderer.invoke('fs:writeFileBinary', filePath, bytes),
 
   copyFile: (src: string, dest: string): Promise<void> =>
     ipcRenderer.invoke('fs:copyFile', src, dest),
@@ -58,6 +63,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Shell
   openPath: (filePath: string): Promise<void> =>
     ipcRenderer.invoke('shell:openPath', filePath),
+
+  // HTTP proxy (avoids renderer CORS for local APIs)
+  httpRequest: (req: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }): Promise<{ status: number; headers: Record<string, string>; text: string }> =>
+    ipcRenderer.invoke('http:request', req),
+
+  httpRequestBinary: (req: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }): Promise<{ status: number; headers: Record<string, string>; bytes: number[] }> =>
+    ipcRenderer.invoke('http:requestBinary', req),
 
   // Window controls (custom title bar)
   minimizeWindow:    (): Promise<void>    => ipcRenderer.invoke('window:minimize'),

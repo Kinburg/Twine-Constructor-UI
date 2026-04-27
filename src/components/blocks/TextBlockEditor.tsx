@@ -4,7 +4,9 @@ import { useT } from '../../i18n';
 import type { TextBlock } from '../../types';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { TextInsertToolbar } from '../shared/TextInsertToolbar';
+import { LLMGenerateButton } from '../shared/LLMGenerateButton';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
+import { useVariableNodes } from '../shared/VariableScope';
 
 export function TextBlockEditor({
   block,
@@ -17,28 +19,36 @@ export function TextBlockEditor({
 }) {
   const { updateBlock, saveSnapshot, project } = useProjectStore();
   const t = useT();
+  const variableNodes = useVariableNodes();
   const update = onUpdate ?? ((p: Partial<TextBlock>) => updateBlock(sceneId, block.id, p as never));
-  const vars = flattenVariables(project.variableNodes);
+  const vars = flattenVariables(variableNodes);
   const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   return (
     <div className="flex flex-col gap-1.5">
       <div className="relative">
-        <div className="absolute top-1 right-1 z-10">
+        <div className="absolute top-1 right-1 z-10 flex gap-0.5">
+          <LLMGenerateButton
+            sceneId={sceneId}
+            blockId={block.id}
+            currentValue={block.content}
+            onGenerated={text => update({ content: text })}
+            onStreaming={text => update({ content: text })}
+          />
           <TextInsertToolbar
             targetRef={textareaRef}
             value={block.content}
             onChange={content => update({ content })}
             vars={vars}
             imageAssets={imgAssets}
-            variableNodes={project.variableNodes}
+            variableNodes={variableNodes}
             scenes={project.scenes}
           />
         </div>
         <textarea
           ref={textareaRef}
-          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-24 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
+          className="w-full bg-slate-800 text-slate-200 text-sm rounded px-2 py-1.5 pr-20 outline-none border border-slate-600 focus:border-indigo-500 min-h-[80px]"
           placeholder={t.textBlock.placeholder}
           value={block.content}
           onFocus={saveSnapshot}

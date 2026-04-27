@@ -7,8 +7,11 @@ import { VariableManager } from '../variables/VariableManager';
 import { AssetManager } from '../assets/AssetManager';
 import { WatcherManager } from '../watchers/WatcherManager';
 import { PanelEditor } from '../panel/PanelEditor';
+import { ItemManager } from '../items/ItemManager';
+import { ContainerManager } from '../containers/ContainerManager';
+import { PluginManager } from '../plugins/PluginManager';
 
-type Tab = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers';
+type Tab = 'scenes' | 'characters' | 'variables' | 'assets' | 'panel' | 'watchers' | 'items' | 'containers' | 'plugins';
 
 export function Sidebar() {
   const { activeSidebarTab, setSidebarTab, sidebarWidth, setSidebarWidth } = useProjectStore();
@@ -18,6 +21,9 @@ export function Sidebar() {
   const TABS: { id: Tab; label: string; icon: string }[] = [
     { id: 'scenes',     label: t.sidebar.scenes,     icon: '🎬' },
     { id: 'characters', label: t.sidebar.characters, icon: '👤' },
+    { id: 'items',      label: t.sidebar.items,      icon: '🎒' },
+    { id: 'containers', label: t.sidebar.containers, icon: '🏪' },
+    { id: 'plugins',    label: t.sidebar.plugins,    icon: '🧩' },
     { id: 'variables',  label: t.sidebar.variables,  icon: '📊' },
     { id: 'assets',     label: t.sidebar.assets,     icon: '🖼️' },
     { id: 'panel',      label: t.sidebar.panel,      icon: '🗂️' },
@@ -79,12 +85,15 @@ export function Sidebar() {
 
       {/* Content */}
       <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto">
-        {activeSidebarTab === 'scenes'     && <SceneList />}
-        {activeSidebarTab === 'characters' && <CharacterManager />}
-        {activeSidebarTab === 'variables'  && <VariableManager />}
-        {activeSidebarTab === 'assets'     && <AssetManager />}
-        {activeSidebarTab === 'panel'      && <PanelEditor />}
-        {activeSidebarTab === 'watchers'   && <WatcherManager />}
+        {activeSidebarTab === 'scenes'      && <SceneList />}
+        {activeSidebarTab === 'characters'  && <CharacterManager />}
+        {activeSidebarTab === 'items'       && <ItemManager />}
+        {activeSidebarTab === 'containers'  && <ContainerManager />}
+        {activeSidebarTab === 'plugins'     && <PluginManager />}
+        {activeSidebarTab === 'variables'   && <VariableManager />}
+        {activeSidebarTab === 'assets'      && <AssetManager />}
+        {activeSidebarTab === 'panel'       && <PanelEditor />}
+        {activeSidebarTab === 'watchers'    && <WatcherManager />}
       </div>
 
       {/* Resize handle */}

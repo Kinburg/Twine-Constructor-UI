@@ -10,21 +10,30 @@ interface Props {
   insertIndex: number;
   /** Last zone — always visible, replaces the bottom "Add block" button */
   isLast?: boolean;
+  /** Override add handler — bypasses projectStore when provided (used by plugin body editor). */
+  onAdd?: (block: Block, insertIndex: number) => void;
+  /** Override paste handler — bypasses projectStore when provided. */
+  onPaste?: (block: Block, insertIndex: number) => void;
+  /** Restrict block types shown in the menu (forwarded to AddBlockMenu). */
+  excludeTypes?: import('../../types').BlockType[];
 }
 
-export function InsertZone({ sceneId, insertIndex, isLast }: Props) {
+export function InsertZone({ sceneId, insertIndex, isLast, onAdd, onPaste, excludeTypes }: Props) {
   const { addBlock, pasteToScene } = useProjectStore();
   const { clipboardBlock } = useEditorStore();
   const t = useT();
   const [menuOpen, setMenuOpen] = useState(false);
 
   const handleAdd = (block: Block) => {
-    addBlock(sceneId, block, insertIndex);
+    if (onAdd) onAdd(block, insertIndex);
+    else addBlock(sceneId, block, insertIndex);
     setMenuOpen(false);
   };
 
   const handlePaste = () => {
-    if (clipboardBlock) pasteToScene(sceneId, clipboardBlock, insertIndex);
+    if (!clipboardBlock) return;
+    if (onPaste) onPaste(clipboardBlock, insertIndex);
+    else pasteToScene(sceneId, clipboardBlock, insertIndex);
   };
 
   // ── Expanded (block picker open) ────────────────────────────────────────────
@@ -34,6 +43,7 @@ export function InsertZone({ sceneId, insertIndex, isLast }: Props) {
         <AddBlockMenu
           sceneId={sceneId}
           onAdd={handleAdd}
+          excludeTypes={excludeTypes}
           initialOpen
           onClose={() => setMenuOpen(false)}
         />

@@ -1,30 +1,37 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectStore, DEFAULT_PANEL_STYLE } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
+import { usePluginStore } from '../../store/pluginStore';
 import { useT } from '../../i18n';
-import type { Block, BlockType } from '../../types';
+import type { Block, BlockType, PluginBlock, PluginBlockDef } from '../../types';
 
 const BLOCK_ICONS: Record<BlockType, string> = {
-  'text':         '📝',
-  'dialogue':     '💬',
-  'choice':       '🔀',
-  'condition':    '❓',
-  'variable-set': '📊',
-  'button':       '🔘',
-  'link':         '🔗',
-  'input-field':  '✏️',
-  'image':        '🖼️',
-  'video':        '🎥',
-  'raw':          '🧩',
-  'note':         '🗒️',
-  'table':        '🗂️',
-  'include':      '📎',
-  'divider':      '─',
-  'checkbox':     '☑',
-  'radio':        '🔵',
-  'function':     'ƒ',
-  'popup':        '🪟',
-  'audio':        '🔊',
+  'text':              '📝',
+  'dialogue':          '💬',
+  'choice':            '🔀',
+  'condition':         '❓',
+  'variable-set':      '📊',
+  'button':            '🔘',
+  'link':              '🔗',
+  'input-field':       '✏️',
+  'image':             '🖼️',
+  'image-gen':         '🧠',
+  'video':             '🎥',
+  'raw':               '🧩',
+  'note':              '🗒️',
+  'table':             '🗂️',
+  'include':           '📎',
+  'divider':           '─',
+  'checkbox':          '☑',
+  'radio':             '🔵',
+  'function':          'ƒ',
+  'popup':             '🪟',
+  'audio':             '🔊',
+  'container':         '🏪',
+  'time-manipulation': '🕒',
+  'paperdoll':         '🧩',
+  'inventory':         '🎒',
+  'plugin':            '🧩',
 };
 
 export function makeBlock(type: BlockType): Block {
@@ -36,6 +43,22 @@ export function makeBlock(type: BlockType): Block {
     case 'condition':    return { id, type, branches: [] };
     case 'variable-set': return { id, type, variableId: '', operator: '=', value: '' };
     case 'image':        return { id, type, src: '', alt: '', width: 0 };
+    case 'image-gen':    return {
+      id,
+      type,
+      provider: 'comfyui',
+      providerUrl: '',
+      workflowFile: '',
+      promptMode: 'manual' as const,
+      prompt: '',
+      negativePrompt: '',
+      seedMode: 'random' as const,
+      seed: 0,
+      width: 0,
+      alt: '',
+      src: '',
+      history: [],
+    };
     case 'video':        return { id, type, src: '', autoplay: false, loop: false, controls: true, width: 0 };
     case 'input-field':  return { id, type, label: '', variableId: '', placeholder: '' };
     case 'button':       return {
@@ -74,7 +97,19 @@ export function makeBlock(type: BlockType): Block {
     };
     case 'popup':        return { id, type, targetSceneId: '' };
     case 'audio':        return { id, type, src: '', trigger: 'immediate' as const, loop: false, onLeave: 'stop' as const, stopOthers: false, volume: 100 };
+    case 'container':    return { id, type, containerId: '', charId: '' };
+    case 'time-manipulation': return { id, type, variableId: '', years: 0, months: 0, days: 0, hours: 0, minutes: 0 };
+    case 'paperdoll':         return { id, type, charId: '', showLabels: false };
+    case 'inventory':         return { id, type, charId: '' };
+    case 'plugin':            return { id, type, pluginId: '', values: {} };
   }
+}
+
+/** Create a plugin-block instance referencing a plugin def. Populates param defaults. */
+export function makePluginBlock(def: PluginBlockDef): PluginBlock {
+  const values: Record<string, string> = {};
+  for (const p of def.params) values[p.key] = p.default ?? '';
+  return { id: crypto.randomUUID(), type: 'plugin', pluginId: def.id, values };
 }
 
 // ── Category definitions ──────────────────────────────────────────────────────
@@ -82,10 +117,10 @@ export function makeBlock(type: BlockType): Block {
 type CategoryKey = 'content' | 'interaction' | 'logic' | 'system';
 
 const BLOCK_CATEGORIES: { key: CategoryKey; types: BlockType[] }[] = [
-  { key: 'content',     types: ['text', 'dialogue', 'image', 'video', 'audio', 'table', 'divider'] },
+  { key: 'content',     types: ['text', 'dialogue', 'image', 'image-gen', 'video', 'audio', 'table', 'paperdoll', 'inventory', 'divider'] },
   { key: 'interaction', types: ['choice', 'button', 'link', 'input-field', 'checkbox', 'radio'] },
-  { key: 'logic',       types: ['condition', 'variable-set', 'function', 'popup'] },
-  { key: 'system',      types: ['raw', 'include', 'note'] },
+  { key: 'logic',       types: ['condition', 'variable-set', 'time-manipulation', 'function', 'popup'] },
+  { key: 'system',      types: ['raw', 'include', 'note', 'container'] },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -94,26 +129,31 @@ interface BlockEntry { type: BlockType; label: string; icon: string; desc: strin
 
 function buildEntries(t: ReturnType<typeof useT>): BlockEntry[] {
   return [
-    { type: 'text',         icon: BLOCK_ICONS['text'],         label: t.addBlock.text.label,        desc: t.addBlock.text.desc },
-    { type: 'dialogue',     icon: BLOCK_ICONS['dialogue'],     label: t.addBlock.dialogue.label,    desc: t.addBlock.dialogue.desc },
-    { type: 'choice',       icon: BLOCK_ICONS['choice'],       label: t.addBlock.choice.label,      desc: t.addBlock.choice.desc },
-    { type: 'condition',    icon: BLOCK_ICONS['condition'],    label: t.addBlock.condition.label,   desc: t.addBlock.condition.desc },
-    { type: 'variable-set', icon: BLOCK_ICONS['variable-set'], label: t.addBlock.variableSet.label, desc: t.addBlock.variableSet.desc },
-    { type: 'button',       icon: BLOCK_ICONS['button'],       label: t.addBlock.button.label,      desc: t.addBlock.button.desc },
-    { type: 'link',         icon: BLOCK_ICONS['link'],         label: t.addBlock.link.label,        desc: t.addBlock.link.desc },
-    { type: 'input-field',  icon: BLOCK_ICONS['input-field'],  label: t.addBlock.inputField.label,  desc: t.addBlock.inputField.desc },
-    { type: 'image',        icon: BLOCK_ICONS['image'],        label: t.addBlock.image.label,       desc: t.addBlock.image.desc },
-    { type: 'video',        icon: BLOCK_ICONS['video'],        label: t.addBlock.video.label,       desc: t.addBlock.video.desc },
-    { type: 'raw',          icon: BLOCK_ICONS['raw'],          label: t.addBlock.raw.label,         desc: t.addBlock.raw.desc },
-    { type: 'note',         icon: BLOCK_ICONS['note'],         label: t.addBlock.note.label,        desc: t.addBlock.note.desc },
-    { type: 'table',        icon: BLOCK_ICONS['table'],        label: t.addBlock.table.label,       desc: t.addBlock.table.desc },
-    { type: 'include',      icon: BLOCK_ICONS['include'],      label: t.addBlock.include.label,     desc: t.addBlock.include.desc },
-    { type: 'divider',      icon: BLOCK_ICONS['divider'],      label: t.addBlock.divider.label,     desc: t.addBlock.divider.desc },
-    { type: 'checkbox',     icon: BLOCK_ICONS['checkbox'],     label: t.addBlock.checkbox.label,    desc: t.addBlock.checkbox.desc },
-    { type: 'radio',        icon: BLOCK_ICONS['radio'],        label: t.addBlock.radio.label,       desc: t.addBlock.radio.desc },
-    { type: 'function',     icon: BLOCK_ICONS['function'],     label: t.addBlock.function.label,    desc: t.addBlock.function.desc },
-    { type: 'popup',        icon: BLOCK_ICONS['popup'],        label: t.addBlock.popup.label,       desc: t.addBlock.popup.desc },
-    { type: 'audio',        icon: BLOCK_ICONS['audio'],        label: t.addBlock.audio.label,       desc: t.addBlock.audio.desc },
+    { type: 'text',              icon: BLOCK_ICONS['text'],              label: t.addBlock.text.label,             desc: t.addBlock.text.desc },
+    { type: 'dialogue',          icon: BLOCK_ICONS['dialogue'],          label: t.addBlock.dialogue.label,         desc: t.addBlock.dialogue.desc },
+    { type: 'choice',            icon: BLOCK_ICONS['choice'],            label: t.addBlock.choice.label,           desc: t.addBlock.choice.desc },
+    { type: 'condition',         icon: BLOCK_ICONS['condition'],         label: t.addBlock.condition.label,        desc: t.addBlock.condition.desc },
+    { type: 'variable-set',      icon: BLOCK_ICONS['variable-set'],      label: t.addBlock.variableSet.label,      desc: t.addBlock.variableSet.desc },
+    { type: 'button',            icon: BLOCK_ICONS['button'],            label: t.addBlock.button.label,           desc: t.addBlock.button.desc },
+    { type: 'link',              icon: BLOCK_ICONS['link'],              label: t.addBlock.link.label,             desc: t.addBlock.link.desc },
+    { type: 'input-field',       icon: BLOCK_ICONS['input-field'],       label: t.addBlock.inputField.label,       desc: t.addBlock.inputField.desc },
+    { type: 'image',             icon: BLOCK_ICONS['image'],             label: t.addBlock.image.label,            desc: t.addBlock.image.desc },
+    { type: 'image-gen',         icon: BLOCK_ICONS['image-gen'],         label: t.addBlock.imageGen.label,         desc: t.addBlock.imageGen.desc },
+    { type: 'video',             icon: BLOCK_ICONS['video'],             label: t.addBlock.video.label,            desc: t.addBlock.video.desc },
+    { type: 'raw',               icon: BLOCK_ICONS['raw'],               label: t.addBlock.raw.label,              desc: t.addBlock.raw.desc },
+    { type: 'note',              icon: BLOCK_ICONS['note'],              label: t.addBlock.note.label,             desc: t.addBlock.note.desc },
+    { type: 'table',             icon: BLOCK_ICONS['table'],             label: t.addBlock.table.label,            desc: t.addBlock.table.desc },
+    { type: 'include',           icon: BLOCK_ICONS['include'],           label: t.addBlock.include.label,          desc: t.addBlock.include.desc },
+    { type: 'divider',           icon: BLOCK_ICONS['divider'],           label: t.addBlock.divider.label,          desc: t.addBlock.divider.desc },
+    { type: 'checkbox',          icon: BLOCK_ICONS['checkbox'],          label: t.addBlock.checkbox.label,         desc: t.addBlock.checkbox.desc },
+    { type: 'radio',             icon: BLOCK_ICONS['radio'],             label: t.addBlock.radio.label,            desc: t.addBlock.radio.desc },
+    { type: 'function',          icon: BLOCK_ICONS['function'],          label: t.addBlock.function.label,         desc: t.addBlock.function.desc },
+    { type: 'popup',             icon: BLOCK_ICONS['popup'],             label: t.addBlock.popup.label,            desc: t.addBlock.popup.desc },
+    { type: 'audio',             icon: BLOCK_ICONS['audio'],             label: t.addBlock.audio.label,            desc: t.addBlock.audio.desc },
+    { type: 'container',         icon: BLOCK_ICONS['container'],         label: t.addBlock.container.label,        desc: t.addBlock.container.desc },
+    { type: 'time-manipulation', icon: BLOCK_ICONS['time-manipulation'], label: t.addBlock.timeManipulation.label, desc: t.addBlock.timeManipulation.desc },
+    { type: 'paperdoll',         icon: BLOCK_ICONS['paperdoll'],         label: t.addBlock.paperdoll.label,         desc: t.addBlock.paperdoll.desc },
+    { type: 'inventory',         icon: BLOCK_ICONS['inventory'],         label: t.addBlock.inventory.label,         desc: t.addBlock.inventory.desc },
   ];
 }
 
@@ -166,6 +206,7 @@ interface Props {
 export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, onClose }: Props) {
   const { addBlock } = useProjectStore();
   const { recentBlockTypes, trackRecentBlock } = useEditorPrefsStore();
+  const plugins = usePluginStore((s) => s.plugins);
   const t = useT();
   const [open, setOpen] = useState(initialOpen ?? false);
   const [search, setSearch] = useState('');
@@ -194,6 +235,12 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, o
     } else {
       addBlock(sceneId, block);
     }
+    close();
+  };
+
+  const addPlugin = (def: PluginBlockDef) => {
+    const block = makePluginBlock(def);
+    if (onAdd) onAdd(block); else addBlock(sceneId, block);
     close();
   };
 
@@ -270,6 +317,43 @@ export function AddBlockMenu({ sceneId, onAdd, excludeTypes = [], initialOpen, o
                     <BlockButtonCompact key={e.type} entry={e} onClick={() => add(e.type)} />
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Plugins category */}
+            {plugins.length > 0 && (
+              <div className="border-b border-slate-700">
+                <button
+                  className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700/50 transition-colors cursor-pointer"
+                  onClick={() => toggleCat('plugins')}
+                >
+                  <span className="font-medium">
+                    {expandedCats.has('plugins') ? '▾' : '▸'}{' '}
+                    {t.addBlock.categories.plugins}
+                  </span>
+                  <span className="text-slate-500">{plugins.length}</span>
+                </button>
+                {expandedCats.has('plugins') && (
+                  <div className="grid grid-cols-2">
+                    {plugins.map((def) => (
+                      <button
+                        key={def.id}
+                        className="flex items-center gap-2 px-3 py-2 hover:bg-slate-700 text-left transition-colors cursor-pointer border-b border-r border-slate-700 border-l-4"
+                        style={{ borderLeftColor: def.color }}
+                        onClick={() => addPlugin(def)}
+                        title={def.description}
+                      >
+                        <span className="text-base leading-none">{def.icon || '🧩'}</span>
+                        <div className="min-w-0">
+                          <div className="text-xs text-white font-medium truncate">{def.name}</div>
+                          {def.description && (
+                            <div className="text-xs text-slate-400 leading-tight truncate">{def.description}</div>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 

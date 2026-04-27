@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
+import { usePluginStore } from '../../store/pluginStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
 import { generateStandaloneHtml } from '../../utils/exportToHtml';
 import { exportToTwee } from '../../utils/exportToTwee';
+import { extractProjectStrings, applyTranslations, type TranslationMap } from '../../utils/i18nUtils';
 import {
   hasSCTemplate, getSCTemplate, getSCVersion,
   parseSCFormatJs, storeSCTemplate, clearSCTemplate,
@@ -23,8 +25,11 @@ export function Header() {
     undo, redo, canUndo, canRedo,
   } = useProjectStore();
   const { locale, setLocale } = useLocaleStore();
-  const { setProjectSettingsOpen, setEditorPrefsOpen } = useEditorStore();
-  const { confirmOpenFolderAfterExport } = useEditorPrefsStore();
+  const { setProjectSettingsOpen, setEditorPrefsOpen, setLLMSettingsOpen } = useEditorStore();
+  
+  // Explicitly select llmEnabled to ensure reactivity
+  const confirmOpenFolderAfterExport = useEditorPrefsStore(s => s.confirmOpenFolderAfterExport);
+
   const t = useT();
 
   const { panelLayout, togglePreviewPanel, toggleGraphPanel } = useEditorPrefsStore();
@@ -73,7 +78,7 @@ export function Header() {
   // ─── Save helpers ─────────────────────────────────────────────────────────
 
   async function doSaveToDir(dir: string): Promise<void> {
-    await fsApi.mkdir(joinPath(dir, 'assets'));
+    await fsApi.mkdir(joinPath(dir, 'release', 'assets'));
     const content  = JSON.stringify(project, null, 2);
     const fileName = `${safeName(project.title)}.${PURL_EXT}`;
     await fsApi.writeFile(joinPath(dir, fileName), content);
@@ -81,14 +86,21 @@ export function Header() {
 
   async function ensureProjectDir(): Promise<string | null> {
     if (projectDir) {
-      await fsApi.mkdir(joinPath(projectDir, 'assets'));
+      await fsApi.mkdir(joinPath(projectDir, 'release', 'assets'));
       return projectDir;
     }
     const folder = await fsApi.openFolderDialog();
     if (!folder) return null;
     setProjectDir(folder);
-    await fsApi.mkdir(joinPath(folder, 'assets'));
+    await fsApi.mkdir(joinPath(folder, 'release', 'assets'));
     return folder;
+  }
+
+  /** Returns names of scenes that have image-gen blocks with unapproved (history/) src */
+  function unapprovedScenes(): string[] {
+    return project.scenes
+      .filter(scene => scene.blocks.some(b => b.type === 'image-gen' && b.src.startsWith('history/')))
+      .map(scene => scene.name);
   }
 
   // ─── Save / Open ──────────────────────────────────────────────────────────
@@ -195,22 +207,37 @@ export function Header() {
   const handleExportHtml = async () => {
     const template = getSCTemplate();
     if (!template) return;
-    setBusy(true);
     setExportMenuOpen(false);
-    try {
-      const dir = await ensureProjectDir();
-      if (!dir) return;
-      const html = generateStandaloneHtml(project, template);
-      await fsApi.writeFile(joinPath(dir, 'index.html'), html);
-      toast.success(t.header.successExportHtml);
-      if (confirmOpenFolderAfterExport) {
-        ask({ message: t.header.confirmHtmlSaved }, async () => { await fsApi.openPath(dir); });
+
+    const doExport = async () => {
+      setBusy(true);
+      try {
+        const dir = await ensureProjectDir();
+        if (!dir) return;
+        const releaseDir = joinPath(dir, 'release');
+        const html = generateStandaloneHtml(project, template, usePluginStore.getState().plugins);
+        await fsApi.writeFile(joinPath(releaseDir, 'index.html'), html);
+        toast.success(t.header.successExportHtml);
+        if (confirmOpenFolderAfterExport) {
+          ask({ message: t.header.confirmHtmlSaved }, async () => { await fsApi.openPath(releaseDir); });
+        }
+      } catch (e) {
+        alert(t.header.errorExportHtml(String(e)));
+      } finally {
+        setBusy(false);
       }
-    } catch (e) {
-      alert(t.header.errorExportHtml(String(e)));
-    } finally {
-      setBusy(false);
+    };
+
+    const badScenes = unapprovedScenes();
+    if (badScenes.length > 0) {
+      ask(
+        { message: `${t.header.unapprovedImagesTitle}\n\n${t.header.unapprovedImagesMessage(badScenes)}` },
+        doExport,
+      );
+      return;
     }
+
+    await doExport();
   };
 
   const handleExportHtmlAs = async () => {
@@ -227,7 +254,7 @@ export function Header() {
     if (!filePath) return;
     setBusy(true);
     try {
-      const html = generateStandaloneHtml(project, template);
+      const html = generateStandaloneHtml(project, template, usePluginStore.getState().plugins);
       await fsApi.writeFile(filePath, html);
       toast.success(t.header.successExportHtml);
     } catch (e) {
@@ -249,11 +276,82 @@ export function Header() {
     if (!filePath) return;
     setBusy(true);
     try {
-      const twee = exportToTwee(project);
+      const twee = exportToTwee(project, usePluginStore.getState().plugins);
       await fsApi.writeFile(filePath, twee);
       toast.success(t.header.successExportTwee);
     } catch (e) {
       alert(t.header.errorExportTwee(String(e)));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleExportTranslations = async () => {
+    setMenuOpen(false);
+    const strings = extractProjectStrings(project);
+    const defaultName = `${safeName(project.title)}.lang.json`;
+    const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
+    
+    const filePath = await fsApi.saveFileDialog({
+      title: 'Export strings for translation',
+      defaultPath,
+      filters: [{ name: 'JSON Language File', extensions: ['json'] }],
+    });
+
+    if (!filePath) return;
+    setBusy(true);
+    try {
+      await fsApi.writeFile(filePath, JSON.stringify(strings, null, 2));
+      toast.success('Strings exported successfully');
+    } catch (e) {
+      alert('Export error: ' + String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleExportWithTranslation = async () => {
+    setExportMenuOpen(false);
+    
+    // 1. Load the translation file
+    const filePath = await fsApi.openFileDialog({
+      title: 'Select translation file (.json)',
+      filters: [{ name: 'JSON Language File', extensions: ['json'] }],
+    });
+    if (!filePath) return;
+
+    try {
+      const content = await fsApi.readFile(filePath);
+      const translationMap = JSON.parse(content) as TranslationMap;
+      
+      // 2. Apply to a clone of the project
+      const translatedProject = applyTranslations(project, translationMap);
+      
+      // 3. Export as HTML
+      const template = getSCTemplate();
+      if (!template) {
+        alert(t.header.scLoadTitle);
+        return;
+      }
+
+      const langCode = filePath.split(/[/\\]/).pop()?.split('.')[0] || 'translated';
+      const defaultName = `${safeName(project.title)}_${langCode}.html`;
+      const defaultPath = projectDir ? joinPath(projectDir, defaultName) : defaultName;
+
+      const savePath = await fsApi.saveFileDialog({
+        title: 'Save translated HTML',
+        defaultPath,
+        filters: [{ name: 'HTML File', extensions: ['html'] }],
+      });
+
+      if (!savePath) return;
+      setBusy(true);
+
+      const html = generateStandaloneHtml(translatedProject, template, usePluginStore.getState().plugins);
+      await fsApi.writeFile(savePath, html);
+      toast.success(`Exported ${langCode} version successfully!`);
+    } catch (e) {
+      alert('Error during translated export: ' + String(e));
     } finally {
       setBusy(false);
     }
@@ -375,7 +473,7 @@ export function Header() {
           </Btn>
         )}
 
-{/* HTML export — split button */}
+        {/* HTML export — split button */}
         {scReady && (
           <div className="relative">
             <div className="flex">
@@ -412,6 +510,14 @@ export function Header() {
                 >
                   <div className="font-medium">{t.header.exportSaveAs}</div>
                   <div className="text-xs text-slate-400 mt-0.5">{t.header.exportSaveAsDesc}</div>
+                </button>
+                <div className="border-t border-slate-700" />
+                <button
+                  className="w-full text-left px-4 py-2.5 text-sm text-slate-200 hover:bg-slate-700 transition-colors cursor-pointer"
+                  onClick={handleExportWithTranslation}
+                >
+                  <div className="font-medium">Export with translation...</div>
+                  <div className="text-xs text-slate-400 mt-0.5">Load .json and save translated HTML</div>
                 </button>
                 <div className="border-t border-slate-700" />
                 <button
@@ -494,12 +600,27 @@ export function Header() {
 
               <div className="h-px bg-slate-700/80 mx-2 my-1" />
 
+              {/* i18n section */}
+              <MenuSection label="Localization" />
+              <MenuItem
+                icon="🌐"
+                label="Export strings"
+                desc="Export all project text to JSON"
+                onClick={handleExportTranslations} 
+                disabled={busy}
+              />
+
+              <div className="h-px bg-slate-700/80 mx-2 my-1" />
+
               {/* Settings section */}
               <MenuSection label={t.header.menuSectionSettings} />
               <MenuItem icon="⚙" label={t.header.projectSettings} desc={t.header.projectSettingsDesc}
                 onClick={() => { setMenuOpen(false); setProjectSettingsOpen(true); }} />
               <MenuItem icon="🛠" label={t.header.editorPrefs} desc={t.header.editorPrefsDesc}
                 onClick={() => { setMenuOpen(false); setEditorPrefsOpen(true); }} />
+              {/* Always show LLM settings button */}
+              <MenuItem icon="🧠" label={t.header.llmSettings} desc={t.header.llmSettingsDesc}
+                onClick={() => { setMenuOpen(false); setLLMSettingsOpen(true); }} />
               <div className="h-px bg-slate-700/80 mx-2 my-1" />
               <MenuItem icon="ℹ️" label={t.header.about} desc={t.header.aboutDesc}
                 onClick={() => { setMenuOpen(false); setAboutOpen(true); }} />

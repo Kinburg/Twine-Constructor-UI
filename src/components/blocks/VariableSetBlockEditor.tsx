@@ -5,6 +5,8 @@ import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VariablePicker } from '../shared/VariablePicker';
+import { VarInsertButton } from '../shared/VarInsertButton';
+import { useVariableNodes } from '../shared/VariableScope';
 
 /** Default RandomConfig strictly matching the variable type */
 function defaultRandomConfig(varType: string): RandomConfig {
@@ -41,11 +43,13 @@ export function VariableSetBlockEditor({
   onUpdate?: (patch: Partial<VariableSetBlock>) => void;
 }) {
   const t = useT();
-  const { project, updateBlock, saveSnapshot } = useProjectStore();
+  const { updateBlock, saveSnapshot } = useProjectStore();
+  const variableNodes = useVariableNodes();
   const update = onUpdate ?? ((p: Partial<VariableSetBlock>) => updateBlock(sceneId, block.id, p as never));
-  const variables   = flattenVariables(project.variableNodes);
+  const variables   = flattenVariables(variableNodes);
   const selectedVar = variables.find(v => v.id === block.variableId);
-  const exprInputRef = useRef<HTMLInputElement>(null);
+  const exprInputRef    = useRef<HTMLInputElement>(null);
+  const manualValueRef  = useRef<HTMLInputElement>(null);
 
   const OPERATORS: { value: VarOperator; label: string }[] = [
     { value: '=',  label: t.variableSetBlock.opAssign },
@@ -217,7 +221,7 @@ export function VariableSetBlockEditor({
               ...(switchingFromArray ? { accessor: undefined } : {}),
             });
           }}
-          nodes={project.variableNodes}
+          nodes={variableNodes}
           placeholder={t.variableSetBlock.selectVariable}
         />
         {variables.length === 0 && (
@@ -286,6 +290,7 @@ export function VariableSetBlockEditor({
         <div className="flex items-center gap-2">
           <label className="text-xs text-slate-400 w-20 shrink-0" />
           <input
+            ref={manualValueRef}
             className="flex-1 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 font-mono"
             placeholder={
               isArray                            ? t.variableSetBlock.textPlaceholder :
@@ -295,6 +300,13 @@ export function VariableSetBlockEditor({
             value={block.value}
             onFocus={saveSnapshot}
             onChange={e => update({ value: e.target.value })}
+          />
+          <VarInsertButton
+            targetRef={manualValueRef}
+            value={block.value}
+            onChange={v => update({ value: v })}
+            vars={variables}
+            variableNodes={variableNodes}
           />
         </div>
       )}
@@ -340,7 +352,7 @@ export function VariableSetBlockEditor({
             <VariablePicker
               value={block.dynamicVariableId ?? ''}
               onChange={id => update({ dynamicVariableId: id })}
-              nodes={project.variableNodes}
+              nodes={variableNodes}
               placeholder={t.variableSetBlock.selectControlVariable}
             />
           </div>

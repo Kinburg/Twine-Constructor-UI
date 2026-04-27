@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useProjectStore } from '../../store/projectStore';
 import type { Asset, AssetGroup, AssetTreeNode } from '../../types';
-import { fsApi, joinPath, safeName, toLocalFileUrl } from '../../lib/fsApi';
+import { fsApi, joinPath, safeName, toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { flattenAssets } from '../../utils/treeUtils';
 import { useT } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
@@ -157,7 +157,7 @@ export function AssetManager() {
   // ── Sync asset tree with filesystem ────────────────────────────────────────
   const runSync = async () => {
     if (!projectDir) return;
-    const assetsAbs = joinPath(projectDir, 'assets');
+    const assetsAbs = joinPath(projectDir, 'release', 'assets');
     const exists = await fsApi.exists(assetsAbs);
     if (!exists) return;
     const { result, changed } = await syncWithDisk(
@@ -166,14 +166,6 @@ export function AssetManager() {
     if (changed) syncAssets(result);
   };
 
-  // Auto-sync on mount / projectDir change
-  useEffect(() => {
-    if (!projectDir) return;
-    let cancelled = false;
-    runSync().then(() => { if (cancelled) return; });
-    return () => { cancelled = true; };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [projectDir]);
 
   // ── Helpers ────────────────────────────────────────────────────────────────
 
@@ -184,7 +176,7 @@ export function AssetManager() {
       return next;
     });
 
-  /** Ensures project dir + assets/ subfolder exist. Returns project dir path. */
+  /** Ensures project dir + release/assets/ subfolder exist. Returns project dir path. */
   async function ensureDir(): Promise<string> {
     const dir = projectDir ?? await (async () => {
       const base = await fsApi.getProjectsDir();
@@ -193,7 +185,7 @@ export function AssetManager() {
       setProjectDir(d);
       return d;
     })();
-    await fsApi.mkdir(joinPath(dir, 'assets'));
+    await fsApi.mkdir(joinPath(dir, 'release', 'assets'));
     return dir;
   }
 
@@ -221,7 +213,7 @@ export function AssetManager() {
 
     try {
       const dir = await ensureDir();
-      await fsApi.mkdir(joinPath(dir, relPath));
+      await fsApi.mkdir(joinPath(dir, 'release', relPath));
       addAssetGroup(pendingGroup.parentGroupId, raw, relPath);
       // Auto-expand the parent so user sees the new group
       if (pendingGroup.parentGroupId) {
@@ -257,7 +249,7 @@ export function AssetManager() {
       const dir = await ensureDir();
       // Target folder: groupRelPath is e.g. "assets/chars", or "" for root → "assets"
       const targetRel = groupRelPath || 'assets';
-      const targetAbs = joinPath(dir, targetRel);
+      const targetAbs = joinPath(dir, 'release', targetRel);
       await fsApi.mkdir(targetAbs);
 
       // Collect existing relative paths to skip duplicates
@@ -295,7 +287,7 @@ export function AssetManager() {
   async function handleDelete(id: string) {
     const node = findNodeById(project.assetNodes, id);
     if (node && projectDir) {
-      const absPath = joinPath(projectDir, node.relativePath);
+      const absPath = resolveAssetPath(projectDir, node.relativePath);
       try {
         if (node.kind === 'group') await fsApi.deleteDir(absPath);
         else                       await fsApi.deleteFile(absPath);
@@ -527,7 +519,7 @@ function AssetRow({
   const isAudio = asset.assetType === 'audio';
 
   const previewSrc = projectDir
-    ? toLocalFileUrl(joinPath(projectDir, asset.relativePath))
+    ? toLocalFileUrl(resolveAssetPath(projectDir, asset.relativePath))
     : null;
 
   return (

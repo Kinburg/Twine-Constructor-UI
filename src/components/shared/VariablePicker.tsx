@@ -1,27 +1,30 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { VariableTreeNode, VariableType, VariableGroup } from '../../types';
-import { getVariablePath, hasLeafVariables } from '../../utils/treeUtils';
+import type { Variable, VariableTreeNode, VariableType, VariableGroup } from '../../types';
+import { getVariablePath, getNodePath, hasLeafVariables } from '../../utils/treeUtils';
+import { isParamId } from '../../utils/pluginParamScope';
 
 export interface VariablePickerProps {
-  value: string;                // currently selected variableId
+  value: string;                // currently selected variableId or groupId
   onChange: (id: string) => void;
   nodes: VariableTreeNode[];    // project.variableNodes
   placeholder?: string;
   filterType?: VariableType;    // optional: only show variables of this type
+  filter?: (v: Variable) => boolean; // optional: custom filter function
   className?: string;
+  allowGroups?: boolean;        // if true, double-clicking a group selects it
 }
 
-export function VariablePicker({ value, onChange, nodes, placeholder, filterType, className }: VariablePickerProps) {
+export function VariablePicker({ value, onChange, nodes, placeholder, filterType, filter: customFilter, className, allowGroups }: VariablePickerProps) {
   const [open, setOpen] = useState(false);
-  const [filter, setFilter] = useState('');
+  const [filterText, setFilterText] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const btnRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-  const filterRef = useRef<HTMLInputElement>(null);
+  const filterInputRef = useRef<HTMLInputElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number; maxHeight: number } | null>(null);
 
-  // Resolve selected variable's display path
-  const selectedPath = value ? getVariablePath(value, nodes) : '';
+  // Resolve selected node's display path (works for both variables and groups)
+  const selectedPath = value ? (getVariablePath(value, nodes) || getNodePath(value, nodes)) : '';
 
   const openPanel = useCallback(() => {
     if (btnRef.current) {
@@ -33,7 +36,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
       setPos({ top, left: Math.min(rect.left, window.innerWidth - 220), maxHeight: Math.min(maxH, 320) });
     }
     setOpen(true);
-    setFilter('');
+    setFilterText('');
   }, []);
 
   // Close on outside click
@@ -50,7 +53,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
   }, [open]);
 
   // Focus filter input when panel opens
-  useEffect(() => { if (open) setTimeout(() => filterRef.current?.focus(), 0); }, [open]);
+  useEffect(() => { if (open) setTimeout(() => filterInputRef.current?.focus(), 0); }, [open]);
 
   const toggleGroup = (id: string) => {
     setExpanded(prev => {
@@ -65,7 +68,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
     setOpen(false);
   };
 
-  const filterLower = filter.toLowerCase();
+  const filterLower = filterText.toLowerCase();
 
   return (
     <>
@@ -75,7 +78,10 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
         className={className || "flex-1 min-w-0 bg-slate-800 text-sm text-white rounded px-2 py-1 outline-none border border-slate-600 focus:border-indigo-500 cursor-pointer text-left truncate"}
         onClick={() => open ? setOpen(false) : openPanel()}
       >
-        {selectedPath ? <span className="font-mono">${selectedPath}</span> : <span className="text-slate-500">{placeholder || 'Select variable...'}</span>}
+        {selectedPath
+          ? <span className="font-mono">{isParamId(value) ? '_' : '$'}{selectedPath}</span>
+          : <span className="text-slate-500">{placeholder || 'Select variable...'}</span>
+        }
       </button>
 
       {open && pos && (
@@ -86,11 +92,11 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
         >
           {/* Filter */}
           <input
-            ref={filterRef}
+            ref={filterInputRef}
             className="text-xs bg-slate-800 text-white px-2 py-1 outline-none border-b border-slate-700 rounded-t"
             placeholder="Filter..."
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
+            value={filterText}
+            onChange={e => setFilterText(e.target.value)}
             onKeyDown={e => { if (e.key === 'Escape') setOpen(false); }}
           />
 
@@ -104,8 +110,10 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
               onSelect={handleSelect}
               selectedId={value}
               filterType={filterType}
+              filter={customFilter}
               filterText={filterLower}
               allNodes={nodes}
+              allowGroups={allowGroups}
             />
           </div>
         </div>
@@ -117,7 +125,7 @@ export function VariablePicker({ value, onChange, nodes, placeholder, filterType
 // ─── Reusable tree renderer ──────────────────────────────────────────────────
 
 export function PickerTree({
-  nodes, depth, expanded, onToggleGroup, onSelect, selectedId, filterType, filterText, allNodes,
+  nodes, depth, expanded, onToggleGroup, onSelect, selectedId, filterType, filter, filterText, allNodes, allowGroups,
 }: {
   nodes: VariableTreeNode[];
   depth: number;
@@ -126,8 +134,10 @@ export function PickerTree({
   onSelect: (id: string) => void;
   selectedId: string;
   filterType?: VariableType;
+  filter?: (v: Variable) => boolean;
   filterText: string;
   allNodes: VariableTreeNode[];
+  allowGroups?: boolean;
 }) {
   return (
     <>
@@ -135,19 +145,24 @@ export function PickerTree({
         if (node.kind === 'group') {
           // Skip groups with no matching leaf variables
           if (!hasLeafVariables(node, filterType)) return null;
-          if (filterText && !groupMatchesFilter(node, filterText, filterType)) return null;
+          if (filterText && !groupMatchesFilter(node, filterText, filterType, filter)) return null;
 
           const isExp = expanded.has(node.id) || !!filterText;
+          const isGroupSelected = allowGroups && node.id === selectedId;
           return (
             <div key={node.id}>
               <div
-                className="flex items-center gap-1 px-2 py-0.5 cursor-pointer hover:bg-slate-800 transition-colors"
+                className={`flex items-center gap-1 px-2 py-0.5 cursor-pointer transition-colors ${isGroupSelected ? 'bg-indigo-600/30 text-white' : 'hover:bg-slate-800'}`}
                 style={{ paddingLeft: depth * 12 + 8 }}
                 onClick={() => onToggleGroup(node.id)}
+                onDoubleClick={allowGroups ? () => onSelect(node.id) : undefined}
+                title={allowGroups ? 'Double-click to select' : undefined}
               >
                 <span className="text-slate-500 text-xs w-3 shrink-0">{isExp ? '▾' : '▸'}</span>
-                <span className="text-orange-400/60 text-xs font-mono shrink-0">{'{}'}</span>
-                <span className="text-xs text-slate-400 truncate">{node.name}</span>
+                <span className={`text-xs font-mono shrink-0 ${isGroupSelected ? 'text-orange-300' : 'text-orange-400/60'}`}>{'{}'}</span>
+                <span className={`text-xs truncate ${isGroupSelected ? 'text-white' : 'text-slate-400'}`}>{node.name}</span>
+                {allowGroups && <span className="text-[10px] text-slate-600 ml-1 shrink-0">⤶</span>}
+                {isGroupSelected && <span className="text-xs text-indigo-400 ml-auto shrink-0">✓</span>}
               </div>
               {isExp && (
                 <PickerTree
@@ -158,8 +173,10 @@ export function PickerTree({
                   onSelect={onSelect}
                   selectedId={selectedId}
                   filterType={filterType}
+                  filter={filter}
                   filterText={filterText}
                   allNodes={allNodes}
+                  allowGroups={allowGroups}
                 />
               )}
             </div>
@@ -168,6 +185,8 @@ export function PickerTree({
 
         // Variable leaf
         if (filterType && node.varType !== filterType) return null;
+        if (filter && !filter(node)) return null;
+        
         const path = getVariablePath(node.id, allNodes) || node.name;
         if (filterText && !path.toLowerCase().includes(filterText) && !node.name.toLowerCase().includes(filterText)) return null;
 
@@ -195,18 +214,20 @@ export function typeColor(t: VariableType): string {
     case 'string': return 'text-emerald-400';
     case 'boolean': return 'text-amber-400';
     case 'array': return 'text-violet-400';
+    case 'datetime': return 'text-pink-400';
     default: return 'text-slate-400';
   }
 }
 
 /** Check if any leaf variable in this group matches the filter text */
-export function groupMatchesFilter(group: VariableGroup, filterText: string, filterType?: VariableType): boolean {
+export function groupMatchesFilter(group: VariableGroup, filterText: string, filterType?: VariableType, filter?: (v: Variable) => boolean): boolean {
   return group.children.some(n => {
     if (n.kind === 'variable') {
       if (filterType && n.varType !== filterType) return false;
+      if (filter && !filter(n)) return false;
       return n.name.toLowerCase().includes(filterText);
     }
-    if (n.kind === 'group') return groupMatchesFilter(n, filterText, filterType);
+    if (n.kind === 'group') return groupMatchesFilter(n, filterText, filterType, filter);
     return false;
   });
 }
