@@ -12,6 +12,7 @@ import {
   PrimaryButton, SecondaryButton, ColorSwatchInput, INPUT_CLS,
 } from '../shared/ModalShell';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
+import { loadComfyWorkflow, loadExampleWorkflows, collectWorkflowFiles, EXAMPLES_PREFIX } from '../../utils/imageGen/workflowLoader';
 import {
   expandDescriptionWithLlm,
   generateLoreFromDescriptionWithLlm,
@@ -21,21 +22,6 @@ import {
 // ═══════════════════════════════════════════════════════════════════════════
 //  Helpers
 // ═══════════════════════════════════════════════════════════════════════════
-
-async function collectWorkflowFiles(absDir: string, relDir: string): Promise<string[]> {
-  const entries = await fsApi.listDir(absDir);
-  const files: string[] = [];
-  for (const entry of entries) {
-    const absPath = joinPath(absDir, entry.name);
-    const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
-    if (entry.isDir) {
-      files.push(...await collectWorkflowFiles(absPath, relPath));
-    } else if (entry.name.toLowerCase().endsWith('.json')) {
-      files.push(relPath);
-    }
-  }
-  return files;
-}
 
 function detectExt(imageUrl: string, contentType: string | null): string {
   if (contentType?.includes('png')) return 'png';
@@ -209,6 +195,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
   const [imgHeight, setImgHeight]               = useState(512);
   const [imgSeedMode, setImgSeedMode]           = useState<'random' | 'manual'>('random');
   const [imgSeed, setImgSeed]                   = useState(0);
+  const [exampleWorkflows, setExampleWorkflows] = useState<string[]>([]);
   const [workflows, setWorkflows]               = useState<string[]>([]);
 
   // ─── Title validation ───────────────────────────────────────────────────────
@@ -221,10 +208,13 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
     if (tab !== 'aiImage' || imageGenProvider !== 'comfyui') return;
     let alive = true;
     async function run() {
+      const examples = await loadExampleWorkflows();
+      if (alive) setExampleWorkflows(examples);
+
       const useGlobal = comfyUiWorkflowsDir.trim() !== '';
       const root = useGlobal ? comfyUiWorkflowsDir.trim() : (projectDir ? joinPath(projectDir, 'comfyUI_workflows') : null);
       const relPrefix = useGlobal ? '' : 'comfyUI_workflows';
-      if (!root) return;
+      if (!root) { if (alive) setWorkflows([]); return; }
       if (!await fsApi.exists(root)) { if (alive) setWorkflows([]); return; }
       const list = await collectWorkflowFiles(root, relPrefix);
       if (alive) setWorkflows(list.sort((a, b) => a.localeCompare(b)));
@@ -234,6 +224,9 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
   }, [tab, imageGenProvider, projectDir, comfyUiWorkflowsDir]);
 
   const refreshImgWorkflows = async () => {
+    const examples = await loadExampleWorkflows();
+    setExampleWorkflows(examples);
+
     const useGlobal = comfyUiWorkflowsDir.trim() !== '';
     const root = useGlobal ? comfyUiWorkflowsDir.trim() : (projectDir ? joinPath(projectDir, 'comfyUI_workflows') : null);
     const relPrefix = useGlobal ? '' : 'comfyUI_workflows';
@@ -315,14 +308,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
     setBusyGenImage(true);
     setGenProgress(null);
     try {
-      let workflowJson = {};
-      if (imageGenProvider === 'comfyui' && imgWorkflowFile) {
-        const useGlobal = comfyUiWorkflowsDir.trim() !== '';
-        const wfPath = useGlobal
-          ? joinPath(comfyUiWorkflowsDir.trim(), imgWorkflowFile)
-          : joinPath(projectDir!, imgWorkflowFile);
-        workflowJson = JSON.parse(await fsApi.readFile(wfPath));
-      }
+      const workflowJson = await loadComfyWorkflow(imageGenProvider, imgWorkflowFile, comfyUiWorkflowsDir, projectDir ?? '');
 
       const usedSeed = imgSeedMode === 'random' ? Math.floor(Math.random() * 4294967295) : imgSeed;
       if (imgSeedMode === 'random') setImgSeed(usedSeed);
@@ -753,7 +739,18 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
                         onChange={e => setImgWorkflowFile(e.target.value)}
                       >
                         <option value="">{ig.workflowNone}</option>
-                        {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+                        {exampleWorkflows.length > 0 && (
+                          <optgroup label={ig.workflowGroupExamples}>
+                            {exampleWorkflows.map(wf => (
+                              <option key={wf} value={wf}>{wf.slice(EXAMPLES_PREFIX.length)}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                        {workflows.length > 0 && (
+                          <optgroup label={ig.workflowGroupCustom}>
+                            {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+                          </optgroup>
+                        )}
                       </select>
                       <button
                         type="button"

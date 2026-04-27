@@ -7,6 +7,7 @@ import { fsApi, joinPath, toLocalFileUrl, resolveAssetPath } from '../../lib/fsA
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
+import { loadComfyWorkflow, loadExampleWorkflows, collectWorkflowFiles, EXAMPLES_PREFIX } from '../../utils/imageGen/workflowLoader';
 import { generateImagePromptWithLlm } from '../../utils/imageGen/llmPrompt';
 import { StyleChipsEditor } from '../shared/StyleChipsEditor';
 import { VariablePicker } from '../shared/VariablePicker';
@@ -14,21 +15,6 @@ import { useVariableNodes } from '../shared/VariableScope';
 import { ImageMappingEditor } from '../shared/ImageMappingEditor';
 import { CellImageBoundGenPanel } from '../shared/CellImageBoundGenModal';
 import type { CellImageBound } from '../../types';
-
-async function collectWorkflowFiles(absDir: string, relDir: string): Promise<string[]> {
-  const entries = await fsApi.listDir(absDir);
-  const files: string[] = [];
-  for (const entry of entries) {
-    const absPath = joinPath(absDir, entry.name);
-    const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
-    if (entry.isDir) {
-      files.push(...await collectWorkflowFiles(absPath, relPath));
-    } else if (entry.name.toLowerCase().endsWith('.json')) {
-      files.push(relPath);
-    }
-  }
-  return files;
-}
 
 function detectExt(imageUrl: string, contentType: string | null): string {
   if (contentType?.includes('png')) return 'png';
@@ -88,6 +74,7 @@ export function ImageGenBlockEditor({
   const variableNodes = useVariableNodes();
   const mode = block.mode ?? 'static';
   const mapping = block.mapping ?? [];
+  const [exampleWorkflows, setExampleWorkflows] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState<string[]>([]);
   const [busyImage, setBusyImage] = useState(false);
   const [busyPrompt, setBusyPrompt] = useState(false);
@@ -115,10 +102,13 @@ export function ImageGenBlockEditor({
     return `${safeName}-${idx}.${ext}`;
   }, [project.scenes, sceneId, block]);
 
-  // Load workflow list from global dir (if set) or project dir.
+  // Load workflow list from example dir and user dir (global if set, or project dir).
   useEffect(() => {
     let alive = true;
     async function run() {
+      const examples = await loadExampleWorkflows();
+      if (alive) setExampleWorkflows(examples);
+
       const useGlobal = comfyUiWorkflowsDir.trim() !== '';
       let root: string;
       let relPrefix: string;
@@ -127,7 +117,7 @@ export function ImageGenBlockEditor({
         root = comfyUiWorkflowsDir.trim();
         relPrefix = '';
       } else {
-        if (!projectDir) return;
+        if (!projectDir) { if (alive) setWorkflows([]); return; }
         root = joinPath(projectDir, 'comfyUI_workflows');
         relPrefix = 'comfyUI_workflows';
       }
@@ -144,6 +134,9 @@ export function ImageGenBlockEditor({
   }, [projectDir, comfyUiWorkflowsDir]);
 
   const refreshWorkflows = async () => {
+    const examples = await loadExampleWorkflows();
+    setExampleWorkflows(examples);
+
     const useGlobal = comfyUiWorkflowsDir.trim() !== '';
     let root: string;
     let relPrefix: string;
@@ -152,7 +145,7 @@ export function ImageGenBlockEditor({
       root = comfyUiWorkflowsDir.trim();
       relPrefix = '';
     } else {
-      if (!projectDir) return;
+      if (!projectDir) { setWorkflows([]); return; }
       root = joinPath(projectDir, 'comfyUI_workflows');
       relPrefix = 'comfyUI_workflows';
     }
@@ -216,15 +209,7 @@ export function ImageGenBlockEditor({
     setBusyImage(true);
     setGenProgress(null);
     try {
-      // Resolve workflow JSON: global dir or project dir.
-      let workflowJson = {};
-      if (imageGenProvider === 'comfyui' && block.workflowFile) {
-        const useGlobal = comfyUiWorkflowsDir.trim() !== '';
-        const wfPath = useGlobal
-          ? joinPath(comfyUiWorkflowsDir.trim(), block.workflowFile)
-          : joinPath(projectDir, block.workflowFile);
-        workflowJson = JSON.parse(await fsApi.readFile(wfPath));
-      }
+      const workflowJson = await loadComfyWorkflow(imageGenProvider, block.workflowFile, comfyUiWorkflowsDir, projectDir);
 
       const usedSeed = seedMode === 'random' ? randomSeed() : (Number.isFinite(block.seed) ? block.seed : 0);
       const styleHints = block.styleHints ?? [];
@@ -415,7 +400,18 @@ export function ImageGenBlockEditor({
               onChange={e => update({ workflowFile: e.target.value })}
             >
               <option value="">{ig.workflowNone}</option>
-              {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+              {exampleWorkflows.length > 0 && (
+                <optgroup label={ig.workflowGroupExamples}>
+                  {exampleWorkflows.map(wf => (
+                    <option key={wf} value={wf}>{wf.slice(EXAMPLES_PREFIX.length)}</option>
+                  ))}
+                </optgroup>
+              )}
+              {workflows.length > 0 && (
+                <optgroup label={ig.workflowGroupCustom}>
+                  {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+                </optgroup>
+              )}
             </select>
             <button
               type="button"

@@ -19,6 +19,9 @@
   "build": {
     "appId": "com.purlapp.app",
     "productName": "Purl",
+    "extraResources": [
+      { "from": "resources/example-workflows", "to": "example-workflows" }
+    ],
     "icon": "public/Icon.ico",
     "directories": {
       "output": "release"

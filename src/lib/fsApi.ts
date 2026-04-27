@@ -5,7 +5,8 @@
 const api = () => window.electronAPI!;
 
 export const fsApi = {
-  getProjectsDir: ()                              => api().getProjectsDir(),
+  getProjectsDir:          ()                      => api().getProjectsDir(),
+  getExampleWorkflowsDir:  ()                      => api().getExampleWorkflowsDir(),
   readFile:       (p: string)                     => api().readFile(p),
   readFileBinary: (p: string)                     => api().readFileBinary(p),
   writeFile:      (p: string, content: string)    => api().writeFile(p, content),

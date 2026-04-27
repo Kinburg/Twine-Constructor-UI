@@ -4,6 +4,7 @@ interface ElectronAPI {
 
   // Paths
   getProjectsDir(): Promise<string>;
+  getExampleWorkflowsDir(): Promise<string>;
 
   // Filesystem
   readFile(filePath: string): Promise<string>;

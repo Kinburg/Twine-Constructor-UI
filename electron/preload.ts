@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Paths
   getProjectsDir: (): Promise<string> =>
     ipcRenderer.invoke('fs:getProjectsDir'),
+  getExampleWorkflowsDir: (): Promise<string> =>
+    ipcRenderer.invoke('fs:getExampleWorkflowsDir'),
 
   // Filesystem
   readFile: (filePath: string): Promise<string> =>

@@ -354,6 +354,11 @@ app.whenReady().then(async () => {
 // ─── IPC: filesystem ─────────────────────────────────────────────────────────
 
 ipcMain.handle('fs:getProjectsDir', () => PROJECTS_DIR);
+ipcMain.handle('fs:getExampleWorkflowsDir', () =>
+  VITE_DEV_SERVER_URL
+    ? path.join(process.env.APP_ROOT!, 'resources', 'example-workflows')
+    : path.join(process.resourcesPath, 'example-workflows')
+);
 
 ipcMain.handle('fs:readFile', async (_e, filePath: string) => {
   return fs.readFile(filePath, 'utf-8');

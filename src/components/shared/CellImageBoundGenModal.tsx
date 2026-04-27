@@ -24,27 +24,13 @@ import type {
 } from '../../types';
 import { useT } from '../../i18n';
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
+import { loadComfyWorkflow, loadExampleWorkflows, collectWorkflowFiles, EXAMPLES_PREFIX } from '../../utils/imageGen/workflowLoader';
 import { generateAvatarPromptWithLlm } from '../../utils/imageGen/llmPrompt';
 import { getVariablePath, flattenVariables } from '../../utils/treeUtils';
 import { StyleChipsEditor } from './StyleChipsEditor';
 import { ImageAssetPicker } from './ImageMappingEditor';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
-
-async function collectWorkflowFiles(absDir: string, relDir: string): Promise<string[]> {
-  const entries = await fsApi.listDir(absDir);
-  const files: string[] = [];
-  for (const entry of entries) {
-    const absPath = joinPath(absDir, entry.name);
-    const relPath = relDir ? `${relDir}/${entry.name}` : entry.name;
-    if (entry.isDir) {
-      files.push(...await collectWorkflowFiles(absPath, relPath));
-    } else if (entry.name.toLowerCase().endsWith('.json')) {
-      files.push(relPath);
-    }
-  }
-  return files;
-}
 
 function detectExt(imageUrl: string, contentType: string | null): string {
   if (contentType?.includes('png')) return 'png';
@@ -297,6 +283,7 @@ export function CellImageBoundGenPanel({
 
   const [slots, setSlots] = useState<SlotState[]>(() => initSlots(cell, defaultLabel));
   const abortRefs = useRef<Map<string, AbortController>>(new Map());
+  const [exampleWorkflows, setExampleWorkflows] = useState<string[]>([]);
   const [workflows, setWorkflows] = useState<string[]>([]);
 
   // Sync slots when cell.mapping changes externally (e.g. user edits mapping editor inline).
@@ -346,6 +333,9 @@ export function CellImageBoundGenPanel({
   useEffect(() => {
     let alive = true;
     async function run() {
+      const examples = await loadExampleWorkflows();
+      if (alive) setExampleWorkflows(examples);
+
       const useGlobal = comfyUiWorkflowsDir.trim() !== '';
       const root = useGlobal ? comfyUiWorkflowsDir.trim() : (projectDir ? joinPath(projectDir, 'comfyUI_workflows') : null);
       const relPrefix = useGlobal ? '' : 'comfyUI_workflows';
@@ -358,6 +348,9 @@ export function CellImageBoundGenPanel({
   }, [projectDir, comfyUiWorkflowsDir]);
 
   const refreshWorkflows = async () => {
+    const examples = await loadExampleWorkflows();
+    setExampleWorkflows(examples);
+
     const useGlobal = comfyUiWorkflowsDir.trim() !== '';
     const root = useGlobal ? comfyUiWorkflowsDir.trim() : (projectDir ? joinPath(projectDir, 'comfyUI_workflows') : null);
     const relPrefix = useGlobal ? '' : 'comfyUI_workflows';
@@ -407,14 +400,7 @@ export function CellImageBoundGenPanel({
     updateSlot(slotId, { busy: true, progress: null });
 
     try {
-      let workflowJson = {};
-      if (imageGenProvider === 'comfyui' && workflowFile) {
-        const useGlobal = comfyUiWorkflowsDir.trim() !== '';
-        const wfPath = useGlobal
-          ? joinPath(comfyUiWorkflowsDir.trim(), workflowFile)
-          : joinPath(projectDir, workflowFile);
-        workflowJson = JSON.parse(await fsApi.readFile(wfPath));
-      }
+      const workflowJson = await loadComfyWorkflow(imageGenProvider, workflowFile, comfyUiWorkflowsDir, projectDir);
 
       const seed = seedLocked ? lockedSeed : randomSeed();
       const effectivePrompt = styleHints.length > 0
@@ -623,7 +609,18 @@ export function CellImageBoundGenPanel({
                   value={workflowFile} onChange={e => setWorkflowFile(e.target.value)}
                 >
                   <option value="">{ag.workflowNone}</option>
-                  {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+                  {exampleWorkflows.length > 0 && (
+                    <optgroup label={ag.workflowGroupExamples}>
+                      {exampleWorkflows.map(wf => (
+                        <option key={wf} value={wf}>{wf.slice(EXAMPLES_PREFIX.length)}</option>
+                      ))}
+                    </optgroup>
+                  )}
+                  {workflows.length > 0 && (
+                    <optgroup label={ag.workflowGroupCustom}>
+                      {workflows.map(wf => <option key={wf} value={wf}>{wf}</option>)}
+                    </optgroup>
+                  )}
                 </select>
                 <button type="button"
                   className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
