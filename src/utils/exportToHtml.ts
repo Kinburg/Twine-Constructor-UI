@@ -44,10 +44,10 @@ function buildSettingsScript(settings?: ProjectSettings): string {
   if (!settings) return '';
   const lines: string[] = [];
 
-  if (settings.historyControls === false)
+  if (!settings.historyControls)
     lines.push('Config.history.controls = false;');
 
-  if (settings.saveLoadMenu === false)
+  if (!settings.saveLoadMenu)
     lines.push('if (window.UIBar) UIBar.stow(); Config.saves.isAllowed = () => false;');
 
   return lines.join('\n');
@@ -282,16 +282,16 @@ export function generateStandaloneHtml(project: Project, scTemplate: string, plu
 
   let html = scTemplate;
 
-  html = html.replace(/\{\{STORY_DATA\}\}/g, storyDataElement);
-  html = html.replace(/\{\{STORY_NAME\}\}/g,           escAttr(project.title));
-  html = html.replace(/\{\{STORY_START\}\}/g,          String(startPid));
-  html = html.replace(/\{\{STORY_IFID\}\}/g,           project.ifid);
-  html = html.replace(/\{\{CREATOR_NAME\}\}/g,         'Purl');
-  html = html.replace(/\{\{CREATOR_VERSION\}\}/g,      '1.0.0');
-  html = html.replace(/\{\{STORY_FORMAT\}\}/g,         'SugarCube');
-  html = html.replace(/\{\{STORY_FORMAT_VERSION\}\}/g, '2.36.1');
-  html = html.replace(/\{\{STORY_ZOOM\}\}/g,           '1');
-  html = html.replace(/\{\{STORY_OPTIONS\}\}/g,        '');
+  html = html.replace(/\{\{STORY_DATA}}/g, storyDataElement);
+  html = html.replace(/\{\{STORY_NAME}}/g,           escAttr(project.title));
+  html = html.replace(/\{\{STORY_START}}/g,          String(startPid));
+  html = html.replace(/\{\{STORY_IFID}}/g,           project.ifid);
+  html = html.replace(/\{\{CREATOR_NAME}}/g,         'Purl');
+  html = html.replace(/\{\{CREATOR_VERSION}}/g,      '1.0.0');
+  html = html.replace(/\{\{STORY_FORMAT}}/g,         'SugarCube');
+  html = html.replace(/\{\{STORY_FORMAT_VERSION}}/g, '2.36.1');
+  html = html.replace(/\{\{STORY_ZOOM}}/g,           '1');
+  html = html.replace(/\{\{STORY_OPTIONS}}/g,        '');
 
   html = html.replace(
     /(<tw-storydata\b[^>]*?\bstartnode=")[^"]*"/,

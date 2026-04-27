@@ -1653,11 +1653,6 @@ export function buildWatcherScript(watchers: Watcher[], vars: Variable[], nodes:
   return lines.join('\n');
 }
 
-/** Returns true when the project has active watchers (used to inject check calls into buttons). */
-export function hasActiveWatchers(watchers: Watcher[]): boolean {
-  return (watchers ?? []).some(w => w.enabled);
-}
-
 /**
  * Generates a :passagedisplay/:passagehide pair that polls .tg-live[data-wiki]
  * spans every 200ms and re-wikifies them so live blocks stay in sync with
@@ -1728,6 +1723,7 @@ export function buildInputScript(scenes: Scene[]): string {
 // Animations use CSS transitions triggered via inline JS (setTimeout 16ms) rather than
 // CSS @keyframes, which are unreliable on elements inserted by SugarCube's <<timed>> macro.
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 export function buildAnimationCSS(_scenes: Scene[]): string {
   return '';
 }
