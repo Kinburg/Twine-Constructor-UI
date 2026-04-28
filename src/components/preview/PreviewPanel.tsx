@@ -123,7 +123,7 @@ export function PreviewPanel() {
   return (
     <div className="flex flex-col h-full bg-[#1e1e2e] text-[#cdd6f4]">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#181825] border-b border-[#313244] shrink-0 select-none">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#181825] border-b border-[#313244] shrink-0 select-none h-9">
         <span className="text-sm opacity-60">&#128196;</span>
         <span className="text-[11px] text-[#6c7086] flex-1 truncate">
           {sceneName || 'Code Preview'}
