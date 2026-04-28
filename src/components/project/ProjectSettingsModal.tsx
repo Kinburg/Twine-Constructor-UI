@@ -11,6 +11,16 @@ import {
   ModalField, ModalRow, ModalSection, Toggle, Segmented,
   PrimaryButton, SecondaryButton, ColorSwatchInput, INPUT_CLS,
 } from '../shared/ModalShell';
+import { EmojiIcon } from '../shared/EmojiIcons';
+
+/** AI-button label: sparkle SVG followed by the action text. */
+function AiLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <EmojiIcon name="sparkle" size={20} /> {children}
+    </span>
+  );
+}
 import { generateImageWithProvider, type ComfyProgress } from '../../utils/imageGen/providers';
 import { loadComfyWorkflow, loadExampleWorkflows, collectWorkflowFiles, EXAMPLES_PREFIX } from '../../utils/imageGen/workflowLoader';
 import {
@@ -631,7 +641,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
                   onClick={handleExpandDescription}
                   className="self-start text-[11px] px-2 py-0.5 mt-1 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
                 >
-                  {busyExpandDesc ? ps.aiExpandDescBusy : `✨ ${ps.aiExpandDesc}`}
+                  {busyExpandDesc ? ps.aiExpandDescBusy : <AiLabel>{ps.aiExpandDesc}</AiLabel>}
                 </button>
               </ModalField>
 
@@ -649,7 +659,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
                   onClick={handleGenerateLore}
                   className="self-start text-[11px] px-2 py-0.5 mt-1 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
                 >
-                  {busyGenerateLore ? ps.aiGenerateLoreBusy : `✨ ${ps.aiGenerateLore}`}
+                  {busyGenerateLore ? ps.aiGenerateLoreBusy : <AiLabel>{ps.aiGenerateLore}</AiLabel>}
                 </button>
               </ModalField>
             </>
@@ -814,7 +824,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
                     onClick={handleGeneratePrompt}
                     className="self-start text-[11px] px-2 py-0.5 mt-1 rounded bg-slate-700 hover:bg-slate-600 text-indigo-300 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer transition-colors border border-slate-600"
                   >
-                    {busyGenPrompt ? ps.aiGeneratePromptBusy : `✨ ${ps.aiGeneratePrompt}`}
+                    {busyGenPrompt ? ps.aiGeneratePromptBusy : <AiLabel>{ps.aiGeneratePrompt}</AiLabel>}
                   </button>
                 </ModalField>
 
@@ -878,7 +888,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
                     className="px-3 py-1.5 text-xs rounded bg-emerald-700 hover:bg-emerald-600 disabled:opacity-50 text-white cursor-pointer"
                     onClick={handleGenerateImage}
                   >
-                    {busyGenImage ? ig.generatingImage : `✨ ${ig.generateImage}`}
+                    {busyGenImage ? ig.generatingImage : <AiLabel>{ig.generateImage}</AiLabel>}
                   </button>
                   {busyGenImage && (
                     <button
@@ -906,7 +916,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
 
                 {headerGenBytes && !headerRemoved && (
                   <div className="flex items-center gap-2 text-xs">
-                    <span className="text-emerald-400">✓ {ps.aiImageReady}</span>
+                    <span className="text-emerald-400 inline-flex items-center gap-1"><EmojiIcon name="check" size={20} /> {ps.aiImageReady}</span>
                     <button
                       type="button"
                       onClick={handleRemoveGeneratedImage}

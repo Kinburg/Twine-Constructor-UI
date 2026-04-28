@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ImageBoundMapping, Asset, AssetTreeNode, AssetGroup } from '../../types';
 import { useT } from '../../i18n';
 
+import { EmojiIcon } from './EmojiIcons';
 // ─── Asset tree helpers ───────────────────────────────────────────────────────
 
 function hasImageAssets(nodes: AssetTreeNode[]): boolean {
@@ -49,7 +50,7 @@ function AssetPickerTree({
                 onClick={() => onToggleGroup(node.id)}
               >
                 <span className="text-slate-500 text-xs w-3 shrink-0">{isExp ? '▾' : '▸'}</span>
-                <span className="text-amber-400/70 text-xs shrink-0">📁</span>
+                <span className="text-amber-400/70 text-xs shrink-0 inline-flex"><EmojiIcon name="folder" size={20} /></span>
                 <span className="text-xs text-slate-400 truncate py-0.5">{node.name}</span>
               </div>
               {isExp && (
@@ -85,9 +86,9 @@ function AssetPickerTree({
             style={{ paddingLeft: depth * 12 + 8 }}
             onClick={() => onSelect(node.relativePath)}
           >
-            <span className="text-slate-500 text-xs shrink-0 w-3">🖼</span>
+            <span className="text-slate-500 text-xs shrink-0 w-3 inline-flex"><EmojiIcon name="image" size={20} /></span>
             <span className="text-xs font-mono truncate flex-1 py-0.5">{node.name}</span>
-            {isSelected && <span className="text-xs text-indigo-400 pr-1">✓</span>}
+            {isSelected && <span className="text-xs text-indigo-400 pr-1 inline-flex"><EmojiIcon name="check" size={20} /></span>}
           </div>
         );
       })}
@@ -252,7 +253,7 @@ function MappingEntry({
         <button
           className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0 ml-1"
           onClick={onDelete}
-        >✕</button>
+        ><EmojiIcon name="close" size={20} /></button>
       </div>
 
       {mt === 'exact' && (

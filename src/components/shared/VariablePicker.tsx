@@ -3,6 +3,7 @@ import type { Variable, VariableTreeNode, VariableType, VariableGroup } from '..
 import { getVariablePath, getNodePath, hasLeafVariables } from '../../utils/treeUtils';
 import { isParamId } from '../../utils/pluginParamScope';
 
+import { EmojiIcon } from './EmojiIcons';
 export interface VariablePickerProps {
   value: string;                // currently selected variableId or groupId
   onChange: (id: string) => void;
@@ -162,7 +163,7 @@ export function PickerTree({
                 <span className={`text-xs font-mono shrink-0 ${isGroupSelected ? 'text-orange-300' : 'text-orange-400/60'}`}>{'{}'}</span>
                 <span className={`text-xs truncate ${isGroupSelected ? 'text-white' : 'text-slate-400'}`}>{node.name}</span>
                 {allowGroups && <span className="text-[10px] text-slate-600 ml-1 shrink-0">⤶</span>}
-                {isGroupSelected && <span className="text-xs text-indigo-400 ml-auto shrink-0">✓</span>}
+                {isGroupSelected && <span className="text-xs text-indigo-400 ml-auto shrink-0 inline-flex"><EmojiIcon name="check" size={20} /></span>}
               </div>
               {isExp && (
                 <PickerTree
@@ -200,7 +201,7 @@ export function PickerTree({
           >
             <span className={`text-xs font-mono w-3 shrink-0 ${typeColor(node.varType)}`}>{node.varType[0].toUpperCase()}</span>
             <span className="text-xs font-mono truncate flex-1">{node.name}</span>
-            {isSelected && <span className="text-xs text-indigo-400">✓</span>}
+            {isSelected && <span className="text-xs text-indigo-400 inline-flex"><EmojiIcon name="check" size={20} /></span>}
           </div>
         );
       })}

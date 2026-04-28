@@ -15,6 +15,7 @@ import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEdit
 import {
   ModalShell, Toggle, INPUT_CLS,
 } from '../shared/ModalShell';
+import { EmojiIcon } from '../shared/EmojiIcons';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Helpers
@@ -110,11 +111,9 @@ function localUpdateVar(nodes: VariableTreeNode[], id: string, patch: Partial<Va
   });
 }
 
-const ITEM_CATEGORY_ICONS: Record<string, string> = {
-  wearable:   '👕',
-  consumable: '🧪',
-  misc:       '📦',
-};
+// emoji prefixes inside <option> can't be replaced with inline SVG (browsers
+// strip non-text from option content), so the category icon column was
+// dropped during the SVG migration. Kept as a comment for future redesign.
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Main CharacterModal
@@ -451,7 +450,7 @@ function PreviewMeta({
   const rows: [string, ReactNode][] = [
     [t.characters.fieldVarName, varName ? <code className="text-slate-300 font-mono text-[11px]">{varName}</code> : <span className="text-slate-600">—</span>],
     [t.characters.isHero, isHero
-      ? <span className="text-amber-300 text-[11px]">★ {(t.common as any).yes ?? 'Yes'}</span>
+      ? <span className="text-amber-300 text-[11px] inline-flex items-center gap-1"><EmojiIcon name="star" size={20} /> {(t.common as any).yes ?? 'Yes'}</span>
       : <span className="text-slate-500 text-[11px]">{(t.common as any).no ?? 'No'}</span>
     ],
   ];
@@ -555,7 +554,7 @@ function BasicsTab({
         <label className="flex items-center gap-2 cursor-pointer select-none mt-1">
           <input type="checkbox" className="accent-amber-400" checked={isHero} onChange={e => onIsHeroChange(e.target.checked)} />
           <span className="text-xs text-slate-300">{t.characters.isHero}</span>
-          <span className="text-xs text-slate-500 cursor-help" title={t.characters.heroTooltip}>ℹ️</span>
+          <span className="text-xs text-slate-500 cursor-help inline-flex" title={t.characters.heroTooltip}><EmojiIcon name="info" size={20} /></span>
         </label>
       </Section>
 
@@ -795,7 +794,7 @@ function InitialInventory({
               >
                 {items.map(it => (
                   <option key={it.id} value={it.varName}>
-                    {ITEM_CATEGORY_ICONS[it.category] ?? '📦'} {it.name}
+                    {it.name}
                   </option>
                 ))}
               </select>
@@ -812,7 +811,7 @@ function InitialInventory({
                 onClick={() => removeSlot(slot.id)}
                 className="text-slate-500 hover:text-red-400 transition-colors cursor-pointer text-xs shrink-0 px-1"
               >
-                ✕
+                <EmojiIcon name="close" size={20} />
               </button>
             </div>
           ))}
@@ -822,7 +821,7 @@ function InitialInventory({
         onClick={addSlot}
         className="text-xs text-slate-400 hover:text-indigo-300 hover:bg-slate-800 rounded px-2 py-1.5 transition-colors cursor-pointer border border-dashed border-slate-700 hover:border-indigo-600 self-start"
       >
-        + {t.characters.initialInventoryAdd}
+        {t.characters.initialInventoryAdd}
       </button>
     </div>
   );
@@ -989,7 +988,7 @@ function PaperdollEditor({
           </>
         ) : (
           <div className="h-full min-h-[260px] flex flex-col items-center justify-center gap-2 text-slate-600">
-            <span className="text-3xl">☰</span>
+            <span className="text-3xl inline-flex"><EmojiIcon name="hamburger" size={20} /></span>
             <p className="text-xs text-center max-w-[220px]">
               {(t.characters as any).paperdollEmptyHint ?? 'Click a slot to edit it, or an empty cell to add one.'}
             </p>
@@ -1005,7 +1004,7 @@ function PaperdollEditor({
           charName={charName}
           charLlmDescr={charLlmDescr}
           assetSubfolder={`paperdoll/${charVarName || 'char'}`}
-          modalTitle={`✨ ${genSlot.label}`}
+          modalTitle={genSlot.label}
           slotLabelStatic={genSlot.label}
           slotLabelDefault={genSlot.label}
           entityKind="paperdoll-slot"
@@ -1250,7 +1249,7 @@ function SlotDetail({
         onClick={onDelete}
         className="text-xs text-slate-500 hover:text-red-400 transition-colors cursor-pointer text-left self-start"
       >
-        ✕ {(t.characters as any).paperdollDeleteSlot ?? 'Delete slot'}
+        <span className="inline-flex items-center gap-1"><EmojiIcon name="close" size={20} /> {(t.characters as any).paperdollDeleteSlot ?? 'Delete slot'}</span>
       </button>
     </div>
   );
@@ -1382,8 +1381,4 @@ const IconVar = () => (
     <path d="M9 12h6" />
   </svg>
 );
-const IconSparkle = ({ size = 14 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2zM19 14l.9 2.7 2.6.9-2.6.9-.9 2.5-.9-2.5-2.6-.9 2.6-.9.9-2.7z" />
-  </svg>
-);
+const IconSparkle = ({ size = 14 }: { size?: number }) => <EmojiIcon name="sparkle" size={size} />;

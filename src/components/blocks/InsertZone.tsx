@@ -4,6 +4,7 @@ import { useEditorStore } from '../../store/editorStore';
 import { useT, blockTypeLabel } from '../../i18n';
 import { AddBlockMenu } from './AddBlockMenu';
 import type { Block } from '../../types';
+import { EmojiIcon } from '../shared/EmojiIcons';
 
 interface Props {
   sceneId: string;
@@ -94,7 +95,7 @@ export function InsertZone({ sceneId, insertIndex, isLast, onAdd, onPaste, exclu
             title={t.block.paste(blockTypeLabel(t, clipboardBlock.type))}
             onClick={handlePaste}
           >
-            📋
+            <EmojiIcon name="clipboard" size={20} />
           </button>
         )}
       </div>

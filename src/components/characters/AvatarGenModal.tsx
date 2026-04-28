@@ -11,6 +11,7 @@ import { generateAvatarPromptWithLlm } from '../../utils/imageGen/llmPrompt';
 import { StyleChipsEditor } from '../shared/StyleChipsEditor';
 import { ImageAssetPicker } from '../shared/ImageMappingEditor';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
 function detectExt(imageUrl: string, contentType: string | null): string {
@@ -536,7 +537,7 @@ export function AvatarGenModal({ cfg, charVarName, charName, charLlmDescr, asset
             onClick={onClose}
             className="text-slate-500 hover:text-white transition-colors cursor-pointer text-base leading-none"
           >
-            ✕
+            <EmojiIcon name="close" size={20} />
           </button>
         </div>
 

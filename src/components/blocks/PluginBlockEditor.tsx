@@ -8,6 +8,11 @@ import { VariablePicker, PickerTree } from '../shared/VariablePicker';
 import { useVariableNodes } from '../shared/VariableScope';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { isParamId } from '../../utils/pluginParamScope';
+import { EmojiIcon } from '../shared/EmojiIcons';
+function PluginGlyph({ icon, size }: { icon?: string; size: number }) {
+  if (icon) return <span style={{ fontSize: size, lineHeight: 1 }}>{icon}</span>;
+  return <EmojiIcon name="puzzle" size={size} />;
+}
 import { getNodePath } from '../../utils/treeUtils';
 import type { PluginBlock, PluginParam, Variable, VariableTreeNode } from '../../types';
 
@@ -56,7 +61,7 @@ export function PluginBlockEditor({
         style={{ borderLeftColor: def.color }}
       >
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-base leading-none shrink-0">{def.icon ?? '🧩'}</span>
+          <span className="leading-none shrink-0"><PluginGlyph icon={def.icon} size={16} /></span>
           <div className="min-w-0">
             <div className="text-xs font-medium text-white truncate">{def.name}</div>
             {def.description && (
@@ -69,7 +74,7 @@ export function PluginBlockEditor({
           title={t.pluginBlock.editPluginTooltip}
           onClick={() => openPluginEditor(def.id)}
         >
-          ✎ {t.pluginBlock.editPlugin}
+          <span className="inline-flex items-center gap-1"><EmojiIcon name="pencil" size={20} /> {t.pluginBlock.editPlugin}</span>
         </button>
       </div>
 

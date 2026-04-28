@@ -4,6 +4,11 @@ import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
 import type { PluginBlockDef } from '../../types';
+import { EmojiIcon } from '../shared/EmojiIcons';
+function PluginGlyph({ icon, size }: { icon?: string; size: number }) {
+  if (icon) return <span style={{ fontSize: size, lineHeight: 1 }}>{icon}</span>;
+  return <EmojiIcon name="puzzle" size={size} />;
+}
 
 export function PluginManager() {
   const t = useT();
@@ -27,7 +32,7 @@ export function PluginManager() {
           onClick={importPlugin}
           title={t.pluginManager.importPlugin}
         >
-          📥
+          <EmojiIcon name="download" size={20} />
         </button>
       </div>
 
@@ -81,7 +86,7 @@ function PluginRow({
       style={{ borderLeftColor: def.color }}
       onClick={onEdit}
     >
-      <span className="text-base leading-none shrink-0">{def.icon || '🧩'}</span>
+      <span className="leading-none shrink-0"><PluginGlyph icon={def.icon} size={16} /></span>
       <div className="min-w-0 flex-1">
         <div className="text-xs text-slate-200 truncate">{def.name}</div>
         {def.description && (
@@ -92,16 +97,16 @@ function PluginRow({
         className="text-slate-600 hover:text-indigo-400 text-xs cursor-pointer shrink-0"
         title={t.pluginManager.duplicatePlugin}
         onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
-      >⎘</button>
+      ><EmojiIcon name="duplicate" size={20} /></button>
       <button
         className="text-slate-600 hover:text-indigo-400 text-xs cursor-pointer shrink-0"
         title={t.pluginManager.exportPlugin}
         onClick={(e) => { e.stopPropagation(); onExport(); }}
-      >📤</button>
+      ><EmojiIcon name="upload" size={20} /></button>
       <button
         className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0"
         onClick={(e) => { e.stopPropagation(); onDelete(); }}
-      >🗑️</button>
+      ><EmojiIcon name="trash" size={20} /></button>
     </div>
   );
 }

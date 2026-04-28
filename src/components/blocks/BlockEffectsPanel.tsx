@@ -1,6 +1,7 @@
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
 import type { BlockDelay, BlockTypewriter } from '../../types';
+import { EmojiIcon } from '../shared/EmojiIcons';
 
 interface Props {
   delay?: BlockDelay;
@@ -31,7 +32,7 @@ export function BlockEffectsPanel({ delay, typewriter, onDelayChange, onTypewrit
           onChange={e => onDelayChange(e.target.checked ? { delay: 1 } : undefined)}
           className="accent-indigo-500 cursor-pointer"
         />
-        <span className="text-xs text-slate-400">⏱ {t.blockEffects.delayLabel}</span>
+        <span className="text-xs text-slate-400 inline-flex items-center gap-1"><EmojiIcon name="stopwatch" size={20} /> {t.blockEffects.delayLabel}</span>
       </label>
 
       {hasDelay && (
@@ -132,7 +133,7 @@ export function BlockEffectsPanel({ delay, typewriter, onDelayChange, onTypewrit
               onChange={e => onTypewriterChange(e.target.checked ? { speed: 40 } : undefined)}
               className="accent-indigo-500 cursor-pointer"
             />
-            <span className="text-xs text-slate-400">✍ {t.blockEffects.typewriterLabel}</span>
+            <span className="text-xs text-slate-400 inline-flex items-center gap-1"><EmojiIcon name="pencil" size={20} /> {t.blockEffects.typewriterLabel}</span>
           </label>
 
           {hasTw && (

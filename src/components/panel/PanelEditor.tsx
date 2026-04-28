@@ -10,6 +10,7 @@ import type {
   Variable, AssetTreeNode,
 } from '../../types';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
+import { EmojiIcon } from '../shared/EmojiIcons';
 import { VariablePicker } from '../shared/VariablePicker';
 import { useConfirm } from '../shared/ConfirmModal';
 import { CellImageGenEditor } from '../shared/CellImageGenEditor';
@@ -86,7 +87,7 @@ export function PanelEditor() {
                 <button className="text-slate-500 hover:text-slate-200 text-[10px] leading-none px-1 py-0.5 rounded hover:bg-slate-700 transition-colors cursor-pointer" title={t.panel.moveLeft}
                   onClick={() => moveTab(tab.id, -1)} disabled={idx === 0}>◀</button>
                 <button className="text-slate-500 hover:text-slate-200 text-[10px] leading-none px-1 py-0.5 rounded hover:bg-slate-700 transition-colors cursor-pointer" title={t.panel.moveRight}
-                  onClick={() => moveTab(tab.id, 1)} disabled={idx === sidebarPanel.tabs.length - 1}>▶</button>
+                  onClick={() => moveTab(tab.id, 1)} disabled={idx === sidebarPanel.tabs.length - 1}><EmojiIcon name="caret-right" size={20} /></button>
                 <button className="text-slate-500 hover:text-red-400 text-[10px] leading-none px-1 py-0.5 rounded hover:bg-slate-700 transition-colors cursor-pointer" title={t.panel.deleteTab}
                   onClick={() => ask(
                     { message: t.panel.confirmDeleteTab(tab.label), variant: 'danger' },
@@ -95,7 +96,7 @@ export function PanelEditor() {
                       const remaining = sidebarPanel.tabs.filter(t => t.id !== tab.id);
                       setActiveTabId(remaining[0]?.id ?? null);
                     },
-                  )}>✕</button>
+                  )}><EmojiIcon name="close" size={20} /></button>
               </div>
             )}
           </div>
@@ -268,7 +269,7 @@ function TabRowsEditor({
                 { message: t.rowsEditor.confirmDeleteRow, variant: 'danger' },
                 () => deletePanelRow(tab.id, row.id),
               )}>
-              ✕
+              <EmojiIcon name="close" size={20} />
             </button>
           </div>
 
@@ -495,10 +496,10 @@ function CellEditor({
         <span className="text-xs text-slate-400 truncate min-w-0">{cellTypeLabelFromT(t, cell.content.type)}</span>
         <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer shrink-0 bg-slate-800/60 hover:bg-slate-700 rounded px-1.5 py-0.5 border border-slate-600 hover:border-indigo-500 transition-colors"
           title={t.rowsEditor.editTitle}
-          onClick={e => { e.stopPropagation(); setEditing(true); }}>✏️</button>
+          onClick={e => { e.stopPropagation(); setEditing(true); }}><EmojiIcon name="pencil" size={20} /></button>
         <button className="text-xs text-red-500/70 hover:text-red-400 cursor-pointer shrink-0 bg-slate-800/60 hover:bg-slate-700 rounded px-1.5 py-0.5 border border-slate-600 hover:border-red-500/50 transition-colors"
           title={t.rowsEditor.deleteTitle}
-          onClick={e => { e.stopPropagation(); deletePanelCell(tabId, row.id, cell.id); }}>✕</button>
+          onClick={e => { e.stopPropagation(); deletePanelCell(tabId, row.id, cell.id); }}><EmojiIcon name="close" size={20} /></button>
       </div>
 
       {editing && (
@@ -571,7 +572,7 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
     const filename = c.src ? c.src.split('/').pop()! : '';
     return (
       <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
-        <span className="text-slate-400 shrink-0">🖼️</span>
+        <span className="text-slate-400 shrink-0 inline-flex"><EmojiIcon name="image" size={20} /></span>
         <span className="text-xs text-slate-300 font-mono truncate flex-1">
           {filename || <em className="text-slate-600 not-italic">—</em>}
         </span>
@@ -580,7 +581,7 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   }
   if (c.type === 'image-bound') return (
     <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
-      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-slate-400 shrink-0 inline-flex"><EmojiIcon name="image" size={20} /></span>
       <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
       {c.mapping.length > 0 && <span className="text-xs text-slate-500 shrink-0">×{c.mapping.length}</span>}
     </div>
@@ -589,7 +590,7 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
     const filename = c.src ? c.src.split('/').pop()! : '';
     return (
       <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
-        <span className="text-slate-400 shrink-0">🖼️✨</span>
+        <span className="text-slate-400 shrink-0 inline-flex gap-0.5"><EmojiIcon name="image" size={20} /><EmojiIcon name="sparkle" size={20} /></span>
         <span className="text-xs text-slate-300 truncate flex-1">
           {filename || c.prompt || <em className="text-slate-600 not-italic">—</em>}
         </span>
@@ -598,7 +599,7 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   }
   if (c.type === 'image-from-var') return (
     <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
-      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-slate-400 shrink-0 inline-flex"><EmojiIcon name="image" size={20} /></span>
       <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
     </div>
   );
@@ -635,7 +636,7 @@ function CellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
     </span>
   );
   if (c.type === 'audio-volume') return (
-    <span className="text-xs text-amber-300 p-1 truncate flex-1">🔊 Volume</span>
+    <span className="text-xs text-amber-300 p-1 truncate flex-1 inline-flex items-center gap-1"><EmojiIcon name="speaker" size={20} /> Volume</span>
   );
   if (c.type === 'date-time') return (
     <span className="text-xs text-orange-300 p-1 font-mono truncate flex-1">
@@ -713,7 +714,7 @@ function CellEditModal({
       <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-white">{t.cellModal.title}</span>
-          <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}>✕</button>
+          <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}><EmojiIcon name="close" size={20} /></button>
         </div>
 
         {/* Type */}
@@ -1262,7 +1263,7 @@ function CellButtonEditor({
                   )}
                   <InventoryPopupShortcut onResolved={sceneId => patchAction(a.id, { targetSceneId: sceneId } as Partial<ButtonAction>)} />
                   <button className="text-slate-600 hover:text-red-400 text-sm cursor-pointer shrink-0"
-                    title={t.cellModal.buttonDeleteAction} onClick={() => removeAction(a.id)}>✕</button>
+                    title={t.cellModal.buttonDeleteAction} onClick={() => removeAction(a.id)}><EmojiIcon name="close" size={20} /></button>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-slate-500 w-24 shrink-0">{t.actionType.popupTitle}</span>
@@ -1313,7 +1314,7 @@ function CellButtonEditor({
               />
               <button className="text-slate-600 hover:text-red-400 text-sm cursor-pointer shrink-0"
                 title={t.cellModal.buttonDeleteAction}
-                onClick={() => removeAction(a.id)}>✕</button>
+                onClick={() => removeAction(a.id)}><EmojiIcon name="close" size={20} /></button>
             </div>
           );
         })}

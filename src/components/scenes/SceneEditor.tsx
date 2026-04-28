@@ -20,6 +20,7 @@ import { SceneModal } from './SceneModal';
 import { SYSTEM_TAGS, SYSTEM_TAG_COLORS, START_TAG, START_TAG_COLOR } from '../../types';
 import type { Block, SystemTag } from '../../types';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 export function SceneEditor() {
   const { project, activeSceneId, reorderBlocks, updateSceneSettings } = useProjectStore();
   const t = useT();
@@ -113,7 +114,7 @@ export function SceneEditor() {
             title={t.scene.editTagsTitle}
             onClick={() => setSettingsOpen(true)}
           >
-            ⚙
+            <EmojiIcon name="cog" size={20} />
           </button>
           {scene.blocks.length > 0 && (
             <button

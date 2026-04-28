@@ -6,11 +6,12 @@ import type { ItemDefinition, ItemCategory } from '../../types';
 import { useT } from '../../i18n';
 import { ItemEditor } from './ItemEditor';
 import { useConfirm } from '../shared/ConfirmModal';
+import { EmojiIcon, type EmojiIconName } from '../shared/EmojiIcons';
 
-const CATEGORY_ICONS: Record<ItemCategory, string> = {
-  wearable:   '👕',
-  consumable: '🧪',
-  misc:       '📦',
+const CATEGORY_ICONS: Record<ItemCategory, EmojiIconName> = {
+  wearable:   'shirt',
+  consumable: 'potion',
+  misc:       'box',
 };
 
 function sanitizeVarName(name: string): string {
@@ -143,7 +144,7 @@ function ItemRow({
         {iconSrc ? (
           <img src={iconSrc} className="w-full h-full object-cover" alt="" />
         ) : (
-          <span className="text-xs">{CATEGORY_ICONS[item.category]}</span>
+          <span className="inline-flex"><EmojiIcon name={CATEGORY_ICONS[item.category]} size={12} /></span>
         )}
       </div>
 
@@ -153,8 +154,8 @@ function ItemRow({
       </span>
 
       {/* Category badge */}
-      <span className="text-[10px] text-slate-500 shrink-0">
-        {CATEGORY_ICONS[item.category]}
+      <span className="inline-flex text-slate-500 shrink-0">
+        <EmojiIcon name={CATEGORY_ICONS[item.category]} size={12} />
       </span>
 
       {/* Delete */}
@@ -162,7 +163,7 @@ function ItemRow({
         className="text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0"
         onClick={e => { e.stopPropagation(); onDelete(); }}
       >
-        🗑️
+        <EmojiIcon name="trash" size={20} />
       </button>
     </div>
   );

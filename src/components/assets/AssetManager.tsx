@@ -7,6 +7,7 @@ import { useT } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
 import { AssetInfoModal } from './AssetInfoModal';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 // ─── Video extensions ─────────────────────────────────────────────────────────
 
 const VIDEO_EXTS = new Set(['mp4', 'webm', 'ogg', 'ogv', 'mov', 'avi', 'mkv']);
@@ -306,7 +307,7 @@ export function AssetManager() {
       {/* Inline "new group" input — shown at top when active */}
       {pendingGroup && (
         <div className="flex items-center gap-1 mb-1 bg-slate-800 rounded px-2 py-1 border border-indigo-600">
-          <span className="text-xs">📁</span>
+          <span className="text-xs inline-flex"><EmojiIcon name="folder" size={20} /></span>
           <input
             ref={groupInputRef}
             className="flex-1 bg-transparent text-xs text-white outline-none min-w-0"
@@ -322,13 +323,13 @@ export function AssetManager() {
             className="text-indigo-400 hover:text-indigo-200 text-xs cursor-pointer px-0.5"
             onClick={confirmAddGroup}
           >
-            ✓
+            <EmojiIcon name="check" size={20} />
           </button>
           <button
             className="text-slate-500 hover:text-red-400 text-xs cursor-pointer px-0.5"
             onClick={cancelAddGroup}
           >
-            ✕
+            <EmojiIcon name="close" size={20} />
           </button>
         </div>
       )}
@@ -434,11 +435,11 @@ function GroupRow({
           className="text-slate-600 hover:text-slate-300 text-[10px] w-3 shrink-0 cursor-pointer select-none"
           onClick={() => onToggle(group.id)}
         >
-          {isOpen ? '▼' : '▶'}
+          <EmojiIcon name={isOpen ? 'caret-down' : 'caret-right'} size={15} />
         </button>
 
         {/* Icon + name */}
-        <span className="text-xs select-none">📁</span>
+        <span className="text-xs inline-flex select-none"><EmojiIcon name="folder" size={20} /></span>
         <span
           className="text-xs text-slate-300 flex-1 truncate cursor-pointer"
           title={group.relativePath}
@@ -453,13 +454,13 @@ function GroupRow({
             title={t.assets.addSubgroupTitle}
             onClick={() => onStartAddGroup(group.id, group.relativePath)}
           >
-            📁+
+            <span className="inline-flex items-center gap-0.5"><EmojiIcon name="folder" size={20} />+</span>
           </ActionBtn>
           <ActionBtn
             title={t.assets.addFilesToGroupTitle}
             onClick={() => onAddFiles(group.id, group.relativePath)}
           >
-            📄+
+            <span className="inline-flex items-center gap-0.5"><EmojiIcon name="document" size={20} />+</span>
           </ActionBtn>
           <ActionBtn
             title={t.assets.deleteGroupTitle}
@@ -469,7 +470,7 @@ function GroupRow({
               () => onDelete(group.id),
             )}
           >
-            ✕
+            <EmojiIcon name="close" size={20} />
           </ActionBtn>
         </div>
       </div>
@@ -530,9 +531,9 @@ function AssetRow({
     >
       {/* Thumbnail / icon */}
       {isAudio ? (
-        <span className="text-sm shrink-0 select-none" title={t.assets.audioTitle}>🔊</span>
+        <span className="text-sm shrink-0 select-none inline-flex" title={t.assets.audioTitle}><EmojiIcon name="speaker" size={20} /></span>
       ) : isVideo ? (
-        <span className="text-sm shrink-0 select-none" title={t.assets.videoTitle}>🎥</span>
+        <span className="text-sm shrink-0 select-none inline-flex" title={t.assets.videoTitle}><EmojiIcon name="video" size={20} /></span>
       ) : previewSrc ? (
         <img
           src={previewSrc}
@@ -541,7 +542,7 @@ function AssetRow({
           onError={e => { (e.currentTarget as HTMLImageElement).style.opacity = '0'; }}
         />
       ) : (
-        <span className="text-sm shrink-0 select-none">🖼️</span>
+        <span className="text-sm shrink-0 select-none inline-flex"><EmojiIcon name="image" size={20} /></span>
       )}
 
       {/* Name */}
@@ -561,7 +562,7 @@ function AssetRow({
           () => onDelete(asset.id),
         ); }}
       >
-        ✕
+        <EmojiIcon name="close" size={20} />
       </button>
       {confirmModal}
     </div>

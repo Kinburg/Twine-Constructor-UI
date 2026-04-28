@@ -6,6 +6,7 @@ import { useT } from '../../i18n';
 import { CharacterModal } from './CharacterModal';
 import { useConfirm } from '../shared/ConfirmModal';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 const DEFAULT_COLORS = [
   { nameColor: '#7dd3fc', bgColor: '#0c2340', borderColor: '#0ea5e9' },
   { nameColor: '#f9a8d4', bgColor: '#2d0a1e', borderColor: '#ec4899' },
@@ -131,7 +132,7 @@ function CharacterRow({
         className="w-3 h-3 rounded-full shrink-0"
         style={{ background: char.borderColor }}
       />
-      {char.isHero && <span className="text-xs shrink-0">⭐</span>}
+      {char.isHero && <span className="text-xs shrink-0 inline-flex"><EmojiIcon name="star" size={20} /></span>}
       <span className="flex-1 text-xs truncate" style={{ color: char.nameColor }}>
         {char.name || t.characters.noName}
       </span>
@@ -139,7 +140,7 @@ function CharacterRow({
         className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
         onClick={e => { e.stopPropagation(); onDelete(); }}
       >
-        🗑️
+        <EmojiIcon name="trash" size={20} />
       </button>
     </div>
   );

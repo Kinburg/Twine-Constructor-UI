@@ -6,6 +6,7 @@ import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useConfirm } from '../shared/ConfirmModal';
 import { useT, blockTypeLabel } from '../../i18n';
 import type { Block } from '../../types';
+import { EmojiIcon } from '../shared/EmojiIcons';
 import { TextBlockEditor } from './TextBlockEditor';
 import { DialogueBlockEditor } from './DialogueBlockEditor';
 import { ChoiceBlockEditor } from './ChoiceBlockEditor';
@@ -147,7 +148,7 @@ export function BlockItem({ block, sceneId, collapsed, onToggleCollapse, onUpdat
             title={t.block.copy}
             onClick={() => copyToClipboard(block)}
           >
-            📋
+            <EmojiIcon name="clipboard" size={20} />
           </button>
           <button
             className="text-slate-600 hover:text-indigo-400 text-sm transition-colors cursor-pointer"
@@ -168,7 +169,7 @@ export function BlockItem({ block, sceneId, collapsed, onToggleCollapse, onUpdat
               }
             }}
           >
-            ✕
+            <EmojiIcon name="close" size={20} />
           </button>
         </div>
       </div>

@@ -6,6 +6,13 @@ import { usePluginStore } from '../../store/pluginStore';
 import { useT } from '../../i18n';
 import { BLOCK_SVG_ICONS } from './BlockIcons';
 import type { Block, BlockType, PluginBlock, PluginBlockDef } from '../../types';
+import { EmojiIcon } from '../shared/EmojiIcons';
+
+/** Render a plugin's user-supplied icon emoji, falling back to the puzzle SVG. */
+function PluginGlyph({ icon, size }: { icon?: string; size: number }) {
+  if (icon) return <span style={{ fontSize: size, lineHeight: 1 }}>{icon}</span>;
+  return <EmojiIcon name="puzzle" size={size} />;
+}
 
 // ── Block factory ─────────────────────────────────────────────────────────────
 
@@ -234,7 +241,7 @@ function PluginTile({
           {selOrder}
         </span>
       )}
-      <span className="text-2xl leading-none">{def.icon || '🧩'}</span>
+      <span className="leading-none"><PluginGlyph icon={def.icon} size={24} /></span>
       <span className="text-[11px] text-slate-200 leading-tight font-medium line-clamp-2">{def.name}</span>
     </button>
   );
@@ -275,7 +282,7 @@ function DetailPanel({
             ? <span className="w-9 h-9" style={{ color: c.color, display: 'flex' }}>
                 {BLOCK_SVG_ICONS[(highlighted as BlockEntry).type]({ className: 'w-full h-full' })}
               </span>
-            : <span className="text-3xl">{(highlighted as PluginEntry).def.icon || '🧩'}</span>
+            : <span className="leading-none"><PluginGlyph icon={(highlighted as PluginEntry).def.icon} size={30} /></span>
           }
         </div>
         <div className="text-center">

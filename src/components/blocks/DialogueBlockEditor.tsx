@@ -27,6 +27,7 @@ import { TextInsertToolbar } from '../shared/TextInsertToolbar';
 import { LLMGenerateButton } from '../shared/LLMGenerateButton';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
 import { useVariableNodes } from '../shared/VariableScope';
+import { EmojiIcon } from '../shared/EmojiIcons';
 
 /**
  * Converts an avatar src value to a URL the editor renderer can actually load:
@@ -133,7 +134,7 @@ function SortableInnerBlock({
         onClick={onDelete}
         title="Delete"
       >
-        ✕
+        <EmojiIcon name="close" size={20} />
       </button>
     </div>
   );
@@ -347,12 +348,12 @@ export function DialogueBlockEditor({
             className="w-10 h-10 rounded flex-shrink-0 bg-slate-700 flex items-center justify-center text-slate-500 text-xs"
             title={t.dialogueBlock.dynamicAvatarTitle}
           >
-            📊
+            <EmojiIcon name="chart" size={20} />
           </div>
         )}
         {showNoAvatar && (
           <div className="w-10 h-10 rounded flex-shrink-0 bg-slate-700 flex items-center justify-center text-slate-500 text-xs">
-            👤
+            <EmojiIcon name="person" size={20} />
           </div>
         )}
 

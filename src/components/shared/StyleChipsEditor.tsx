@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { EmojiIcon } from './EmojiIcons';
 // Style names are always English (they go directly into image generation prompts)
 const PRESET_STYLES = [
   'Anime',
@@ -78,7 +79,7 @@ export function StyleChipsEditor({ value, onChange, label, customPlaceholder, ad
                 className="text-indigo-400 hover:text-white leading-none cursor-pointer"
                 onClick={() => onChange(value.filter(s => s !== style))}
               >
-                ×
+                <EmojiIcon name="close" size={20} />
               </button>
             </span>
           ))}

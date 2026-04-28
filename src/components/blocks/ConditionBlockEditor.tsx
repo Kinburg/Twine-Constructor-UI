@@ -13,6 +13,7 @@ import {
   useSortable,
   arrayMove,
 } from '@dnd-kit/sortable';
+import { EmojiIcon } from '../shared/EmojiIcons';
 import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore, flattenVariables, deepCloneBlock } from '../../store/projectStore';
 import { useEditorStore } from '../../store/editorStore';
@@ -190,7 +191,7 @@ function SortableNestedBlock({
             title={t.block.copy}
             onClick={onCopy}
           >
-            📋
+            <EmojiIcon name="clipboard" size={20} />
           </button>
           <button
             className="text-slate-600 hover:text-indigo-400 text-xs cursor-pointer px-0.5 transition-colors"
@@ -204,7 +205,7 @@ function SortableNestedBlock({
             title={t.block.delete}
             onClick={onDelete}
           >
-            ✕
+            <EmojiIcon name="close" size={20} />
           </button>
         </div>
       </div>
@@ -508,7 +509,7 @@ export function ConditionBlockEditor({
               className="ml-auto text-slate-600 hover:text-red-400 text-xs cursor-pointer shrink-0"
               onClick={() => doDeleteBranch(branch.id)}
             >
-              ✕
+              <EmojiIcon name="close" size={20} />
             </button>
           </div>
 

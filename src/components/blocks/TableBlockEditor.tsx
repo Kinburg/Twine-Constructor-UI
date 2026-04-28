@@ -8,6 +8,7 @@ import type {
   ButtonAction, ButtonStyle, VarOperator,
   Variable, AssetTreeNode,
 } from '../../types';
+import { EmojiIcon } from '../shared/EmojiIcons';
 import { ImageMappingEditor, ImageAssetPicker } from '../shared/ImageMappingEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { VariablePicker } from '../shared/VariablePicker';
@@ -162,7 +163,7 @@ export function TableBlockEditor({
                   onChange={h => updateRowHeight(row.id, h)} suffix="px" className="w-16" />
               </label>
               <button className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
-                onClick={() => { if (confirm(t.rowsEditor.confirmDeleteRow)) deleteRow(row.id); }}>✕</button>
+                onClick={() => { if (confirm(t.rowsEditor.confirmDeleteRow)) deleteRow(row.id); }}><EmojiIcon name="close" size={20} /></button>
             </div>
 
             {/* Cells preview + controls */}
@@ -401,10 +402,10 @@ function TCellEditor({
         <span className="text-xs text-slate-400 truncate min-w-0">{cellTypeLabelFromT(t, cell.content.type)}</span>
         <button className="text-xs text-indigo-400 hover:text-indigo-300 cursor-pointer shrink-0 hover:bg-slate-700 rounded px-1 py-0.5"
           title={t.rowsEditor.editTitle}
-          onClick={e => { e.stopPropagation(); setEditing(true); }}>✏️</button>
+          onClick={e => { e.stopPropagation(); setEditing(true); }}><EmojiIcon name="pencil" size={20} /></button>
         <button className="text-xs text-red-500 hover:text-red-400 cursor-pointer shrink-0 hover:bg-slate-700 rounded px-1 py-0.5"
           title={t.rowsEditor.deleteTitle}
-          onClick={e => { e.stopPropagation(); onDelete(); }}>✕</button>
+          onClick={e => { e.stopPropagation(); onDelete(); }}><EmojiIcon name="close" size={20} /></button>
       </div>
       {editing && (
         <TCellEditModal
@@ -476,7 +477,7 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
     const filename = c.src ? c.src.split('/').pop()! : '';
     return (
       <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
-        <span className="text-slate-400 shrink-0">🖼️</span>
+        <span className="text-slate-400 shrink-0 inline-flex"><EmojiIcon name="image" size={20} /></span>
         <span className="text-xs text-slate-300 font-mono truncate flex-1">
           {filename || <em className="text-slate-600 not-italic">—</em>}
         </span>
@@ -485,7 +486,7 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   }
   if (c.type === 'image-bound') return (
     <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
-      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-slate-400 shrink-0 inline-flex"><EmojiIcon name="image" size={20} /></span>
       <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
       {c.mapping.length > 0 && <span className="text-xs text-slate-500 shrink-0">×{c.mapping.length}</span>}
     </div>
@@ -494,7 +495,7 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
     const filename = c.src ? c.src.split('/').pop()! : '';
     return (
       <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
-        <span className="text-slate-400 shrink-0">🖼️✨</span>
+        <span className="text-slate-400 shrink-0 inline-flex gap-0.5"><EmojiIcon name="image" size={20} /><EmojiIcon name="sparkle" size={20} /></span>
         <span className="text-xs text-slate-300 truncate flex-1">
           {filename || c.prompt || <em className="text-slate-600 not-italic">—</em>}
         </span>
@@ -503,7 +504,7 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   }
   if (c.type === 'image-from-var') return (
     <div className="flex-1 flex items-center gap-1 p-1 min-w-0">
-      <span className="text-slate-400 shrink-0">🖼️</span>
+      <span className="text-slate-400 shrink-0 inline-flex"><EmojiIcon name="image" size={20} /></span>
       <span className="text-xs text-sky-300 font-mono truncate flex-1">{v ? `$${v.name}` : '?'}</span>
     </div>
   );
@@ -544,7 +545,7 @@ function TCellPreview({ cell, vars }: { cell: SidebarCell; vars: Variable[] }) {
   );
   if (c.type === 'paperdoll') return (
     <span className="text-xs text-violet-300 p-1 truncate flex-1">
-      🧩 {c.charId || <em className="text-slate-600 not-italic">—</em>}
+      <span className="inline-flex align-middle"><EmojiIcon name="puzzle" size={20} /></span> {c.charId || <em className="text-slate-600 not-italic">—</em>}
     </span>
   );
   return null;
@@ -593,7 +594,7 @@ function TCellEditModal({
       <div className="bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-96 max-h-[80vh] overflow-y-auto p-4 flex flex-col gap-3" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold text-white">{t.cellModal.title}</span>
-          <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}>✕</button>
+          <button className="text-slate-500 hover:text-white text-xs cursor-pointer" onClick={onClose}><EmojiIcon name="close" size={20} /></button>
         </div>
 
         <TMField label={t.cellModal.contentType}>
@@ -1126,7 +1127,7 @@ function TCellButtonEditor({
                   )}
                   <InventoryPopupShortcut onResolved={sceneId => patchAction(a.id, { targetSceneId: sceneId } as Partial<ButtonAction>)} />
                   <button className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
-                    onClick={() => removeAction(a.id)}>✕</button>
+                    onClick={() => removeAction(a.id)}><EmojiIcon name="close" size={20} /></button>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-slate-500 w-24 shrink-0">{t.actionType.popupTitle}</span>
@@ -1176,7 +1177,7 @@ function TCellButtonEditor({
                 onChange={e => patchAction(a.id, { value: e.target.value })}
               />
               <button className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
-                onClick={() => removeAction(a.id)}>✕</button>
+                onClick={() => removeAction(a.id)}><EmojiIcon name="close" size={20} /></button>
             </div>
           );
         })}

@@ -24,6 +24,7 @@ import type { GraphData, GraphScene, GraphEdge } from '../../utils/buildGraphDat
 import { SYSTEM_TAG_COLORS } from '../../types';
 import type { SystemTag } from '../../types';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 // ─── Layout / geometry constants ──────────────────────────────────────────────
 
 const NODE_W         = 210;
@@ -151,7 +152,7 @@ const SceneNode = memo(({ data }: { data: SceneNodeData }) => {
             </span>
           )}
           {!data.systemTag && data.isStart && (
-            <span style={{ color: '#a6e3a1', marginRight: 6, fontSize: 11 }}>▶</span>
+            <span style={{ color: '#a6e3a1', marginRight: 6, display: 'inline-flex' }}><EmojiIcon name="caret-right" size={9} /></span>
           )}
           {data.label}
         </div>

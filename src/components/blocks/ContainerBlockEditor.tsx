@@ -3,6 +3,7 @@ import type { ContainerBlock } from '../../types';
 import { useT } from '../../i18n';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 interface Props {
   block: ContainerBlock;
   sceneId: string;
@@ -32,7 +33,7 @@ export function ContainerBlockEditor({ block, sceneId, onUpdate }: Props) {
           <option value="">{t.containers.blockNoContainer}</option>
           {containers.map(c => (
             <option key={c.id} value={c.id}>
-              {c.mode === 'shop' ? '🏪' : c.mode === 'chest' ? '📦' : '🎁'} {c.name}
+              {c.name}
             </option>
           ))}
         </select>
@@ -41,11 +42,11 @@ export function ContainerBlockEditor({ block, sceneId, onUpdate }: Props) {
       {/* Hero info line */}
       {hero ? (
         <div className="text-[10px] text-slate-400 bg-slate-900/50 rounded px-2 py-1">
-          Character: <span className="text-amber-400">⭐ {hero.name}</span> ({t.characters.isHero})
+          Character: <span className="text-amber-400 inline-flex items-center gap-1"><EmojiIcon name="star" size={20} /> {hero.name}</span> ({t.characters.isHero})
         </div>
       ) : (
         <div className="text-[10px] text-amber-500 bg-slate-900/50 rounded px-2 py-1">
-          ⚠ No main hero set
+          <span className="inline-flex items-center gap-1"><EmojiIcon name="warning" size={20} /> No main hero set</span>
         </div>
       )}
 

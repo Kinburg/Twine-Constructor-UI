@@ -3,6 +3,7 @@ import type { Asset } from '../../types';
 import { fsApi, toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 interface AssetInfoModalProps {
   asset: Asset;
   projectDir: string;
@@ -149,7 +150,7 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl flex flex-col max-w-[90vw] max-h-[90vh] min-w-[320px]">
         {/* Header */}
         <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-700">
-          <span className="text-sm">{isAudio ? '🔊' : isVideo ? '🎥' : '🖼️'}</span>
+          <span className="text-sm inline-flex"><EmojiIcon name={isAudio ? 'speaker' : isVideo ? 'video' : 'image'} size={14} /></span>
           <span className="text-sm text-slate-200 font-medium truncate flex-1" title={asset.relativePath}>
             {asset.name}
           </span>
@@ -157,7 +158,7 @@ export function AssetInfoModal({ asset, projectDir, onClose }: AssetInfoModalPro
             className="text-slate-500 hover:text-white text-lg cursor-pointer transition-colors leading-none"
             onClick={onClose}
           >
-            ✕
+            <EmojiIcon name="close" size={20} />
           </button>
         </div>
 

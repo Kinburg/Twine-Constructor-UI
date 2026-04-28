@@ -7,6 +7,11 @@ import { toast } from 'sonner';
 import type {
   PluginBlockDef, PluginParam, PluginParamKind, Block, VariableTreeNode,
 } from '../../types';
+import { EmojiIcon } from '../shared/EmojiIcons';
+function PluginGlyph({ icon, size }: { icon?: string; size: number }) {
+  if (icon) return <span style={{ fontSize: size, lineHeight: 1 }}>{icon}</span>;
+  return <EmojiIcon name="puzzle" size={size} />;
+}
 import {
   makePluginDef, makePluginParam, defaultForKind, validatePluginDef,
   slugifyPluginName, uniqueSlug,
@@ -82,7 +87,7 @@ export function PluginEditorModal() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <span>{draft.icon || '🧩'}</span>
+            <span><PluginGlyph icon={draft.icon} size={30} /></span>
             <span>{target === 'new' ? t.pluginEditor.newPlugin : t.pluginEditor.title}</span>
             <span className="text-xs text-slate-500 font-mono">[{draft.id}]</span>
           </h2>
@@ -90,7 +95,7 @@ export function PluginEditorModal() {
             className="text-slate-400 hover:text-white text-sm cursor-pointer"
             onClick={close}
           >
-            ✕
+            <EmojiIcon name="close" size={20} />
           </button>
         </div>
 
@@ -176,7 +181,7 @@ function MetaSection({ draft, patch }: { draft: PluginBlockDef; patch: (p: Parti
           value={draft.icon ?? ''}
           onChange={(e) => patch({ icon: e.target.value })}
           className={`${inputCls} w-16 text-center`}
-          placeholder="🧩"
+          placeholder="icon"
         />
 
         <span className="text-xs text-slate-400">{t.pluginEditor.color}</span>
@@ -322,7 +327,7 @@ function ParamsSection({ draft, patch }: { draft: PluginBlockDef; patch: (p: Par
                 <button
                   className="text-xs text-red-400 hover:text-red-300 cursor-pointer px-1"
                   onClick={() => removeParam(i)}
-                >✕</button>
+                ><EmojiIcon name="close" size={20} /></button>
               </div>
               {/* Object-kind: pick the project variable group whose fields become navigable */}
               {param.kind === 'object' && (

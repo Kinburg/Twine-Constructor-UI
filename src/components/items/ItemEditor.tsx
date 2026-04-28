@@ -12,6 +12,7 @@ import type {
 } from '../../types';
 import { useT } from '../../i18n';
 import { ModalShell, INPUT_CLS } from '../shared/ModalShell';
+import { EmojiIcon, type EmojiIconName } from '../shared/EmojiIcons';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Helpers
@@ -99,10 +100,10 @@ function localUpdateVar(nodes: VariableTreeNode[], id: string, patch: Partial<Va
   });
 }
 
-const CATEGORY_ICONS: Record<ItemCategory, string> = {
-  wearable:   '👕',
-  consumable: '🧪',
-  misc:       '📦',
+const CATEGORY_ICONS: Record<ItemCategory, EmojiIconName> = {
+  wearable:   'shirt',
+  consumable: 'potion',
+  misc:       'box',
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -244,7 +245,7 @@ export function ItemEditor({ mode, itemId, initial, takenNames, takenVarNames, o
         <div className="w-9 h-9 rounded-lg border border-slate-600 bg-slate-700/80 flex items-center justify-center shrink-0 overflow-hidden text-xl">
           {iconPreviewSrc
             ? <img src={iconPreviewSrc} className="w-full h-full object-cover" alt="" />
-            : <span>{CATEGORY_ICONS[category]}</span>
+            : <span className="inline-flex"><EmojiIcon name={CATEGORY_ICONS[category]} size={16} /></span>
           }
         </div>
         <div className="flex-1 min-w-0">
@@ -420,7 +421,7 @@ function ItemPreview({
       <div className="w-full aspect-square rounded-lg border border-slate-600 bg-slate-700/60 flex items-center justify-center overflow-hidden max-h-40">
         {showImg
           ? <img src={iconPreviewSrc} className="w-full h-full object-contain" alt="" onError={() => setImgFailed(true)} />
-          : <span className="text-5xl">{CATEGORY_ICONS[category]}</span>
+          : <span className="inline-flex"><EmojiIcon name={CATEGORY_ICONS[category]} size={56} /></span>
         }
       </div>
 
@@ -496,10 +497,10 @@ function BasicsTab({
 }) {
   const t = useT();
 
-  const CATEGORY_DEFS: { id: ItemCategory; icon: string; label: string; subtitle: string }[] = [
-    { id: 'wearable',   icon: '👕', label: t.items.categoryWearable.replace(/^.+?\s/, ''),   subtitle: t.items.categoryWearableSubtitle },
-    { id: 'consumable', icon: '🧪', label: t.items.categoryConsumable.replace(/^.+?\s/, ''), subtitle: t.items.categoryConsumableSubtitle },
-    { id: 'misc',       icon: '📦', label: t.items.categoryMisc.replace(/^.+?\s/, ''),       subtitle: t.items.categoryMiscSubtitle },
+  const CATEGORY_DEFS: { id: ItemCategory; iconName: EmojiIconName; label: string; subtitle: string }[] = [
+    { id: 'wearable',   iconName: 'shirt',  label: t.items.categoryWearable,   subtitle: t.items.categoryWearableSubtitle },
+    { id: 'consumable', iconName: 'potion', label: t.items.categoryConsumable, subtitle: t.items.categoryConsumableSubtitle },
+    { id: 'misc',       iconName: 'box',    label: t.items.categoryMisc,       subtitle: t.items.categoryMiscSubtitle },
   ];
 
   return (
@@ -558,7 +559,7 @@ function BasicsTab({
                     : 'bg-slate-700/30 border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50'
                 }`}
               >
-                <span className="text-2xl">{cat.icon}</span>
+                <span className="inline-flex"><EmojiIcon name={cat.iconName} size={28} /></span>
                 <span className="text-xs font-medium leading-tight">{cat.label}</span>
                 <span className={`text-[10px] leading-tight ${active ? 'text-indigo-300' : 'text-slate-500'}`}>
                   {cat.subtitle}

@@ -5,12 +5,16 @@ import type { ContainerDefinition, ContainerMode } from '../../types';
 import { useT } from '../../i18n';
 import { ContainerEditor } from './ContainerEditor';
 import { useConfirm } from '../shared/ConfirmModal';
+import { EmojiIcon, type EmojiIconName } from '../shared/EmojiIcons';
 
-const MODE_ICONS: Record<ContainerMode, string> = {
-  shop:  '🏪',
-  chest: '📦',
-  loot:  '🎁',
+const MODE_ICON_NAMES: Record<ContainerMode, EmojiIconName> = {
+  shop:  'shop',
+  chest: 'box',
+  loot:  'gift',
 };
+function ModeIcon({ mode, size = 16 }: { mode: ContainerMode; size?: number }) {
+  return <EmojiIcon name={MODE_ICON_NAMES[mode]} size={size} />;
+}
 
 function sanitizeVarName(name: string): string {
   return charToVarPrefix(name);
@@ -120,7 +124,7 @@ function ContainerRow({
       className="group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-800 cursor-pointer transition-colors"
       onClick={onEdit}
     >
-      <span className="text-base shrink-0">{MODE_ICONS[container.mode]}</span>
+      <span className="inline-flex shrink-0"><ModeIcon mode={container.mode} size={16} /></span>
       <div className="flex-1 min-w-0">
         <div className="text-xs text-slate-200 truncate">
           {container.name || t.containers.noName}
@@ -134,7 +138,7 @@ function ContainerRow({
         onClick={e => { e.stopPropagation(); onDelete(); }}
         title={t.common.delete}
       >
-        ✕
+        <EmojiIcon name="close" size={20} />
       </button>
     </div>
   );

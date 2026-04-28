@@ -16,6 +16,7 @@ import { ImageMappingEditor } from '../shared/ImageMappingEditor';
 import { CellImageBoundGenPanel } from '../shared/CellImageBoundGenModal';
 import type { CellImageBound } from '../../types';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 function detectExt(imageUrl: string, contentType: string | null): string {
   if (contentType?.includes('png')) return 'png';
   if (contentType?.includes('jpeg') || contentType?.includes('jpg')) return 'jpg';
@@ -662,7 +663,7 @@ export function ImageGenBlockEditor({
               {isApproved ? (
                 <>
                   <span className="text-xs px-2 py-0.5 rounded bg-emerald-900/50 border border-emerald-700 text-emerald-400">
-                    ✓ {ig.approvedBadge}
+                    <EmojiIcon name="check" size={20} /> {ig.approvedBadge}
                   </span>
                   <button
                     type="button"
@@ -676,7 +677,7 @@ export function ImageGenBlockEditor({
               ) : (
                 <>
                   <span className="text-xs px-2 py-0.5 rounded bg-amber-900/50 border border-amber-700 text-amber-400">
-                    ⚠ {ig.draftBadge}
+                    <EmojiIcon name="warning" size={20} /> {ig.draftBadge}
                   </span>
                   <button
                     type="button"

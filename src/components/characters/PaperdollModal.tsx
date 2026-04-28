@@ -9,6 +9,7 @@ import type {
 } from '../../types';
 import { useT } from '../../i18n';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function placeholderToAvatarConfig(ph: SlotPlaceholderConfig): AvatarConfig {
@@ -312,7 +313,7 @@ function SlotDetail({
         className="text-xs text-slate-600 hover:text-red-400 transition-colors cursor-pointer text-left"
         onClick={onDelete}
       >
-        {t.characters.paperdollNoSlots ? '✕ Delete slot' : '✕ Delete'}
+        <span className="inline-flex items-center gap-1"><EmojiIcon name="close" size={20} /> {t.characters.paperdollNoSlots ? 'Delete slot' : 'Delete'}</span>
       </button>
     </div>
   );
@@ -469,7 +470,7 @@ export function PaperdollModal({
             {charName && <span className="text-slate-400 font-normal ml-2">— {charName}</span>}
           </h2>
           <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors cursor-pointer text-base leading-none">
-            ✕
+            <EmojiIcon name="close" size={20} />
           </button>
         </div>
 
@@ -531,7 +532,7 @@ export function PaperdollModal({
               </>
             ) : (
               <div className="h-full flex flex-col items-center justify-center gap-2 text-slate-600">
-                <span className="text-2xl">☰</span>
+                <span className="text-2xl inline-flex"><EmojiIcon name="hamburger" size={20} /></span>
                 <p className="text-xs text-center">
                   Click a slot to edit it,<br />or click an empty cell to add one.
                 </p>
@@ -559,7 +560,7 @@ export function PaperdollModal({
           charName={charName ?? ''}
           charLlmDescr={charLlmDescr}
           assetSubfolder={`paperdoll/${charVarName || 'char'}`}
-          modalTitle={`✨ ${genSlot.label}`}
+          modalTitle={genSlot.label}
           slotLabelStatic={genSlot.label}
           slotLabelDefault={genSlot.label}
           entityKind="paperdoll-slot"

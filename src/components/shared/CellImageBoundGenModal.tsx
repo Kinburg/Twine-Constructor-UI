@@ -30,6 +30,7 @@ import { getVariablePath, flattenVariables } from '../../utils/treeUtils';
 import { StyleChipsEditor } from './StyleChipsEditor';
 import { ImageAssetPicker } from './ImageMappingEditor';
 
+import { EmojiIcon } from './EmojiIcons';
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
 function detectExt(imageUrl: string, contentType: string | null): string {
@@ -194,7 +195,7 @@ export function CellImageBoundGenModal({ cell, cellId, variableId, sceneId, onSa
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-[700px] max-w-[95vw] flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700 shrink-0">
           <h2 className="text-sm font-semibold text-white">{cb.modalTitle}</h2>
-          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors cursor-pointer text-base leading-none">✕</button>
+          <button onClick={onClose} className="text-slate-500 hover:text-white transition-colors cursor-pointer text-base leading-none flex items-center"><EmojiIcon name="close" size={20} /></button>
         </div>
         <div className="overflow-y-auto flex-1">
           <CellImageBoundGenPanel

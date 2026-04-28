@@ -8,6 +8,7 @@ import type {
 } from '../../types';
 import { useT } from '../../i18n';
 import { ModalShell, INPUT_CLS } from '../shared/ModalShell';
+import { EmojiIcon, type EmojiIconName } from '../shared/EmojiIcons';
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Helpers
@@ -20,17 +21,22 @@ function resolveEditorSrc(src: string, projectDir: string | null): string {
   return '';
 }
 
-const MODE_ICONS: Record<ContainerMode, string> = {
-  shop:  '🏪',
-  chest: '📦',
-  loot:  '🎁',
+// 'shop' has no SVG counterpart in the central icon set yet, so it falls
+// back to the storefront glyph. The four emoji from the migration list
+// (📦 chest, 🎁 loot, 👕 wearable, 🧪 consumable, 📦 misc) all
+// resolve to SVGs.
+const MODE_ICONS: Record<ContainerMode, EmojiIconName> = {
+  shop:  'shop',
+  chest: 'box',
+  loot:  'gift',
 };
+const ModeIcon = ({ mode, size = 16, className }: { mode: ContainerMode; size?: number; className?: string }) => (
+  <EmojiIcon name={MODE_ICONS[mode]} size={size} className={className} />
+);
 
-const ITEM_CATEGORY_ICONS: Record<string, string> = {
-  wearable:   '👕',
-  consumable: '🧪',
-  misc:       '📦',
-};
+// Note: emoji prefixes used to appear inside <option> elements via
+// ITEM_CATEGORY_ICONS — browsers don't render inline SVG inside <option>,
+// so when migrating to SVG icons that affordance was dropped.
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  Props & main component
@@ -125,7 +131,7 @@ export function ContainerEditor({
         <div className="w-9 h-9 rounded-lg border border-slate-600 bg-slate-700/80 flex items-center justify-center text-xl shrink-0 overflow-hidden">
           {bgPreviewSrc
             ? <img src={bgPreviewSrc} className="w-full h-full object-cover" alt="" />
-            : <span>{MODE_ICONS[containerMode]}</span>
+            : <span><ModeIcon mode={containerMode} size={16} /></span>
           }
         </div>
         <div className="flex-1 min-w-0">
@@ -287,10 +293,10 @@ function ContainerPreview({
             onError={() => setImgFailed(true)}
           />
         ) : (
-          <span className="text-5xl opacity-30">{MODE_ICONS[containerMode]}</span>
+          <span className="opacity-30"><ModeIcon mode={containerMode} size={56} /></span>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900/70 to-transparent" />
-        <span className="absolute bottom-2 left-3 text-2xl">{MODE_ICONS[containerMode]}</span>
+        <span className="absolute bottom-2 left-3"><ModeIcon mode={containerMode} size={22} /></span>
       </div>
 
       {/* Info */}
@@ -341,10 +347,10 @@ function BasicsTab({
 }) {
   const t = useT();
 
-  const MODE_DEFS: { id: ContainerMode; icon: string; label: string; subtitle: string }[] = [
-    { id: 'shop',  icon: '🏪', label: t.containers.modeShop.replace(/^.+?\s/, ''),  subtitle: t.containers.modeShopSubtitle },
-    { id: 'chest', icon: '📦', label: t.containers.modeChest.replace(/^.+?\s/, ''), subtitle: t.containers.modeChestSubtitle },
-    { id: 'loot',  icon: '🎁', label: t.containers.modeLoot.replace(/^.+?\s/, ''),  subtitle: t.containers.modeLootSubtitle },
+  const MODE_DEFS: { id: ContainerMode; label: string; subtitle: string }[] = [
+    { id: 'shop',  label: t.containers.modeShop,  subtitle: t.containers.modeShopSubtitle },
+    { id: 'chest', label: t.containers.modeChest, subtitle: t.containers.modeChestSubtitle },
+    { id: 'loot',  label: t.containers.modeLoot,  subtitle: t.containers.modeLootSubtitle },
   ];
 
   return (
@@ -393,7 +399,7 @@ function BasicsTab({
                     : 'bg-slate-700/30 border-slate-600 text-slate-300 hover:border-slate-500 hover:bg-slate-700/50'
                 }`}
               >
-                <span className="text-2xl">{m.icon}</span>
+                <span className="inline-flex items-center justify-center text-slate-300"><ModeIcon mode={m.id} size={28} /></span>
                 <span className="text-xs font-medium leading-tight">{m.label}</span>
                 <span className={`text-[10px] leading-tight ${active ? 'text-indigo-300' : 'text-slate-500'}`}>
                   {m.subtitle}
@@ -437,7 +443,7 @@ function AppearanceTab({
             onClick={() => onBgImageChange('')}
             className="text-xs px-3 py-1.5 rounded border border-slate-700 text-slate-500 hover:text-red-400 hover:border-red-700 transition-colors cursor-pointer"
           >
-            ✕ {t.containers.bgImageNone}
+            <span className="inline-flex items-center gap-1"><EmojiIcon name="close" size={20} /> {t.containers.bgImageNone}</span>
           </button>
         )}
       </div>
@@ -538,7 +544,7 @@ function StockRow({
       >
         {items.map(it => (
           <option key={it.id} value={it.varName}>
-            {ITEM_CATEGORY_ICONS[it.category] ?? '📦'} {it.name}
+            {it.name}
           </option>
         ))}
       </select>
@@ -577,7 +583,7 @@ function StockRow({
         className="text-slate-600 hover:text-red-400 transition-colors cursor-pointer text-xs"
         onClick={onDelete}
       >
-        ✕
+        <EmojiIcon name="close" size={20} />
       </button>
     </div>
   );
@@ -643,8 +649,4 @@ const IconBox = () => (
     <polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" />
   </svg>
 );
-const IconSparkle = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2zM19 14l.9 2.7 2.6.9-2.6.9-.9 2.5-.9-2.5-2.6-.9 2.6-.9.9-2.7z" />
-  </svg>
-);
+const IconSparkle = () => <EmojiIcon name="sparkle" size={20} />;
