@@ -55,25 +55,28 @@ interface Props {
   onChange: (blocks: Block[]) => void;
   /** Plugin parameters exposed as virtual variables inside this body. */
   params: PluginParam[];
+  /** Controlled collapsed state — when omitted, the editor manages its own. */
+  collapsed?: Set<string>;
+  onCollapsedChange?: (next: Set<string>) => void;
 }
 
-export function PluginBodyEditor({ blocks, onChange, params }: Props) {
+export function PluginBodyEditor({ blocks, onChange, params, collapsed: collapsedProp, onCollapsedChange }: Props) {
   const t = useT();
   const { project } = useProjectStore();
   const virtualNodes = useMemo(
     () => paramsToVirtualNodes(params, project.variableNodes),
     [params, project.variableNodes],
   );
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const [internalCollapsed, setInternalCollapsed] = useState<Set<string>>(new Set());
+  const collapsed = collapsedProp ?? internalCollapsed;
+  const setCollapsed = onCollapsedChange ?? setInternalCollapsed;
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const toggleBlock = useCallback((blockId: string) => {
-    setCollapsed(prev => {
-      const next = new Set(prev);
-      if (next.has(blockId)) next.delete(blockId); else next.add(blockId);
-      return next;
-    });
-  }, []);
+    const next = new Set(collapsed);
+    if (next.has(blockId)) next.delete(blockId); else next.add(blockId);
+    setCollapsed(next);
+  }, [collapsed, setCollapsed]);
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;

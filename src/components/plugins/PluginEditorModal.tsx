@@ -8,6 +8,7 @@ import type {
   PluginBlockDef, PluginParam, PluginParamKind, Block, VariableTreeNode,
 } from '../../types';
 import { EmojiIcon } from '../shared/EmojiIcons';
+import { ModalShell } from '../shared/ModalShell';
 function PluginGlyph({ icon, size }: { icon?: string; size: number }) {
   if (icon) return <span style={{ fontSize: size, lineHeight: 1 }}>{icon}</span>;
   return <EmojiIcon name="puzzle" size={size} />;
@@ -81,78 +82,76 @@ export function PluginEditorModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" />
-      <div className="relative bg-slate-900 border border-slate-600 rounded-lg shadow-2xl w-[760px] max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
-            <span><PluginGlyph icon={draft.icon} size={30} /></span>
-            <span>{target === 'new' ? t.pluginEditor.newPlugin : t.pluginEditor.title}</span>
-            <span className="text-xs text-slate-500 font-mono">[{draft.id}]</span>
-          </h2>
+    <ModalShell onClose={close} width={760}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-700 shrink-0">
+        <h2 className="text-sm font-semibold text-white flex items-center gap-2 min-w-0">
+          <span className="shrink-0"><PluginGlyph icon={draft.icon} size={30} /></span>
+          <span className="truncate">{target === 'new' ? t.pluginEditor.newPlugin : t.pluginEditor.title}</span>
+          <span className="text-xs text-slate-500 font-mono truncate">[{draft.id}]</span>
+        </h2>
+        <button
+          className="text-slate-400 hover:text-slate-100 transition-colors p-1 -m-1 cursor-pointer shrink-0"
+          onClick={close}
+          aria-label="Close"
+        >
+          <EmojiIcon name="close" size={20} />
+        </button>
+      </div>
+
+      {/* Body */}
+      <div className="flex-1 min-h-0 overflow-y-auto px-5 py-4 flex flex-col gap-6">
+        <MetaSection draft={draft} patch={patch} />
+        <ParamsSection draft={draft} patch={patch} />
+        <BlocksSection draft={draft} patch={patch} />
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-700 shrink-0">
+        <div>
+          {target !== 'new' && (
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-400">{t.pluginEditor.confirmDelete}</span>
+                <button
+                  className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-500 text-white cursor-pointer transition-colors"
+                  onClick={handleDelete}
+                >
+                  {t.common.delete}
+                </button>
+                <button
+                  className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer transition-colors"
+                  onClick={() => setConfirmDelete(false)}
+                >
+                  {t.common.cancel}
+                </button>
+              </div>
+            ) : (
+              <button
+                className="text-xs text-red-400 hover:text-red-300 cursor-pointer transition-colors"
+                onClick={() => setConfirmDelete(true)}
+              >
+                {t.pluginEditor.delete}
+              </button>
+            )
+          )}
+        </div>
+        <div className="flex items-center gap-2">
           <button
-            className="text-slate-400 hover:text-white text-sm cursor-pointer"
             onClick={close}
+            className="px-3 py-1.5 rounded text-xs text-slate-300 hover:text-slate-100 hover:bg-slate-700/60 cursor-pointer transition-colors"
           >
-            <EmojiIcon name="close" size={20} />
+            {t.common.cancel}
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-1.5 rounded bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium cursor-pointer transition-colors"
+          >
+            {t.pluginEditor.save}
           </button>
         </div>
-
-        {/* Body */}
-        <div className="flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-6">
-          <MetaSection draft={draft} patch={patch} />
-          <ParamsSection draft={draft} patch={patch} />
-          <BlocksSection draft={draft} patch={patch} />
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-4 py-3 border-t border-slate-700">
-          <div>
-            {target !== 'new' && (
-              confirmDelete ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs text-red-400">{t.pluginEditor.confirmDelete}</span>
-                  <button
-                    className="px-2 py-1 text-xs rounded bg-red-600 hover:bg-red-500 text-white cursor-pointer"
-                    onClick={handleDelete}
-                  >
-                    {t.common.delete}
-                  </button>
-                  <button
-                    className="px-2 py-1 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
-                    onClick={() => setConfirmDelete(false)}
-                  >
-                    {t.common.cancel}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="text-xs text-red-400 hover:text-red-300 cursor-pointer"
-                  onClick={() => setConfirmDelete(true)}
-                >
-                  {t.pluginEditor.delete}
-                </button>
-              )
-            )}
-          </div>
-          <div className="flex gap-2">
-            <button
-              className="px-3 py-1.5 text-xs rounded bg-slate-700 hover:bg-slate-600 text-slate-200 cursor-pointer"
-              onClick={close}
-            >
-              {t.common.cancel}
-            </button>
-            <button
-              className="px-3 py-1.5 text-xs rounded bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer"
-              onClick={handleSave}
-            >
-              {t.pluginEditor.save}
-            </button>
-          </div>
-        </div>
       </div>
-    </div>
+    </ModalShell>
   );
 }
 
@@ -161,7 +160,7 @@ export function PluginEditorModal() {
 function MetaSection({ draft, patch }: { draft: PluginBlockDef; patch: (p: Partial<PluginBlockDef>) => void }) {
   const t = useT();
   const inputCls =
-    'bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 outline-none focus:border-indigo-500';
+    'bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 outline-none focus:border-indigo-500 transition-colors';
 
   return (
     <section className="flex flex-col gap-2">
@@ -240,7 +239,7 @@ function ParamsSection({ draft, patch }: { draft: PluginBlockDef; patch: (p: Par
   const { project } = useProjectStore();
   const allGroups = useMemo(() => flattenGroups(project.variableNodes), [project.variableNodes]);
   const inputCls =
-    'bg-slate-800 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 outline-none focus:border-indigo-500';
+    'bg-slate-700 text-slate-200 text-xs rounded px-2 py-1 border border-slate-600 outline-none focus:border-indigo-500 transition-colors';
 
   const updateParam = (i: number, update: Partial<PluginParam>) => {
     const next = draft.params.map((p, idx) => idx === i ? { ...p, ...update } : p);
@@ -357,15 +356,47 @@ function ParamsSection({ draft, patch }: { draft: PluginBlockDef; patch: (p: Par
 
 function BlocksSection({ draft, patch }: { draft: PluginBlockDef; patch: (p: Partial<PluginBlockDef>) => void }) {
   const t = useT();
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
 
   const paramKeys = useMemo(
     () => draft.params.map((p) => `_${p.key}`).filter((k) => k !== '_').join(', '),
     [draft.params],
   );
 
+  const blockIds = useMemo(() => draft.blocks.map((b) => b.id), [draft.blocks]);
+  const allCollapsed = blockIds.length > 0 && blockIds.every((id) => collapsed.has(id));
+  const toggleAll = () => {
+    if (allCollapsed) setCollapsed(new Set());
+    else setCollapsed(new Set(blockIds));
+  };
+
   return (
     <section className="flex flex-col gap-2">
-      <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t.pluginEditor.blocksSection}</h3>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{t.pluginEditor.blocksSection}</h3>
+        {draft.blocks.length > 0 && (
+          <button
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-slate-300 bg-slate-700/50 hover:bg-slate-700 hover:text-white border border-slate-600/60 hover:border-slate-500 transition-colors cursor-pointer"
+            title={allCollapsed ? t.scene.expandAll : t.scene.collapseAll}
+            onClick={toggleAll}
+          >
+            {allCollapsed ? (
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m7 15 5 5 5-5"/>
+                <path d="m7 9 5-5 5 5"/>
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m7 20 5-5 5 5"/>
+                <path d="m7 4 5 5 5-5"/>
+              </svg>
+            )}
+            <span>{allCollapsed ? t.scene.expandAll : t.scene.collapseAll}</span>
+          </button>
+        )}
+      </div>
       <p className="text-[11px] text-slate-500 italic">
         {t.pluginEditor.blocksHint}
         {paramKeys && <span className="font-mono ml-1 text-slate-400">{paramKeys}</span>}
@@ -374,6 +405,8 @@ function BlocksSection({ draft, patch }: { draft: PluginBlockDef; patch: (p: Par
         blocks={draft.blocks}
         params={draft.params}
         onChange={(blocks: Block[]) => patch({ blocks })}
+        collapsed={collapsed}
+        onCollapsedChange={setCollapsed}
       />
     </section>
   );
