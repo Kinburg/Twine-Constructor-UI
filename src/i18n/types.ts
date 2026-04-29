@@ -1102,12 +1102,51 @@ export interface Translations {
   // ─── Editor preferences modal ────────────────────────────────────────────────
   editorPrefs: {
     title: string;
+    subtitle: string;
+    close: string;
+    footerHint: string;
+    tabAppearance: string;
+    tabShortcuts: string;
+    tabWorkspace: string;
+    tabBehavior: string;
+    tabAi: string;
+
+    sectionTheme: string;
+    themeDark: string;
+    themeMidnight: string;
+    themeWarm: string;
+    soon: string;
+
+    sectionDensity: string;
+    densityCompact: string;
+    densityComfortable: string;
+
+    sectionLanguage: string;
+
+    shortcutsHint: string;
+    shortcutsGeneral: string;
+    saveProject: string;
+    undo: string;
+    redo: string;
+    openPreferences: string;
+    projectSettings: string;
+    shortcutsEditor: string;
+    find: string;
+    replace: string;
+    toggleComment: string;
+    moveLine: string;
+    shortcutsNavigation: string;
+    switchWorkspaceTab: string;
+    nextScene: string;
+    previousScene: string;
+    closeModalCancel: string;
+
     sectionAutosave: string;
     autosaveLabel: string;
     autosaveIntervalLabel: string;
     intervalMinutes: (n: number) => string;
-    sectionAppearance: string;
-    compactModeLabel: string;
+    sectionAppearance: string; // Duplicate, remove later
+    compactModeLabel: string; // Duplicate, remove later
     sectionConfirms: string;
     confirmDeleteScene: string;
     confirmDeleteGroup: string;
@@ -1126,8 +1165,8 @@ export interface Translations {
     titleBarStyleNative: string;
     titleBarStyleRestartNote: string;
     saveOnExitLabel: string;
-    sectionWindowLayout: string;
-    workspacePresets: string;
+    sectionWindowLayout: string; // Duplicate, remove later
+    workspacePresets: string; // Duplicate, remove later
     saveCurrentLayout: string;
     presetNamePlaceholder: string;
     applyPreset: string;
@@ -1140,13 +1179,13 @@ export interface Translations {
     builtInPresets: string;
     userPresets: string;
 
-    sectionLLM: string;
+    sectionLLM: string; // Duplicate, remove later
     llmEnabled: string;
   };
 
   // ─── LLM Settings modal ─────────────────────────────────────────────────────
   llmSettingsModal: {
-    title: string;
+    title: string; // Duplicate, remove later
     urlLabel: string;
     maxTokensLabel: string;
     temperatureLabel: string;
@@ -1186,6 +1225,37 @@ export interface Translations {
     generationHistoryProject: string;
     generationHistoryDisabled: string;
     autoSaveHint: string;
+
+    // New keys for LLM tab
+    llmEnabledHint: string;
+    koboldcpp: string;
+    gemini: string;
+    openai: string;
+    koboldcppPlaceholder: string;
+    openaiApiKeyPlaceholder: string;
+    openaiModelPlaceholder: string;
+    apiKeyRequired: string;
+    modelsFetched: (count: number) => string;
+    fetchModelsFailed: string;
+    customModelName: string;
+    chars: string;
+
+    presetStoryteller: string;
+    presetLiteraryNovelist: string;
+    presetVisualNovelWriter: string;
+    presetHorrorSuspense: string;
+    presetFantasyAdventure: string;
+    presetDialogueFocused: string;
+    presetRomance: string;
+    presetSciFi: string;
+
+    tierFree: string;
+    tierFreeLimited: string;
+    tierPaid: string;
+    tierExperimental: string;
+
+    comfyUi: string;
+    pollinationsAi: string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────

@@ -30,11 +30,11 @@ export function EditorPrefsModal({ onClose, initialTab = 'appearance' }: Props) 
 
   // Tabs definition — labels from i18n if present, fallback to English
   const tabs: { id: TabId; label: string; icon: ReactNode }[] = [
-    { id: 'appearance', label: (ep as any).tabAppearance ?? 'Appearance', icon: <IconPalette /> },
-    { id: 'shortcuts',  label: (ep as any).tabShortcuts  ?? 'Shortcuts',  icon: <IconCommand /> },
-    { id: 'workspace',  label: (ep as any).tabWorkspace  ?? 'Workspace',  icon: <IconLayout /> },
-    { id: 'behavior',   label: (ep as any).tabBehavior   ?? 'Behavior',   icon: <IconCog /> },
-    { id: 'ai',         label: (ep as any).tabAi         ?? 'AI / LLM',   icon: <IconSparkle /> },
+    { id: 'appearance', label: ep.tabAppearance, icon: <IconPalette /> },
+    { id: 'shortcuts',  label: ep.tabShortcuts,  icon: <IconCommand /> },
+    { id: 'workspace',  label: ep.tabWorkspace,  icon: <IconLayout /> },
+    { id: 'behavior',   label: ep.tabBehavior,   icon: <IconCog /> },
+    { id: 'ai',         label: ep.tabAi,         icon: <IconSparkle /> },
   ];
 
   return (
@@ -47,13 +47,13 @@ export function EditorPrefsModal({ onClose, initialTab = 'appearance' }: Props) 
         <div className="flex-1 min-w-0">
           <h2 className="text-base font-semibold text-slate-100 leading-tight">{ep.title}</h2>
           <p className="text-xs text-slate-400 mt-0.5">
-            {(ep as any).subtitle ?? 'Purl — your personal editor settings'}
+            {ep.subtitle}
           </p>
         </div>
         <button
           onClick={onClose}
           className="text-slate-400 hover:text-slate-100 transition-colors p-1 -m-1 cursor-pointer"
-          aria-label="Close"
+          aria-label={ep.close}
         >
           <IconX />
         </button>
@@ -95,7 +95,7 @@ export function EditorPrefsModal({ onClose, initialTab = 'appearance' }: Props) 
       {/* ── Footer ─────────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between gap-3 px-5 py-3 border-t border-slate-700">
         <span className="text-[11px] text-slate-500 font-mono">
-          {(ep as any).footerHint ?? 'Settings saved locally'}
+          {ep.footerHint}
         </span>
         <button
           onClick={onClose}
@@ -141,28 +141,28 @@ function AppearanceTab() {
   return (
     <>
       {/* Theme — dark only for now */}
-      <Section title={(ep as any).sectionTheme ?? 'Editor theme'}>
+      <Section title={ep.sectionTheme}>
         <div className="grid grid-cols-3 gap-3">
-          <ThemeCard name={(ep as any).themeDark ?? 'Dark'} active swatch={['#0f172a', '#1e293b']} />
-          <ThemeCard name={(ep as any).themeMidnight ?? 'Midnight'} locked swatch={['#020617', '#0b1220']} />
-          <ThemeCard name={(ep as any).themeWarm ?? 'Warm'} locked swatch={['#1c1917', '#292524']} />
+          <ThemeCard name={ep.themeDark} active swatch={['#0f172a', '#1e293b']} />
+          <ThemeCard name={ep.themeMidnight} locked swatch={['#020617', '#0b1220']} />
+          <ThemeCard name={ep.themeWarm} locked swatch={['#1c1917', '#292524']} />
         </div>
       </Section>
 
       {/* Density (compactMode boolean → two-option segmented) */}
-      <Section title={(ep as any).sectionDensity ?? 'Density'}>
+      <Section title={ep.sectionDensity}>
         <Segmented
           value={compactMode ? 'compact' : 'comfortable'}
           onChange={v => setPrefs({ compactMode: v === 'compact' })}
           options={[
-            { value: 'compact',     label: (ep as any).densityCompact     ?? 'Compact' },
-            { value: 'comfortable', label: (ep as any).densityComfortable ?? 'Comfortable' },
+            { value: 'compact',     label: ep.densityCompact },
+            { value: 'comfortable', label: ep.densityComfortable },
           ]}
         />
       </Section>
 
       {/* Interface language */}
-      <Section title={(ep as any).sectionLanguage ?? 'Interface language'}>
+      <Section title={ep.sectionLanguage}>
         <Segmented
           value={locale}
           onChange={setLocale}
@@ -181,6 +181,7 @@ function ThemeCard({
   active?: boolean;
   locked?: boolean;
 }) {
+  const ep = useT().editorPrefs;
   return (
     <div
       className={`rounded-lg border overflow-hidden transition-all ${
@@ -200,7 +201,7 @@ function ThemeCard({
       <div className="px-3 py-2 flex items-center justify-between bg-slate-800/60">
         <span className="text-xs text-slate-200">{name}</span>
         {active && <span className="text-[10px] text-indigo-300">●</span>}
-        {locked && <span className="text-[9px] text-slate-500 uppercase tracking-wider">soon</span>}
+        {locked && <span className="text-[9px] text-slate-500 uppercase tracking-wider">{ep.soon}</span>}
       </div>
     </div>
   );
@@ -210,36 +211,33 @@ function ThemeCard({
 //  SHORTCUTS TAB (read-only)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SHORTCUT_GROUPS: { titleKey: string; fallback: string; items: [string, string][] }[] = [
+const SHORTCUT_GROUPS: { titleKey: keyof typeof TLocale['editorPrefs']; items: [string, keyof typeof TLocale['editorPrefs']][] }[] = [
   {
     titleKey: 'shortcutsGeneral',
-    fallback: 'General',
     items: [
-      ['Ctrl+S',       'Save project'],
-      ['Ctrl+Z',       'Undo'],
-      ['Ctrl+Shift+Z', 'Redo'],
-      ['Ctrl+,',       'Open preferences'],
-      ['Ctrl+Shift+P', 'Project settings'],
+      ['Ctrl+S',       'saveProject'],
+      ['Ctrl+Z',       'undo'],
+      ['Ctrl+Shift+Z', 'redo'],
+      ['Ctrl+,',       'openPreferences'],
+      ['Ctrl+Shift+P', 'projectSettings'],
     ],
   },
   {
     titleKey: 'shortcutsEditor',
-    fallback: 'Editor',
     items: [
-      ['Ctrl+F',       'Find'],
-      ['Ctrl+H',       'Replace'],
-      ['Ctrl+/',       'Toggle comment'],
-      ['Alt+↑ / Alt+↓', 'Move line'],
+      ['Ctrl+F',       'find'],
+      ['Ctrl+H',       'replace'],
+      ['Ctrl+/',       'toggleComment'],
+      ['Alt+↑ / Alt+↓', 'moveLine'],
     ],
   },
   {
     titleKey: 'shortcutsNavigation',
-    fallback: 'Navigation',
     items: [
-      ['Ctrl+1..4',    'Switch workspace tab'],
-      ['Ctrl+Tab',     'Next scene'],
-      ['Ctrl+Shift+Tab','Previous scene'],
-      ['Esc',          'Close modal / cancel'],
+      ['Ctrl+1..4',    'switchWorkspaceTab'],
+      ['Ctrl+Tab',     'nextScene'],
+      ['Ctrl+Shift+Tab','previousScene'],
+      ['Esc',          'closeModalCancel'],
     ],
   },
 ];
@@ -251,19 +249,19 @@ function ShortcutsTab() {
   return (
     <>
       <p className="text-xs text-slate-400 -mt-1">
-        {(ep as any).shortcutsHint ?? 'Reference only — editing is not supported yet.'}
+        {ep.shortcutsHint}
       </p>
       {SHORTCUT_GROUPS.map(group => (
-        <Section key={group.titleKey} title={(ep as any)[group.titleKey] ?? group.fallback}>
+        <Section key={group.titleKey} title={ep[group.titleKey]}>
           <div className="rounded-md border border-slate-700 overflow-hidden">
-            {group.items.map(([combo, desc], i) => (
+            {group.items.map(([combo, descKey], i) => (
               <div
                 key={combo}
                 className={`flex items-center justify-between px-3 py-2 text-xs ${
                   i > 0 ? 'border-t border-slate-700/60' : ''
                 }`}
               >
-                <span className="text-slate-300">{desc}</span>
+                <span className="text-slate-300">{ep[descKey]}</span>
                 <kbd className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-900/60 border border-slate-600 text-slate-200">
                   {combo}
                 </kbd>
@@ -555,14 +553,14 @@ function Row({ label, children }: { label: string; children: ReactNode }) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 const SYSTEM_PROMPT_PRESETS = [
-  { label: 'Storyteller (default)', value: 'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.' },
-  { label: 'Literary novelist',     value: 'You are a literary author crafting immersive prose fiction. Continue the narrative with rich sensory detail, deep psychological insight, and elegant language. Match the established voice precisely.' },
-  { label: 'Visual novel writer',   value: 'You are writing dialogue and narration for a visual novel. Keep prose concise and punchy. Convey emotion through character reactions and subtext. End naturally for player pacing.' },
-  { label: 'Horror & suspense',     value: 'You are a horror writer. Build dread through atmosphere, ambiguity, and the unseen. Use short, tense sentences during high-stress moments. Never explain the horror fully.' },
-  { label: 'Fantasy & adventure',   value: 'You are writing high-fantasy adventure fiction. Embrace vivid world-building, heroic action, and mythic language. Keep the momentum going and the stakes clear.' },
-  { label: 'Dialogue-focused',      value: 'You are writing character dialogue for a visual novel. Each character must have a distinct voice and speech pattern. Dialogue should feel natural, emotionally resonant, and advance the relationship or plot.' },
-  { label: 'Romance',               value: 'You are writing a romance story. Focus on emotional tension, chemistry between characters, and meaningful moments. Use sensory detail to convey longing and connection.' },
-  { label: 'Sci-fi',                value: 'You are writing science fiction. Ground fantastical elements in consistent internal logic. Balance wonder with plausibility. Explore the human dimension of technological or cosmic themes.' },
+  { label: 'presetStoryteller', value: 'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.' },
+  { label: 'presetLiteraryNovelist',     value: 'You are a literary author crafting immersive prose fiction. Continue the narrative with rich sensory detail, deep psychological insight, and elegant language. Match the established voice precisely.' },
+  { label: 'presetVisualNovelWriter',   value: 'You are writing dialogue and narration for a visual novel. Keep prose concise and punchy. Convey emotion through character reactions and subtext. End naturally for player pacing.' },
+  { label: 'presetHorrorSuspense',     value: 'You are a horror writer. Build dread through atmosphere, ambiguity, and the unseen. Use short, tense sentences during high-stress moments. Never explain the horror fully.' },
+  { label: 'presetFantasyAdventure',   value: 'You are writing high-fantasy adventure fiction. Embrace vivid world-building, heroic action, and mythic language. Keep the momentum going and the stakes clear.' },
+  { label: 'presetDialogueFocused',      value: 'You are writing character dialogue for a visual novel. Each character must have a distinct voice and speech pattern. Dialogue should feel natural, emotionally resonant, and advance the relationship or plot.' },
+  { label: 'presetRomance',               value: 'You are writing a romance story. Focus on emotional tension, chemistry between characters, and meaningful moments. Use sensory detail to convey longing and connection.' },
+  { label: 'presetSciFi',                value: 'You are writing science fiction. Ground fantastical elements in consistent internal logic. Balance wonder with plausibility. Explore the human dimension of technological or cosmic themes.' },
 ] as const;
 
 function AiTab() {
@@ -603,17 +601,17 @@ function AiTab() {
   }, [presetsOpen]);
 
   const handleRefreshModels = async () => {
-    if (!llmGeminiApiKey) { toast.error('Please enter an API Key first'); return; }
+    if (!llmGeminiApiKey) { toast.error(llm.apiKeyRequired); return; }
     setFetchingModels(true);
     try {
       const models = await fetchGeminiModels(llmGeminiApiKey);
       const modelNames = models.map(m => m.name);
       setFetchedModels(models);
       setPrefs({ llmGeminiModelsList: modelNames });
-      toast.success(`Fetched ${modelNames.length} text models`);
+      toast.success(llm.modelsFetched(modelNames.length));
       if (modelNames.includes(llmGeminiModel)) setIsCustomModel(false);
     } catch {
-      toast.error('Failed to fetch models. Check your API Key.');
+      toast.error(llm.fetchModelsFailed);
     } finally {
       setFetchingModels(false);
     }
@@ -627,7 +625,7 @@ function AiTab() {
   return (
     <>
       <ModalSection title={llm.sectionLlm}>
-        <ModalRow label={ep.llmEnabled} hint={(llm as any).llmEnabledHint ?? 'Required for AI-assisted text & image generation'}>
+        <ModalRow label={ep.llmEnabled} hint={llm.llmEnabledHint}>
           <Toggle value={llmEnabled} onChange={() => setPrefs({ llmEnabled: !llmEnabled })} />
         </ModalRow>
 
@@ -638,9 +636,9 @@ function AiTab() {
               onChange={e => setPrefs({ llmProvider: e.target.value as LLMProvider })}
               className={INPUT_CLS}
             >
-              <option value="koboldcpp">KoboldCPP (Local)</option>
-              <option value="gemini">Google Gemini (Cloud)</option>
-              <option value="openai">OpenAI Compatible</option>
+              <option value="koboldcpp">{llm.koboldcpp}</option>
+              <option value="gemini">{llm.gemini}</option>
+              <option value="openai">{llm.openai}</option>
             </select>
           </ModalField>
 
@@ -650,7 +648,7 @@ function AiTab() {
                 type="text"
                 value={llmUrl}
                 onChange={e => setPrefs({ llmUrl: e.target.value })}
-                placeholder="http://localhost:5001/api/v1/generate"
+                placeholder={llm.koboldcppPlaceholder}
                 className={INPUT_CLS}
               />
             </ModalField>
@@ -709,7 +707,7 @@ function AiTab() {
                   type="text"
                   value={llmOpenaiUrl}
                   onChange={e => setPrefs({ llmOpenaiUrl: e.target.value })}
-                  placeholder="https://api.openai.com/v1/chat/completions"
+                  placeholder={llm.openaiUrlPlaceholder}
                   className={INPUT_CLS}
                 />
               </ModalField>
@@ -718,7 +716,7 @@ function AiTab() {
                 <PasswordInput
                   value={llmOpenaiApiKey}
                   onChange={e => setPrefs({ llmOpenaiApiKey: e.target.value })}
-                  placeholder="sk-..."
+                  placeholder={llm.openaiApiKeyPlaceholder}
                 />
               </ModalField>
 
@@ -727,7 +725,7 @@ function AiTab() {
                   type="text"
                   value={llmOpenaiModel}
                   onChange={e => setPrefs({ llmOpenaiModel: e.target.value })}
-                  placeholder="gpt-4o-mini"
+                  placeholder={llm.openaiModelPlaceholder}
                   className={INPUT_CLS}
                 />
               </ModalField>
@@ -782,7 +780,7 @@ function AiTab() {
                           className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer normal-case tracking-normal font-normal"
                           onClick={() => { setPrefs({ llmSystemPrompt: p.value }); setPresetsOpen(false); }}
                         >
-                          {p.label}
+                          {llm[p.label as keyof typeof llm]}
                         </button>
                       ))}
                     </div>
@@ -798,7 +796,7 @@ function AiTab() {
               className={INPUT_CLS + ' min-h-[110px] resize-y'}
             />
             <div className="text-right text-[10px] text-slate-500 tabular-nums">
-              {llmSystemPrompt.length} chars
+              {llmSystemPrompt.length} {llm.chars}
             </div>
           </ModalField>
         </div>
@@ -824,8 +822,8 @@ function AiTab() {
               onChange={e => setPrefs({ imageGenProvider: e.target.value as 'comfyui' | 'pollinations' })}
               className={INPUT_CLS}
             >
-              <option value="comfyui">ComfyUI</option>
-              <option value="pollinations">Pollinations.AI (free)</option>
+              <option value="comfyui">{llm.comfyUi}</option>
+              <option value="pollinations">{llm.pollinationsAi}</option>
             </select>
           </ModalField>
 
@@ -892,11 +890,11 @@ function AiTab() {
 }
 
 // Gemini model select (grouped by tier)
-const TIER_LABELS: Record<string, string> = {
-  free:           'Free',
-  'free-limited': 'Free (with limits)',
-  paid:           'Paid',
-  experimental:   'Experimental / Preview',
+const TIER_LABELS: Record<string, keyof typeof TLocale['llmSettingsModal']> = {
+  free:           'tierFree',
+  'free-limited': 'tierFreeLimited',
+  paid:           'tierPaid',
+  experimental:   'tierExperimental',
 };
 const TIER_ORDER = ['free', 'free-limited', 'paid', 'experimental'];
 
@@ -908,6 +906,7 @@ function GeminiModelSelect({
   value: string;
   onChange: (v: string) => void;
 }) {
+  const llm = useT().llmSettingsModal;
   const displayByName = new Map(fetchedModels.map(m => [m.name, m.displayName]));
   const grouped = new Map<string, string[]>();
   for (const name of modelNames) {
@@ -925,14 +924,14 @@ function GeminiModelSelect({
     <select value={value} onChange={e => onChange(e.target.value)} className={INPUT_CLS}>
       {hasGroups ? (
         TIER_ORDER.filter(t => grouped.has(t)).map(tier => (
-          <optgroup key={tier} label={TIER_LABELS[tier]}>
+          <optgroup key={tier} label={llm[TIER_LABELS[tier]]}>
             {grouped.get(tier)!.map(renderOption)}
           </optgroup>
         ))
       ) : (
         modelNames.map(renderOption)
       )}
-      <option value="custom">-- Custom model name --</option>
+      <option value="custom">{llm.customModelName}</option>
     </select>
   );
 }
