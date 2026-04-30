@@ -1215,6 +1215,7 @@ export interface Translations {
     customModelPlaceholder: string;
     openaiUrlLabel: string;
     openaiUrlHint: string;
+    openaiUrlPlaceholder: string;
     openaiApiKeyLabel: string;
     openaiModelLabel: string;
     filterThoughtLabel: string;

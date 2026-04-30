@@ -22,6 +22,13 @@ export default defineConfig([
       // on prop change, auto-expand on insert). Disabling globally is simpler than
       // scattering eslint-disable comments across unrelated files.
       "react-hooks/set-state-in-effect": "off",
+      // False positive: rule treats objects returned from hooks that contain refs as refs
+      // themselves, flagging legitimate state/callback access (e.g. dropdown.open) as
+      // "ref access during render".
+      "react-hooks/refs": "off",
+      // False positive: rule flags Date.now() calls inside async event handlers as
+      // "impure function during render".
+      "react-hooks/purity": "off",
       // Allow exporting constants alongside components (common pattern in Vite projects).
       "react-refresh/only-export-components": ["warn", { "allowConstantExport": true }],
       "@typescript-eslint/no-unused-vars": "warn"

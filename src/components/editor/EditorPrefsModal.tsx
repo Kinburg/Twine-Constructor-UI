@@ -1,6 +1,7 @@
 import { useEditorPrefsStore, BUILTIN_PANEL_PRESETS } from '../../store/editorPrefsStore';
 import type { PanelLayoutPreset } from '../../store/editorPrefsStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
+import type { Translations } from '../../i18n/types';
 import { useState, useEffect, useRef, type ReactNode } from 'react';
 import {
   ModalShell, ModalBody,
@@ -211,7 +212,7 @@ function ThemeCard({
 //  SHORTCUTS TAB (read-only)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const SHORTCUT_GROUPS: { titleKey: keyof typeof TLocale['editorPrefs']; items: [string, keyof typeof TLocale['editorPrefs']][] }[] = [
+const SHORTCUT_GROUPS: { titleKey: keyof Translations['editorPrefs']; items: [string, keyof Translations['editorPrefs']][] }[] = [
   {
     titleKey: 'shortcutsGeneral',
     items: [
@@ -252,7 +253,7 @@ function ShortcutsTab() {
         {ep.shortcutsHint}
       </p>
       {SHORTCUT_GROUPS.map(group => (
-        <Section key={group.titleKey} title={ep[group.titleKey]}>
+        <Section key={group.titleKey as string} title={ep[group.titleKey] as string}>
           <div className="rounded-md border border-slate-700 overflow-hidden">
             {group.items.map(([combo, descKey], i) => (
               <div
@@ -261,7 +262,7 @@ function ShortcutsTab() {
                   i > 0 ? 'border-t border-slate-700/60' : ''
                 }`}
               >
-                <span className="text-slate-300">{ep[descKey]}</span>
+                <span className="text-slate-300">{ep[descKey] as string}</span>
                 <kbd className="font-mono text-[11px] px-2 py-0.5 rounded bg-slate-900/60 border border-slate-600 text-slate-200">
                   {combo}
                 </kbd>
@@ -780,7 +781,7 @@ function AiTab() {
                           className="w-full text-left px-3 py-1.5 text-xs text-slate-300 hover:bg-slate-700 hover:text-white transition-colors cursor-pointer normal-case tracking-normal font-normal"
                           onClick={() => { setPrefs({ llmSystemPrompt: p.value }); setPresetsOpen(false); }}
                         >
-                          {llm[p.label as keyof typeof llm]}
+                          {llm[p.label as keyof typeof llm] as string}
                         </button>
                       ))}
                     </div>
@@ -890,7 +891,7 @@ function AiTab() {
 }
 
 // Gemini model select (grouped by tier)
-const TIER_LABELS: Record<string, keyof typeof TLocale['llmSettingsModal']> = {
+const TIER_LABELS: Record<string, keyof Translations['llmSettingsModal']> = {
   free:           'tierFree',
   'free-limited': 'tierFreeLimited',
   paid:           'tierPaid',
@@ -924,7 +925,7 @@ function GeminiModelSelect({
     <select value={value} onChange={e => onChange(e.target.value)} className={INPUT_CLS}>
       {hasGroups ? (
         TIER_ORDER.filter(t => grouped.has(t)).map(tier => (
-          <optgroup key={tier} label={llm[TIER_LABELS[tier]]}>
+          <optgroup key={tier} label={llm[TIER_LABELS[tier]] as string}>
             {grouped.get(tier)!.map(renderOption)}
           </optgroup>
         ))
