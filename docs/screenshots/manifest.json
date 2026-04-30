@@ -1,5 +1,62 @@
 [
-  { "file": "screenshot.png",   "uk": "Головний редактор",      "en": "Main editor" },
-  { "file": "all_windows.png",  "uk": "Панелі та вікна",        "en": "Panels and windows" },
-  { "file": "graph.png",        "uk": "Граф сцен",              "en": "Scene graph" }
+  {
+    "file": "Main Layout.png",
+    "uk": "Головний редактор",
+    "en": "Main editor"
+  },
+  {
+    "file": "char paperdoll.png",
+    "uk": "Налаштування персонажу",
+    "en": "Custom paperdoll system"
+  },
+  {
+    "file": "dynamic avatar system.png",
+    "uk": "Динамічна зміна аватарок персонажів",
+    "en": "Dynamic avatar system"
+  },
+  {
+    "file": "generate dynamic avatar.png",
+    "uk": "Генерація динамічних аватарок персонажів за допомогою AI",
+    "en": "Generating dynamic character avatars with AI"
+  },
+  {
+    "file": "plugin.png",
+    "uk": "Система плагінів та розширень",
+    "en": "Plugin and extension system"
+  },
+  {
+    "file": "add item.png",
+    "uk": "Створення предметів",
+    "en": "Creating items"
+  },
+  {
+    "file": "add container.png",
+    "uk": "Створення контейнерів, сховищ та магазинів",
+    "en": "Creating containers, compartments and stores"
+  },
+  {
+    "file": "watchers.png",
+    "uk": "Налаштування спостерігачів (Watchers)",
+    "en": "Setting up Watchers"
+  },
+  {
+    "file": "editor settings.png",
+    "uk": "Налаштування редактора",
+    "en": "Editor preferences"
+  },
+  {
+    "file": "Project settings.png",
+    "uk": "Налаштування проєкту",
+    "en": "Project settings"
+  },
+  {
+    "file": "ai settings.png",
+    "uk": "Налаштування ШІ-моделей",
+    "en": "AI model settings"
+  },
+  {
+    "file": "ai settings 2.png",
+    "uk": "Налаштування ШІ-моделей для генерацції картинок",
+    "en": "AI model settings for image generation"
+  }
 ]

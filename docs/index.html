@@ -3,1315 +3,713 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="Icon.ico" type="image/x-icon" />
+  <link rel="icon" href="Icon.PNG" type="image/png" />
   <title>Purl — No-code Interactive Fiction Builder</title>
   <meta name="description" content="Purl — безкоштовний no-code редактор для створення інтерактивних історій з ШІ-генерацією зображень, інвентарем та папердолом. Free no-code editor for building interactive fiction with AI image generation, inventory and paperdoll systems." />
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css" />
-  <style>
-    /* ── Hero ───────────────────────────────────────────── */
-    .hero {
-      text-align: center;
-      padding: 90px 24px 70px;
-      position: relative;
-      overflow: hidden;
-    }
-    .hero::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background:
-        radial-gradient(ellipse 700px 400px at 50% -60px, rgba(124,106,247,.18), transparent),
-        radial-gradient(ellipse 400px 300px at 80% 100%, rgba(167,139,250,.08), transparent);
-      pointer-events: none;
-    }
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(124,106,247,.15);
-      border: 1px solid rgba(124,106,247,.3);
-      border-radius: 100px;
-      padding: 4px 14px;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--accent2);
-      letter-spacing: .5px;
-      text-transform: uppercase;
-      margin-bottom: 28px;
-    }
-    .hero h1 {
-      font-size: clamp(40px, 8vw, 72px);
-      font-weight: 800;
-      letter-spacing: -2px;
-      line-height: 1.1;
-      margin-bottom: 8px;
-      background: linear-gradient(135deg, #fff 40%, var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero-tagline {
-      font-size: clamp(16px, 3vw, 22px);
-      color: var(--muted);
-      margin-bottom: 36px;
-      max-width: 560px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    .hero-actions {
-      display: flex;
-      justify-content: center;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-    .btn-primary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: var(--accent);
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      padding: 13px 28px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: background .2s, transform .15s, box-shadow .2s;
-      box-shadow: 0 4px 20px rgba(124,106,247,.35);
-    }
-    .btn-primary:hover {
-      background: var(--accent2);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 28px rgba(124,106,247,.5);
-    }
-    .btn-secondary {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: transparent;
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 13px 28px;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: border-color .2s, background .2s, transform .15s;
-    }
-    .btn-secondary:hover {
-      border-color: var(--accent);
-      background: rgba(124,106,247,.08);
-      transform: translateY(-1px);
-    }
-    .free-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(74,222,128,.1);
-      border: 1px solid rgba(74,222,128,.25);
-      color: var(--green);
-      border-radius: 100px;
-      padding: 4px 12px;
-      font-size: 12px;
-      font-weight: 700;
-      letter-spacing: .5px;
-      margin-top: 20px;
-    }
-
-    /* ── Preview ────────────────────────────────────────── */
-    .preview-wrap {
-      max-width: 1000px;
-      margin: 0 auto 80px;
-      padding: 0 24px;
-    }
-    .preview-frame {
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      overflow: hidden;
-      background: var(--surface);
-      box-shadow: 0 24px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(124,106,247,.1);
-    }
-    .preview-bar {
-      background: var(--surface2);
-      padding: 12px 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    .preview-dot { width: 10px; height: 10px; border-radius: 50%; }
-    .preview-dot:nth-child(1) { background: #ff5f57; }
-    .preview-dot:nth-child(2) { background: #febc2e; }
-    .preview-dot:nth-child(3) { background: #28c840; }
-    .preview-title { margin-left: 8px; font-size: 12px; color: var(--muted); flex: 1; }
-    /* ── Carousel ───────────────────────────────────────── */
-    .carousel { position: relative; overflow: hidden; }
-    .carousel-track { display: flex; transition: transform .4s cubic-bezier(.4,0,.2,1); }
-    .carousel-track img { width: 100%; flex-shrink: 0; display: block; object-fit: cover; }
-    .carousel-btn {
-      position: absolute; top: 50%; transform: translateY(-50%);
-      background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.12);
-      color: #fff; width: 36px; height: 36px; border-radius: 50%;
-      cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;
-      transition: background .2s; z-index: 2; padding: 0;
-    }
-    .carousel-btn:hover { background: rgba(124,106,247,.7); }
-    .carousel-btn.prev { left: 12px; }
-    .carousel-btn.next { right: 12px; }
-    .carousel-dots {
-      display: flex; justify-content: center; gap: 6px; padding: 10px 0 4px;
-      background: var(--surface);
-    }
-    .carousel-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: var(--border); cursor: pointer; transition: background .2s, transform .2s;
-    }
-    .carousel-dot.active { background: var(--accent); transform: scale(1.3); }
-    .carousel-caption {
-      text-align: center; font-size: 12px; color: var(--muted);
-      padding: 6px 16px 12px; background: var(--surface);
-    }
-
-    /* ── Section ────────────────────────────────────────── */
-    .section {
-      max-width: 1000px;
-      margin: 0 auto;
-      padding: 0 24px 80px;
-    }
-    .section-label {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 1.5px;
-      text-transform: uppercase;
-      color: var(--accent);
-      margin-bottom: 12px;
-    }
-    .section-title {
-      font-size: clamp(24px, 4vw, 36px);
-      font-weight: 700;
-      letter-spacing: -0.5px;
-      margin-bottom: 12px;
-    }
-    .section-desc {
-      color: var(--muted);
-      max-width: 600px;
-      margin-bottom: 40px;
-    }
-
-    /* ── Features ───────────────────────────────────────── */
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 16px;
-    }
-    .feature-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      transition: border-color .2s, background .2s;
-    }
-    .feature-card:hover {
-      border-color: rgba(124,106,247,.4);
-      background: var(--surface2);
-    }
-    .feature-icon { width: 32px; height: 32px; margin-bottom: 12px; display: block; opacity: .9; }
-    .feature-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
-    .feature-card p { font-size: 13px; color: var(--muted); line-height: 1.6; }
-
-    /* ── Block cards ────────────────────────────────────── */
-    .blocks-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 10px;
-    }
-    .block-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 14px 16px;
-      transition: border-color .2s, background .2s;
-    }
-    .block-card:hover {
-      border-color: rgba(124,106,247,.35);
-      background: var(--surface2);
-    }
-    .block-card-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 5px;
-    }
-    .block-card-icon {
-      width: 32px;
-      height: 32px;
-      flex-shrink: 0;
-      opacity: .9;
-    }
-    .block-card-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-    }
-    .block-card-desc {
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.55;
-      margin: 0;
-    }
-
-    /* ── Platform ───────────────────────────────────────── */
-    .platform-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 32px;
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      flex-wrap: wrap;
-    }
-    .platform-icon { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
-    .platform-info h3 { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
-    .platform-info p { color: var(--muted); font-size: 14px; margin-bottom: 16px; }
-
-    /* ── Donate ─────────────────────────────────────────── */
-    .donate-section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 20px;
-      padding: 48px 40px;
-      text-align: center;
-      position: relative;
-      overflow: hidden;
-    }
-    .donate-section::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: radial-gradient(ellipse 600px 300px at 50% 0%, rgba(124,106,247,.08), transparent);
-      pointer-events: none;
-    }
-    .donate-section h2 { font-size: 28px; font-weight: 700; margin-bottom: 10px; }
-    .donate-section p { color: var(--muted); margin-bottom: 28px; max-width: 480px; margin-left: auto; margin-right: auto; }
-    .donate-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      color: #fff;
-      border: none;
-      border-radius: var(--radius);
-      padding: 14px 32px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      transition: opacity .2s, transform .15s;
-      box-shadow: 0 4px 20px rgba(124,106,247,.4);
-    }
-    .donate-btn:hover { opacity: .9; transform: translateY(-1px); }
-
-    /* ── Footer ─────────────────────────────────────────── */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 28px 40px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-    .footer-logo {
-      font-size: 16px;
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .footer-copy { font-size: 12px; color: var(--muted); }
-    .footer-links { margin-left: auto; display: flex; gap: 20px; }
-    .footer-links a { color: var(--muted); text-decoration: none; font-size: 13px; transition: color .2s; }
-    .footer-links a:hover { color: var(--accent2); }
-
-    .divider { border: none; border-top: 1px solid var(--border); margin: 0 auto 80px; max-width: 1000px; }
-
-    /* ── Mobile ─────────────────────────────────────────── */
-    @media (max-width: 640px) {
-      .section { padding-bottom: 48px; }
-      .platform-card { flex-direction: column; gap: 16px; }
-      .donate-section { padding: 32px 20px; }
-      footer { flex-direction: column; align-items: flex-start; }
-      .footer-links { margin-left: 0; }
-    }
-  </style>
 </head>
 <body>
 
-<!-- ── Header (injected by common.js) ───────────────────────── -->
+<!-- ── Header (injected by common.js) ────────────────────────── -->
 <header></header>
 
-<!-- ── Hero ─────────────────────────────────────────────────── -->
+<main>
+
+<!-- ── Hero ──────────────────────────────────────────────────── -->
 <section class="hero">
-  <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-bottom:28px;">
-    <div class="hero-badge" style="margin-bottom:0;"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px;"><path d="M6 0 L7.1 4.9 L12 6 L7.1 7.1 L6 12 L4.9 7.1 L0 6 L4.9 4.9 Z" fill="currentColor"/></svg><span lang-content="uk">Безкоштовний інструмент</span><span lang-content="en">Free tool</span></div>
-    <div class="hero-badge" style="margin-bottom:0;background:rgba(74,222,128,.12);border-color:rgba(74,222,128,.3);color:#4ade80;"><svg width="11" height="11" viewBox="0 0 12 12" fill="none" style="vertical-align:-1px;margin-right:4px;"><path d="M7.5 1 L3.5 7 H6.5 L4.5 11 L8.5 5 H5.5 Z" fill="currentColor"/></svg><span lang-content="uk">Активна розробка</span><span lang-content="en">Actively developed</span></div>
+  <div class="wrap">
+    <div class="hero-grid">
+      <div class="hero-left">
+        <div class="hero-eyebrow">
+          <span class="dot"></span>
+          <span>v1.24.4  ·  Apr 30, 2026  ·  </span>
+          <span lang-content="en">actively developed</span>
+          <span lang-content="uk">активно розвивається</span>
+        </div>
+        <h1>
+          <span lang-content="en">Build interactive<br/>fiction. <em>No code.</em></span>
+          <span lang-content="uk">Будуйте інтерактивні<br/>історії. <em>Без коду.</em></span>
+        </h1>
+        <p class="hero-tagline" lang-content="en">
+          A desktop editor for visual novels and text adventures. Compose scenes from blocks,
+          run characters with inventory and paperdoll systems, generate art with AI — export to .twee or standalone HTML.
+        </p>
+        <p class="hero-tagline" lang-content="uk">
+          Десктопний редактор для візуальних новел та текстових пригод. Складайте сцени з блоків,
+          керуйте персонажами з інвентарем та папердолом, генеруйте зображення ШІ — експортуйте в .twee або самодостатній HTML.
+        </p>
+
+        <div class="hero-actions">
+          <a href="#download" class="btn btn-primary">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span lang-content="en">Download free</span>
+            <span lang-content="uk">Завантажити</span>
+          </a>
+          <a href="https://github.com/Kinburg/purl" target="_blank" rel="noopener" class="btn btn-ghost">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.745 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+            GitHub
+          </a>
+        </div>
+
+        <div class="hero-meta">
+          <div class="hero-meta-item">
+            <span class="label">Platforms</span>
+            <span class="value">Win · macOS · Linux</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="label">License</span>
+            <span class="value">Free &amp; open</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="label">Engine</span>
+            <span class="value">SugarCube&nbsp;2 · Twine</span>
+          </div>
+          <div class="hero-meta-item">
+            <span class="label">Blocks</span>
+            <span class="value">25+ types</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="hero-right">
+        <div class="hero-visual">
+          <div class="iso-cube">
+            <div class="iso-stack">
+              <div class="iso-card c1">
+                <span class="label">scene · start</span>
+                <div class="lines"><span></span><span></span><span></span></div>
+                <div class="glyph">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 5 H15 M3 9 H12 M3 13 H14"/></svg>
+                </div>
+              </div>
+              <div class="iso-card c2">
+                <span class="label">choice · branch</span>
+                <div class="lines"><span></span><span></span><span></span></div>
+                <div class="glyph">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="4" cy="4" r="1.5"/><circle cx="14" cy="9" r="1.5"/><circle cx="4" cy="14" r="1.5"/><path d="M5 4 H10 V9 M10 9 H13"/><path d="M5 14 H10 V9"/></svg>
+                </div>
+              </div>
+              <div class="iso-card c3">
+                <span class="label">paperdoll · MC</span>
+                <div class="lines"><span></span><span></span><span></span></div>
+                <div class="glyph">
+                  <svg width="18" height="18" viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="9" cy="5" r="2.4"/><path d="M4 16 C4 11 14 11 14 16"/></svg>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-  <h1>Purl</h1>
-  <p class="hero-tagline" lang-content="uk">No-code редактор для створення інтерактивних історій з ШІ-генерацією зображень, інвентарем та папердолом</p>
-  <p class="hero-tagline" lang-content="en">No-code editor for building interactive fiction with AI image generation, inventory and paperdoll systems</p>
-  <div class="hero-actions">
-    <a href="#download" class="btn-primary">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      <span lang-content="uk">Завантажити</span>
-      <span lang-content="en">Download</span>
-    </a>
-    <a href="https://github.com/Kinburg/purl" target="_blank" class="btn-secondary">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.745 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
-      GitHub
-    </a>
-  </div>
-  <div><span class="free-badge"><svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="vertical-align:-2px;margin-right:4px;"><path d="M2 6 L5 9.5 L10 2.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span lang-content="uk">Повністю безкоштовно</span><span lang-content="en">Completely free</span></span></div>
 </section>
-
-<!-- ── App preview ───────────────────────────────────────────── -->
-<div class="preview-wrap">
-  <div class="preview-frame">
-    <div class="preview-bar">
-      <div class="preview-dot"></div>
-      <div class="preview-dot"></div>
-      <div class="preview-dot"></div>
-      <span class="preview-title" id="carousel-title">Purl — Story Editor</span>
-    </div>
-    <div class="carousel" id="carousel">
-      <div class="carousel-track" id="carousel-track"></div>
-      <button class="carousel-btn prev" id="carousel-prev" aria-label="Previous">&#8249;</button>
-      <button class="carousel-btn next" id="carousel-next" aria-label="Next">&#8250;</button>
-    </div>
-    <div class="carousel-dots" id="carousel-dots"></div>
-    <div class="carousel-caption" id="carousel-caption"></div>
-  </div>
-</div>
-
-<!-- ── About ────────────────────────────────────────────────── -->
-<div class="section">
-  <span class="section-label" lang-content="uk">Про застосунок</span>
-  <span class="section-label" lang-content="en">About</span>
-  <h2 class="section-title" lang-content="uk">Що таке Purl?</h2>
-  <h2 class="section-title" lang-content="en">What is Purl?</h2>
-  <p class="section-desc" lang-content="uk">
-    Purl — це десктопний застосунок для Windows, macOS та Linux для створення інтерактивних текстових ігор та візуальних новел без написання коду. Будуйте сцени з візуальних блоків, керуйте персонажами з інвентарем та папердолом, генеруйте зображення за допомогою ШІ прямо в редакторі. Purl генерує готовий .twee файл або самодостатній .html.
-  </p>
-  <p class="section-desc" lang-content="en">
-    Purl is a desktop app for Windows, macOS and Linux for building interactive fiction and visual novels without writing code. Compose scenes from visual blocks, manage characters with inventory and paperdoll systems, and generate images with AI right inside the editor. Purl exports a ready .twee file or a standalone .html.
-  </p>
-  <p class="section-desc" style="margin-top:-20px;" lang-content="uk">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;"><path d="M8.5 1 L4 8 H7.5 L5.5 13 L10 6 H6.5 Z" fill="var(--green)"/></svg>
-    Purl активно розвивається — нові блоки та функції регулярно з'являються у кожному оновленні.
-  </p>
-  <p class="section-desc" style="margin-top:-20px;" lang-content="en">
-    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="vertical-align:-2px;"><path d="M8.5 1 L4 8 H7.5 L5.5 13 L10 6 H6.5 Z" fill="var(--green)"/></svg>
-    Purl is actively developed — new blocks and features are regularly added with every update.
-  </p>
-</div>
 
 <hr class="divider" />
 
-<!-- ── Features ─────────────────────────────────────────────── -->
-<div class="section" id="features">
-  <span class="section-label" lang-content="uk">Можливості</span>
-  <span class="section-label" lang-content="en">Features</span>
-  <h2 class="section-title" lang-content="uk">Все що потрібно для інтерактивної прози</h2>
-  <h2 class="section-title" lang-content="en">Everything you need for interactive fiction</h2>
-
-  <div class="features-grid">
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="4" width="24" height="7" rx="2" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".18"/>
-        <rect x="4" y="13" width="24" height="7" rx="2" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".1" opacity=".7"/>
-        <rect x="4" y="22" width="24" height="7" rx="2" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".06" opacity=".45"/>
-        <circle cx="9" cy="7.5" r="1.1" fill="var(--accent)"/>
-        <circle cx="12.5" cy="7.5" r="1.1" fill="var(--accent)"/>
-      </svg>
-      <h3 lang-content="uk">Блоковий редактор</h3>
-      <h3 lang-content="en">Block editor</h3>
-      <p lang-content="uk">Додавайте та впорядковуйте блоки перетягуванням. Кожна сцена — окремий список блоків.</p>
-      <p lang-content="en">Add and reorder blocks by drag & drop. Each scene is a separate list of blocks.</p>
+<!-- ── Vision (video) ────────────────────────────────────────── -->
+<section class="section">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-head-left">
+        <div class="kicker">Vision</div>
+        <h2 class="section-title" lang-content="en">Your ideas, your stories.</h2>
+        <h2 class="section-title" lang-content="uk">Ваші ідеї, ваші історії.</h2>
+        <p class="section-desc" lang-content="en">
+          Dive into Purl, where creativity is unbound by code. Visualise narratives with intuitive blocks and focus on the story.
+        </p>
+        <p class="section-desc" lang-content="uk">
+          Пориньте у світ Purl, де творчість не обмежена кодом. Візуалізуйте сюжети інтуїтивними блоками і зосередьтеся на розповіді.
+        </p>
+      </div>
     </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M2 5 Q2 2 5 2 H27 Q30 2 30 5 V18 Q30 21 27 21 H14 L6 29 L7 21 H5 Q2 21 2 18 Z" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".12"/>
-        <rect x="7" y="8" width="14" height="2.2" rx="1.1" fill="var(--accent)" opacity=".8"/>
-        <rect x="7" y="13" width="10" height="2.2" rx="1.1" fill="var(--accent)" opacity=".5"/>
-      </svg>
-      <h3 lang-content="uk">Діалоги та тексти</h3>
-      <h3 lang-content="en">Dialogue & text</h3>
-      <p lang-content="uk">Блоки діалогів з персонажами, кольорами та аватарами. Ефекти друкарської машинки та затримки.</p>
-      <p lang-content="en">Dialogue blocks with characters, colors and avatars. Typewriter and delay effects.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M3 16 L12 16" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
-        <path d="M12 16 L15 10 L18 16 L15 22 Z" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".15"/>
-        <path d="M18 13 L28 8" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round"/>
-        <path d="M24.5 6.5 L28 8 L26.5 11.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <path d="M18 19 L28 24" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity=".55"/>
-        <path d="M24.5 21.5 L28 23 L26.5 26.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/>
-      </svg>
-      <h3 lang-content="uk">Вибори та умови</h3>
-      <h3 lang-content="en">Choices & conditions</h3>
-      <p lang-content="uk">Блоки вибору, кнопки, посилання та умовні гілки з підтримкою вкладених блоків.</p>
-      <p lang-content="en">Choice blocks, buttons, links and conditional branches with nested block support.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="8" y="7" width="16" height="18" rx="3" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".1"/>
-        <path d="M8 12 L3 12 M8 17 L3 17 M8 22 L3 22" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round"/>
-        <path d="M24 12 L29 12 M24 17 L29 17 M24 22 L29 22" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" opacity=".55"/>
-        <rect x="11" y="11" width="10" height="1.8" rx=".9" fill="var(--accent)" opacity=".7"/>
-        <rect x="11" y="16" width="7" height="1.8" rx=".9" fill="var(--accent)" opacity=".5"/>
-        <rect x="11" y="21" width="9" height="1.8" rx=".9" fill="var(--accent)" opacity=".35"/>
-      </svg>
-      <h3 lang-content="uk">Змінні та логіка</h3>
-      <h3 lang-content="en">Variables & logic</h3>
-      <p lang-content="uk">Числа, рядки, булеві, масиви. Вирази, маппінг, режими random та dynamic.</p>
-      <p lang-content="en">Numbers, strings, booleans, arrays. Expressions, mapping, random and dynamic modes.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="2" y="5" width="20" height="16" rx="2.5" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08" opacity=".7"/>
-        <circle cx="8" cy="11" r="2.2" fill="var(--accent)" opacity=".45"/>
-        <path d="M2 18 L7 13 L12 17 L16 13 L22 17" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" fill="var(--accent)" fill-opacity=".1" opacity=".6"/>
-        <rect x="18" y="16" width="12" height="12" rx="2" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.6"/>
-        <path d="M22 20 L27 22 L22 24 Z" fill="var(--accent)" opacity=".8"/>
-      </svg>
-      <h3 lang-content="uk">Медіа</h3>
-      <h3 lang-content="en">Media</h3>
-      <p lang-content="uk">Блоки зображень, відео та аудіо. Статичний або динамічний режим для зображень; фонова музика та звуки з контролем гучності для всієї історії.</p>
-      <p lang-content="en">Image, video and audio blocks. Static or bound mode for images; background music and sounds with a master volume control for the whole story.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M6 3 H20 L28 11 V29 H6 Z" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <path d="M20 3 V11 H28" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
-        <path d="M17 27 V17 M13 21 L17 17 L21 21" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <h3 lang-content="uk">Експорт у .twee</h3>
-      <h3 lang-content="en">Export to .twee</h3>
-      <p lang-content="uk">Генерація готового .twee файлу для Tweego або імпорту в Twine 2.</p>
-      <p lang-content="en">Generates a ready .twee file for Tweego or import into Twine 2.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <path d="M16 3 C11 8 11 24 16 29 C21 24 21 8 16 3 Z" stroke="var(--accent)" stroke-width="1.3" fill="none" opacity=".5"/>
-        <path d="M3 16 H29" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
-        <path d="M5 10 Q16 7 27 10" stroke="var(--accent)" stroke-width="1" opacity=".35"/>
-        <path d="M5 22 Q16 25 27 22" stroke="var(--accent)" stroke-width="1" opacity=".35"/>
-      </svg>
-      <h3 lang-content="uk">Експорт у HTML + assets</h3>
-      <h3 lang-content="en">Export to HTML + assets</h3>
-      <p lang-content="uk">Генерує самодостатній HTML-файл разом із папкою assets. Готово до публікації — відкривається у браузері без жодних додаткових інструментів.</p>
-      <p lang-content="en">Generates a standalone HTML file together with an assets folder. Ready to publish — opens in any browser with no extra tools needed.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <path d="M19.5 4.5 L11 17 H17 L12.5 27.5 L21 15 H15 Z" fill="var(--accent)" fill-opacity=".9"/>
-      </svg>
-      <h3 lang-content="uk">Спостерігачі (Watchers)</h3>
-      <h3 lang-content="en">Watchers</h3>
-      <p lang-content="uk">Фонове відстеження змінних: задайте умову та дії, які виконуються автоматично при зміні сцени або натисканні кнопки.</p>
-      <p lang-content="en">Background variable tracking: set a condition and actions that fire automatically on scene change or button click.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="3" y="14" width="26" height="4" rx="2" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.6"/>
-        <circle cx="20" cy="16" r="4.5" fill="var(--accent)" fill-opacity=".25" stroke="var(--accent)" stroke-width="1.8"/>
-        <circle cx="20" cy="16" r="2" fill="var(--accent)"/>
-        <path d="M3 16 H15" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" opacity=".7"/>
-      </svg>
-      <h3 lang-content="uk">Повзунок гучності</h3>
-      <h3 lang-content="en">Volume slider</h3>
-      <p lang-content="uk">Елемент бокової панелі — повзунок гучності з опціональною кнопкою вимкнення звуку. Синхронізує гучність усього аудіо та відео в історії.</p>
-      <p lang-content="en">Sidebar panel widget — a volume slider with an optional mute button. Syncs the volume of all audio tracks and video elements in the story.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 14 A10 10 0 1 1 8 22" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
-        <path d="M6 10 L 8 14 L 13 14" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-      <h3>Undo / Redo</h3>
-      <p lang-content="uk">Повна історія дій до 100 кроків. Ctrl+Z / Ctrl+Shift+Z або кнопки в панелі інструментів.</p>
-      <p lang-content="en">Full action history up to 100 steps. Ctrl+Z / Ctrl+Shift+Z or toolbar buttons.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="14" cy="13" r="9" stroke="var(--accent)" stroke-width="2" fill="var(--accent)" fill-opacity=".1"/>
-        <path d="M21 21 L29 29" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"/>
-        <path d="M10 13 H18 M14 9 V17" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
-      </svg>
-      <h3 lang-content="uk">Пошук по проєкту</h3>
-      <h3 lang-content="en">Project search</h3>
-      <p lang-content="uk">Пошук по тексту сцен, блоків та по використанню змінних. Перехід до результату одним кліком.</p>
-      <p lang-content="en">Search by scene text, blocks and variable usage. Click to navigate to any result.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="5" r="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".2"/>
-        <circle cx="5" cy="20" r="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".15"/>
-        <circle cx="27" cy="20" r="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".15"/>
-        <circle cx="16" cy="28" r="3" stroke="var(--accent)" stroke-width="1.4" fill="var(--accent)" fill-opacity=".1" opacity=".6"/>
-        <path d="M16 8 L16 12 M14 12 L5 17 M18 12 L27 17" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round"/>
-        <path d="M27 23 L16 25" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" opacity=".5"/>
-        <rect x="12" y="12" width="8" height="5" rx="1.5" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.2"/>
-      </svg>
-      <h3 lang-content="uk">Граф сцен</h3>
-      <h3 lang-content="en">Scene graph</h3>
-      <p lang-content="uk">Візуальна карта всієї історії: вузли сцен, розвилки сюжету, функції та попапи. Дозволяє швидко орієнтуватися в структурі проєкту та переходити до будь-якої сцени одним кліком.</p>
-      <p lang-content="en">Visual map of the entire story: scene nodes, story branches, functions and popups. Lets you navigate the project structure at a glance and jump to any scene in one click.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="2" y="4" width="28" height="24" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <rect x="2" y="4" width="28" height="7" rx="3" fill="var(--accent)" fill-opacity=".15"/>
-        <circle cx="7" cy="7.5" r="1.2" fill="var(--accent)" opacity=".7"/>
-        <circle cx="11" cy="7.5" r="1.2" fill="var(--accent)" opacity=".45"/>
-        <path d="M8 15 L12 19 L8 23" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-        <rect x="14" y="21" width="10" height="2" rx="1" fill="var(--accent)" opacity=".4"/>
-        <rect x="14" y="15" width="7" height="2" rx="1" fill="var(--accent)" opacity=".3"/>
-      </svg>
-      <h3 lang-content="uk">Попередній перегляд коду</h3>
-      <h3 lang-content="en">Code preview</h3>
-      <p lang-content="uk">Перегляд згенерованого SugarCube-коду для будь-якої сцени прямо в редакторі — без потреби робити експорт. Зручно для налагодження логіки та перевірки результату.</p>
-      <p lang-content="en">Preview the generated SugarCube code for any scene right inside the editor — no export needed. Handy for debugging logic and verifying the output.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="5" y="4" width="22" height="24" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <path d="M10 12 H22 M10 16 H18 M10 20 H20" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" opacity=".4"/>
-        <path d="M13 3 L15.3 8.6 L21 10 L15.3 11.4 L13 17 L10.7 11.4 L5 10 L10.7 8.6Z" fill="var(--accent)" opacity=".5"/>
-      </svg>
-      <h3 lang-content="uk">AI-асистент (текст)</h3>
-      <h3 lang-content="en">AI Assistant (Text)</h3>
-      <p lang-content="uk">Інтеграція з KoboldCPP, Google Gemini та OpenAI-сумісними API. Стрімінг, температура персонажів, історія генерацій.</p>
-      <p lang-content="en">Integration with KoboldCPP, Google Gemini and OpenAI-compatible APIs. Streaming, per-character temperature, generation history.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="12" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <text x="8" y="14" font-size="7" font-weight="700" fill="var(--accent)" opacity=".7" font-family="sans-serif">UA</text>
-        <text x="15" y="24" font-size="7" font-weight="700" fill="var(--accent)" opacity=".4" font-family="sans-serif">EN</text>
-        <path d="M12 17 L20 11" stroke="var(--accent)" stroke-width="1.2" opacity=".3"/>
-      </svg>
-      <h3 lang-content="uk">Експорт для перекладу</h3>
-      <h3 lang-content="en">Localization Export</h3>
-      <p lang-content="uk">Вивантаження всіх текстів у .json / .csv для перекладу та імпорт назад як новий проєкт або мовний пакет.</p>
-      <p lang-content="en">Export all text strings to .json / .csv for translation, and import back as a new project or language pack.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M13 3 L15.3 8.6 L21 10 L15.3 11.4 L13 17 L10.7 11.4 L5 10 L10.7 8.6Z" fill="var(--accent)" opacity=".8"/>
-        <rect x="12" y="18" width="16" height="11" rx="2" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".1"/>
-        <circle cx="16" cy="23" r="2" fill="var(--accent)" opacity=".55"/>
-        <circle cx="24" cy="23" r="2" fill="var(--accent)" opacity=".35"/>
-        <path d="M5 22 L11 22" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".4"/>
-        <path d="M5 26 L11 26" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".25"/>
-      </svg>
-      <h3 lang-content="uk">ШІ-генерація зображень</h3>
-      <h3 lang-content="en">AI Image Generation</h3>
-      <p lang-content="uk">Генеруйте аватарки персонажів, іконки айтемів та частини папердолу за допомогою ШІ прямо в редакторі. Підтримує Pollinations (безкоштовно) та ComfyUI для локальної генерації.</p>
-      <p lang-content="en">Generate character avatars, item icons and paperdoll parts with AI right inside the editor. Supports Pollinations (free) and ComfyUI for local generation.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <rect x="4" y="6" width="24" height="20" rx="3" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <rect x="8" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".5"/>
-        <rect x="8" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".35"/>
-        <rect x="17" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".3"/>
-        <rect x="17" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".2"/>
-        <path d="M8 8 H24" stroke="var(--accent)" stroke-width="1.2" opacity=".4"/>
-      </svg>
-      <h3 lang-content="uk">Інвентар та айтеми</h3>
-      <h3 lang-content="en">Inventory &amp; Items</h3>
-      <p lang-content="uk">Вбудована система айтемів з іконками та описом. Інвентар прив'язується до персонажів, відображається в сценах. Підтримує механіки магазинів та контейнерів.</p>
-      <p lang-content="en">Built-in item system with icons and descriptions. Inventory binds to characters, renders in scenes. Supports shop and container mechanics.</p>
-    </div>
-    <div class="feature-card">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <ellipse cx="16" cy="10" rx="5" ry="6" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".12"/>
-        <path d="M8 28 C8 21 24 21 24 28" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-        <rect x="10" y="15" width="4" height="5" rx="1" fill="var(--accent)" opacity=".4"/>
-        <rect x="18" y="15" width="4" height="5" rx="1" fill="var(--accent)" opacity=".4"/>
-        <circle cx="16" cy="17" r="1.5" fill="var(--accent)" opacity=".6"/>
-      </svg>
-      <h3 lang-content="uk">Папердол</h3>
-      <h3 lang-content="en">Paperdoll</h3>
-      <p lang-content="uk">Візуальна система екіпірування з налаштовуваними слотами. Зображення частин тіла змінюються залежно від характеристик персонажа — сили, спритності або будь-якої іншої змінної. Вигляд айтемів також динамічний: зброя може виглядати інакше залежно від рівня прокачки або лічильника вбивств, або будь-якої іншої змінної.</p>
-      <p lang-content="en">Visual equipment system with configurable slots. Body part images change based on character stats — strength, dexterity or any variable. Item appearance is dynamic too: a weapon can look different depending on its upgrade level or kill count or any other variable.</p>
+    <div class="video-frame">
+      <iframe src="https://www.youtube.com/embed/iYI5cB8Ixb0" title="Purl — Vision" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
     </div>
   </div>
-</div>
+</section>
 
-<!-- ── Block types ────────────────────────────────────────────── -->
-<div class="section">
-  <span class="section-label" lang-content="uk">Типи блоків</span>
-  <span class="section-label" lang-content="en">Block types</span>
-  <h2 class="section-title" lang-content="uk">25 типи блоків</h2>
-  <h2 class="section-title" lang-content="en">25 block types</h2>
-  <p class="section-desc" lang-content="uk">Кожен блок — готовий елемент сцени. Комбінуйте їх для будь-якого жанру.</p>
-  <p class="section-desc" lang-content="en">Each block is a ready-to-use scene element. Combine them for any genre.</p>
-  <div class="blocks-grid">
+  <hr class="divider" />
 
-    <!-- Text -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="7" width="26" height="2.5" rx="1.25" fill="var(--accent)"/>
-          <rect x="3" y="13" width="20" height="2.5" rx="1.25" fill="var(--accent)" opacity=".7"/>
-          <rect x="3" y="19" width="24" height="2.5" rx="1.25" fill="var(--accent)" opacity=".7"/>
-          <rect x="3" y="25" width="14" height="2.5" rx="1.25" fill="var(--accent)" opacity=".45"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Текст</span>
-        <span class="block-card-name" lang-content="en">Text</span>
+<!-- ── Preview / Carousel ────────────────────────────────────── -->
+<section class="section preview-wrap">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-head-left">
+        <div class="kicker">Editor</div>
+        <h2 class="section-title" lang-content="en">A desktop editor that feels native.</h2>
+        <h2 class="section-title" lang-content="uk">Десктопний редактор, що відчувається рідним.</h2>
       </div>
-      <p class="block-card-desc" lang-content="uk">Абзац тексту з підтримкою розмітки SugarCube. Live-режим для автоматичного оновлення при зміні змінних. Є ефект друкарської машинки.</p>
-      <p class="block-card-desc" lang-content="en">Text paragraph with SugarCube markup support. Live mode for auto-refresh when variables change. Typewriter effect available.</p>
     </div>
 
-    <!-- Dialogue -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M2 6 Q2 3 5 3 H27 Q30 3 30 6 V17 Q30 20 27 20 H15 L8 27 L9 20 H5 Q2 20 2 17 Z" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".12"/>
-          <rect x="8" y="9" width="12" height="2" rx="1" fill="var(--accent)" opacity=".85"/>
-          <rect x="8" y="13.5" width="8" height="2" rx="1" fill="var(--accent)" opacity=".55"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Діалог</span>
-        <span class="block-card-name" lang-content="en">Dialogue</span>
+    <div class="preview-frame">
+      <div class="preview-bar">
+        <div class="preview-dot"></div>
+        <div class="preview-dot"></div>
+        <div class="preview-dot"></div>
+        <span class="preview-title">purl — Story Editor</span>
+        <span class="preview-tag">/draft.purlproj</span>
       </div>
-      <p class="block-card-desc" lang-content="uk">Репліка персонажа з аватаром, ім'ям та кольоровим оформленням. Підтримує вирівнювання, вкладені блоки та ефект друкарської машинки.</p>
-      <p class="block-card-desc" lang-content="en">Character speech bubble with avatar, name and color styling. Supports alignment, nested blocks and typewriter effect.</p>
-    </div>
-
-    <!-- Choice -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="5" cy="10" r="2.2" fill="var(--accent)"/>
-          <rect x="10" y="8.5" width="17" height="2.5" rx="1.25" fill="var(--accent)" opacity=".8"/>
-          <circle cx="5" cy="18" r="2.2" fill="var(--accent)" opacity=".55"/>
-          <rect x="10" y="16.5" width="13" height="2.5" rx="1.25" fill="var(--accent)" opacity=".55"/>
-          <circle cx="5" cy="26" r="2.2" fill="var(--accent)" opacity=".3"/>
-          <rect x="10" y="24.5" width="15" height="2.5" rx="1.25" fill="var(--accent)" opacity=".3"/>
-          <path d="M26 9 L29 10 L26 11" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Вибір</span>
-        <span class="block-card-name" lang-content="en">Choice</span>
+      <div class="carousel">
+        <div class="carousel-track" id="carousel-track"></div>
+        <button class="carousel-btn prev" id="carousel-prev" aria-label="Previous">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2 L4 7 L9 12"/></svg>
+        </button>
+        <button class="carousel-btn next" id="carousel-next" aria-label="Next">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 2 L10 7 L5 12"/></svg>
+        </button>
       </div>
-      <p class="block-card-desc" lang-content="uk">Меню варіантів для переходу між сценами. Кожен варіант може мати умову відображення.</p>
-      <p class="block-card-desc" lang-content="en">Branching menu that lets the player pick a destination scene. Each option can have a visibility condition.</p>
+      <div class="carousel-dots" id="carousel-dots"></div>
+      <div class="carousel-caption" id="carousel-caption">— Loading —</div>
     </div>
-
-    <!-- Condition IF -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M16 2 L30 16 L16 30 L2 16 Z" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".12"/>
-          <path d="M16 30 L10 34" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
-          <path d="M16 30 L22 34" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".5"/>
-          <rect x="11" y="13.5" width="4" height="2" rx="1" fill="var(--accent)" opacity=".9"/>
-          <rect x="11" y="17.5" width="4" height="2" rx="1" fill="var(--accent)" opacity=".6"/>
-          <rect x="17" y="13.5" width="5" height="2" rx="1" fill="var(--accent)" opacity=".4"/>
-          <rect x="17" y="17.5" width="5" height="2" rx="1" fill="var(--accent)" opacity=".25"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Умова (IF)</span>
-        <span class="block-card-name" lang-content="en">Condition (IF)</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Гілки if / else-if / else з підтримкою вкладених блоків будь-якого типу. Підтримує числові діапазони та операції з масивами.</p>
-      <p class="block-card-desc" lang-content="en">if / else-if / else branches with nested block support. Handles numeric range checks and array operations.</p>
-    </div>
-
-    <!-- Set Variable -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="8" width="11" height="11" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".12"/>
-          <path d="M7.5 11.5 C6 11.5 6 14 7.5 14 C9 14 9 16.5 7.5 16.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round"/>
-          <path d="M7.5 10.5 L7.5 11.5 M7.5 16.5 L7.5 17.5" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round"/>
-          <path d="M15 13.5 L19 13.5 M17.5 11.5 L20 13.5 L17.5 15.5" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-          <rect x="21" y="8" width="9" height="11" rx="2.5" fill="var(--accent)" fill-opacity=".22" stroke="var(--accent)" stroke-width="1.7"/>
-          <rect x="23.5" y="12" width="4" height="1.5" rx=".75" fill="var(--accent)"/>
-          <rect x="23.5" y="15" width="4" height="1.5" rx=".75" fill="var(--accent)" opacity=".6"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Встановити змінну</span>
-        <span class="block-card-name" lang-content="en">Set variable</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Задає значення змінній: вручну, випадково, через вираз або за значенням іншої змінної. Підтримує операції з масивами (push, remove, clear).</p>
-      <p class="block-card-desc" lang-content="en">Assigns a value to a variable: manually, randomly, via expression, or by mapping another variable. Supports array operations (push, remove, clear).</p>
-    </div>
-
-    <!-- Image -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="5" width="28" height="22" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".08"/>
-          <circle cx="10" cy="12" r="2.5" fill="var(--accent)" opacity=".55"/>
-          <path d="M2 23 L9 15 L15 21 L20 16 L30 23" stroke="var(--accent)" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" fill="var(--accent)" fill-opacity=".18"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Зображення</span>
-        <span class="block-card-name" lang-content="en">Image</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Статичне зображення за URL або шляхом до ресурсу. У режимі прив'язки зображення змінюється залежно від значення змінної.</p>
-      <p class="block-card-desc" lang-content="en">Static image by URL or asset path. In bound mode the image switches based on a variable's value.</p>
-    </div>
-
-    <!-- Video -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="6" width="28" height="20" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".08"/>
-          <path d="M13 11 L23 16 L13 21 Z" fill="var(--accent)" opacity=".75"/>
-          <rect x="2" y="6" width="28" height="4" rx="3" fill="var(--accent)" fill-opacity=".15"/>
-          <circle cx="7" cy="8" r="1" fill="var(--accent)" opacity=".6"/>
-          <circle cx="11" cy="8" r="1" fill="var(--accent)" opacity=".4"/>
-          <circle cx="15" cy="8" r="1" fill="var(--accent)" opacity=".25"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Відео</span>
-        <span class="block-card-name" lang-content="en">Video</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Вбудоване відео з налаштуваннями автовідтворення, повтору та відображення елементів керування.</p>
-      <p class="block-card-desc" lang-content="en">Embedded video with configurable autoplay, loop and player controls.</p>
-    </div>
-
-    <!-- Audio -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M5 12 H10 L18 5 V27 L10 20 H5 Z" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".18"/>
-          <path d="M21.5 10 C25 12.5 25 19.5 21.5 22" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-          <path d="M24.5 7 C30 10.5 30 21.5 24.5 25" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" fill="none" opacity=".5"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Аудіо</span>
-        <span class="block-card-name" lang-content="en">Audio</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Фонова музика або звуковий ефект. Миттєве або відкладене відтворення, цикл, гучність, зупинка при виході зі сцени або продовження як глобальний трек.</p>
-      <p class="block-card-desc" lang-content="en">Background music or sound effect. Immediate or delayed playback, loop, volume, stop-on-leave or persist as a global track. Can silence all other sounds before playing.</p>
-    </div>
-
-    <!-- Button -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="10" width="26" height="12" rx="6" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.8"/>
-          <rect x="9" y="14.5" width="14" height="2.5" rx="1.25" fill="var(--accent)" opacity=".75"/>
-          <path d="M5 22 Q3 28 8 30" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" opacity=".3"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Кнопка</span>
-        <span class="block-card-name" lang-content="en">Button</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Стилізована кнопка, що змінює змінні без переходу між сценами. Може оновити поточну сцену після натискання.</p>
-      <p class="block-card-desc" lang-content="en">Styled button that mutates variables without navigating. Can trigger a full scene refresh after the click.</p>
-    </div>
-
-    <!-- Link -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="10" width="20" height="12" rx="6" fill="var(--accent)" fill-opacity=".15" stroke="var(--accent)" stroke-width="1.8"/>
-          <rect x="7" y="14.5" width="9" height="2.5" rx="1.25" fill="var(--accent)" opacity=".7"/>
-          <path d="M24 16 H31" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
-          <path d="M27.5 12.5 L31.5 16 L27.5 19.5" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Посилання</span>
-        <span class="block-card-name" lang-content="en">Link</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Стилізована кнопка для переходу в іншу сцену або повернення назад. Може змінювати змінні перед переходом.</p>
-      <p class="block-card-desc" lang-content="en">Styled navigation button that goes to another scene or back. Can mutate variables before navigating.</p>
-    </div>
-
-    <!-- Input Field -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="9" width="28" height="14" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".07"/>
-          <rect x="7" y="14" width="11" height="2" rx="1" fill="var(--accent)" opacity=".55"/>
-          <rect x="18" y="12.5" width="1.8" height="5" rx=".9" fill="var(--accent)" opacity=".9"/>
-          <path d="M5 9 L5 6" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".45"/>
-          <path d="M27 9 L27 6" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".45"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Поле вводу</span>
-        <span class="block-card-name" lang-content="en">Input field</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Текстове або числове поле, що зберігає введене гравцем значення у змінну. Підтримує запис в елемент масиву.</p>
-      <p class="block-card-desc" lang-content="en">Text or number input that saves the player's entry to a variable. Supports writing to an array element by index.</p>
-    </div>
-
-    <!-- Checkbox -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="5" width="11" height="11" rx="2" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".15"/>
-          <path d="M6 10.5 L8.5 13 L14 7.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
-          <rect x="3" y="20" width="11" height="11" rx="2" stroke="var(--accent)" stroke-width="1.8" fill="none" opacity=".45"/>
-          <rect x="18" y="8" width="11" height="2.5" rx="1.25" fill="var(--accent)" opacity=".7"/>
-          <rect x="18" y="23" width="9" height="2.5" rx="1.25" fill="var(--accent)" opacity=".35"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Прапорці</span>
-        <span class="block-card-name" lang-content="en">Checkbox</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Група прапорців у двох режимах: кожен прапорець керує окремою булевою змінною, або всі разом — одним масивом.</p>
-      <p class="block-card-desc" lang-content="en">Checkbox group in two modes: each checkbox controls its own boolean variable, or all together manage a single array.</p>
-    </div>
-
-    <!-- Radio -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="9" cy="10" r="5.5" stroke="var(--accent)" stroke-width="1.8"/>
-          <circle cx="9" cy="10" r="2.5" fill="var(--accent)"/>
-          <circle cx="9" cy="24" r="5.5" stroke="var(--accent)" stroke-width="1.8" opacity=".4"/>
-          <rect x="18" y="7.5" width="11" height="2.5" rx="1.25" fill="var(--accent)" opacity=".75"/>
-          <rect x="18" y="21.5" width="9" height="2.5" rx="1.25" fill="var(--accent)" opacity=".35"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Перемикачі</span>
-        <span class="block-card-name" lang-content="en">Radio</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Група перемикачів, що задає рядкову змінну значенням обраного варіанту. Рівно один варіант завжди обраний.</p>
-      <p class="block-card-desc" lang-content="en">Radio button group that sets a string variable to the selected option's value. Exactly one option is always chosen.</p>
-    </div>
-
-    <!-- Table -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="3" width="28" height="26" rx="2.5" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".07"/>
-          <rect x="2" y="3" width="28" height="7" rx="2.5" fill="var(--accent)" fill-opacity=".2"/>
-          <path d="M2 17 H30" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
-          <path d="M2 24 H30" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
-          <path d="M12 10 V29" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
-          <path d="M22 10 V29" stroke="var(--accent)" stroke-width="1.3" opacity=".5"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Таблиця</span>
-        <span class="block-card-name" lang-content="en">Table</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Сітка клітинок з текстом, змінними, прогрес-барами, зображеннями та кнопками. Ідеальна для панелей статистики чи інвентарю.</p>
-      <p class="block-card-desc" lang-content="en">Grid of cells containing text, variables, progress bars, images and buttons. Ideal for stats panels or inventory displays.</p>
-    </div>
-
-    <!-- Divider -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="7" width="20" height="2" rx="1" fill="var(--accent)" opacity=".3"/>
-          <rect x="3" y="11.5" width="14" height="2" rx="1" fill="var(--accent)" opacity=".2"/>
-          <rect x="2" y="17" width="28" height="2.5" rx="1.25" fill="var(--accent)"/>
-          <rect x="3" y="22.5" width="18" height="2" rx="1" fill="var(--accent)" opacity=".3"/>
-          <rect x="3" y="27" width="12" height="2" rx="1" fill="var(--accent)" opacity=".2"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Роздільник</span>
-        <span class="block-card-name" lang-content="en">Divider</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Горизонтальна лінія з налаштуванням кольору, товщини та вертикальних відступів.</p>
-      <p class="block-card-desc" lang-content="en">Horizontal rule with configurable color, thickness and vertical margin.</p>
-    </div>
-
-    <!-- Include -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="2" y="4" width="28" height="24" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".07"/>
-          <rect x="7" y="9" width="18" height="14" rx="2" stroke="var(--accent)" stroke-width="1.5" fill="var(--accent)" fill-opacity=".14"/>
-          <rect x="10" y="13" width="8" height="1.8" rx=".9" fill="var(--accent)" opacity=".65"/>
-          <rect x="10" y="17" width="6" height="1.8" rx=".9" fill="var(--accent)" opacity=".4"/>
-          <path d="M2 4 L7 9" stroke="var(--accent)" stroke-width="1.3" opacity=".35"/>
-          <path d="M30 4 L25 9" stroke="var(--accent)" stroke-width="1.3" opacity=".35"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Включення сцени</span>
-        <span class="block-card-name" lang-content="en">Include</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Вставляє вміст іншої сцени через &lt;&lt;include&gt;&gt;. Підтримує обгортку з налаштуванням розміру, рамки та фону.</p>
-      <p class="block-card-desc" lang-content="en">Inserts another scene's content via &lt;&lt;include&gt;&gt;. Supports a styled wrapper with size, border and background options.</p>
-    </div>
-
-    <!-- Function -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".1"/>
-          <path d="M19 7 C15 7 13 10 13 13 V26" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round"/>
-          <path d="M9 16.5 H18" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Виклик функції</span>
-        <span class="block-card-name" lang-content="en">Function</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Виконує сцену-функцію без переходу — змінні оновлюються, але гравець залишається на місці. Зручно для повторюваної логіки.</p>
-      <p class="block-card-desc" lang-content="en">Executes a function-tagged scene without navigating — variables update, player stays in place. Great for reusable logic.</p>
-    </div>
-
-    <!-- Popup -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="1" y="3" width="23" height="19" rx="2.5" fill="var(--accent)" fill-opacity=".06" stroke="var(--accent)" stroke-width="1.3" opacity=".35"/>
-          <rect x="8" y="10" width="23" height="19" rx="3" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".12"/>
-          <rect x="8" y="10" width="23" height="6" rx="3" fill="var(--accent)" fill-opacity=".28"/>
-          <rect x="8" y="13" width="23" height="3" fill="var(--accent)" fill-opacity=".28"/>
-          <circle cx="27" cy="13" r="1.6" fill="var(--accent)" opacity=".75"/>
-          <rect x="12" y="20" width="11" height="2" rx="1" fill="var(--accent)" opacity=".65"/>
-          <rect x="12" y="24" width="8" height="2" rx="1" fill="var(--accent)" opacity=".4"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Спливаюче вікно</span>
-        <span class="block-card-name" lang-content="en">Popup</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Відкриває модальне вікно SugarCube Dialog при рендері пасажу. Вміст береться зі сцени з тегом «popup». Кнопки також можуть відкривати попапи.</p>
-      <p class="block-card-desc" lang-content="en">Opens a SugarCube Dialog modal when the passage renders. Content comes from a scene tagged "popup". Buttons can open popups too.</p>
-    </div>
-
-    <!-- Raw Code -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M10 9 L3 16 L10 23" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M22 9 L29 16 L22 23" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          <path d="M19 6.5 L13 25.5" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity=".65"/>
-        </svg>
-        <span class="block-card-name">Raw Code</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Вставляє довільні макроси SugarCube або HTML безпосередньо в експортований пасаж, без жодних перетворень.</p>
-      <p class="block-card-desc" lang-content="en">Inserts arbitrary SugarCube macros or HTML verbatim into the exported passage, without any transformation.</p>
-    </div>
-
-    <!-- Note -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M4 4 H22 L28 10 V30 H4 Z" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".08"/>
-          <path d="M22 4 L22 10 H28" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          <rect x="8" y="15" width="13" height="2" rx="1" fill="var(--accent)" opacity=".6"/>
-          <rect x="8" y="20" width="10" height="2" rx="1" fill="var(--accent)" opacity=".45"/>
-          <rect x="8" y="25" width="12" height="2" rx="1" fill="var(--accent)" opacity=".3"/>
-          <circle cx="10" cy="9" r="2" fill="var(--accent)" opacity=".4"/>
-          <path d="M9 8.5 L11 9 L10.5 11" stroke="var(--accent)" stroke-width="1.3" stroke-linecap="round" opacity=".0"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Нотатка</span>
-        <span class="block-card-name" lang-content="en">Note</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Коментар розробника, видимий лише в редакторі, не потрапляє в експорт. Зручний для позначок та пояснень логіки.</p>
-      <p class="block-card-desc" lang-content="en">Developer comment visible only in the editor, never exported. Useful for inline annotations and logic notes.</p>
-    </div>
-
-    <!-- Inventory -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="4" y="6" width="24" height="20" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".08"/>
-          <rect x="8" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".5"/>
-          <rect x="8" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".35"/>
-          <rect x="17" y="11" width="7" height="5" rx="1" fill="var(--accent)" opacity=".3"/>
-          <rect x="17" y="18" width="7" height="5" rx="1" fill="var(--accent)" opacity=".2"/>
-          <path d="M8 8 H24" stroke="var(--accent)" stroke-width="1.2" opacity=".4"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Інвентар</span>
-        <span class="block-card-name" lang-content="en">Inventory</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Відображає інвентар персонажа в сцені. Підтримує підбір, видачу, екіпірування та передачу предметів між контейнерами.</p>
-      <p class="block-card-desc" lang-content="en">Displays a character's inventory in the scene. Supports picking up, dropping, equipping and transferring items between containers.</p>
-    </div>
-
-    <!-- Inventory Popup Shortcut -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="10" width="18" height="12" rx="6" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.8"/>
-          <rect x="7" y="14.5" width="8" height="2.5" rx="1.25" fill="var(--accent)" opacity=".75"/>
-          <rect x="20" y="8" width="10" height="16" rx="3" stroke="var(--accent)" stroke-width="1.4" fill="var(--accent)" fill-opacity=".08"/>
-          <rect x="22" y="12" width="6" height="3" rx="1" fill="var(--accent)" opacity=".4"/>
-          <rect x="22" y="17" width="6" height="3" rx="1" fill="var(--accent)" opacity=".25"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Ярлик інвентарю</span>
-        <span class="block-card-name" lang-content="en">Inventory Shortcut</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Кнопка-ярлик для швидкого відкриття інвентарю у вигляді попапу. Зручна для бокової панелі або будь-якої сцени.</p>
-      <p class="block-card-desc" lang-content="en">A shortcut button that opens an inventory popup. Handy for the sidebar or any scene that needs quick inventory access.</p>
-    </div>
-
-    <!-- Paperdoll -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <ellipse cx="16" cy="9" rx="4.5" ry="5.5" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".12"/>
-          <path d="M8 28 C8 21 24 21 24 28" stroke="var(--accent)" stroke-width="1.6" stroke-linecap="round" fill="none"/>
-          <rect x="10" y="15" width="4" height="5" rx="1" fill="var(--accent)" opacity=".4"/>
-          <rect x="18" y="15" width="4" height="5" rx="1" fill="var(--accent)" opacity=".4"/>
-          <circle cx="16" cy="17" r="1.5" fill="var(--accent)" opacity=".6"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Папердол</span>
-        <span class="block-card-name" lang-content="en">Paperdoll</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Візуальний дисплей екіпірування зі слотами для частин тіла. Зображення частин тіла змінюються залежно від характеристик персонажа (сила, спритність, тощо), а вигляд айтемів — від їхніх змінних (рівень прокачки, лічильник вбивств, тощо).</p>
-      <p class="block-card-desc" lang-content="en">Equipment display with body part slots. Body images change based on character stats (strength, dexterity, etc.), and item appearance changes based on item variables (upgrade level, kill count, etc.).</p>
-    </div>
-
-    <!-- Container -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="3" y="10" width="26" height="18" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".08"/>
-          <path d="M3 15 H29" stroke="var(--accent)" stroke-width="1.3" opacity=".4"/>
-          <rect x="11" y="4" width="10" height="6" rx="2" stroke="var(--accent)" stroke-width="1.5" fill="var(--accent)" fill-opacity=".15"/>
-          <rect x="7" y="19" width="5" height="5" rx="1" fill="var(--accent)" opacity=".45"/>
-          <rect x="14" y="19" width="5" height="5" rx="1" fill="var(--accent)" opacity=".3"/>
-          <rect x="21" y="19" width="5" height="5" rx="1" fill="var(--accent)" opacity=".2"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Контейнер</span>
-        <span class="block-card-name" lang-content="en">Container</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Відображає вміст контейнера — скрині, магазину або лут-мішка. Гравець може брати та класти предмети. Вміст зберігається у змінній персонажа або сцени.</p>
-      <p class="block-card-desc" lang-content="en">Displays the contents of a container — chest, shop or loot bag. The player can pick up and place items. Contents are stored in a character or scene variable.</p>
-    </div>
-
-    <!-- Plugin -->
-    <div class="block-card">
-      <div class="block-card-header">
-        <svg class="block-card-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="6" y="10" width="20" height="18" rx="2.5" stroke="var(--accent)" stroke-width="1.7" fill="var(--accent)" fill-opacity=".1"/>
-          <rect x="10" y="4" width="4" height="8" rx="1" fill="var(--accent)" fill-opacity=".5" stroke="var(--accent)" stroke-width="1.3"/>
-          <rect x="18" y="4" width="4" height="8" rx="1" fill="var(--accent)" fill-opacity=".5" stroke="var(--accent)" stroke-width="1.3"/>
-          <rect x="2" y="16" width="6" height="4" rx="1" fill="var(--accent)" fill-opacity=".4" stroke="var(--accent)" stroke-width="1.3"/>
-          <rect x="24" y="16" width="6" height="4" rx="1" fill="var(--accent)" fill-opacity=".4" stroke="var(--accent)" stroke-width="1.3"/>
-          <circle cx="16" cy="19" r="2.5" fill="var(--accent)" opacity=".65"/>
-        </svg>
-        <span class="block-card-name" lang-content="uk">Власні блоки (Плагіни)</span>
-        <span class="block-card-name" lang-content="en">Custom Blocks (Plugins)</span>
-      </div>
-      <p class="block-card-desc" lang-content="uk">Конструктор власних блоків із параметрами. Збирайте плагін з будь-яких існуючих блоків, налаштовуйте параметри (текст, число, змінна, сцена, колір) — і повторно використовуйте його в будь-якій сцені. Плагіни експортуються та імпортуються як окремі файли.</p>
-      <p class="block-card-desc" lang-content="en">A constructor for custom parameterised blocks. Compose a plugin from any existing blocks, define its parameters (text, number, variable, scene, colour) — and reuse it across any scene. Plugins can be exported and imported as standalone files.</p>
-    </div>
-
   </div>
-</div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Features ──────────────────────────────────────────────── -->
+<section class="section" id="features">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-head-left">
+        <div class="kicker">Features</div>
+        <h2 class="section-title" lang-content="en">Everything you need for interactive fiction.</h2>
+        <h2 class="section-title" lang-content="uk">Все, що потрібно для інтерактивної прози.</h2>
+        <p class="section-desc" lang-content="en">Five fronts — editor, story logic, characters, AI and export. Combine them how you like.</p>
+        <p class="section-desc" lang-content="uk">П'ять напрямків — редактор, логіка, персонажі, ШІ та експорт. Комбінуйте як завгодно.</p>
+      </div>
+    </div>
+
+    <!-- Group 1: Editor -->
+    <div class="group-label"><span lang-content="en">Editor</span><span lang-content="uk">Редактор</span></div>
+    <div class="bento">
+      <div class="bento-card feat-hero span-3">
+        <span class="card-tag">01</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="18" height="5" rx="1"/><rect x="3" y="10" width="18" height="5" rx="1" opacity=".6"/><rect x="3" y="17" width="18" height="5" rx="1" opacity=".35"/></svg>
+        </div>
+        <h3 lang-content="en">Block editor</h3>
+        <h3 lang-content="uk">Блоковий редактор</h3>
+        <p lang-content="en">Add and reorder blocks by drag &amp; drop. Each scene is a separate list of blocks. Nested blocks for branching, conditions and grouping.</p>
+        <p lang-content="uk">Додавайте та впорядковуйте блоки перетягуванням. Кожна сцена — окремий список блоків. Вкладені блоки для розгалужень, умов та групування.</p>
+      </div>
+      <div class="bento-card span-3">
+        <span class="card-tag">02</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M12 7 V12 L15 14"/></svg>
+        </div>
+        <h3 lang-content="en">Undo / redo · 100 steps</h3>
+        <h3 lang-content="uk">Undo / redo · 100 кроків</h3>
+        <p lang-content="en">Full action history. Ctrl+Z / Ctrl+Shift+Z, or use the toolbar.</p>
+        <p lang-content="uk">Повна історія дій. Ctrl+Z / Ctrl+Shift+Z або кнопки в панелі.</p>
+      </div>
+      <div class="bento-card span-2">
+        <span class="card-tag">03</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="6"/><path d="M16 16 L21 21"/></svg>
+        </div>
+        <h3 lang-content="en">Project search</h3>
+        <h3 lang-content="uk">Пошук по проєкту</h3>
+        <p lang-content="en">Find by scene text, blocks, variables. Click to jump.</p>
+        <p lang-content="uk">Пошук по тексту, блоках, змінних. Перехід одним кліком.</p>
+      </div>
+      <div class="bento-card span-2">
+        <span class="card-tag">04</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="5" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><path d="M12 7 V12 M10 12 H14 M10 12 L7 16 M14 12 L17 16"/></svg>
+        </div>
+        <h3 lang-content="en">Scene graph</h3>
+        <h3 lang-content="uk">Граф сцен</h3>
+        <p lang-content="en">Visual map of the story — nodes, branches, popups. Jump to any scene.</p>
+        <p lang-content="uk">Візуальна карта історії — вузли, гілки, попапи. Перехід до сцени.</p>
+      </div>
+      <div class="bento-card span-2">
+        <span class="card-tag">05</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 7 L4 12 L9 17"/><path d="M15 7 L20 12 L15 17"/></svg>
+        </div>
+        <h3 lang-content="en">Code preview</h3>
+        <h3 lang-content="uk">Перегляд коду</h3>
+        <p lang-content="en">Inspect generated SugarCube for any scene, no export needed.</p>
+        <p lang-content="uk">Перегляд згенерованого SugarCube без експорту.</p>
+      </div>
+    </div>
+
+    <!-- Group 2: Story logic -->
+    <div class="group-label"><span lang-content="en">Story logic</span><span lang-content="uk">Логіка історії</span></div>
+    <div class="bento">
+      <div class="bento-card span-2">
+        <span class="card-tag">06</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="5" cy="6" r="1.5"/><circle cx="5" cy="12" r="1.5"/><circle cx="5" cy="18" r="1.5"/><path d="M7 6 H21 M7 12 H17 M7 18 H19"/></svg>
+        </div>
+        <h3 lang-content="en">Choices &amp; conditions</h3>
+        <h3 lang-content="uk">Вибори та умови</h3>
+        <p lang-content="en">Choices, buttons, links and IF/ELSE-IF/ELSE branches with nesting.</p>
+        <p lang-content="uk">Вибори, кнопки, посилання та IF/ELSE-IF/ELSE з вкладеністю.</p>
+      </div>
+      <div class="bento-card span-2">
+        <span class="card-tag">07</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="14" height="14" rx="2"/><path d="M7 10 H13 M7 14 H11"/><path d="M19 9 V15"/></svg>
+        </div>
+        <h3 lang-content="en">Variables &amp; logic</h3>
+        <h3 lang-content="uk">Змінні та логіка</h3>
+        <p lang-content="en">Numbers, strings, booleans, arrays. Expressions, mapping, random &amp; dynamic.</p>
+        <p lang-content="uk">Числа, рядки, булеві, масиви. Вирази, маппінг, random та dynamic.</p>
+      </div>
+      <div class="bento-card span-2">
+        <span class="card-tag">08</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M9 7 L13 11 H8 L11 16"/></svg>
+        </div>
+        <h3 lang-content="en">Watchers</h3>
+        <h3 lang-content="uk">Спостерігачі</h3>
+        <p lang-content="en">Background variable tracking. Conditions and actions fire on scene change or button press.</p>
+        <p lang-content="uk">Фонове відстеження змінних. Умови та дії спрацьовують на зміну сцени або натискання.</p>
+      </div>
+    </div>
+
+    <!-- Group 3: Characters & World -->
+    <div class="group-label"><span lang-content="en">Characters &amp; world</span><span lang-content="uk">Персонажі та світ</span></div>
+    <div class="bento">
+      <div class="bento-card feat-hero span-4">
+        <span class="card-tag">09</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="7" rx="3.5" ry="4"/><path d="M5 21 C5 15 19 15 19 21"/><rect x="7" y="11" width="3" height="4" rx="1" opacity=".7"/><rect x="14" y="11" width="3" height="4" rx="1" opacity=".7"/></svg>
+        </div>
+        <h3 lang-content="en">Paperdoll system</h3>
+        <h3 lang-content="uk">Папердол</h3>
+        <p lang-content="en">Visual equipment with configurable slots. Body images change with stats; item appearance changes with item state — upgrade level, kill count, anything.</p>
+        <p lang-content="uk">Візуальна екіпіровка зі слотами. Зображення тіла змінюються від характеристик; вигляд айтему — від його стану (рівень, лічильник тощо).</p>
+      </div>
+      <div class="bento-card span-2">
+        <span class="card-tag">10</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="6" y="9" width="5" height="3" rx="0.6" opacity=".6"/><rect x="13" y="9" width="5" height="3" rx="0.6" opacity=".6"/><rect x="6" y="14" width="5" height="3" rx="0.6" opacity=".4"/><rect x="13" y="14" width="5" height="3" rx="0.6" opacity=".4"/></svg>
+        </div>
+        <h3 lang-content="en">Inventory &amp; items</h3>
+        <h3 lang-content="uk">Інвентар та айтеми</h3>
+        <p lang-content="en">Built-in items with icons, descriptions, shop &amp; container mechanics.</p>
+        <p lang-content="uk">Айтеми з іконками, описами, механіки магазинів та контейнерів.</p>
+      </div>
+      <div class="bento-card span-3">
+        <span class="card-tag">11</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M3 18 L8 13 L13 17 L17 14 L21 17"/></svg>
+        </div>
+        <h3 lang-content="en">Media: image, video, audio</h3>
+        <h3 lang-content="uk">Медіа: зображення, відео, аудіо</h3>
+        <p lang-content="en">Static or bound images, embedded video, BGM with master volume control.</p>
+        <p lang-content="uk">Статичні або прив'язані зображення, відео, фонова музика з гучністю.</p>
+      </div>
+      <div class="bento-card span-3">
+        <span class="card-tag">12</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3a2 2 0 0 1 4 0v2h3a1 1 0 0 1 1 1v3h2a2 2 0 0 1 0 4h-2v3a1 1 0 0 1-1 1h-3v2a2 2 0 0 1-4 0v-2H6a1 1 0 0 1-1-1v-3H3a2 2 0 0 1 0-4h2V6a1 1 0 0 1 1-1h3V3z" /></svg>
+        </div>
+        <h3 lang-content="en">Custom blocks (Plugins)</h3>
+        <h3 lang-content="uk">Власні блоки (плагіни)</h3>
+        <p lang-content="en">Compose plugins from existing blocks, parametrize (text, number, variable, scene, color), reuse anywhere. Plugins export as files.</p>
+        <p lang-content="uk">Складайте плагіни з наявних блоків, налаштовуйте параметри, використовуйте всюди. Експортуються як файли.</p>
+      </div>
+    </div>
+
+    <!-- Group 4: AI -->
+    <div class="group-label"><span lang-content="en">AI</span><span lang-content="uk">ШІ</span></div>
+    <div class="bento">
+      <div class="bento-card span-3">
+        <span class="card-tag">13</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M8 9 H16 M8 13 H14 M8 17 H15"/><path d="M11 2 L12.4 5.4 L16 6 L12.4 6.6 L11 10 L9.6 6.6 L6 6 L9.6 5.4 Z" opacity=".55"/></svg>
+        </div>
+        <h3 lang-content="en">AI Assistant (text)</h3>
+        <h3 lang-content="uk">AI-асистент (текст)</h3>
+        <p lang-content="en">KoboldCPP, Google Gemini, OpenAI-compatible APIs. Streaming, per-character temperature, generation history.</p>
+        <p lang-content="uk">KoboldCPP, Google Gemini, OpenAI-сумісні API. Стрімінг, температура персонажа, історія генерацій.</p>
+      </div>
+      <div class="bento-card span-3">
+        <span class="card-tag">14</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M11 2 L12.4 5.4 L16 6 L12.4 6.6 L11 10 L9.6 6.6 L6 6 L9.6 5.4 Z"/><rect x="9" y="13" width="13" height="8" rx="1.5"/><circle cx="13" cy="17" r="1.4"/><circle cx="19" cy="17" r="1.4" opacity=".5"/></svg>
+        </div>
+        <h3 lang-content="en">AI image generation</h3>
+        <h3 lang-content="uk">ШІ-генерація зображень</h3>
+        <p lang-content="en">Generate avatars, item icons, paperdoll parts in-editor. Pollinations (free) and ComfyUI (local) supported.</p>
+        <p lang-content="uk">Аватарки, іконки айтемів, частини папердолу прямо в редакторі. Pollinations (free) та ComfyUI (локально).</p>
+      </div>
+    </div>
+
+    <!-- Group 5: Export & i18n -->
+    <div class="group-label"><span lang-content="en">Export &amp; localisation</span><span lang-content="uk">Експорт та локалізація</span></div>
+    <div class="bento">
+      <div class="bento-card span-2">
+        <span class="card-tag">15</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 3 H15 L20 8 V21 H5 Z"/><path d="M15 3 V8 H20" opacity=".5"/><path d="M12 19 V13 M9 16 L12 13 L15 16"/></svg>
+        </div>
+        <h3 lang-content="en">Export to .twee</h3>
+        <h3 lang-content="uk">Експорт у .twee</h3>
+        <p lang-content="en">Ready .twee for Tweego or Twine 2.</p>
+        <p lang-content="uk">Готовий .twee для Tweego або Twine 2.</p>
+      </div>
+      <div class="bento-card span-2">
+        <span class="card-tag">16</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M3 12 H21" opacity=".5"/><path d="M12 3 C8 7 8 17 12 21 C16 17 16 7 12 3 Z"/></svg>
+        </div>
+        <h3 lang-content="en">Standalone HTML + assets</h3>
+        <h3 lang-content="uk">Самодостатній HTML + assets</h3>
+        <p lang-content="en">Single HTML and assets folder. Open in any browser, ready to publish.</p>
+        <p lang-content="uk">HTML-файл з папкою assets. Відкривається у браузері, готово до публікації.</p>
+      </div>
+      <div class="bento-card span-2">
+        <span class="card-tag">17</span>
+        <div class="card-glyph">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><text x="12" y="11" text-anchor="middle" font-family="JetBrains Mono" font-size="6" font-weight="700" fill="currentColor">UA</text><text x="12" y="18" text-anchor="middle" font-family="JetBrains Mono" font-size="6" font-weight="700" fill="currentColor" opacity=".55">EN</text></svg>
+        </div>
+        <h3 lang-content="en">Localisation export</h3>
+        <h3 lang-content="uk">Експорт для перекладу</h3>
+        <p lang-content="en">Export strings to .json / .csv, import back as a new project or language pack.</p>
+        <p lang-content="uk">Усі тексти у .json / .csv, імпорт як новий проєкт або мовний пакет.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Block types — interactive ─────────────────────────────── -->
+<section class="section" id="blocks">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-head-left">
+        <div class="kicker">Block reference</div>
+        <h2 class="section-title" lang-content="en">25 block types. Compose any genre.</h2>
+        <h2 class="section-title" lang-content="uk">25 типів блоків. Будь-який жанр.</h2>
+        <p class="section-desc" lang-content="en">Each block is a ready-to-use scene element. Browse the list — click any to read what it does.</p>
+        <p class="section-desc" lang-content="uk">Кожен блок — готовий елемент сцени. Натисніть, щоб прочитати, що він робить.</p>
+      </div>
+    </div>
+
+    <div class="blocks-pane">
+      <div class="blocks-list" id="blocks-list">
+        <div class="blocks-list-head">
+          <span lang-content="en">Block</span>
+          <span lang-content="uk">Блок</span>
+          <span lang-content="en">Kind</span>
+          <span lang-content="uk">Тип</span>
+        </div>
+      </div>
+      <div class="blocks-detail" id="blocks-detail"></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── FAQ ───────────────────────────────────────────────────── -->
+<section class="section" id="faq">
+  <div class="wrap">
+    <div class="section-head">
+      <div>
+        <div class="kicker" lang-content="en">FAQ</div>
+        <div class="kicker" lang-content="uk">FAQ</div>
+        <h2 lang-content="en">Common questions</h2>
+        <h2 lang-content="uk">Часті запитання</h2>
+      </div>
+    </div>
+
+    <div class="faq-list">
+
+      <details class="faq-item">
+        <summary class="faq-q">
+          <span lang-content="en">Is Purl really free? No hidden fees?</span>
+          <span lang-content="uk">Purl справді безкоштовний? Без прихованих платежів?</span>
+          <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6 L8 10 L12 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="faq-a">
+          <p lang-content="en">Yes, completely. No subscription, no premium tier, no paywalled blocks — every feature is available to everyone. If Purl has been useful, you can support development with a voluntary donation, but it is entirely optional.</p>
+          <p lang-content="uk">Так, повністю. Без підписки, преміуму чи платних блоків — всі можливості доступні всім. Якщо Purl виявився корисним, можна підтримати розробника донатом, але це повністю на ваш розсуд.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary class="faq-q">
+          <span lang-content="en">Do I need to know how to code?</span>
+          <span lang-content="uk">Чи потрібно вміти програмувати?</span>
+          <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6 L8 10 L12 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="faq-a">
+          <p lang-content="en">No. Purl is a visual, block-based editor — you build scenes by combining ready-made blocks without writing any code. If you do know SugarCube or HTML, you can also drop in a Raw Code block anywhere for full control.</p>
+          <p lang-content="uk">Ні. Purl — візуальний блоковий редактор: сцени збираються з готових блоків без жодного коду. Якщо ви знаєте SugarCube або HTML — блок «Сирий код» дасть повний контроль у будь-якому місці.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary class="faq-q">
+          <span lang-content="en">What is SugarCube / Twine?</span>
+          <span lang-content="uk">Що таке SugarCube / Twine?</span>
+          <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6 L8 10 L12 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="faq-a">
+          <p lang-content="en">Twine is an open-source tool for creating interactive fiction. SugarCube is a story format that runs Twine games in any browser. Purl exports your project as a ready-to-play SugarCube 2 file — no extra setup needed for players.</p>
+          <p lang-content="uk">Twine — це інструмент з відкритим кодом для створення інтерактивної фантастики. SugarCube — формат, у якому Twine-ігри запускаються у браузері. Purl експортує проєкт як готовий SugarCube 2-файл — гравцям не потрібно нічого додатково встановлювати.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary class="faq-q">
+          <span lang-content="en">Does it work on Mac and Linux?</span>
+          <span lang-content="uk">Чи працює на Mac та Linux?</span>
+          <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6 L8 10 L12 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="faq-a">
+          <p lang-content="en">Yes. Purl is a desktop application available for Windows, macOS and Linux. Download the build for your platform from the <a href="#download">Download</a> section.</p>
+          <p lang-content="uk">Так. Purl — десктопний застосунок для Windows, macOS і Linux. Завантажте збірку для своєї платформи в розділі <a href="#download">Download</a>.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary class="faq-q">
+          <span lang-content="en">Where are my project files stored?</span>
+          <span lang-content="uk">Де зберігаються мої проєкти?</span>
+          <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6 L8 10 L12 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="faq-a">
+          <p lang-content="en">Entirely on your machine. Projects are saved as <code>.purlproj</code> files wherever you choose. Nothing is sent to the cloud — Purl has no backend and no accounts.</p>
+          <p lang-content="uk">Повністю на вашому комп'ютері. Проєкти зберігаються як файли <code>.purlproj</code> у вибраному вами місці. Нічого не відправляється в хмару — у Purl немає бекенду і акаунтів.</p>
+        </div>
+      </details>
+
+      <details class="faq-item">
+        <summary class="faq-q">
+          <span lang-content="en">Can I use Purl for commercial projects?</span>
+          <span lang-content="uk">Чи можна використовувати Purl у комерційних проєктах?</span>
+          <svg class="faq-chevron" viewBox="0 0 16 16" fill="none"><path d="M4 6 L8 10 L12 6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </summary>
+        <div class="faq-a">
+          <p lang-content="en">Yes. Purl is released under the MIT license, which allows commercial use, modification and redistribution. Everything you create with it belongs to you.</p>
+          <p lang-content="uk">Так. Purl поширюється за MIT-ліцензією, яка дозволяє комерційне використання, модифікацію та розповсюдження. Весь контент, який ви створюєте, належить вам.</p>
+        </div>
+      </details>
+
+    </div>
+  </div>
+</section>
 
 <hr class="divider" />
 
 <!-- ── Download ──────────────────────────────────────────────── -->
-<div class="section" id="download">
-  <span class="section-label" lang-content="uk">Завантаження</span>
-  <span class="section-label" lang-content="en">Download</span>
-  <h2 class="section-title" lang-content="uk">Завантажити Purl</h2>
-  <h2 class="section-title" lang-content="en">Download Purl</h2>
-  <div class="platform-card">
-    <div class="platform-icon">
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" title="Windows">
-        <rect x="2" y="2" width="17" height="17" rx="2" fill="var(--accent)" fill-opacity=".75"/>
-        <rect x="21" y="2" width="17" height="17" rx="2" fill="var(--accent)" fill-opacity=".55"/>
-        <rect x="2" y="21" width="17" height="17" rx="2" fill="var(--accent)" fill-opacity=".55"/>
-        <rect x="21" y="21" width="17" height="17" rx="2" fill="var(--accent)" fill-opacity=".35"/>
-      </svg>
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" title="macOS">
-        <path d="M20 9 C20 6 23.5 4 26 4 C26 7.5 23.5 9.5 20 9 Z" fill="var(--accent)" opacity=".7"/>
-        <path d="M20 10 C26 10 33 15.5 33 23 C33 31 29 37 24 37 C22 37 21.5 36 20 36 C18.5 36 18 37 16 37 C11 37 7 31 7 23 C7 15.5 14 10 20 10 Z" fill="var(--accent)" fill-opacity=".6"/>
-        <path d="M13 15 C11 18 10.5 22 11.5 25" stroke="white" stroke-width="1.5" stroke-linecap="round" opacity=".2"/>
-      </svg>
-      <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" title="Linux">
-        <ellipse cx="20" cy="27" rx="9" ry="10" fill="var(--accent)" fill-opacity=".55"/>
-        <circle cx="20" cy="13" r="8" fill="var(--accent)" fill-opacity=".5"/>
-        <ellipse cx="20" cy="29" rx="5.5" ry="7" fill="var(--accent)" fill-opacity=".14"/>
-        <circle cx="17" cy="11" r="2" fill="var(--accent)"/>
-        <circle cx="23" cy="11" r="2" fill="var(--accent)"/>
-        <path d="M18 15 L20 18 L22 15" stroke="var(--accent)" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".6"/>
-      </svg>
-    </div>
-    <div class="platform-info">
-      <h3>Windows · macOS · Linux</h3>
-      <p lang-content="uk">Безкоштовно · відкритий вихідний код · файли для всіх платформ на сторінці релізу</p>
-      <p lang-content="en">Free · open source · files for all platforms on the release page</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <a href="https://github.com/Kinburg/purl/releases/latest" target="_blank" class="btn-primary">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span lang-content="uk">Завантажити</span>
-          <span lang-content="en">Download</span>
-        </a>
-        <a href="https://github.com/Kinburg/purl/releases" target="_blank" class="btn-secondary">
-          <span lang-content="uk">Всі версії</span>
-          <span lang-content="en">All releases</span>
-        </a>
+<section class="section" id="download">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-head-left">
+        <div class="kicker">Download</div>
+        <h2 class="section-title" lang-content="en">Get Purl. Free for everyone.</h2>
+        <h2 class="section-title" lang-content="uk">Завантажте Purl. Безкоштовно для всіх.</h2>
       </div>
     </div>
+
+    <div class="platforms">
+      <div class="platform-card is-primary">
+        <div class="platform-icons">
+          <span class="pi" title="Windows">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="9" height="9" rx="1" opacity=".75"/><rect x="13" y="2" width="9" height="9" rx="1" opacity=".55"/><rect x="2" y="13" width="9" height="9" rx="1" opacity=".55"/><rect x="13" y="13" width="9" height="9" rx="1" opacity=".35"/></svg>
+          </span>
+          <span class="pi" title="macOS">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+          </span>
+          <span class="pi" title="Linux">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="17" rx="7" ry="6.5"/><ellipse cx="12" cy="17" rx="4.5" ry="4" opacity=".2" fill="#06080f"/><circle cx="12" cy="8.5" r="5.5"/><circle cx="10" cy="7.5" r="1.5" fill="#07091a"/><circle cx="14" cy="7.5" r="1.5" fill="#07091a"/><path d="M10.5 10.5 L12 13 L13.5 10.5 Z" fill="#e8a020"/><path d="M9 23 L6 22 L8 20 Z M15 23 L18 22 L16 20 Z" fill="#e8a020"/></svg>
+          </span>
+        </div>
+        <div>
+          <h3>Windows · macOS · Linux</h3>
+          <p lang-content="en">Free · open source · all platforms on the release page.</p>
+          <p lang-content="uk">Безкоштовно · відкритий код · файли для всіх платформ на сторінці релізу.</p>
+        </div>
+        <div class="actions">
+          <a id="dl-primary"
+             href="https://github.com/Kinburg/Purl/releases/download/v1.24.4/Purl.Setup.1.24.4.exe"
+             class="btn btn-primary" target="_blank" rel="noopener">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span id="dl-primary-label" data-en="Download for Windows" data-uk="Завантажити для Windows">Download for Windows</span>
+          </a>
+
+          <div class="dl-chips">
+            <a class="dl-chip" data-os="win"
+               href="https://github.com/Kinburg/Purl/releases/download/v1.24.4/Purl.Setup.1.24.4.exe"
+               target="_blank" rel="noopener" title="Windows installer">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1" opacity=".7"/><rect x="2" y="13" width="9" height="9" rx="1" opacity=".7"/><rect x="13" y="13" width="9" height="9" rx="1" opacity=".45"/></svg>
+              Windows <span class="dl-ext">.exe</span>
+            </a>
+            <a class="dl-chip" data-os="win-zip"
+               href="https://github.com/Kinburg/Purl/releases/download/v1.24.4/Purl-1.24.4-win.zip"
+               target="_blank" rel="noopener" title="Windows portable">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><rect x="2" y="2" width="9" height="9" rx="1"/><rect x="13" y="2" width="9" height="9" rx="1" opacity=".7"/><rect x="2" y="13" width="9" height="9" rx="1" opacity=".7"/><rect x="13" y="13" width="9" height="9" rx="1" opacity=".45"/></svg>
+              Windows <span class="dl-ext">.zip</span>
+            </a>
+            <a class="dl-chip" data-os="mac"
+               href="https://github.com/Kinburg/Purl/releases/download/v1.24.4/Purl-1.24.4-arm64.dmg"
+               target="_blank" rel="noopener" title="macOS">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
+              macOS <span class="dl-ext">.dmg</span>
+            </a>
+            <a class="dl-chip" data-os="linux"
+               href="https://github.com/Kinburg/Purl/releases/download/v1.24.4/Purl-1.24.4.AppImage"
+               target="_blank" rel="noopener" title="Linux">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="17" rx="7" ry="6.5"/><ellipse cx="12" cy="17" rx="4.5" ry="4" opacity=".2" fill="#06080f"/><circle cx="12" cy="8.5" r="5.5"/><circle cx="10" cy="7.5" r="1.5" fill="#07091a"/><circle cx="14" cy="7.5" r="1.5" fill="#07091a"/><path d="M10.5 10.5 L12 13 L13.5 10.5 Z" fill="#e8a020"/><path d="M9 23 L6 22 L8 20 Z M15 23 L18 22 L16 20 Z" fill="#e8a020"/></svg>
+              Linux <span class="dl-ext">.AppImage</span>
+            </a>
+          </div>
+
+          <a href="https://github.com/Kinburg/purl/releases" target="_blank" rel="noopener" class="dl-all-link">
+            <span lang-content="en">All releases →</span>
+            <span lang-content="uk">Всі релізи →</span>
+          </a>
+        </div>
+      </div>
+
+      <ul class="spec-list">
+        <li><span class="k">version</span><span class="v accent">1.24.4</span></li>
+        <li><span class="k">released</span><span class="v rel-date">Apr 30, 2026</span></li>
+        <li><span class="k">price</span><span class="v">$0 · free</span></li>
+        <li><span class="k">license</span><span class="v">open source</span></li>
+        <li><span class="k">engine</span><span class="v">SugarCube&nbsp;2</span></li>
+        <li><span class="k">export</span><span class="v">.twee · .html</span></li>
+        <li><span class="k">ai</span><span class="v">Kobold · Gemini · OpenAI</span></li>
+      </ul>
+    </div>
   </div>
-</div>
+</section>
 
 <hr class="divider" />
 
 <!-- ── Roadmap ───────────────────────────────────────────────── -->
-<div class="section" id="roadmap">
-  <span class="section-label" lang-content="uk">Плани</span>
-  <span class="section-label" lang-content="en">Roadmap</span>
-  <h2 class="section-title" lang-content="uk">Що далі</h2>
-  <h2 class="section-title" lang-content="en">What's next</h2>
+<section class="section" id="roadmap">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-head-left">
+        <div class="kicker">Roadmap</div>
+        <h2 class="section-title" lang-content="en">What's next.</h2>
+        <h2 class="section-title" lang-content="uk">Що далі.</h2>
+        <p class="section-desc" lang-content="en">Actively developed. Releases ship regularly.</p>
+        <p class="section-desc" lang-content="uk">Активно розвивається. Релізи виходять регулярно.</p>
+      </div>
+    </div>
 
-  <div class="features-grid" style="max-width:820px;margin:0 auto;">
-    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M16 3 C9 3 4 8 4 14 C4 18.5 6.5 22 11 24 C13 25 12.5 27 11.5 28 C10.5 29 10.5 30.5 13 30.5 C15.5 30.5 17.5 29.5 18.5 27.5 C19 26 20.5 25.5 21.5 26.5 C24.5 27.5 28.5 24.5 28.5 20 C28.5 10.5 23 3 16 3 Z" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".1"/>
-        <circle cx="10" cy="11" r="2.2" fill="var(--accent)"/>
-        <circle cx="15.5" cy="7.5" r="2.2" fill="var(--accent)" opacity=".75"/>
-        <circle cx="21.5" cy="8" r="2.2" fill="var(--accent)" opacity=".5"/>
-        <circle cx="25.5" cy="13.5" r="2.2" fill="var(--accent)" opacity=".35"/>
-        <circle cx="24.5" cy="20" r="2.2" fill="var(--accent)" opacity=".2"/>
-      </svg>
-      <h3 lang-content="uk">Фонові стилі</h3>
-      <h3 lang-content="en">Background Styles</h3>
-      <p lang-content="uk">Іменовані стилі фону для сцен та бокової панелі: колір, зображення з бібліотеки ассетів, прив'язка до змінних для динамічної зміни.</p>
-      <p lang-content="en">Named background styles for scenes and sidebar panel: color, image from asset library, variable binding for dynamic changes.</p>
-    </div>
-    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="13" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".08"/>
-        <text x="8" y="14" font-size="7" font-weight="700" fill="var(--accent)" opacity=".7" font-family="sans-serif">UA</text>
-        <text x="15" y="24" font-size="7" font-weight="700" fill="var(--accent)" opacity=".4" font-family="sans-serif">EN</text>
-        <path d="M13 3 L15.3 8.6 L21 10 L15.3 11.4 L13 17 L10.7 11.4 L5 10 L10.7 8.6Z" fill="var(--accent)" opacity=".55" transform="scale(0.5) translate(22, 22)"/>
-      </svg>
-      <h3 lang-content="uk">ШІ-переклад історії</h3>
-      <h3 lang-content="en">AI Story Translation</h3>
-      <p lang-content="uk">Переклад окремої сцени або всієї історії за допомогою ШІ через наявні інтеграції. Увага: переклад через KoboldCPP може бути дуже повільним, а через хмарні сервіси — потребує токенів за кошти користувача (не розробника).</p>
-      <p lang-content="en">Translate a single scene or the entire story using AI via existing integrations. Note: translation via KoboldCPP may be very slow; cloud-based providers consume tokens at the user's own expense — not the developer's.</p>
-    </div>
-    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M5 12 H10 L18 5 V27 L10 20 H5 Z" stroke="var(--accent)" stroke-width="1.6" fill="var(--accent)" fill-opacity=".18"/>
-        <path d="M21.5 10 C25 12.5 25 19.5 21.5 22" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-        <path d="M13 3 L15.3 8.6 L21 10 L15.3 11.4 L13 17 L10.7 11.4 L5 10 L10.7 8.6Z" fill="var(--accent)" opacity=".6" transform="translate(16, 16) scale(0.45) translate(-13, -10)"/>
-      </svg>
-      <h3 lang-content="uk">Генерація фонової музики</h3>
-      <h3 lang-content="en">Background Music Generation</h3>
-      <p lang-content="uk">Генерація фонової музики для сцен через ComfyUI — локально, без хмарних сервісів та без ліцензійних обмежень.</p>
-      <p lang-content="en">Generate background music for scenes via ComfyUI — locally, with no cloud services and no licensing restrictions.</p>
-    </div>
-    <div class="feature-card" style="border:1px dashed rgba(124,106,247,.35);">
-      <svg class="feature-icon" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="16" cy="16" r="5" stroke="var(--accent)" stroke-width="1.8" fill="var(--accent)" fill-opacity=".15"/>
-        <path d="M16 3 V7 M16 25 V29 M3 16 H7 M25 16 H29" stroke="var(--accent)" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>
-        <path d="M7 7 L10 10 M22 22 L25 25 M7 25 L10 22 M22 10 L25 7" stroke="var(--accent)" stroke-width="1.5" stroke-linecap="round" opacity=".3"/>
-      </svg>
-      <h3 lang-content="uk">Більше попереду</h3>
-      <h3 lang-content="en">More to come</h3>
-      <p lang-content="uk">Проєкт активно розвивається. Нові блоки, можливості та покращення виходять регулярно.</p>
-      <p lang-content="en">The project is actively developed. New blocks, features and improvements are released on a regular basis.</p>
+    <div class="roadmap">
+      <div class="roadmap-card">
+        <span class="pip">Planned</span>
+        <h3 lang-content="en">Background styles</h3>
+        <h3 lang-content="uk">Фонові стилі</h3>
+        <p lang-content="en">Named scene &amp; sidebar backgrounds: color, image from assets, variable binding for dynamic changes.</p>
+        <p lang-content="uk">Іменовані фони сцен та бокової панелі: колір, зображення з ассетів, прив'язка до змінних.</p>
+      </div>
+      <div class="roadmap-card">
+        <span class="pip">Planned</span>
+        <h3 lang-content="en">AI story translation</h3>
+        <h3 lang-content="uk">ШІ-переклад історії</h3>
+        <p lang-content="en">Translate a scene or whole story via existing AI integrations.</p>
+        <p lang-content="uk">Переклад сцени або всієї історії через наявні інтеграції ШІ.</p>
+      </div>
+      <div class="roadmap-card">
+        <span class="pip">Planned</span>
+        <h3 lang-content="en">BGM generation</h3>
+        <h3 lang-content="uk">Генерація музики</h3>
+        <p lang-content="en">Background music for scenes via local ComfyUI — no cloud, no licensing.</p>
+        <p lang-content="uk">Фонова музика для сцен через локальний ComfyUI — без хмари, без ліцензій.</p>
+      </div>
+      <div class="roadmap-card">
+        <span class="pip">Always</span>
+        <h3 lang-content="en">More to come</h3>
+        <h3 lang-content="uk">Більше попереду</h3>
+        <p lang-content="en">New blocks, features and improvements ship on a regular basis.</p>
+        <p lang-content="uk">Нові блоки, можливості та покращення регулярно.</p>
+      </div>
     </div>
   </div>
-</div>
+</section>
 
 <hr class="divider" />
 
 <!-- ── Donate ────────────────────────────────────────────────── -->
-<div class="section">
-  <div class="donate-section">
-    <div style="display:flex;justify-content:center;margin-bottom:4px;">
-      <svg width="44" height="44" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M22 39 C22 39 4 27 4 15 C4 9 8.5 5 14 5 C17.5 5 20 7 22 9.5 C24 7 26.5 5 30 5 C35.5 5 40 9 40 15 C40 27 22 39 22 39 Z" fill="var(--accent)" fill-opacity=".65" stroke="var(--accent2)" stroke-width="1.5"/>
-      </svg>
+<section class="section">
+  <div class="wrap-narrow">
+    <div class="donate-block bracketed">
+      <div class="heart">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+      </div>
+      <h2 lang-content="en">Support the developer</h2>
+      <h2 lang-content="uk">Підтримайте розробника</h2>
+      <p lang-content="en">Purl is free and will stay free. If it has been useful — consider a voluntary donation.</p>
+      <p lang-content="uk">Purl безкоштовний і залишатиметься таким. Якщо корисно — підтримайте розвиток.</p>
+      <a href="legal.html#donate" class="btn btn-primary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+        <span lang-content="en">Donate</span>
+        <span lang-content="uk">Задонатити</span>
+      </a>
     </div>
-    <h2 style="margin-top:12px;" lang-content="uk">Підтримати розробника</h2>
-    <h2 style="margin-top:12px;" lang-content="en">Support the developer</h2>
-    <p lang-content="uk">Purl безкоштовний і залишатиметься таким. Якщо застосунок виявився корисним — ви можете підтримати його розвиток добровільним донатом.</p>
-    <p lang-content="en">Purl is free and will stay free. If it has been useful to you, consider supporting its development with a voluntary donation.</p>
-    <a href="legal.html#donate" class="donate-btn">
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="vertical-align:-3px;margin-right:2px;"><path d="M8 14 C8 14 1 9.5 1 5.5 C1 3 3 1.5 5 1.5 C6.5 1.5 7.5 2.5 8 3.5 C8.5 2.5 9.5 1.5 11 1.5 C13 1.5 15 3 15 5.5 C15 9.5 8 14 8 14 Z" fill="currentColor"/></svg><span lang-content="uk">Задонатити</span><span lang-content="en">Donate</span>
-    </a>
   </div>
-</div>
+</section>
+
+</main>
 
 <!-- ── Footer ────────────────────────────────────────────────── -->
 <footer>
-  <span class="footer-logo">Purl</span>
-  <span class="footer-copy" lang-content="uk">© 2026 Dmytro Hrubnyk. Безкоштовне програмне забезпечення.</span>
-  <span class="footer-copy" lang-content="en">© 2026 Dmytro Hrubnyk. Free software.</span>
-  <div class="footer-links">
-    <a href="https://github.com/Kinburg/purl" target="_blank">GitHub</a>
-    <a href="legal.html" lang-content="uk">Правова інформація</a>
-    <a href="legal.html" lang-content="en">Legal</a>
+  <div class="footer-inner">
+    <span class="footer-mark">Purl</span>
+    <span class="footer-copy" lang-content="en">© 2026 Dmytro Hrubnyk · free software</span>
+    <span class="footer-copy" lang-content="uk">© 2026 Дмитро Грубник · безкоштовне ПЗ</span>
+    <div class="footer-links">
+      <a href="https://github.com/Kinburg/purl" target="_blank" rel="noopener">GitHub</a>
+      <a href="legal.html" lang-content="en">Legal</a>
+      <a href="legal.html" lang-content="uk">Правова</a>
+    </div>
   </div>
 </footer>
 
+<!-- Tweaks mount + react -->
+<div id="purl-tweaks-root"></div>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script type="text/babel" src="tweaks-panel.jsx"></script>
+<script type="text/babel" src="tweaks.jsx"></script>
+
 <script src="common.js"></script>
+<script src="blocks-data.js"></script>
+<script src="site.js"></script>
 <script>
 (function () {
-  const MANIFEST = 'screenshots/manifest.json';
-  const track    = document.getElementById('carousel-track');
-  const dotsWrap = document.getElementById('carousel-dots');
-  const caption  = document.getElementById('carousel-caption');
-  const btnPrev  = document.getElementById('carousel-prev');
-  const btnNext  = document.getElementById('carousel-next');
-  let slides = [], current = 0, autoTimer;
+  const ua = navigator.userAgent;
+  const os = ua.includes('Win') ? 'win' : ua.includes('Mac') ? 'mac' : 'linux';
 
-  function getLang() {
-    return document.documentElement.lang === 'en' ? 'en' : 'uk';
+  const cfg = {
+    win:   { en: 'Download for Windows', uk: 'Завантажити для Windows' },
+    mac:   { en: 'Download for macOS',   uk: 'Завантажити для macOS'   },
+    linux: { en: 'Download for Linux',   uk: 'Завантажити для Linux'   },
+  };
+
+  const btn = document.getElementById('dl-primary');
+  const lbl = document.getElementById('dl-primary-label');
+  const chip = document.querySelector('.dl-chip[data-os="' + os + '"]');
+
+  if (chip && btn) btn.href = chip.href;
+  if (lbl) {
+    lbl.dataset.en = cfg[os].en;
+    lbl.dataset.uk = cfg[os].uk;
+    const lang = document.body.classList.contains('lang-uk') ? 'uk' : 'en';
+    lbl.textContent = cfg[os][lang];
   }
-
-  function goTo(idx) {
-    current = (idx + slides.length) % slides.length;
-    track.style.transform = `translateX(-${current * 100}%)`;
-    dotsWrap.querySelectorAll('.carousel-dot').forEach((d, i) =>
-      d.classList.toggle('active', i === current));
-    const s = slides[current];
-    caption.textContent = s[getLang()] || s.en;
-  }
-
-  function resetTimer() {
-    clearInterval(autoTimer);
-    autoTimer = setInterval(() => goTo(current + 1), 4000);
-  }
-
-  function build(data) {
-    slides = data;
-    track.innerHTML = '';
-    dotsWrap.innerHTML = '';
-
-    data.forEach((s, i) => {
-      const img = document.createElement('img');
-      img.src = 'screenshots/' + s.file;
-      img.alt = s.en;
-      img.loading = i === 0 ? 'eager' : 'lazy';
-      track.appendChild(img);
-
-      const dot = document.createElement('div');
-      dot.className = 'carousel-dot' + (i === 0 ? ' active' : '');
-      dot.addEventListener('click', () => { goTo(i); resetTimer(); });
-      dotsWrap.appendChild(dot);
-    });
-
-    goTo(0);
-    resetTimer();
-  }
-
-  btnPrev.addEventListener('click', () => { goTo(current - 1); resetTimer(); });
-  btnNext.addEventListener('click', () => { goTo(current + 1); resetTimer(); });
-
-  /* свайп на тачскрінах */
-  let touchX = 0;
-  track.addEventListener('touchstart', e => { touchX = e.touches[0].clientX; }, { passive: true });
-  track.addEventListener('touchend',   e => {
-    const dx = e.changedTouches[0].clientX - touchX;
-    if (Math.abs(dx) > 40) { goTo(current + (dx < 0 ? 1 : -1)); resetTimer(); }
-  });
-
-  /* оновити підпис при зміні мови */
-  document.addEventListener('langchange', () => {
-    if (slides.length) caption.textContent = slides[current][getLang()] || slides[current].en;
-  });
-
-  fetch(MANIFEST)
-    .then(r => r.json())
-    .then(build)
-    .catch(() => {
-      /* fallback: показати будь-який img якщо manifest недоступний */
-      track.innerHTML = '<img src="screenshots/screenshot.png" alt="Purl">';
-    });
-})();
+  if (chip) chip.classList.add('active');
+}());
 </script>
 <!-- Cloudflare Web Analytics -->
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9c2f9fbc2af1413697cc96b407da1607"}'></script>
