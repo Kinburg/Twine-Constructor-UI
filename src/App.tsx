@@ -2,11 +2,14 @@ import { useEffect, useState } from 'react';
 import { useProjectStore } from './store/projectStore';
 import { useEditorStore } from './store/editorStore';
 import { useEditorPrefsStore } from './store/editorPrefsStore';
+import { usePluginStore } from './store/pluginStore';
 import { Header } from './components/layout/Header';
 import { WorkspaceLayout } from './components/layout/WorkspaceLayout';
 
 import { ProjectSettingsModal } from './components/project/ProjectSettingsModal';
 import { EditorPrefsModal } from './components/editor/EditorPrefsModal';
+import { AISettingsModal } from './components/editor/LLMSettingsModal';
+import { PluginEditorModal } from './components/plugins/PluginEditorModal';
 import { useAutosave } from './hooks/useAutosave';
 import { Toaster } from 'sonner';
 import { useT } from './i18n';
@@ -14,7 +17,11 @@ import { fsApi, joinPath, safeName } from './lib/fsApi';
 
 export default function App() {
   const { fixVariableNames, undo, redo, projectDir, project, setProjectDir } = useProjectStore();
-  const { projectSettingsOpen, setProjectSettingsOpen, editorPrefsOpen, setEditorPrefsOpen } = useEditorStore();
+  const {
+    projectSettingsOpen, setProjectSettingsOpen,
+    editorPrefsOpen, setEditorPrefsOpen,
+    llmSettingsOpen, setLLMSettingsOpen,
+  } = useEditorStore();
   const { compactMode, saveOnExit } = useEditorPrefsStore();
   const t = useT();
   const [closeModalOpen, setCloseModalOpen] = useState(false);
@@ -24,6 +31,11 @@ export default function App() {
   // Migrate any legacy Cyrillic variable names to ASCII on every mount.
   // This covers HMR reloads where onRehydrateStorage doesn't re-run.
   useEffect(() => { fixVariableNames(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Load plugins from disk whenever projectDir changes.
+  useEffect(() => {
+    usePluginStore.getState().loadFromDisk(projectDir);
+  }, [projectDir]);
 
   // Show project settings modal on first launch (no folder selected = brand new session)
   useEffect(() => {
@@ -48,7 +60,7 @@ export default function App() {
         if (!dir) { setSavingOnExit(false); return; }
         setProjectDir(dir);
       }
-      await fsApi.mkdir(joinPath(dir, 'assets'));
+      await fsApi.mkdir(joinPath(dir, 'release', 'assets'));
       await fsApi.writeFile(joinPath(dir, `${safeName(project.title)}.purl`), JSON.stringify(project, null, 2));
     } catch { /* proceed with exit even if save fails */ }
     window.electronAPI?.confirmClose();
@@ -94,6 +106,10 @@ export default function App() {
       {editorPrefsOpen && (
         <EditorPrefsModal onClose={() => setEditorPrefsOpen(false)} />
       )}
+      {llmSettingsOpen && (
+        <AISettingsModal onClose={() => setLLMSettingsOpen(false)} />
+      )}
+      <PluginEditorModal />
 
       {/* Close confirmation modal */}
       {closeModalOpen && (

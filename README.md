@@ -77,14 +77,14 @@ npm run dist
 
 ## Stack
 
-| Layer | Technologies |
-|---|---|
-| UI | React 19, TypeScript, Tailwind CSS 4 |
-| State | Zustand 5 |
-| Desktop | Electron 40, vite-plugin-electron |
-| Build | Vite 7, esbuild |
-| Graph | @xyflow/react, @dagrejs/dagre |
-| Packaging | electron-builder (NSIS + ZIP) |
+| Layer     | Technologies                         |
+|-----------|--------------------------------------|
+| UI        | React 19, TypeScript, Tailwind CSS 4 |
+| State     | Zustand 5                            |
+| Desktop   | Electron 40, vite-plugin-electron    |
+| Build     | Vite 7, esbuild                      |
+| Graph     | @xyflow/react, @dagrejs/dagre        |
+| Packaging | electron-builder (NSIS + ZIP)        |
 
 ## Releasing
 

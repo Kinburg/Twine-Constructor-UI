@@ -28,7 +28,7 @@ export function ConfirmModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onCancel} />
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-80 p-4 flex flex-col gap-4">
-        <p className="text-sm text-slate-200 leading-relaxed">{message}</p>
+        <p className="text-sm text-slate-200 leading-relaxed whitespace-pre-line">{message}</p>
         <div className="flex gap-2 justify-end">
           <button
             onClick={onCancel}

@@ -21,6 +21,20 @@ export function getVariablePath(id: string, nodes: VariableTreeNode[], prefix: s
   return '';
 }
 
+/** Returns the dot-path for ANY node (variable or group) by its id.
+ *  Used when groups are selectable (object-kind params). */
+export function getNodePath(id: string, nodes: VariableTreeNode[], prefix: string[] = []): string {
+  for (const n of nodes) {
+    const myPath = [...prefix, n.name].join('.');
+    if (n.id === id) return myPath;
+    if (n.kind === 'group') {
+      const found = getNodePath(id, n.children, [...prefix, n.name]);
+      if (found) return found;
+    }
+  }
+  return '';
+}
+
 /** Flattens all variables with their computed dot-paths */
 export function flattenVariablesWithPaths(
   nodes: VariableTreeNode[],

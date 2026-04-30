@@ -1,6 +1,6 @@
 import { useProjectStore, flattenAssets } from '../../store/projectStore';
 import type { AudioBlock } from '../../types';
-import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { useT } from '../../i18n';
 
 export function AudioBlockEditor({
@@ -19,7 +19,7 @@ export function AudioBlockEditor({
 
   function resolvePreviewSrc(src: string): string {
     if (src.startsWith('assets/') && projectDir) {
-      return toLocalFileUrl(joinPath(projectDir, src));
+      return toLocalFileUrl(resolveAssetPath(projectDir, src));
     }
     return src;
   }

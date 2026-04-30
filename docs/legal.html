@@ -3,604 +3,362 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" href="Icon.ico" type="image/x-icon" />
-  <title>Purl — Legal Information</title>
+  <link rel="icon" href="Icon.PNG" type="image/png" />
+  <title>Purl — Legal &amp; Donate</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css" />
-  <style>
-    /* ── Hero ─────────────────────────────────────────────────── */
-    .hero {
-      text-align: center;
-      padding: 64px 24px 40px;
-      max-width: 720px;
-      margin: 0 auto;
-    }
-    .hero h1 {
-      font-size: 38px;
-      font-weight: 800;
-      letter-spacing: -1px;
-      background: linear-gradient(135deg, #fff 40%, var(--accent2));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 14px;
-    }
-    .hero p {
-      color: var(--muted);
-      font-size: 16px;
-      max-width: 500px;
-      margin: 0 auto;
-    }
-
-    /* ── Main layout ──────────────────────────────────────────── */
-    main {
-      max-width: 860px;
-      margin: 0 auto;
-      padding: 0 24px 80px;
-    }
-
-    /* ── Section ──────────────────────────────────────────────── */
-    .section {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 40px 44px;
-      margin-bottom: 24px;
-      position: relative;
-      overflow: hidden;
-    }
-    .section::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--accent), var(--accent2));
-      border-radius: var(--radius) var(--radius) 0 0;
-    }
-    .section-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      background: rgba(124,106,247,.15);
-      color: var(--accent2);
-      font-size: 11px;
-      font-weight: 600;
-      letter-spacing: .8px;
-      text-transform: uppercase;
-      padding: 4px 12px;
-      border-radius: 20px;
-      border: 1px solid rgba(124,106,247,.3);
-      margin-bottom: 16px;
-    }
-    .section h2 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 24px;
-      letter-spacing: -.4px;
-    }
-    .section h3 {
-      font-size: 15px;
-      font-weight: 600;
-      color: var(--accent2);
-      margin: 24px 0 8px;
-    }
-    .section p { color: #b8b6d0; margin-bottom: 12px; }
-    .section ul {
-      color: #b8b6d0;
-      padding-left: 20px;
-      margin-bottom: 12px;
-    }
-    .section ul li { margin-bottom: 6px; }
-
-    /* ── Donate section ───────────────────────────────────────── */
-    .donate-section {
-      background: linear-gradient(135deg, #1a1728 0%, #1c1830 100%);
-      border: 1px solid rgba(124,106,247,.4);
-      border-radius: var(--radius);
-      padding: 40px 44px;
-      margin-bottom: 24px;
-      position: relative;
-      overflow: hidden;
-    }
-    .donate-section::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0; right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, #f7a76a, var(--accent2), #a78bfa);
-      border-radius: var(--radius) var(--radius) 0 0;
-    }
-    .donate-section h2 {
-      font-size: 24px;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 8px;
-      letter-spacing: -.4px;
-    }
-    .donate-section > p {
-      color: var(--muted);
-      margin-bottom: 32px;
-      font-size: 15px;
-    }
-    .donate-cards {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-    }
-    .donate-card {
-      background: rgba(255,255,255,.04);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 24px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 16px;
-      text-align: center;
-      justify-content: space-between;
-    }
-    .donate-card .dc-logo {
-      font-size: 13px;
-      font-weight: 700;
-      letter-spacing: .5px;
-      color: var(--muted);
-      text-transform: uppercase;
-    }
-    .donate-card .dc-logo span { color: var(--accent2); }
-    .mono-qr {
-      width: 260px;
-      height: 320px;
-      border-radius: 8px;
-      border: 3px solid rgba(124,106,247,.3);
-      object-fit: contain;
-      background: rgba(255,255,255,.04);
-    }
-    .wfp-qr {
-      width: 160px;
-      height: 160px;
-      border-radius: 8px;
-      border: 3px solid rgba(124,106,247,.3);
-      object-fit: contain;
-      background: rgba(255,255,255,.04);
-    }
-    .donate-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 600;
-      text-decoration: none;
-      transition: opacity .2s, transform .1s;
-    }
-    .donate-btn:active { transform: scale(.97); }
-    .donate-btn.mono { background: #1dc779; color: #000; }
-    .donate-btn.wfp  { background: #0066cc; color: #fff; }
-    .donate-btn:hover { opacity: .88; }
-    .dc-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
-
-    /* ── Contact grid ─────────────────────────────────────────── */
-    .contact-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-top: 8px;
-    }
-    .contact-item {
-      background: rgba(255,255,255,.03);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 16px 20px;
-    }
-    .contact-item .label {
-      font-size: 11px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .6px;
-      color: var(--muted);
-      margin-bottom: 6px;
-    }
-    .contact-item .value { color: var(--text); font-size: 14px; }
-    .contact-item .value a { color: var(--accent2); text-decoration: none; }
-    .contact-item .value a:hover { text-decoration: underline; }
-
-    /* ── Misc ─────────────────────────────────────────────────── */
-    hr.soft { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
-
-    /* ── WFP currency tabs ────────────────────────────────────── */
-    .wfp-tabs {
-      display: flex;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      overflow: hidden;
-      width: 100%;
-    }
-    .wfp-tab {
-      flex: 1;
-      background: none;
-      border: none;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-      padding: 7px 0;
-      cursor: pointer;
-      transition: background .15s, color .15s;
-      letter-spacing: .3px;
-    }
-    .wfp-tab.active { background: #0066cc; color: #fff; }
-
-    /* ── Footer ──────────────────────────────────────────────── */
-    footer {
-      border-top: 1px solid var(--border);
-      text-align: center;
-      padding: 24px;
-      color: var(--muted);
-      font-size: 12px;
-    }
-
-    /* ── Mobile ───────────────────────────────────────────────── */
-    @media (max-width: 640px) {
-      .section, .donate-section { padding: 28px 20px; }
-      .contact-grid, .donate-cards { grid-template-columns: 1fr; }
-      .hero h1 { font-size: 28px; }
-    }
-  </style>
 </head>
-<body>
+<body class="legal-body">
 
-<!-- ══ HEADER (injected by common.js) ════════════════════════ -->
 <header></header>
 
-<!-- ══ HERO ════════════════════════════════════════════════════ -->
-<div class="hero">
-  <h1 data-uk="Правова інформація" data-en="Legal Information">Правова інформація</h1>
-  <p data-uk="Умови, політика повернення та контактні дані для Purl — візуального конструктора Twine-історій."
-     data-en="Terms of use, refund policy, and contact details for Purl — the visual Twine story constructor.">
-    Умови, політика повернення та контактні дані для Purl — візуального конструктора Twine-історій.
-  </p>
-</div>
-
-<!-- ══ MAIN ════════════════════════════════════════════════════ -->
 <main>
 
-  <!-- ── Donate ───────────────────────────────────────────────── -->
-  <section class="donate-section" id="donate">
-    <div class="section-badge" data-uk="♥ Підтримати розробника" data-en="♥ Support the Developer">♥ Підтримати розробника</div>
-    <h2 data-uk="Підтримайте Purl" data-en="Support Purl">Підтримайте Purl</h2>
-    <p data-uk="Purl — безкоштовний інструмент. Якщо він виявився корисним, ви можете підтримати розробку добровільним донатом."
-       data-en="Purl is free. If it has been useful to you, consider supporting its development with a voluntary donation.">
-      Purl — безкоштовний інструмент. Якщо він виявився корисним, ви можете підтримати розробку добровільним донатом.
+<!-- ── Title ─────────────────────────────────────────────────── -->
+<section class="hero hero-slim">
+  <div class="wrap">
+    <div class="hero-eyebrow">
+      <span class="dot"></span>
+      <span lang-content="en">legal &amp; transparency</span>
+      <span lang-content="uk">правова інформація</span>
+    </div>
+    <h1>
+      <span lang-content="en">Legal, privacy<br/>&amp; donations.</span>
+      <span lang-content="uk">Правова інформація,<br/>приватність &amp; донати.</span>
+    </h1>
+    <p class="hero-tagline" lang-content="en">
+      A short, plain-language overview of how Purl is built, distributed,
+      what data it touches and how to support its development.
     </p>
+    <p class="hero-tagline" lang-content="uk">
+      Коротко і простими словами про те, як зроблено Purl, що з даними,
+      і як підтримати розробника.
+    </p>
+
+    <nav class="legal-nav">
+      <a href="#privacy"><span lang-content="en">Privacy</span><span lang-content="uk">Приватність</span></a>
+      <a href="#tos"><span lang-content="en">Terms</span><span lang-content="uk">Умови</span></a>
+      <a href="#license"><span lang-content="en">License</span><span lang-content="uk">Ліцензія</span></a>
+      <a href="#third-party"><span lang-content="en">Third-party</span><span lang-content="uk">Сторонні сервіси</span></a>
+      <a href="#contact"><span lang-content="en">Contact</span><span lang-content="uk">Контакти</span></a>
+      <a href="#donate" class="hot"><span lang-content="en">Donate</span><span lang-content="uk">Донат</span></a>
+    </nav>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Privacy ───────────────────────────────────────────────── -->
+<section class="section legal-section" id="privacy">
+  <div class="wrap-narrow">
+    <div class="legal-head">
+
+      <h2 lang-content="en">Privacy</h2>
+      <h2 lang-content="uk">Приватність</h2>
+    </div>
+
+    <div class="legal-tldr">
+      <p lang-content="en">Purl runs locally on your machine. It doesn't collect analytics, doesn't ship telemetry, and doesn't have a Purl backend. The only network calls happen when <em>you</em> connect a third-party AI service.</p>
+      <p lang-content="uk">Purl працює локально на вашому комп'ютері. Жодної аналітики, телеметрії чи власного бекенду. Мережеві запити йдуть лише до тих ШІ-сервісів, які ви <em>самі</em> підключаєте.</p>
+    </div>
+
+    <div class="legal-grid">
+      <div class="legal-card">
+        <div class="lc-num">01</div>
+        <h3 lang-content="en">What stays on your device</h3>
+        <h3 lang-content="uk">Що зберігається у вас</h3>
+        <ul lang-content="en">
+          <li>Your project files (.purlproj) and assets.</li>
+          <li>Editor preferences and recent-projects list.</li>
+          <li>Stored API keys for AI services (kept locally).</li>
+          <li>Generated images, audio, exports.</li>
+        </ul>
+        <ul lang-content="uk">
+          <li>Файли ваших проєктів (.purlproj) та ассети.</li>
+          <li>Налаштування редактора, список нещодавніх проєктів.</li>
+          <li>Збережені API-ключі (тільки локально).</li>
+          <li>Згенеровані зображення, аудіо, експорти.</li>
+        </ul>
+      </div>
+
+      <div class="legal-card">
+        <div class="lc-num">02</div>
+        <h3 lang-content="en">What Purl never collects</h3>
+        <h3 lang-content="uk">Чого Purl не збирає</h3>
+        <ul lang-content="en">
+          <li>No analytics or behavioural tracking.</li>
+          <li>No automatic crash reports.</li>
+          <li>No account, no login, no cloud sync.</li>
+          <li>No project content sent to the developer.</li>
+        </ul>
+        <ul lang-content="uk">
+          <li>Жодної аналітики чи трекінгу поведінки.</li>
+          <li>Без автоматичних звітів про помилки.</li>
+          <li>Без акаунтів, логінів, хмарної синхронізації.</li>
+          <li>Контент ваших проєктів не передається розробнику.</li>
+        </ul>
+      </div>
+
+      <div class="legal-card">
+        <div class="lc-num">03</div>
+        <h3 lang-content="en">When network requests happen</h3>
+        <h3 lang-content="uk">Коли йдуть мережеві запити</h3>
+        <p lang-content="en">Only when you explicitly enable an AI integration. In that case Purl sends prompts and any context you provide to the third-party endpoint you configured (KoboldCPP, Google Gemini, OpenAI-compatible, Pollinations, ComfyUI). Their privacy policies apply.</p>
+        <p lang-content="uk">Лише якщо ви свідомо увімкнули ШІ-інтеграцію. У цьому разі Purl передає ваші запити та контекст до обраного зовнішнього сервісу (KoboldCPP, Google Gemini, OpenAI-сумісні, Pollinations, ComfyUI). Діє політика приватності цих сервісів.</p>
+      </div>
+
+      <div class="legal-card">
+        <div class="lc-num">04</div>
+        <h3 lang-content="en">This website</h3>
+        <h3 lang-content="uk">Цей сайт</h3>
+        <p lang-content="en">Static pages. No analytics, no tracking cookies, no third-party trackers. Fonts are loaded from Google Fonts; an embedded YouTube video uses YouTube's privacy-enhanced mode.</p>
+        <p lang-content="uk">Статичні сторінки. Без аналітики, трекінгу та сторонніх скриптів. Шрифти — з Google Fonts; відео — у privacy-режимі YouTube.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Terms ─────────────────────────────────────────────────── -->
+<section class="section legal-section" id="tos">
+  <div class="wrap-narrow">
+    <div class="legal-head">
+
+      <h2 lang-content="en">Terms of use</h2>
+      <h2 lang-content="uk">Умови використання</h2>
+    </div>
+
+    <div class="legal-tldr">
+      <p lang-content="en">Purl is free software, provided as-is, without warranty. You own everything you create with it. Don't use it to break the law.</p>
+      <p lang-content="uk">Purl — безкоштовне ПЗ "як є", без гарантій. Ви володієте всім, що створюєте. Не порушуйте закон.</p>
+    </div>
+
+    <ol class="legal-ol">
+      <li>
+        <h4 lang-content="en">Your work is yours</h4>
+        <h4 lang-content="uk">Ваш контент — ваш</h4>
+        <p lang-content="en">All content you create — scenes, characters, items, exports — belongs to you. The author of Purl claims no rights over your projects.</p>
+        <p lang-content="uk">Весь контент, який ви створюєте — сцени, персонажі, айтеми, експорти — належить вам. Автор Purl не претендує на права на ваші проєкти.</p>
+      </li>
+      <li>
+        <h4 lang-content="en">No warranty</h4>
+        <h4 lang-content="uk">Без гарантій</h4>
+        <p lang-content="en">Purl is provided "as is". The author is not liable for data loss, missed deadlines or any damages arising from use of the software. Back up your projects.</p>
+        <p lang-content="uk">Purl надається "як є". Автор не несе відповідальності за втрату даних, зрив дедлайнів чи будь-які збитки. Робіть бекапи.</p>
+      </li>
+      <li>
+        <h4 lang-content="en">Acceptable use</h4>
+        <h4 lang-content="uk">Допустиме використання</h4>
+        <p lang-content="en">Don't use Purl to create or distribute content that is illegal in your jurisdiction. AI-generated content is your responsibility — comply with the policies of the AI providers you connect.</p>
+        <p lang-content="uk">Не використовуйте Purl для створення чи розповсюдження незаконного контенту. За контент, згенерований ШІ, відповідаєте ви — дотримуйтеся правил підключених сервісів.</p>
+      </li>
+      <li>
+        <h4 lang-content="en">No support obligations</h4>
+        <h4 lang-content="uk">Без зобов'язань щодо підтримки</h4>
+        <p lang-content="en">The author maintains Purl in his free time and does his best to fix bugs and ship improvements, but offers no guaranteed response time or feature roadmap commitments.</p>
+        <p lang-content="uk">Автор підтримує Purl у вільний час і докладає зусиль до виправлень та оновлень, але без гарантованого часу відповіді чи зобов'язань щодо роадмепу.</p>
+      </li>
+      <li>
+        <h4 lang-content="en">Donations &amp; refund policy</h4>
+        <h4 lang-content="uk">Донати та повернення коштів</h4>
+        <p lang-content="en">All payments are voluntary donations — not payment for goods or services — and carry no refund obligation by default. Exceptions: technical errors (duplicate charge, wrong amount) or accidental payments. To request a refund, send an email to <a href="mailto:kinburgne@gmail.com">kinburgne@gmail.com</a> with subject <em>"Refund"</em>, including the payment date, amount and last 4 digits of your card. Requests are reviewed within 7 business days; if approved, funds are returned to the original card within 5–10 business days. For errors caught immediately, contact us within 24 hours and we will initiate a cancellation through WayForPay before the transaction is finalised.</p>
+        <p lang-content="uk">Усі платежі — добровільні донати, а не оплата товарів чи послуг, тому повернення за замовчуванням не передбачене. Виняток — технічна помилка (подвійне списання, неправильна сума) або помилковий платіж. Для запиту на повернення надішліть листа на <a href="mailto:kinburgne@gmail.com">kinburgne@gmail.com</a> з темою <em>«Refund»</em>, вказавши дату, суму та останні 4 цифри картки. Запити розглядаються протягом 7 робочих днів; при позитивному рішенні — повернення на вихідну картку за 5–10 банківських днів. Якщо помилку помічено відразу — зверніться протягом 24 годин, і ми ініціюємо скасування через WayForPay до остаточного проведення транзакції.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── License ───────────────────────────────────────────────── -->
+<section class="section legal-section" id="license">
+  <div class="wrap-narrow">
+    <div class="legal-head">
+
+      <h2 lang-content="en">License</h2>
+      <h2 lang-content="uk">Ліцензія</h2>
+    </div>
+
+    <div class="license-card">
+      <div class="lic-tag">MIT</div>
+      <p lang-content="en">Purl is released as free, open-source software. You may use it commercially, modify it, and distribute it. The full license text and source code live on GitHub.</p>
+      <p lang-content="uk">Purl — безкоштовне ПЗ з відкритим кодом. Можна використовувати комерційно, змінювати та поширювати. Повний текст ліцензії та сирці — на GitHub.</p>
+      <a href="https://github.com/Kinburg/Purl/blob/master/LICENSE" target="_blank" rel="noopener" class="btn btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0 1 12 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.745 0 .268.18.58.688.482A10.019 10.019 0 0 0 22 12.017C22 6.484 17.522 2 12 2z"/></svg>
+        https://github.com/Kinburg/Purl/blob/master/LICENSE
+      </a>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Third-party ──────────────────────────────────────────── -->
+<section class="section legal-section" id="third-party">
+  <div class="wrap-narrow">
+    <div class="legal-head">
+
+      <h2 lang-content="en">Third-party services</h2>
+      <h2 lang-content="uk">Сторонні сервіси</h2>
+    </div>
+    <p class="legal-lead" lang-content="en">Purl can talk to these services <strong>only when you connect them</strong>. Each operates under its own terms.</p>
+    <p class="legal-lead" lang-content="uk">Purl взаємодіє з цими сервісами <strong>лише коли ви їх підключите</strong>. Кожен — за власними правилами.</p>
+
+    <div class="tp-grid">
+      <div class="tp-card"><span class="tp-kind">AI text</span><h4>KoboldCPP</h4><p lang-content="en">Local LLM runner. Runs on your machine.</p><p lang-content="uk">Локальний LLM-раннер. Працює на вашому комп'ютері.</p></div>
+      <div class="tp-card"><span class="tp-kind">AI text</span><h4>Google Gemini</h4><p lang-content="en">Cloud LLM API.</p><p lang-content="uk">Хмарне API LLM.</p></div>
+      <div class="tp-card"><span class="tp-kind">AI text</span><h4>OpenAI-compatible</h4><p lang-content="en">Any compatible endpoint you configure.</p><p lang-content="uk">Будь-який сумісний endpoint.</p></div>
+      <div class="tp-card"><span class="tp-kind">AI image</span><h4>Pollinations</h4><p lang-content="en">Free image-generation API.</p><p lang-content="uk">Безкоштовне API генерації зображень.</p></div>
+      <div class="tp-card"><span class="tp-kind">AI image</span><h4>ComfyUI</h4><p lang-content="en">Local image generation. Runs on your machine.</p><p lang-content="uk">Локальна генерація зображень.</p></div>
+      <div class="tp-card"><span class="tp-kind">Engine</span><h4>SugarCube 2</h4><p lang-content="en">The story format Purl exports to. Open source.</p><p lang-content="uk">Формат історій, у який Purl експортує. Відкритий код.</p></div>
+      <div class="tp-card"><span class="tp-kind">Engine</span><h4>Twine 2</h4><p lang-content="en">Compatible IF tooling. Open source.</p><p lang-content="uk">Сумісний IF-інструментарій. Відкритий код.</p></div>
+      <div class="tp-card"><span class="tp-kind">Site</span><h4>Google Fonts</h4><p lang-content="en">Used to load typefaces on this site.</p><p lang-content="uk">Завантажуються шрифти для сайту.</p></div>
+      <div class="tp-card"><span class="tp-kind">Site</span><h4>YouTube</h4><p lang-content="en">Embeds the demo video in privacy-enhanced mode.</p><p lang-content="uk">Демо-відео у privacy-режимі.</p></div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Contact ───────────────────────────────────────────────── -->
+<section class="section legal-section" id="contact">
+  <div class="wrap-narrow">
+    <div class="legal-head">
+
+      <h2 lang-content="en">Contact</h2>
+      <h2 lang-content="uk">Контакти</h2>
+    </div>
+
+    <div class="contact-grid">
+      <a class="contact-card" href="https://github.com/Kinburg/purl/issues" target="_blank" rel="noopener">
+        <span class="cc-kind"><span lang-content="en">Bugs &amp; ideas</span><span lang-content="uk">Баги та ідеї</span></span>
+        <h3>GitHub Issues</h3>
+        <span class="cc-arrow">→</span>
+      </a>
+      <a class="contact-card" href="mailto:kinburgne@gmail.com">
+        <span class="cc-kind"><span lang-content="en">Direct</span><span lang-content="uk">Напряму</span></span>
+        <h3>kinburgne@gmail.com</h3>
+        <span class="cc-arrow">→</span>
+      </a>
+    </div>
+
+    <div class="fop-block">
+      <div class="fop-label">
+        <span lang-content="en">LEGAL ENTITY — UKRAINE</span>
+        <span lang-content="uk">ЮРИДИЧНА ОСОБА — УКРАЇНА</span>
+      </div>
+      <div class="fop-row">
+        <div class="fop-cell">
+          <div class="fop-key"><span lang-content="en">Legal name</span><span lang-content="uk">Повне найменування</span></div>
+          <div class="fop-val">ФОП Грубник Дмитро Валерійович</div>
+        </div>
+        <div class="fop-cell">
+          <div class="fop-key"><span lang-content="en">Tax ID (ІПН)</span><span lang-content="uk">ІПН / ЄДРПОУ</span></div>
+          <div class="fop-val">3191806615</div>
+        </div>
+        <div class="fop-cell">
+          <div class="fop-key"><span lang-content="en">Registered address</span><span lang-content="uk">Юридична адреса</span></div>
+          <div class="fop-val">вул. Шарикова, б. 53, кв. 55,<br>м. Харків, 61143, Україна</div>
+        </div>
+        <div class="fop-cell">
+          <div class="fop-key"><span lang-content="en">Phone</span><span lang-content="uk">Телефон</span></div>
+          <div class="fop-val"><a href="tel:+380509239800">+380-50-9-23-9-800</a></div>
+        </div>
+        <div class="fop-cell">
+          <div class="fop-key"><span lang-content="en">Email</span><span lang-content="uk">Електронна пошта</span></div>
+          <div class="fop-val"><a href="mailto:kinburgne@gmail.com">kinburgne@gmail.com</a></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider" />
+
+<!-- ── Donate ───────────────────────────────────────────────── -->
+<section class="section legal-section" id="donate">
+  <div class="wrap">
+    <div class="legal-head">
+
+      <h2 lang-content="en">Donate</h2>
+      <h2 lang-content="uk">Підтримати розробника</h2>
+    </div>
+
+    <p class="legal-lead big" lang-content="en">Purl is free and stays free. If it has helped you tell a story — a coffee, a meal, anything is appreciated. There is no premium tier, no paywalled feature.</p>
+    <p class="legal-lead big" lang-content="uk">Purl безкоштовний і таким залишиться. Якщо інструмент допоміг вам розповісти історію — кава, обід, будь-яка сума — буде дуже доречно. Преміуму чи платних фіч немає і не буде.</p>
 
     <div class="donate-cards">
 
       <!-- Monobank -->
-      <div class="donate-card">
-        <div class="dc-logo">Mono<span>bank</span> jar</div>
-        <div class="wfp-tabs" style="visibility:hidden; pointer-events:none;" aria-hidden="true">
-          <button class="wfp-tab active">UAH ₴</button>
-        </div>
-        <img src="mono.jpg" alt="Monobank QR" class="mono-qr" />
-        <p class="dc-desc"
-           data-uk="Відскануйте QR або натисніть кнопку — перейдете на банку в Monobank."
-           data-en="Scan the QR code or click the button to open the Monobank jar.">
-          Відскануйте QR або натисніть кнопку — перейдете на банку в Monobank.
-        </p>
-        <a class="donate-btn mono" href="https://send.monobank.ua/jar/66CUFSfgme" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-          <span data-uk="Задонатити" data-en="Donate">Задонатити</span>
+      <div class="donate-card-pane">
+        <div class="dc-service">Monobank</div>
+        <img src="mono.jpg" alt="Monobank QR" class="dc-qr" />
+        <p class="dc-hint" lang-content="en">Scan the QR code or click the button to open the Monobank jar.</p>
+        <p class="dc-hint" lang-content="uk">Відскануйте QR або натисніть кнопку — банка в Monobank.</p>
+        <a class="dc-btn mono" href="https://send.monobank.ua/jar/66CUFSfgme" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+          <span lang-content="en">Donate</span>
+          <span lang-content="uk">Задонатити</span>
         </a>
       </div>
 
       <!-- WayForPay -->
-      <div class="donate-card">
-        <div class="dc-logo">Way<span>ForPay</span></div>
-        <div class="wfp-tabs">
-          <button class="wfp-tab active" onclick="setWfpCurrency('uah', this)">UAH ₴</button>
-          <button class="wfp-tab"        onclick="setWfpCurrency('usd', this)">USD $</button>
-          <button class="wfp-tab"        onclick="setWfpCurrency('eur', this)">EUR €</button>
+      <div class="donate-card-pane">
+        <div class="dc-service">WayForPay</div>
+        <div class="wfp-currency-tabs">
+          <button class="wfp-t active" onclick="setWfpCurrency('uah', this)">UAH ₴</button>
+          <button class="wfp-t"        onclick="setWfpCurrency('usd', this)">USD $</button>
+          <button class="wfp-t"        onclick="setWfpCurrency('eur', this)">EUR €</button>
         </div>
-        <img id="wfp-qr" src="wfp_qr_uah.png" alt="WayForPay QR" class="wfp-qr" />
-        <p class="dc-desc"
-           data-uk="Відскануйте QR або натисніть кнопку — оплата карткою Visa / Mastercard."
-           data-en="Scan the QR code or click the button — pay by Visa / Mastercard.">
-          Відскануйте QR або натисніть кнопку — оплата карткою Visa / Mastercard.
-        </p>
-        <a id="wfp-btn" class="donate-btn wfp" href="https://secure.wayforpay.com/donate/purl" target="_blank" rel="noopener">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
-          <span data-uk="Задонатити карткою" data-en="Donate by card">Задонатити карткою</span>
+        <img id="wfp-qr" src="wfp_qr_uah.png" alt="WayForPay QR" class="dc-qr" />
+        <p class="dc-hint" lang-content="en">Scan the QR code or click the button — pay by Visa / Mastercard.</p>
+        <p class="dc-hint" lang-content="uk">Відскануйте QR або натисніть кнопку — оплата Visa / Mastercard.</p>
+        <a id="wfp-btn" class="dc-btn wfp" href="https://secure.wayforpay.com/donate/purl" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.11 0-2 .89-2 2v12c0 1.11.89 2 2 2h16c1.11 0 2-.89 2-2V6c0-1.11-.89-2-2-2zm0 14H4v-6h16v6zm0-10H4V6h16v2z"/></svg>
+          <span lang-content="en">Donate by card</span>
+          <span lang-content="uk">Задонатити карткою</span>
         </a>
       </div>
 
     </div>
-  </section>
-
-  <!-- ── 1. Terms and Conditions ──────────────────────────────── -->
-  <section class="section" id="terms">
-    <div class="section-badge">§ <span data-uk="Умови використання" data-en="Terms &amp; Conditions">Умови використання</span></div>
-
-    <!-- Ukrainian -->
-    <div class="lang-uk">
-      <h2>Правила та умови</h2>
-
-      <h3>1. Про застосунок</h3>
-      <p>
-        <strong>Purl</strong> — десктопний застосунок (Windows / macOS / Linux) для візуального
-        конструювання інтерактивних Twine-історій у форматі SugarCube 2.
-        Застосунок є <strong>безкоштовним</strong> і поширюється вільно. Придбання не потрібне —
-        будь-хто може завантажити та використовувати Purl без жодних обмежень.
-      </p>
-
-      <h3>2. Добровільна підтримка (донат)</h3>
-      <p>
-        Якщо Purl виявився для вас корисним, ви можете підтримати розробника добровільним донатом.
-        Донат — це безоплатна передача коштів на розсуд особи, яка його здійснює.
-        Він не є оплатою товару або послуги і не надає жодних додаткових прав чи переваг.
-      </p>
-      <ul>
-        <li>Мінімальна і максимальна сума доната не обмежені.</li>
-        <li>Донат є добровільним і одноразовим — жодних підписок чи регулярних списань.</li>
-        <li>Відправник доната не набуває жодних прав на програмне забезпечення, його компоненти або майбутні версії.</li>
-      </ul>
-
-      <h3>3. Способи підтримки</h3>
-      <ul>
-        <li>Банківська картка (Visa / Mastercard) через платіжний сервіс <strong>WayForPay</strong>.</li>
-        <li>Банка в <strong>Monobank</strong>: <a href="https://send.monobank.ua/jar/66CUFSfgme" target="_blank" rel="noopener" style="color:var(--accent2)">send.monobank.ua/jar/66CUFSfgme</a></li>
-      </ul>
-      <p>Платежі приймаються у гривнях (UAH). Сума, яку вводить користувач, є остаточною.</p>
-
-      <h3>4. Передача коштів</h3>
-      <p>
-        Кошти зараховуються отримувачу після підтвердження транзакції платіжною системою.
-        Квитанція про платіж надсилається на email, вказаний платником, автоматично сервісом WayForPay.
-      </p>
-
-      <h3>5. Обмеження відповідальності</h3>
-      <p>
-        Програмне забезпечення надається «як є» без будь-яких гарантій. Розробник не несе
-        відповідальності за прямі або непрямі збитки, що виникли внаслідок використання Purl.
-      </p>
-
-      <h3>6. Застосовне право</h3>
-      <p>Ці умови регулюються законодавством України.</p>
-    </div>
-
-    <!-- English -->
-    <div class="lang-en" hidden>
-      <h2>Terms &amp; Conditions</h2>
-
-      <h3>1. About the application</h3>
-      <p>
-        <strong>Purl</strong> is a desktop application (Windows / macOS / Linux) for visually building
-        interactive Twine stories in the SugarCube 2 format.
-        The application is <strong>free</strong> and distributed openly. No purchase is required —
-        anyone can download and use Purl without restrictions.
-      </p>
-
-      <h3>2. Voluntary support (donation)</h3>
-      <p>
-        If Purl has been useful to you, you may support the developer with a voluntary donation.
-        A donation is a gratuitous transfer of funds at the sole discretion of the sender.
-        It does not constitute payment for a product or service and grants no additional rights or benefits.
-      </p>
-      <ul>
-        <li>There is no minimum or maximum donation amount.</li>
-        <li>Donations are voluntary and one-time — no subscriptions or recurring charges.</li>
-        <li>The donor acquires no rights to the software, its components, or future versions.</li>
-      </ul>
-
-      <h3>3. Ways to support</h3>
-      <ul>
-        <li>Bank card (Visa / Mastercard) via the <strong>WayForPay</strong> payment gateway.</li>
-        <li><strong>Monobank</strong> jar: <a href="https://send.monobank.ua/jar/66CUFSfgme" target="_blank" rel="noopener" style="color:var(--accent2)">send.monobank.ua/jar/66CUFSfgme</a></li>
-      </ul>
-      <p>Payments are accepted in Ukrainian hryvnias (UAH). The amount entered by the user is final.</p>
-
-      <h3>4. Transfer of funds</h3>
-      <p>
-        Funds are credited to the recipient upon transaction confirmation by the payment system.
-        A payment receipt is automatically sent by WayForPay to the email address provided by the payer.
-      </p>
-
-      <h3>5. Limitation of liability</h3>
-      <p>
-        The software is provided "as is" without any warranties. The developer is not liable for
-        any direct or indirect damages arising from the use or inability to use Purl.
-      </p>
-
-      <h3>6. Governing law</h3>
-      <p>These terms are governed by the laws of Ukraine.</p>
-    </div>
-  </section>
-
-  <!-- ── 2. Refund Policy ─────────────────────────────────────── -->
-  <section class="section" id="refund">
-    <div class="section-badge">↩ <span data-uk="Повернення коштів" data-en="Refund Policy">Повернення коштів</span></div>
-
-    <!-- Ukrainian -->
-    <div class="lang-uk">
-      <h2>Правила повернення коштів</h2>
-
-      <h3>Загальний принцип</h3>
-      <p>
-        Оскільки всі платежі є <strong>добровільними донатами</strong>, а не оплатою товару чи послуги,
-        повернення коштів, як правило, не передбачається. Проте ми готові розглянути кожен випадок
-        індивідуально.
-      </p>
-
-      <h3>Підстави для повернення</h3>
-      <ul>
-        <li><strong>Технічна помилка</strong> — подвійне списання, помилкова сума тощо.</li>
-        <li><strong>Помилковий платіж</strong> — кошти відправлено ненавмисно.</li>
-      </ul>
-      <p>В інших випадках повернення залишається на розсуд отримувача.</p>
-
-      <h3>Порядок звернення</h3>
-      <ul>
-        <li>Надішліть запит на <a href="mailto:kinburgne@gmail.com" style="color:var(--accent2)">kinburgne@gmail.com</a> з темою <em>«Refund»</em>.</li>
-        <li>Вкажіть дату платежу, суму та останні 4 цифри картки.</li>
-        <li>Запит розглядається протягом 7 робочих днів.</li>
-      </ul>
-
-      <h3>Порядок відшкодування</h3>
-      <ul>
-        <li>У разі позитивного рішення кошти повертаються на картку, з якої було здійснено платіж.</li>
-        <li>Банківський переказ може тривати до 5–10 банківських днів залежно від банку-емітента.</li>
-      </ul>
-
-      <h3>Скасування транзакції</h3>
-      <p>
-        Якщо помилку виявлено одразу — зверніться до нас якомога швидше (бажано протягом 24 годин).
-        Ми ініціюємо скасування транзакції через WayForPay до її остаточного проведення.
-      </p>
-
-      <hr class="soft" />
-
-      <p style="font-size:13px; color: var(--muted);">
-        З питань повернення коштів звертайтесь:
-        <a href="mailto:kinburgne@gmail.com" style="color:var(--accent2)">kinburgne@gmail.com</a>
-      </p>
-    </div>
-
-    <!-- English -->
-    <div class="lang-en" hidden>
-      <h2>Refund Policy</h2>
-
-      <h3>General principle</h3>
-      <p>
-        Since all payments are <strong>voluntary donations</strong> rather than payment for goods or services,
-        refunds are generally not provided. However, we are willing to review each case individually.
-      </p>
-
-      <h3>Grounds for refund</h3>
-      <ul>
-        <li><strong>Technical error</strong> — duplicate charge, wrong amount, etc.</li>
-        <li><strong>Accidental payment</strong> — funds were sent unintentionally.</li>
-      </ul>
-      <p>In other cases, the decision to refund is at the recipient's discretion.</p>
-
-      <h3>How to request a refund</h3>
-      <ul>
-        <li>Send a request to <a href="mailto:kinburgne@gmail.com" style="color:var(--accent2)">kinburgne@gmail.com</a> with the subject <em>"Refund"</em>.</li>
-        <li>Include the payment date, amount, and the last 4 digits of your card.</li>
-        <li>Requests are reviewed within 7 business days.</li>
-      </ul>
-
-      <h3>Reimbursement process</h3>
-      <ul>
-        <li>If approved, funds will be returned to the card used for the payment.</li>
-        <li>Bank transfers may take 5–10 business days depending on the issuing bank.</li>
-      </ul>
-
-      <h3>Transaction cancellation</h3>
-      <p>
-        If the error is noticed immediately — contact us as soon as possible (preferably within 24 hours).
-        We will initiate a transaction cancellation through WayForPay before it is finalized.
-      </p>
-
-      <hr class="soft" />
-
-      <p style="font-size:13px; color: var(--muted);">
-        For refund inquiries, contact:
-        <a href="mailto:kinburgne@gmail.com" style="color:var(--accent2)">kinburgne@gmail.com</a>
-      </p>
-    </div>
-  </section>
-
-  <!-- ── 3. Contact Information ───────────────────────────────── -->
-  <section class="section" id="contacts">
-    <div class="section-badge">✉ <span data-uk="Контактна інформація" data-en="Contact Information">Контактна інформація</span></div>
-
-    <h2>
-      <span class="lang-uk">Контактна інформація</span>
-      <span class="lang-en" hidden>Contact Information</span>
-    </h2>
-
-    <div class="contact-grid">
-
-      <div class="contact-item">
-        <div class="label">
-          <span class="lang-uk">Повне найменування</span>
-          <span class="lang-en" hidden>Legal name</span>
-        </div>
-        <div class="value">ФОП Грубник Дмитро Валерійович</div>
-      </div>
-
-      <div class="contact-item">
-        <div class="label">
-          <span class="lang-uk">ІПН / ЄДРПОУ</span>
-          <span class="lang-en" hidden>Tax ID</span>
-        </div>
-        <div class="value">3191806615</div>
-      </div>
-
-      <div class="contact-item">
-        <div class="label">
-          <span class="lang-uk">Юридична адреса</span>
-          <span class="lang-en" hidden>Registered address</span>
-        </div>
-        <div class="value">вул. Шарикова, б. 53, кв. 55, м. Харків, 61143, Україна</div>
-      </div>
-
-      <div class="contact-item">
-        <div class="label">
-          <span class="lang-uk">Фактична адреса</span>
-          <span class="lang-en" hidden>Actual address</span>
-        </div>
-        <div class="value">вул. Шарикова, б. 53, кв. 55, м. Харків, 61143, Україна</div>
-      </div>
-
-      <div class="contact-item">
-        <div class="label">
-          <span class="lang-uk">Телефон</span>
-          <span class="lang-en" hidden>Phone</span>
-        </div>
-        <div class="value">
-          <a href="tel:+380509239800">+380-50-9-23-9-800</a>
-        </div>
-      </div>
-
-      <div class="contact-item">
-        <div class="label">
-          <span class="lang-uk">Електронна пошта</span>
-          <span class="lang-en" hidden>Email</span>
-        </div>
-        <div class="value">
-          <a href="mailto:kinburgne@gmail.com">kinburgne@gmail.com</a>
-        </div>
-      </div>
-
-    </div>
-  </section>
+  </div>
+</section>
 
 </main>
 
-<!-- ══ FOOTER ══════════════════════════════════════════════════ -->
+<!-- ── Footer ────────────────────────────────────────────────── -->
 <footer>
-  &copy; <span id="year"></span> ФОП Грубник Дмитро Валерійович.
-  <span class="lang-uk">Всі права захищені.</span>
-  <span class="lang-en" hidden>All rights reserved.</span>
+  <div class="footer-inner">
+    <span class="footer-mark">Purl</span>
+    <span class="footer-copy" lang-content="en">© 2026 Dmytro Hrubnyk · free software</span>
+    <span class="footer-copy" lang-content="uk">© 2026 Дмитро Грубник · безкоштовне ПЗ</span>
+    <div class="footer-links">
+      <a href="https://github.com/Kinburg/purl" target="_blank" rel="noopener">GitHub</a>
+      <a href="index.html" lang-content="en">Home</a>
+      <a href="index.html" lang-content="uk">Головна</a>
+    </div>
+  </div>
 </footer>
 
 <script src="common.js"></script>
 <script>
-  document.getElementById('year').textContent = new Date().getFullYear();
+const wfpData = {
+  uah: { qr: 'wfp_qr_uah.png', href: 'https://secure.wayforpay.com/donate/purl' },
+  usd: { qr: 'wfp_qr_usd.png', href: 'https://secure.wayforpay.com/donate/purl_usd' },
+  eur: { qr: 'wfp_qr_eur.png', href: 'https://secure.wayforpay.com/donate/purl_eur' },
+};
 
-  const wfpData = {
-    uah: { qr: 'wfp_qr_uah.png', href: 'https://secure.wayforpay.com/donate/purl' },
-    usd: { qr: 'wfp_qr_usd.png', href: 'https://secure.wayforpay.com/donate/purl_usd' },
-    eur: { qr: 'wfp_qr_eur.png', href: 'https://secure.wayforpay.com/donate/purl_eur' },
-  };
-
-  function setWfpCurrency(currency, btn) {
-    document.querySelectorAll('.wfp-tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('wfp-qr').src = wfpData[currency].qr;
-    document.getElementById('wfp-btn').href = wfpData[currency].href;
-  }
+function setWfpCurrency(currency, btn) {
+  document.querySelectorAll('.wfp-t').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('wfp-qr').src = wfpData[currency].qr;
+  document.getElementById('wfp-btn').href = wfpData[currency].href;
+}
 </script>
 <!-- Cloudflare Web Analytics -->
 <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "9c2f9fbc2af1413697cc96b407da1607"}'></script>

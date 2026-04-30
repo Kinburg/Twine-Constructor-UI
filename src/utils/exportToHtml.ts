@@ -1,7 +1,8 @@
-import type { Project, ProjectSettings, Character } from '../types';
+import type { Project, ProjectSettings, Character, PluginBlockDef } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS, setPluginRegistry } from './exportToTwee';
+import { collectPluginIds, expandPluginDeps } from './pluginUtils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -43,10 +44,10 @@ function buildSettingsScript(settings?: ProjectSettings): string {
   if (!settings) return '';
   const lines: string[] = [];
 
-  if (settings.historyControls === false)
+  if (!settings.historyControls)
     lines.push('Config.history.controls = false;');
 
-  if (settings.saveLoadMenu === false)
+  if (!settings.saveLoadMenu)
     lines.push('if (window.UIBar) UIBar.stow(); Config.saves.isAllowed = () => false;');
 
   return lines.join('\n');
@@ -97,12 +98,14 @@ interface PassageEntry {
   y: number;
 }
 
-export function buildPassages(project: Project): {
+export function buildPassages(project: Project, plugins: PluginBlockDef[] = []): {
   passages: PassageEntry[];
   startPid: number;
   combinedCSS: string;
   scriptContent: string;
 } {
+  setPluginRegistry(plugins);
+  const pluginById = new Map(plugins.map((p) => [p.id, p]));
   const variables = flattenVariables(project.variableNodes);
   const { scenes, characters, sidebarPanel } = project;
   const idToName = new Map(scenes.map(s => [s.id, s.name]));
@@ -136,6 +139,26 @@ export function buildPassages(project: Project): {
   const hasAudioVolume = sidebarPanel.tabs.some(tab =>
     tab.rows.some(r => r.cells.some(c => c.content.type === 'audio-volume')));
   if (hasAudioVolume) inits.push('<<set $__tgMasterVol to 1>>');
+  // Initial inventory: push starting items for each character
+  for (const char of project.characters) {
+    if (!char.varName) continue;
+    const charPath = `$${char.varName}`;
+    // Paperdoll default equipment: set slot variables from defaultItemVarName
+    if (char.paperdoll?.slots?.length) {
+      for (const pdSlot of char.paperdoll.slots) {
+        if (pdSlot.defaultItemVarName) {
+          inits.push(`<<set ${charPath}.equipment.${pdSlot.id} to "${pdSlot.defaultItemVarName}">>`);
+        }
+      }
+    }
+    if (!char.initialInventory?.length) continue;
+    for (const slot of char.initialInventory) {
+      const isDefaultEquipped = char.paperdoll?.slots?.some(
+        ps => ps.defaultItemVarName === slot.itemVarName
+      ) ?? false;
+      inits.push(`<<run ${charPath}.inventory.push({ item: "${slot.itemVarName}", qty: ${slot.quantity}, equipped: ${isDefaultEquipped} })>>`);
+    }
+  }
   if (inits.length > 0) {
     passages.push({
       pid: pid++, name: 'StoryInit', tags: '',
@@ -144,7 +167,7 @@ export function buildPassages(project: Project): {
   }
 
   // StoryCaption (sidebar panel)
-  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName);
+  const captionSC = buildStoryCaptionSC(sidebarPanel, variables, variableNodes, idToName, project.characters, project.items);
   if (captionSC) {
     passages.push({
       pid: pid++, name: 'StoryCaption', tags: '',
@@ -157,7 +180,7 @@ export function buildPassages(project: Project): {
 
   scenes.forEach((scene, idx) => {
     const body = scene.blocks
-      .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName))
+      .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName, project))
       .filter(Boolean)
       .join('\n');
     const scenePid = pid++;
@@ -173,21 +196,51 @@ export function buildPassages(project: Project): {
     });
   });
 
-  const charCSS   = buildCharacterCSS(characters);
-  const panelCSS  = buildPanelCSS(sidebarPanel);
-  const buttonCSS = buildButtonsCSS(scenes);
-  const tipCSS    = buildTooltipCSS();
-  const globalCSS = buildGlobalCSS(project.settings);
-  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS].filter(Boolean).join('\n\n');
+  // Hidden plugin passages ─ ref'd by scene plugin-blocks via <<include "__plug_id">>.
+  {
+    const rootIds = new Set<string>();
+    for (const scene of scenes) collectPluginIds(scene.blocks, rootIds);
+    const allIds = expandPluginDeps(rootIds, (id) => pluginById.get(id));
+    for (const id of allIds) {
+      const def = pluginById.get(id);
+      if (!def) continue;
+      const body = def.blocks
+        .map((b) => blockToSC(b, characters, variables, variableNodes, '', idToName, project))
+        .filter(Boolean)
+        .join('\n');
+      passages.push({
+        pid: pid++,
+        name: `__plug_${def.id}`,
+        tags: 'nobr',
+        content: body,
+        x: colW * 7,
+        y: 100 + rowH * passages.length,
+      });
+    }
+  }
+
+  const charCSS      = buildCharacterCSS(characters);
+  const panelCSS     = buildPanelCSS(sidebarPanel);
+  const buttonCSS    = buildButtonsCSS(scenes);
+  const tipCSS       = buildTooltipCSS();
+  const globalCSS    = buildGlobalCSS(project.settings);
+  const containerCSS = buildContainerCSS();
+  const paperdollCSS = buildPaperdollCSS(project);
+  const inventoryCSS = buildInventoryCSS(project);
+  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS, containerCSS, paperdollCSS, inventoryCSS].filter(Boolean).join('\n\n');
 
   const settingsScript = buildSettingsScript(project.settings);
   const scriptContent = [
     settingsScript,
+    buildDateTimeScript(),
     buildPanelScript(sidebarPanel),
     buildInputScript(scenes),
     buildLiveScript(scenes),
     buildWatcherScript(project.watchers ?? [], variables, variableNodes, idToName),
     buildAudioScript(scenes, project.settings?.audioUnlockText),
+    buildInventoryScript(project),
+    buildContainerScript(project),
+    buildPaperdollScript(project),
     buildPurlSignatureScript(),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load (audio + video)',
@@ -206,8 +259,8 @@ export function buildPassages(project: Project): {
 
 // ─── Standalone HTML generator ────────────────────────────────────────────────
 
-export function generateStandaloneHtml(project: Project, scTemplate: string): string {
-  const { passages, startPid, combinedCSS, scriptContent } = buildPassages(project);
+export function generateStandaloneHtml(project: Project, scTemplate: string, plugins: PluginBlockDef[] = []): string {
+  const { passages, startPid, combinedCSS, scriptContent } = buildPassages(project, plugins);
 
   const styleBlock  = `<style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css">${esc(combinedCSS)}</style>`;
   const scriptBlock = `<script role="script" id="twine-user-script" type="text/twine-javascript">${scriptContent}</script>`;
@@ -229,16 +282,16 @@ export function generateStandaloneHtml(project: Project, scTemplate: string): st
 
   let html = scTemplate;
 
-  html = html.replace(/\{\{STORY_DATA\}\}/g, storyDataElement);
-  html = html.replace(/\{\{STORY_NAME\}\}/g,           escAttr(project.title));
-  html = html.replace(/\{\{STORY_START\}\}/g,          String(startPid));
-  html = html.replace(/\{\{STORY_IFID\}\}/g,           project.ifid);
-  html = html.replace(/\{\{CREATOR_NAME\}\}/g,         'Purl');
-  html = html.replace(/\{\{CREATOR_VERSION\}\}/g,      '1.0.0');
-  html = html.replace(/\{\{STORY_FORMAT\}\}/g,         'SugarCube');
-  html = html.replace(/\{\{STORY_FORMAT_VERSION\}\}/g, '2.36.1');
-  html = html.replace(/\{\{STORY_ZOOM\}\}/g,           '1');
-  html = html.replace(/\{\{STORY_OPTIONS\}\}/g,        '');
+  html = html.replace(/\{\{STORY_DATA}}/g, storyDataElement);
+  html = html.replace(/\{\{STORY_NAME}}/g,           escAttr(project.title));
+  html = html.replace(/\{\{STORY_START}}/g,          String(startPid));
+  html = html.replace(/\{\{STORY_IFID}}/g,           project.ifid);
+  html = html.replace(/\{\{CREATOR_NAME}}/g,         'Purl');
+  html = html.replace(/\{\{CREATOR_VERSION}}/g,      '1.0.0');
+  html = html.replace(/\{\{STORY_FORMAT}}/g,         'SugarCube');
+  html = html.replace(/\{\{STORY_FORMAT_VERSION}}/g, '2.36.1');
+  html = html.replace(/\{\{STORY_ZOOM}}/g,           '1');
+  html = html.replace(/\{\{STORY_OPTIONS}}/g,        '');
 
   html = html.replace(
     /(<tw-storydata\b[^>]*?\bstartnode=")[^"]*"/,

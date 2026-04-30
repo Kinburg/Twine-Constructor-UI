@@ -34,7 +34,7 @@ export function SceneGroupModal({ mode, initial, takenNames, onSave, onClose }: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" />
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-80 flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">

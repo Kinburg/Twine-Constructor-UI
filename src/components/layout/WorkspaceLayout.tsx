@@ -49,7 +49,7 @@ export function WorkspaceLayout() {
             }
           }}
         >
-          <Panel id="main-panel" minSize={250} className="flex flex-col min-h-0">
+          <Panel id="main-panel" minSize={550} className="flex flex-col min-h-0">
             <SceneEditor />
           </Panel>
 

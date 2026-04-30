@@ -4,11 +4,13 @@ interface ElectronAPI {
 
   // Paths
   getProjectsDir(): Promise<string>;
+  getExampleWorkflowsDir(): Promise<string>;
 
   // Filesystem
   readFile(filePath: string): Promise<string>;
   readFileBinary(filePath: string): Promise<number[]>;
   writeFile(filePath: string, content: string): Promise<void>;
+  writeFileBinary(filePath: string, bytes: number[]): Promise<void>;
   copyFile(src: string, dest: string): Promise<void>;
   mkdir(dirPath: string): Promise<void>;
   exists(filePath: string): Promise<boolean>;
@@ -40,6 +42,20 @@ interface ElectronAPI {
 
   // Shell
   openPath(filePath: string): Promise<void>;
+
+  // HTTP proxy (main process)
+  httpRequest(req: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }): Promise<{ status: number; headers: Record<string, string>; text: string }>;
+  httpRequestBinary(req: {
+    url: string;
+    method?: string;
+    headers?: Record<string, string>;
+    body?: string;
+  }): Promise<{ status: number; headers: Record<string, string>; bytes: number[] }>;
 
   // Window controls (custom title bar)
   minimizeWindow(): Promise<void>;

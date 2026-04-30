@@ -19,7 +19,7 @@ export function useAutosave() {
       const { project, projectDir } = stateRef.current;
       if (!projectDir) return;
       try {
-        await fsApi.mkdir(joinPath(projectDir, 'assets'));
+        await fsApi.mkdir(joinPath(projectDir, 'release', 'assets'));
         const fileName = `${safeName(project.title)}.purl`;
         await fsApi.writeFile(joinPath(projectDir, fileName), JSON.stringify(project, null, 2));
       } catch (e) {

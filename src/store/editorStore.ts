@@ -21,6 +21,15 @@ interface EditorState {
   /** Whether the Editor Preferences modal is open. */
   editorPrefsOpen: boolean;
   setEditorPrefsOpen: (open: boolean) => void;
+
+  /** Whether the LLM Settings modal is open. */
+  llmSettingsOpen: boolean;
+  setLLMSettingsOpen: (open: boolean) => void;
+
+  /** Currently open plugin editor (null = closed). Either a plugin id (edit existing) or 'new' (create). */
+  pluginEditorTarget: string | null;
+  openPluginEditor: (id: string | 'new') => void;
+  closePluginEditor: () => void;
 }
 
 export const useEditorStore = create<EditorState>()((set) => ({
@@ -36,4 +45,11 @@ export const useEditorStore = create<EditorState>()((set) => ({
 
   editorPrefsOpen: false,
   setEditorPrefsOpen: (open) => set({ editorPrefsOpen: open }),
+
+  llmSettingsOpen: false,
+  setLLMSettingsOpen: (open) => set({ llmSettingsOpen: open }),
+
+  pluginEditorTarget: null,
+  openPluginEditor: (id) => set({ pluginEditorTarget: id }),
+  closePluginEditor: () => set({ pluginEditorTarget: null }),
 }));

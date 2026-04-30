@@ -209,7 +209,7 @@ function createSplashWindow() {
 function createWindow() {
   const iconPath = path.join(process.env.VITE_PUBLIC!, 'Icon.ico');
   const frameless = appConfig.titleBarStyle === 'custom';
-  const MIN = { minWidth: 900, minHeight: 600 };
+  const MIN = { minWidth: 1300, minHeight: 600 };
   const saved = appConfig.windowLayout?.main;
   const restored = saved ? relToBounds(saved, MIN) : null;
 
@@ -230,6 +230,20 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+  // win.webContents.openDevTools();
+
+  // Fix WebSocket handshake Origin for local services (e.g. ComfyUI).
+  // Electron renderer sends an Origin that ComfyUI doesn't recognise → 403.
+  // Rewrite Origin to match the target so the server accepts the upgrade.
+  win.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+    if (details.url.startsWith('ws://') || details.url.startsWith('wss://')) {
+      try {
+        const httpUrl = details.url.replace(/^ws(s?):/, 'http$1:');
+        details.requestHeaders['Origin'] = new URL(httpUrl).origin;
+      } catch { /* leave as-is */ }
+    }
+    callback({ requestHeaders: details.requestHeaders });
   });
 
   trackWindowBounds(win, 'main');
@@ -340,6 +354,11 @@ app.whenReady().then(async () => {
 // ─── IPC: filesystem ─────────────────────────────────────────────────────────
 
 ipcMain.handle('fs:getProjectsDir', () => PROJECTS_DIR);
+ipcMain.handle('fs:getExampleWorkflowsDir', () =>
+  VITE_DEV_SERVER_URL
+    ? path.join(process.env.APP_ROOT!, 'resources', 'example-workflows')
+    : path.join(process.resourcesPath, 'example-workflows')
+);
 
 ipcMain.handle('fs:readFile', async (_e, filePath: string) => {
   return fs.readFile(filePath, 'utf-8');
@@ -353,6 +372,11 @@ ipcMain.handle('fs:readFileBinary', async (_e, filePath: string) => {
 ipcMain.handle('fs:writeFile', async (_e, filePath: string, content: string) => {
   await fs.mkdir(path.dirname(filePath), { recursive: true });
   await fs.writeFile(filePath, content, 'utf-8');
+});
+
+ipcMain.handle('fs:writeFileBinary', async (_e, filePath: string, bytes: number[]) => {
+  await fs.mkdir(path.dirname(filePath), { recursive: true });
+  await fs.writeFile(filePath, Buffer.from(bytes));
 });
 
 ipcMain.handle('fs:copyFile', async (_e, src: string, dest: string) => {
@@ -422,6 +446,44 @@ ipcMain.handle('dialog:saveFile', async (_e, options: Electron.SaveDialogOptions
 
 ipcMain.handle('shell:openPath', async (_e, filePath: string) => {
   await shell.openPath(filePath);
+});
+
+// ─── IPC: HTTP proxy (for local services like ComfyUI) ───────────────────────
+
+ipcMain.handle('http:request', async (_e, req: {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+}) => {
+  const res = await fetch(req.url, {
+    method: req.method ?? 'GET',
+    headers: req.headers,
+    body: req.body,
+  });
+  const text = await res.text();
+  const headers: Record<string, string> = {};
+  res.headers.forEach((value, key) => { headers[key] = value; });
+  return { status: res.status, headers, text };
+});
+
+ipcMain.handle('http:requestBinary', async (_e, req: {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  body?: string;
+}) => {
+  // net.fetch handles custom Electron protocols (e.g. localfile://); native fetch does not
+  const fetcher = req.url.startsWith('localfile://') ? net.fetch : fetch;
+  const res = await fetcher(req.url, {
+    method: req.method ?? 'GET',
+    headers: req.headers,
+    body: req.body,
+  });
+  const buf = new Uint8Array(await res.arrayBuffer());
+  const headers: Record<string, string> = {};
+  res.headers.forEach((value, key) => { headers[key] = value; });
+  return { status: res.status, headers, bytes: Array.from(buf) };
 });
 
 // ─── IPC: window controls ─────────────────────────────────────────────────────

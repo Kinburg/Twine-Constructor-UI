@@ -3,6 +3,7 @@ import type { Variable, Asset, VariableTreeNode, Scene } from '../../types';
 import { useT } from '../../i18n';
 import { getVariablePath } from '../../utils/treeUtils';
 import { PickerTree } from './VariablePicker';
+import { isParamId } from '../../utils/pluginParamScope';
 
 type PanelType = 'var' | 'code';
 type TemplateType = 'tooltip' | 'expr' | 'cond' | 'link';
@@ -111,7 +112,7 @@ export function TextInsertToolbar({ targetRef, value, onChange, vars, imageAsset
           className="fixed z-[9999] bg-slate-800 border border-slate-600 rounded shadow-lg overflow-hidden"
           style={{ top: pos.top, left: pos.left, width: 260 }}
         >
-          {active === 'var' && <VarPanel vars={vars} variableNodes={variableNodes} onInsert={text => insertAtCursor(`$${text}`)} />}
+          {active === 'var' && <VarPanel vars={vars} variableNodes={variableNodes} onInsert={(path, prefix = '$') => insertAtCursor(`${prefix}${path}`)} />}
           {active === 'code' && !template && (
             <TemplateMenu onSelect={setTemplate} />
           )}
@@ -179,7 +180,7 @@ function PanelHeader({ label, onBack }: { label: string; onBack: () => void }) {
 
 // ─── Variable picker (hierarchical tree) ─────────────────────────────────────
 
-function VarPanel({ vars, variableNodes, onInsert }: { vars: Variable[]; variableNodes?: VariableTreeNode[]; onInsert: (name: string) => void }) {
+function VarPanel({ vars, variableNodes, onInsert }: { vars: Variable[]; variableNodes?: VariableTreeNode[]; onInsert: (path: string, prefix?: string) => void }) {
   const [filter, setFilter] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const filterRef = useRef<HTMLInputElement>(null);
@@ -196,7 +197,9 @@ function VarPanel({ vars, variableNodes, onInsert }: { vars: Variable[]; variabl
 
   const handleSelect = (id: string) => {
     const path = variableNodes ? getVariablePath(id, variableNodes) : (vars.find(v => v.id === id)?.name ?? '???');
-    onInsert(path);
+    // Plugin param virtual nodes use _ prefix (temp vars), project vars use $
+    const prefix = isParamId(id) ? '_' : '$';
+    onInsert(path, prefix);
   };
 
   return (
@@ -325,7 +328,8 @@ function ExprPanel({ vars, variableNodes, onInsert, onBack }: { vars: Variable[]
   const insertVarById = (id: string) => {
     const el = inputRef.current;
     const path = variableNodes ? getVariablePath(id, variableNodes) : (vars.find(v => v.id === id)?.name ?? '???');
-    const varText = `$${path}`;
+    const prefix = isParamId(id) ? '_' : '$';
+    const varText = `${prefix}${path}`;
     if (el) {
       const start = el.selectionStart ?? expr.length;
       const end = el.selectionEnd ?? expr.length;
@@ -524,8 +528,9 @@ function CondPanel({ vars, variableNodes, onInsert, onBack }: { vars: Variable[]
   const insert = () => {
     if (!selectedVar || !ifTrue.trim()) return;
     const path = variableNodes ? getVariablePath(selectedVar.id, variableNodes) : selectedVar.name;
-    const varName = `$${path}`;
-    const isRef = condValue.startsWith('$');
+    const prefix = isParamId(selectedVar.id) ? '_' : '$';
+    const varName = `${prefix}${path}`;
+    const isRef = condValue.startsWith('$') || condValue.startsWith('_');
     const isNum = selectedVar.varType === 'number' && !isNaN(Number(condValue));
     const val = (!isRef && !isNum) ? `"${condValue}"` : condValue;
 
@@ -549,7 +554,7 @@ function CondPanel({ vars, variableNodes, onInsert, onBack }: { vars: Variable[]
             className="flex-1 min-w-0 bg-slate-900 text-xs text-white rounded px-2 py-1 border border-slate-600 cursor-pointer text-left truncate"
             onClick={() => pickerOpen ? setPickerOpen(false) : openPicker()}
           >
-            {selectedPath ? <span className="font-mono">${selectedPath}</span> : <span className="text-slate-500">— {t.insertToolbar.condVariable} —</span>}
+            {selectedPath ? <span className="font-mono">{isParamId(varId) ? '_' : '$'}{selectedPath}</span> : <span className="text-slate-500">— {t.insertToolbar.condVariable} —</span>}
           </button>
           <select
             className="bg-slate-900 text-xs text-white px-1 py-1 rounded border border-slate-600 outline-none cursor-pointer"

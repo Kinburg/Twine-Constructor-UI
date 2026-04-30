@@ -20,6 +20,7 @@ import { SceneModal } from './SceneModal';
 import { SYSTEM_TAGS, SYSTEM_TAG_COLORS, START_TAG, START_TAG_COLOR } from '../../types';
 import type { Block, SystemTag } from '../../types';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 export function SceneEditor() {
   const { project, activeSceneId, reorderBlocks, updateSceneSettings } = useProjectStore();
   const t = useT();
@@ -79,7 +80,7 @@ export function SceneEditor() {
       )}
 
       {/* Scene header */}
-      <div className="scene-header px-4 py-2 bg-slate-800/50 border-b border-slate-700 flex items-center gap-3 shrink-0">
+      <div className="scene-header px-4 bg-slate-800/50 border-b border-slate-700 flex items-center gap-3 shrink-0 h-9">
         <div className="flex items-center gap-2">
           <span className="text-xs text-slate-400">{t.scene.label}</span>
           <span className="text-sm font-semibold text-white">{scene.name}</span>
@@ -108,22 +109,35 @@ export function SceneEditor() {
               : <span className="text-slate-600 italic text-xs">{t.scene.noTags}</span>
             }
           </div>
-          {scene.blocks.length > 0 && (
-            <button
-              className="text-slate-500 hover:text-indigo-300 transition-colors cursor-pointer text-sm shrink-0 ml-1"
-              title={allCollapsed ? t.scene.expandAll : t.scene.collapseAll}
-              onClick={toggleAll}
-            >
-              {allCollapsed ? '▸' : '▾'}
-            </button>
-          )}
           <button
             className="text-slate-500 hover:text-indigo-300 transition-colors cursor-pointer text-sm shrink-0 ml-1"
             title={t.scene.editTagsTitle}
             onClick={() => setSettingsOpen(true)}
           >
-            ⚙
+            <EmojiIcon name="cog" size={20} />
           </button>
+          {scene.blocks.length > 0 && (
+            <button
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs text-slate-300 bg-slate-700/50 hover:bg-slate-700 hover:text-white border border-slate-600/60 hover:border-slate-500 transition-colors cursor-pointer shrink-0 ml-1"
+              title={allCollapsed ? t.scene.expandAll : t.scene.collapseAll}
+              onClick={toggleAll}
+            >
+              {allCollapsed ? (
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m7 15 5 5 5-5"/>
+                  <path d="m7 9 5-5 5 5"/>
+                </svg>
+              ) : (
+                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor"
+                  strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m7 20 5-5 5 5"/>
+                  <path d="m7 4 5 5 5-5"/>
+                </svg>
+              )}
+              <span>{allCollapsed ? t.scene.expandAll : t.scene.collapseAll}</span>
+            </button>
+          )}
         </div>
       </div>
 

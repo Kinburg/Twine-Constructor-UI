@@ -1,6 +1,7 @@
 import { useMemo, useState, useCallback } from 'react';
 import { useProjectStore } from '../../store/projectStore';
-import { blockToSC } from '../../utils/exportToTwee';
+import { usePluginStore } from '../../store/pluginStore';
+import { blockToSC, setPluginRegistry } from '../../utils/exportToTwee';
 import { flattenVariables } from '../../utils/treeUtils';
 
 // ── Syntax highlighting (ported from preview.html) ──────────────────────────
@@ -87,17 +88,19 @@ function highlight(code: string): string {
 export function PreviewPanel() {
   const project       = useProjectStore(s => s.project);
   const activeSceneId = useProjectStore(s => s.activeSceneId);
+  const plugins       = usePluginStore(s => s.plugins);
   const [copied, setCopied] = useState(false);
 
   const { code, sceneName } = useMemo(() => {
     const scene = project.scenes.find(s => s.id === activeSceneId);
     if (!scene) return { code: '', sceneName: '' };
 
+    setPluginRegistry(plugins);
     const vars = flattenVariables(project.variableNodes);
     const idToName = new Map(project.scenes.map(s => [s.id, s.name]));
     const tags = scene.tags.length > 0 ? ` [${scene.tags.join(' ')}]` : '';
     const body = scene.blocks
-      .map(b => blockToSC(b, project.characters, vars, project.variableNodes, '', idToName))
+      .map(b => blockToSC(b, project.characters, vars, project.variableNodes, '', idToName, project))
       .filter(Boolean)
       .join('\n');
 
@@ -105,7 +108,7 @@ export function PreviewPanel() {
       code: `::${scene.name}${tags}\n${body || '(empty scene)'}`,
       sceneName: scene.name,
     };
-  }, [project, activeSceneId]);
+  }, [project, activeSceneId, plugins]);
 
   const highlighted = useMemo(() => highlight(code), [code]);
 
@@ -120,7 +123,7 @@ export function PreviewPanel() {
   return (
     <div className="flex flex-col h-full bg-[#1e1e2e] text-[#cdd6f4]">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#181825] border-b border-[#313244] shrink-0 select-none">
+      <div className="flex items-center gap-2 px-3 py-1.5 bg-[#181825] border-b border-[#313244] shrink-0 select-none h-9">
         <span className="text-sm opacity-60">&#128196;</span>
         <span className="text-[11px] text-[#6c7086] flex-1 truncate">
           {sceneName || 'Code Preview'}

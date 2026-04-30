@@ -78,7 +78,7 @@ export function SceneModal({ mode, initial, takenNames, onSave, onClose, sceneId
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/60" />
 
       {/* Modal */}
       <div className="relative bg-slate-800 border border-slate-600 rounded-lg shadow-2xl w-96 flex flex-col max-h-[90vh]">

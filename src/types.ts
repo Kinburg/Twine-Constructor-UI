@@ -15,6 +15,14 @@ export interface BlockTypewriter {
   speed: number;  // ms per character (e.g. 40)
 }
 
+// ─── Generation history ──────────────────────────────────────────────────────
+
+export interface GenerationHistoryEntry {
+  text: string;
+  mode: 'continue' | 'rephrase' | 'hint';
+  timestamp: number;
+}
+
 // ─── Block types ────────────────────────────────────────────────────────────
 
 export interface TextBlock {
@@ -24,6 +32,7 @@ export interface TextBlock {
   live?: boolean;          // wrap in <<live 200>> on export for auto-refresh
   delay?: BlockDelay;
   typewriter?: BlockTypewriter;
+  generationHistory?: GenerationHistoryEntry[];
 }
 
 export interface DialogueBlock {
@@ -37,13 +46,22 @@ export interface DialogueBlock {
   innerBlocks?: Block[];      // blocks rendered inside the dialogue bubble after the text
   delay?: BlockDelay;
   typewriter?: BlockTypewriter;
+  generationHistory?: GenerationHistoryEntry[];
 }
 
 export interface ChoiceOption {
   id: string;
   label: string;
   targetSceneId: string;
-  condition: string; // SugarCube expression, empty = always shown
+  condition: string; // legacy free-text SugarCube expression (kept for backward compat)
+  // ── Structured condition (mirrors ConditionBranch) ──────────────────────────
+  conditionVariableId?: string;
+  conditionOperator?: ConditionOperator;
+  conditionValue?: string;
+  /** Range mode: generates `$var >= rangeMin && $var <= rangeMax` (numbers only) */
+  conditionRangeMode?: boolean;
+  conditionRangeMin?: string;
+  conditionRangeMax?: string;
 }
 
 export interface ChoiceBlock {
@@ -172,6 +190,54 @@ export interface ImageBlock {
   variableId?: string;
   mapping?: ImageBoundMapping[];
   defaultSrc?: string;   // fallback when no mapping matches
+}
+
+export interface ImageGenHistoryEntry {
+  id: string;
+  src: string;          // relative path in assets/
+  prompt: string;
+  seed?: number;
+  createdAt: number;
+  provider: string;
+}
+
+export type ImageGenPromptMode = 'manual' | 'llm';
+export type ImageGenProvider = 'comfyui' | 'pollinations';
+export type ImageGenSeedMode = 'manual' | 'random';
+
+export interface ImageGenBlock {
+  id: string;
+  type: 'image-gen';
+  delay?: BlockDelay;
+  provider: ImageGenProvider;
+  providerUrl?: string;              // legacy per-block URL; provider/URL now set globally in AI Settings
+  workflowFile: string;             // project-relative path to workflow JSON (ComfyUI only)
+  pollinationsModel?: string;        // legacy; now set globally in AI Settings
+  pollinationsToken?: string;        // legacy; now set globally in AI Settings
+  promptMode: ImageGenPromptMode;
+  llmPromptMode?: 'hint' | 'rephrase' | 'continue'; // which LLM sub-mode to use when promptMode === 'llm'
+  prompt: string;
+  negativePrompt?: string;
+  styleHints?: string[];            // art style tags appended to prompt at generation time
+  seedMode: ImageGenSeedMode;
+  seed?: number;
+  width: number;                    // 0 = auto (display width in HTML output)
+  genWidth?: number;                // generation resolution width, 0 = auto
+  genHeight?: number;               // generation resolution height, 0 = auto
+  alt: string;
+  src: string;                      // currently selected generated image (relative path)
+  approvedHistoryId?: string;       // id of the history entry that was approved and copied to assets
+  lastApprovedDir?: string;         // last folder used when approving (relative to release/), e.g. "assets/chars"
+  history?: ImageGenHistoryEntry[]; // previous generations for this block
+  // ── Bound mode (image changes based on a variable's value) ────────────
+  mode?: ImageMode;
+  variableId?: string;
+  mapping?: ImageBoundMapping[];
+  defaultSrc?: string;              // fallback when no mapping matches
+  /** Per-slot AI generation settings (one slot per mapping entry + default) — used in bound mode */
+  genSettings?: AvatarGenSettings;
+  /** When true (bound + ComfyUI), pass the default-slot image as ${base64Image} into variant generations. */
+  useRefImage?: boolean;
 }
 
 export interface VideoBlock {
@@ -330,6 +396,24 @@ export interface TableBlock {
   delay?: BlockDelay;
 }
 
+/** Displays a character's paperdoll (equipment grid) as a standalone scene block. */
+export interface PaperdollBlock {
+  id: string;
+  type: 'paperdoll';
+  charId: string;
+  showLabels?: boolean;
+  delay?: BlockDelay;
+}
+
+/** Displays a character's inventory (grid + detail panel + category filters) as a standalone scene block. */
+export interface InventoryBlock {
+  id: string;
+  type: 'inventory';
+  charId: string;
+  title?: string;
+  delay?: BlockDelay;
+}
+
 /**
  * Includes another passage/scene via <<include "PassageName">>.
  * Optionally wraps the result in a styled <div>.
@@ -450,6 +534,31 @@ export interface FunctionBlock {
   delay?: BlockDelay;
 }
 
+/** Renders a container (shop/chest/loot) in a passage */
+export interface ContainerBlock {
+  id: string;
+  type: 'container';
+  containerId: string;   // ContainerDefinition.id
+  charId?: string;       // character who is the buyer/receiver (deprecated; use main hero instead)
+  title?: string;
+  delay?: BlockDelay;
+}
+
+/**
+ * Invisible block that modifies a date/time variable.
+ */
+export interface TimeManipulationBlock {
+  id: string;
+  type: 'time-manipulation';
+  variableId: string;
+  years: number;
+  months: number;
+  days: number;
+  hours: number;
+  minutes: number;
+  delay?: BlockDelay;
+}
+
 export type Block =
   | TextBlock
   | DialogueBlock
@@ -457,6 +566,7 @@ export type Block =
   | ConditionBlock
   | VariableSetBlock
   | ImageBlock
+  | ImageGenBlock
   | VideoBlock
   | ButtonBlock
   | LinkBlock
@@ -464,15 +574,56 @@ export type Block =
   | RawBlock
   | NoteBlock
   | TableBlock
+  | PaperdollBlock
+  | InventoryBlock
   | IncludeBlock
   | DividerBlock
   | CheckboxBlock
   | RadioBlock
   | FunctionBlock
   | PopupBlock
-  | AudioBlock;
+  | AudioBlock
+  | ContainerBlock
+  | TimeManipulationBlock
+  | PluginBlock;
 
 export type BlockType = Block['type'];
+
+// ─── Plugin (custom block) types ─────────────────────────────────────────────
+
+/** Instance of a custom plugin block inside a scene. */
+export interface PluginBlock {
+  id: string;
+  type: 'plugin';
+  pluginId: string;                     // ref to PluginBlockDef.id (= filename slug)
+  values: Record<string, string>;       // param key → value string
+  delay?: BlockDelay;
+}
+
+export type PluginParamKind =
+  | 'text' | 'number' | 'bool' | 'array' | 'datetime' | 'object' | 'scene';
+
+export interface PluginParam {
+  key: string;                          // [a-zA-Z_][a-zA-Z0-9_]* — used as SugarCube `_key` temp-var
+  label: string;
+  kind: PluginParamKind;
+  default?: string;
+  /** For `object` kind: the id of the project variable-group whose fields are exposed
+   *  as navigable sub-variables inside the plugin body editor. */
+  typeGroupId?: string;
+}
+
+/** Definition of a reusable plugin block (stored as JSON on disk). */
+export interface PluginBlockDef {
+  id: string;                           // slug, matches filename ("hp-bar")
+  name: string;                         // display name
+  color: string;                        // #hex, card + instance border tint
+  icon?: string;                        // emoji, default '🧩'
+  description?: string;
+  version?: string;                     // default "1.0.0"
+  params: PluginParam[];
+  blocks: Block[];                      // plugin body — rendered as hidden passage
+}
 
 // ─── Scene ──────────────────────────────────────────────────────────────────
 
@@ -512,6 +663,54 @@ export interface CharacterVarIds {
   nameColorVarId: string;   // $prefix_nameColor variable id
   avatarVarId: string;      // $prefix_avatar variable id (URL string, empty = hidden)
   textColorVarId?: string;  // $prefix_textColor variable id (added in v1.7)
+  llmDescrVarId?: string;   // $prefix_llm_descr variable id (added in v1.8)
+  llmTemperatureVarId?: string; // $prefix_llm_temperature variable id
+  inventoryVarId?: string;  // $chars.{name}.inventory array variable id
+  moneyVarId?: string;      // $chars.{name}.money number variable id
+  equipmentGroupId?: string; // $chars.{name}.equipment VariableGroup id
+}
+
+// ─── Paperdoll ───────────────────────────────────────────────────────────────
+
+/**
+ * Config for the image shown in an empty paperdoll slot.
+ * mode 'static' — fixed image path.
+ * mode 'bound'  — image chosen via if/elseif chain based on a character variable.
+ */
+export interface SlotPlaceholderConfig {
+  mode: 'static' | 'bound';
+  /** Static image path, or default fallback image for bound mode */
+  src: string;
+  /** Which character variable drives the image (bound mode) */
+  variableId: string;
+  /** if/elseif mapping entries (bound mode) */
+  mapping: ImageBoundMapping[];
+  /** Fallback image when no mapping matches (bound mode) */
+  defaultSrc: string;
+  /** AI generation settings (reuses AvatarGenSettings infrastructure) */
+  genSettings?: AvatarGenSettings;
+}
+
+/** One named slot in a paperdoll grid (e.g. head, chest, weapon) */
+export interface PaperdollSlot {
+  id: string;                   // used as key in $chars.hero.equipment and as variable name
+  label: string;                // display name shown in editor, e.g. "Head"
+  row: number;                  // grid row (1-based)
+  col: number;                  // grid column (1-based)
+  defaultItemVarName?: string;  // item varName that starts equipped in this slot
+  clickable?: boolean;          // whether clicking this slot unequips the item at runtime
+  /** @deprecated use placeholder instead */
+  placeholderIcon?: string;
+  /** Config for the image shown when this slot is empty */
+  placeholder?: SlotPlaceholderConfig;
+}
+
+/** Paperdoll layout config attached to a Character */
+export interface PaperdollConfig {
+  slots: PaperdollSlot[];
+  gridCols: number;   // total columns in grid (default 3)
+  gridRows: number;   // total rows in grid (default 4)
+  cellSize: number;   // px per cell (default 64)
 }
 
 export type AvatarMode = 'static' | 'bound';
@@ -528,26 +727,188 @@ export interface AvatarConfig {
   variableId: string;       // which variable drives the image (bound mode)
   mapping: ImageBoundMapping[];
   defaultSrc: string;       // fallback image when no mapping matches (bound mode)
+  genSettings?: AvatarGenSettings; // optional generation settings (persisted across sessions)
+}
+
+export interface AvatarGenHistoryEntry {
+  id: string;
+  src: string;       // relative path under history/
+  prompt: string;
+  seed: number;
+  createdAt: number;
+}
+
+export interface AvatarGenSlotData {
+  slotId: string;           // mapping.id | 'static' | 'default'
+  prompt: string;
+  negativePrompt?: string;
+  hint?: string;            // short hint for variant slots (emotion/state), used with reference prompt
+  history: AvatarGenHistoryEntry[];
+  currentSrc: string;       // currently selected path (history/ or assets/)
+}
+
+export interface AvatarGenSettings {
+  provider: 'comfyui' | 'pollinations';  // legacy; provider now set globally in AI Settings
+  providerUrl?: string;                  // legacy; URL now set globally in AI Settings
+  workflowFile?: string;
+  pollinationsModel?: string;            // legacy; now set globally in AI Settings
+  pollinationsToken?: string;            // legacy; now set globally in AI Settings
+  genWidth?: number;
+  genHeight?: number;
+  styleHints?: string[];  // shared art style tags for all slots
+  useRefImage?: boolean;  // pass default slot image as ${base64Image} to ComfyUI workflow
+  lockedSeed?: number;    // fixed seed for all slot generations (undefined = random each time)
+  slots: AvatarGenSlotData[];
+}
+
+/** One item slot in a character's initial inventory */
+export interface CharacterInventorySlot {
+  id: string;
+  itemVarName: string;   // matches ItemDefinition.varName
+  quantity: number;      // initial quantity (default 1)
+  equipped: boolean;     // initial equipped state (only meaningful for wearable)
 }
 
 export interface Character {
   id: string;
   name: string;
+  /** Explicit variable prefix (ASCII-only). Falls back to charToVarPrefix(name) when absent. */
+  varName?: string;
   nameColor: string;    // color for character name label
   textColor?: string;   // color for dialogue text body (added in v1.7)
   bgColor: string;      // dialogue box background
   borderColor: string;  // left border accent
+  /** LLM description for generating dialogue/text for this character. */
+  llm_descr?: string;
+  /** Per-character LLM temperature (0-2). undefined = use global setting. */
+  llm_temperature?: number;
   /** @deprecated Use avatarConfig instead. Kept for migration from pre-v1.4 saves. */
   avatarUrl?: string;
   /** Avatar settings (static URL or variable-bound). Added in v1.4. */
   avatarConfig?: AvatarConfig;
+  /** Items the character starts the story with. */
+  initialInventory?: CharacterInventorySlot[];
+  /** Paperdoll equipment slot configuration. */
+  paperdoll?: PaperdollConfig;
   /** Auto-created variable group. Absent on characters from old saves. */
   varIds?: CharacterVarIds;
+  /** Marks this character as the main hero (used automatically in container interactions). */
+  isHero?: boolean;
+}
+
+// ─── Item ────────────────────────────────────────────────────────────────────
+
+/** Determines how an item is used/equipped */
+export type ItemCategory = 'wearable' | 'consumable' | 'misc';
+
+/** How the item icon is sourced */
+export type ItemIconMode = 'static' | 'generated' | 'bound';
+
+/**
+ * Item icon config.
+ * mode 'static'    — fixed image path.
+ * mode 'generated' — AI-generated image.
+ * mode 'bound'     — image chosen via if/elseif chain based on one of the item's own variables.
+ */
+export interface ItemIconConfig {
+  mode: ItemIconMode;
+  /** Current image path (relative to project root) */
+  src: string;
+  /** Which variable drives the image (bound mode) — must be a variable from this item's own group */
+  variableId?: string;
+  /** if/elseif mapping entries (bound mode) */
+  mapping?: ImageBoundMapping[];
+  /** Fallback image when no mapping matches (bound mode) */
+  defaultSrc?: string;
+  /** AI generation settings (reuses AvatarGenSettings infrastructure) */
+  genSettings?: AvatarGenSettings;
+}
+
+/** A user-defined extra property on an item (e.g. damage, weight, duration) */
+export interface ItemCustomProp {
+  id: string;
+  name: string;
+  varType: 'number' | 'string' | 'boolean';
+  defaultValue: string;
+}
+
+/** References to auto-created VariableGroup nodes for an item */
+export interface ItemVarIds {
+  /** ID of the top-level 'items' VariableGroup in variableNodes */
+  itemsRootGroupId: string;
+  /** ID of this item's own VariableGroup (child of the root) */
+  groupId: string;
+  nameVarId: string;
+  iconVarId: string;
+  priceVarId: string;
+  descVarId: string;
+  stackableVarId: string;
+  /** Only present when category === 'wearable' */
+  slotVarId?: string;
+}
+
+/**
+ * A game item definition. Stored in Project.items[].
+ * Variables live in $items.{varName}.{field} via auto-created VariableGroup.
+ * Consumable items get an auto-created [func] scene for use-effects.
+ */
+export interface ItemDefinition {
+  id: string;
+  name: string;
+  /** Used as the SugarCube sub-group name: $items.{varName}.name */
+  varName: string;
+  category: ItemCategory;
+  stackable: boolean;
+  /** Paperdoll slot name this item occupies — only relevant for 'wearable' */
+  targetSlot?: string;
+  /** ID of the auto-created [func] scene for use-effects — only for 'consumable' */
+  useFuncSceneId?: string;
+  /** Short description shown in the item preview */
+  description?: string;
+  iconConfig: ItemIconConfig;
+  /** User-defined extra properties (become variables in the item's group) */
+  customProps: ItemCustomProp[];
+  varIds?: ItemVarIds;
+}
+
+// ─── Container ───────────────────────────────────────────────────────────────
+
+/** How the container behaves at runtime */
+export type ContainerMode = 'shop' | 'chest' | 'loot';
+
+/** One item slot in a container's initial stock */
+export interface ContainerItemSlot {
+  id: string;
+  itemVarName: string;   // matches ItemDefinition.varName
+  quantity: number;      // -1 = infinite
+  price?: number;        // override item's default price (shop mode)
+}
+
+export interface ContainerVarIds {
+  containersRootGroupId: string;
+  groupId: string;       // $containers.{varName} group id
+  itemsVarId: string;    // $containers.{varName}.items array variable id
+}
+
+/**
+ * A container entity (shop, chest, loot box).
+ * Variables live in $containers.{varName}.items via auto-created VariableGroup.
+ */
+export interface ContainerDefinition {
+  id: string;
+  name: string;
+  /** Used as SugarCube sub-group name: $containers.{varName} */
+  varName: string;
+  mode: ContainerMode;
+  initialItems: ContainerItemSlot[];
+  /** Optional background image path shown behind the container UI at runtime */
+  bgImage?: string;
+  varIds?: ContainerVarIds;
 }
 
 // ─── Variable ───────────────────────────────────────────────────────────────
 
-export type VariableType = 'number' | 'string' | 'boolean' | 'array';
+export type VariableType = 'number' | 'string' | 'boolean' | 'array' | 'datetime';
 
 export interface Variable {
   kind: 'variable';
@@ -658,6 +1019,35 @@ export interface CellImageBound {
   mapping: ImageBoundMapping[];
   defaultSrc: string;   // shown when no mapping matches
   objectFit: 'cover' | 'contain';
+  genSettings?: AvatarGenSettings; // optional AI generation settings (one slot per mapping entry + default)
+}
+
+/** Image cell with embedded AI generation. Fields mirror ImageGenBlock (minus block-level fields). */
+export interface CellImageGen {
+  type: 'image-gen';
+  promptMode: ImageGenPromptMode;
+  llmPromptMode?: 'hint' | 'rephrase' | 'continue';
+  prompt: string;
+  negativePrompt?: string;
+  styleHints?: string[];
+  seedMode: ImageGenSeedMode;
+  seed?: number;
+  genWidth?: number;
+  genHeight?: number;
+  workflowFile: string;
+  alt: string;
+  src: string;
+  width: number;
+  approvedHistoryId?: string;
+  lastApprovedDir?: string;
+  history?: ImageGenHistoryEntry[];
+}
+
+/** Image cell where src is taken directly from a variable value (no value→file mapping). */
+export interface CellImageFromVar {
+  type: 'image-from-var';
+  variableId: string;
+  objectFit: 'cover' | 'contain';
 }
 
 /** Raw SugarCube / HTML code inserted verbatim into the StoryCaption cell */
@@ -699,16 +1089,39 @@ export interface CellAudioVolume {
   showMuteButton: boolean;
 }
 
+export type DateTimeDisplayMode = 'text' | 'clock' | 'digital' | 'calendar' | 'clock-calendar' | 'digital-calendar';
+
+/** Displays a date/time variable with a custom format or graphical widget */
+export interface CellDateTime {
+  type: 'date-time';
+  variableId: string;
+  displayMode?: DateTimeDisplayMode;
+  format: string;     // e.g. "DD.MM.YYYY HH:mm", only used when displayMode === 'text'
+  prefix?: string;
+  suffix?: string;
+}
+
+/** Displays a character's paperdoll (equipment grid) in a sidebar panel cell */
+export interface CellPaperdoll {
+  type: 'paperdoll';
+  charId: string;
+  showLabels?: boolean;
+}
+
 export type CellContent =
   | CellText
   | CellVariable
   | CellProgress
   | CellImageStatic
   | CellImageBound
+  | CellImageGen
+  | CellImageFromVar
   | CellRaw
   | CellButton
   | CellList
-  | CellAudioVolume;
+  | CellAudioVolume
+  | CellDateTime
+  | CellPaperdoll;
 
 export interface SidebarCell {
   id: string;
@@ -769,10 +1182,16 @@ export interface Project {
   ifid: string;
   author?: string;
   description?: string;
+  /** Story lore/context for LLM generation. */
+  lore?: string;
   settings: ProjectSettings;
   scenes: Scene[];
   sceneGroups: SceneGroup[];
   characters: Character[];
+  /** Item definitions — variables stored under $items.{varName} */
+  items: ItemDefinition[];
+  /** Container definitions (shops, chests, loot) — $containers.{varName}.items */
+  containers: ContainerDefinition[];
   variableNodes: VariableTreeNode[];
   assetNodes: AssetTreeNode[];
   sidebarPanel: SidebarPanel;

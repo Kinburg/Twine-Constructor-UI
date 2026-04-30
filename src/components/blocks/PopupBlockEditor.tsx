@@ -6,12 +6,15 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 export function PopupBlockEditor({
   block,
   sceneId,
+  onUpdate,
 }: {
   block: PopupBlock;
   sceneId: string;
+  onUpdate?: (patch: Partial<PopupBlock>) => void;
 }) {
   const t = useT();
   const { project, updateBlock } = useProjectStore();
+  const update = onUpdate ?? ((p: Partial<PopupBlock>) => updateBlock(sceneId, block.id, p));
 
   const popupScenes = project.scenes.filter(
     s => s.id !== sceneId && s.tags.includes('popup'),
@@ -29,7 +32,7 @@ export function PopupBlockEditor({
             <select
               className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none cursor-pointer"
               value={block.targetSceneId}
-              onChange={e => updateBlock(sceneId, block.id, { targetSceneId: e.target.value })}
+              onChange={e => update({ targetSceneId: e.target.value })}
             >
               <option value="">— select —</option>
               {popupScenes.map(s => (
@@ -45,14 +48,14 @@ export function PopupBlockEditor({
             className="flex-1 bg-slate-800 text-xs text-white rounded px-2 py-1 border border-slate-600 focus:border-indigo-500 outline-none"
             placeholder={t.popupBlock.titlePlaceholder}
             value={block.title ?? ''}
-            onChange={e => updateBlock(sceneId, block.id, { title: e.target.value })}
+            onChange={e => update({ title: e.target.value })}
           />
         </div>
       </div>
 
       <BlockEffectsPanel
         delay={block.delay}
-        onDelayChange={v => updateBlock(sceneId, block.id, { delay: v })}
+        onDelayChange={v => update({ delay: v })}
       />
     </div>
   );

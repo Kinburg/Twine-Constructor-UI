@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { BlockType } from '../types';
+import type { LLMProvider } from '../utils/llm';
 
 // ── Panel layout (single-window split panels) ──────────────────────────────
 
@@ -56,6 +57,34 @@ export interface EditorPrefs {
   panelLayout: PanelLayout;
   panelPresets: PanelLayoutPreset[];       // user-defined presets
   activePanelPresetId: string | null;
+
+  // ── LLM ────────────────────────────────────────────────────────────────────
+  llmEnabled:          boolean;
+  llmProvider:         LLMProvider;
+  llmUrl:              string; // KoboldCPP URL
+  llmGeminiApiKey:     string; // Gemini API Key (separate from KoboldCPP URL)
+  llmGeminiModel:      string;
+  llmGeminiModelsList: string[]; // Cache for fetched Gemini models (model names)
+  llmOpenaiUrl:        string; // OpenAI-compatible endpoint URL
+  llmOpenaiApiKey:     string; // OpenAI-compatible API key
+  llmOpenaiModel:      string; // OpenAI-compatible model name
+  llmMaxTokens:        number;
+  llmTemperature:      number;
+  llmSystemPrompt:     string;
+  llmFilterThought:    boolean; // Filter <thought> blocks
+  llmGenerationHistory: 'memory' | 'project' | 'disabled';
+
+  // ── Image Generation ──────────────────────────────────────────────────────
+  /** Global default image generation provider. */
+  imageGenProvider: 'comfyui' | 'pollinations';
+  /** Global ComfyUI server URL. */
+  comfyUiUrl: string;
+  /** Global ComfyUI workflows folder. Empty = use comfyUI_workflows/ inside each project. */
+  comfyUiWorkflowsDir: string;
+  /** Global Pollinations model (empty = use default 'flux'). */
+  pollinationsModel: string;
+  /** Global Pollinations API token. */
+  pollinationsToken: string;
 }
 
 const DEFAULTS: EditorPrefs = {
@@ -81,6 +110,27 @@ const DEFAULTS: EditorPrefs = {
   panelLayout: { previewVisible: false, graphVisible: false, mainSizePct: 100, previewSizePct: 50 },
   panelPresets: [],
   activePanelPresetId: null,
+
+  llmEnabled:          false,
+  llmProvider:         'koboldcpp',
+  llmUrl:              'http://localhost:5001/api/v1/generate',
+  llmGeminiApiKey:     '',
+  llmGeminiModel:      'gemma-4-31b-it',
+  llmGeminiModelsList: [],
+  llmOpenaiUrl:        'https://api.openai.com/v1/chat/completions',
+  llmOpenaiApiKey:     '',
+  llmOpenaiModel:      'gpt-4o-mini',
+  llmMaxTokens:        200,
+  llmTemperature:      0.7,
+  llmSystemPrompt:     'You are a professional storyteller. Write a continuation of the story based on the context provided. Maintain the tone and style of the existing text.',
+  llmFilterThought:    true,
+  llmGenerationHistory: 'memory',
+
+  imageGenProvider:    'comfyui',
+  comfyUiUrl:          'http://127.0.0.1:8188',
+  comfyUiWorkflowsDir: '',
+  pollinationsModel:   '',
+  pollinationsToken:   '',
 };
 
 const MAX_RECENT = 5;
@@ -164,6 +214,21 @@ export const useEditorPrefsStore = create<EditorPrefsState>()(
         activePanelPresetId: s.activePanelPresetId === id ? null : s.activePanelPresetId,
       })),
     }),
-    { name: 'purl-editor-prefs' },
+    {
+      name: 'purl-editor-prefs',
+      onRehydrateStorage: () => (state) => {
+        // Migration: move Gemini API key from llmUrl to llmGeminiApiKey
+        if (
+          state &&
+          !state.llmGeminiApiKey &&
+          state.llmUrl &&
+          state.llmUrl !== 'http://localhost:5001/api/v1/generate' &&
+          !state.llmUrl.startsWith('http')
+        ) {
+          state.llmGeminiApiKey = state.llmUrl;
+          state.llmUrl = 'http://localhost:5001/api/v1/generate';
+        }
+      },
+    },
   ),
 );

@@ -8,7 +8,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useProjectStore } from '../../store/projectStore';
 import { useT } from '../../i18n';
-import { joinPath, toLocalFileUrl } from '../../lib/fsApi';
+import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import type {
   DialogueBlock, Block,
   TextBlock, VariableSetBlock, ImageBlock,
@@ -24,7 +24,10 @@ import { TableBlockEditor } from './TableBlockEditor';
 import { NoteBlockEditor } from './NoteBlockEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { TextInsertToolbar } from '../shared/TextInsertToolbar';
+import { LLMGenerateButton } from '../shared/LLMGenerateButton';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
+import { useVariableNodes } from '../shared/VariableScope';
+import { EmojiIcon } from '../shared/EmojiIcons';
 
 /**
  * Converts an avatar src value to a URL the editor renderer can actually load:
@@ -41,7 +44,7 @@ function resolveEditorSrc(src: string, projectDir: string | null): string {
     return src;
   }
   if (projectDir) {
-    return toLocalFileUrl(joinPath(projectDir, src));
+    return toLocalFileUrl(resolveAssetPath(projectDir, src));
   }
   return ''; // can't resolve local path without projectDir
 }
@@ -131,7 +134,7 @@ function SortableInnerBlock({
         onClick={onDelete}
         title="Delete"
       >
-        ✕
+        <EmojiIcon name="close" size={20} />
       </button>
     </div>
   );
@@ -216,9 +219,10 @@ export function DialogueBlockEditor({
 }) {
   const { project, projectDir, updateBlock, saveSnapshot } = useProjectStore();
   const t = useT();
+  const variableNodes = useVariableNodes();
   const update = onUpdate ?? ((p: Partial<DialogueBlock>) => updateBlock(sceneId, block.id, p as never));
   const { characters } = project;
-  const vars = flattenVariables(project.variableNodes);
+  const vars = flattenVariables(variableNodes);
   const imgAssets = flattenAssets(project.assetNodes).filter(a => a.assetType === 'image');
   const dialogueRef = useRef<HTMLTextAreaElement>(null);
 
@@ -344,12 +348,12 @@ export function DialogueBlockEditor({
             className="w-10 h-10 rounded flex-shrink-0 bg-slate-700 flex items-center justify-center text-slate-500 text-xs"
             title={t.dialogueBlock.dynamicAvatarTitle}
           >
-            📊
+            <EmojiIcon name="chart" size={20} />
           </div>
         )}
         {showNoAvatar && (
           <div className="w-10 h-10 rounded flex-shrink-0 bg-slate-700 flex items-center justify-center text-slate-500 text-xs">
-            👤
+            <EmojiIcon name="person" size={20} />
           </div>
         )}
 
@@ -360,20 +364,27 @@ export function DialogueBlockEditor({
               {selectedChar.name}{block.nameSuffix ? ` (${block.nameSuffix})` : ''}
             </span>
           )}
-          <div className={`absolute top-0.5 z-10 ${isRight ? 'left-0.5' : 'right-0.5'}`}>
+          <div className={`absolute top-0.5 z-10 flex gap-0.5 ${isRight ? 'left-0.5' : 'right-0.5'}`}>
+            <LLMGenerateButton
+              sceneId={sceneId}
+              blockId={block.id}
+              currentValue={block.text}
+              onGenerated={text => update({ text })}
+              onStreaming={text => update({ text })}
+            />
             <TextInsertToolbar
               targetRef={dialogueRef}
               value={block.text}
               onChange={text => update({ text })}
               vars={vars}
               imageAssets={imgAssets}
-              variableNodes={project.variableNodes}
+              variableNodes={variableNodes}
               scenes={project.scenes}
             />
           </div>
           <textarea
             ref={dialogueRef}
-            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-24' : 'pr-24'}`}
+            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-20' : 'pr-20'}`}
             style={{ color: selectedChar ? (selectedChar.textColor ?? '#e2e8f0') : undefined }}
             placeholder={t.dialogueBlock.linePlaceholder}
             value={block.text}

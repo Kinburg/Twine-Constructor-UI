@@ -1,22 +1,12 @@
 import { useState } from 'react';
-import { useProjectStore } from '../../store/projectStore';
+import { useProjectStore, charToVarPrefix } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
-import type { Character, VariableTreeNode, VariableGroup } from '../../types';
+import type { Character } from '../../types';
 import { useT } from '../../i18n';
 import { CharacterModal } from './CharacterModal';
 import { useConfirm } from '../shared/ConfirmModal';
 
-function findGroupInTree(nodes: VariableTreeNode[], id: string): VariableGroup | null {
-  for (const n of nodes) {
-    if (n.kind === 'group' && n.id === id) return n;
-    if (n.kind === 'group') {
-      const found = findGroupInTree(n.children, id);
-      if (found) return found;
-    }
-  }
-  return null;
-}
-
+import { EmojiIcon } from '../shared/EmojiIcons';
 const DEFAULT_COLORS = [
   { nameColor: '#7dd3fc', bgColor: '#0c2340', borderColor: '#0ea5e9' },
   { nameColor: '#f9a8d4', bgColor: '#2d0a1e', borderColor: '#ec4899' },
@@ -51,7 +41,7 @@ type ModalState =
 
 export function CharacterManager() {
   const t = useT();
-  const { project, addCharacter, updateCharacter, deleteCharacter, addVariable, addVariableGroup } = useProjectStore();
+  const { project, addCharacter, updateCharacter, deleteCharacter } = useProjectStore();
   const { characters } = project;
   const [modalState, setModalState] = useState<ModalState>(null);
   const confirmDeleteCharacter = useEditorPrefsStore(s => s.confirmDeleteCharacter);
@@ -105,31 +95,12 @@ export function CharacterManager() {
           takenNames={characters
             .filter(c => modalState.mode !== 'edit' || c.id !== modalState.char.id)
             .map(c => c.name)}
-          onSave={(data, pendingNodes: VariableTreeNode[]) => {
+          takenVarNames={characters
+            .filter(c => modalState.mode !== 'edit' || c.id !== modalState.char.id)
+            .map(c => c.varName || charToVarPrefix(c.name))}
+          onSave={(data, pendingNodes, pregenVarIds) => {
             if (modalState.mode === 'create') {
-              const newId = addCharacter(data);
-              if (pendingNodes.length > 0) {
-                const newChar = useProjectStore.getState().project.characters.find(c => c.id === newId);
-                const groupId = newChar?.varIds?.groupId ?? null;
-                const addNodesRecursive = (nodes: VariableTreeNode[], parentId: string | null) => {
-                  for (const n of nodes) {
-                    if (n.kind === 'variable') {
-                      addVariable(parentId, { name: n.name, varType: n.varType, defaultValue: n.defaultValue, description: n.description });
-                    } else {
-                      addVariableGroup(parentId, n.name);
-                      // Find the just-added group to get its store-generated ID
-                      const storeNodes = useProjectStore.getState().project.variableNodes;
-                      const parentGroup = parentId ? findGroupInTree(storeNodes, parentId) : null;
-                      const siblings = parentGroup ? parentGroup.children : storeNodes;
-                      const addedGroup = siblings.find(s => s.kind === 'group' && s.name === n.name);
-                      if (addedGroup && n.children.length > 0) {
-                        addNodesRecursive(n.children, addedGroup.id);
-                      }
-                    }
-                  }
-                };
-                addNodesRecursive(pendingNodes, groupId);
-              }
+              addCharacter(data, pregenVarIds ?? undefined, pendingNodes);
             } else {
               updateCharacter(modalState.char.id, data);
             }
@@ -154,13 +125,14 @@ function CharacterRow({
   const t = useT();
   return (
     <div
-      className="flex items-center gap-2 px-2 py-1.5 rounded border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer"
+      className={`flex items-center gap-2 px-2 py-1.5 rounded border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer${char.isHero ? ' ring-2 ring-amber-400' : ''}`}
       onClick={onEdit}
     >
       <div
         className="w-3 h-3 rounded-full shrink-0"
         style={{ background: char.borderColor }}
       />
+      {char.isHero && <span className="text-xs shrink-0 inline-flex"><EmojiIcon name="star" size={20} /></span>}
       <span className="flex-1 text-xs truncate" style={{ color: char.nameColor }}>
         {char.name || t.characters.noName}
       </span>
@@ -168,7 +140,7 @@ function CharacterRow({
         className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
         onClick={e => { e.stopPropagation(); onDelete(); }}
       >
-        🗑️
+        <EmojiIcon name="trash" size={20} />
       </button>
     </div>
   );

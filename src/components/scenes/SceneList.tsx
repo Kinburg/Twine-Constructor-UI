@@ -26,6 +26,7 @@ import { useConfirm } from '../shared/ConfirmModal';
 import { SceneModal } from './SceneModal';
 import { SceneGroupModal } from './SceneGroupModal';
 
+import { EmojiIcon } from '../shared/EmojiIcons';
 // ─── Shared scene row content ─────────────────────────────────────────────────
 
 type SceneRowProps = {
@@ -77,7 +78,7 @@ function SceneItemRow({
         title={hasNote ? `${t.scene.note}: ${scene.notes}` : t.scene.note}
         onClick={e => { e.stopPropagation(); onEdit(); }}
       >
-        📝
+        <EmojiIcon name="note" size={20} />
       </button>
 
       <button
@@ -94,7 +95,7 @@ function SceneItemRow({
           title={t.scene.delete}
           onClick={e => { e.stopPropagation(); onDelete(); }}
         >
-          🗑️
+          <EmojiIcon name="trash" size={20} />
         </button>
       )}
     </div>
@@ -193,7 +194,7 @@ function SceneGroupHeader({ group, onEdit, onDelete, onToggle }: {
         title={hasNote ? `${t.scene.note}: ${group.notes}` : t.scene.note}
         onClick={e => { e.stopPropagation(); onEdit(); }}
       >
-        📝
+        <EmojiIcon name="note" size={20} />
       </button>
 
       <button
@@ -201,7 +202,7 @@ function SceneGroupHeader({ group, onEdit, onDelete, onToggle }: {
         title={t.scene.groupEditTitle}
         onClick={e => { e.stopPropagation(); onEdit(); }}
       >
-        ⚙
+        <EmojiIcon name="cog" size={20} />
       </button>
 
       <button
@@ -209,7 +210,7 @@ function SceneGroupHeader({ group, onEdit, onDelete, onToggle }: {
         title={t.scene.delete}
         onClick={e => { e.stopPropagation(); onDelete(); }}
       >
-        🗑️
+        <EmojiIcon name="trash" size={20} />
       </button>
     </div>
   );
@@ -433,7 +434,7 @@ export function SceneList() {
       {/* Search */}
       <div className="relative mb-1">
         <span className="absolute left-2 top-1/2 -translate-y-1/2 text-slate-500 text-xs pointer-events-none select-none">
-          🔍
+          <EmojiIcon name="search" size={20} />
         </span>
         <input
           className="w-full bg-slate-800 text-white text-xs pl-7 pr-6 py-1.5 rounded border border-slate-600 outline-none focus:border-indigo-500 placeholder-slate-500 transition-colors"
@@ -447,7 +448,7 @@ export function SceneList() {
             onClick={() => setSearchQuery('')}
             title={t.header.clearSearch}
           >
-            ×
+            <EmojiIcon name="close" size={20} />
           </button>
         )}
       </div>

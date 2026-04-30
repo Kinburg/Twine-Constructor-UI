@@ -3,6 +3,7 @@ import { useProjectStore, flattenVariables } from '../../store/projectStore';
 import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
+import { EmojiIcon } from '../shared/EmojiIcons';
 import { ArrayAccessorInput } from '../blocks/ArrayAccessorInput';
 import { VarValueInput } from '../blocks/VarValueInput';
 import { VariablePicker } from '../shared/VariablePicker';
@@ -130,7 +131,7 @@ function ActionRow({
           className="text-slate-600 hover:text-red-400 transition-colors text-sm cursor-pointer shrink-0"
           onClick={onDelete}
         >
-          ✕
+          <EmojiIcon name="close" size={20} />
         </button>
       </div>
 
@@ -217,7 +218,7 @@ function WatcherCard({
           title={t.watchers.enabledLabel}
           onClick={e => { e.stopPropagation(); onUpdate({ enabled: !watcher.enabled }); }}
         >
-          ⚡
+          <EmojiIcon name="bolt" size={20} />
         </button>
 
         <span className="flex-1 text-xs text-slate-300 truncate font-mono">
@@ -233,7 +234,7 @@ function WatcherCard({
           className="text-slate-600 hover:text-red-400 text-xs cursor-pointer"
           onClick={e => { e.stopPropagation(); onDelete(); }}
         >
-          🗑️
+          <EmojiIcon name="trash" size={20} />
         </button>
         <span className="text-slate-500 text-xs">{expanded ? '▲' : '▼'}</span>
       </div>
