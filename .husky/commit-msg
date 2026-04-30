@@ -20,7 +20,7 @@ if ! echo "$commit_msg" | grep -qE "$pattern"; then
   echo "site: description -> no version change"
   echo "chore: description -> no version change"
   echo ""
-  echo "Your commit: $commit_msg"
+  echo "Your commit was: $commit_msg"
   echo ""
   exit 1
 fi
