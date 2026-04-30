@@ -23,7 +23,9 @@ jobs:
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
-          if [[ "$COMMIT_MSG" =~ ^feat(\(.+\))?: ]]; then
+          if [[ "$COMMIT_MSG" =~ ^Merge\  ]]; then
+            echo "bump=none" >> $GITHUB_OUTPUT
+          elif [[ "$COMMIT_MSG" =~ ^feat(\(.+\))?: ]]; then
             echo "bump=minor" >> $GITHUB_OUTPUT
           elif [[ "$COMMIT_MSG" =~ ^(update|fix)(\(.+\))?: ]]; then
             echo "bump=patch" >> $GITHUB_OUTPUT

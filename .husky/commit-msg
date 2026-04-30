@@ -1,8 +1,9 @@
 #!/bin/sh
 commit_msg=$(cat "$1")
 
-# Skip validation for automated bot commits from GitHub Actions
+# Skip validation for merge commits and automated bot commits
 case "$commit_msg" in
+  Merge\ *) exit 0 ;;
   chore:\ bump\ version\ to\ *) exit 0 ;;
 esac
 
