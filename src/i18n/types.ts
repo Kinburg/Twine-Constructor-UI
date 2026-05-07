@@ -1257,6 +1257,23 @@ export interface Translations {
 
     comfyUi: string;
     pollinationsAi: string;
+    translationLanguageLabel: string;
+    translationLanguagePlaceholder: string;
+    translationLanguageHint: string;
+  };
+
+  // ─── LLM Generate Button ─────────────────────────────────────────────────────
+  llmGenerateButton: {
+    continueGeneration: string;
+    rephraseImprove: string;
+    generateFromHint: string;
+    translateTo: (lang: string) => string;
+    prevGeneration: string;
+    nextGeneration: string;
+    stopGeneration: string;
+    aiTools: string;
+    generationStopped: string;
+    generateFailed: (provider: string) => string;
   };
 
   // ─── Project settings modal ──────────────────────────────────────────────────

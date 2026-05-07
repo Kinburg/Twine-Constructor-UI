@@ -1226,6 +1226,22 @@ const en: Translations = {
 
     comfyUi:                      'ComfyUI',
     pollinationsAi:               'Pollinations.AI (free)',
+    translationLanguageLabel:     'Translation Language',
+    translationLanguagePlaceholder: 'e.g. English, French, German…',
+    translationLanguageHint:      'Write the language name in English',
+  },
+
+  llmGenerateButton: {
+    continueGeneration:  'Continue generation',
+    rephraseImprove:     'Rephrase and improve',
+    generateFromHint:    'Generate from hint',
+    translateTo:         (lang) => `Translate to ${lang}`,
+    prevGeneration:      'Previous generation',
+    nextGeneration:      'Next generation',
+    stopGeneration:      'Stop generation',
+    aiTools:             'AI Generation Tools',
+    generationStopped:   'Generation stopped',
+    generateFailed:      (provider) => `Failed to generate text. Check your ${provider} settings and connection.`,
   },
 
   projectSettings: {

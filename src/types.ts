@@ -19,7 +19,7 @@ export interface BlockTypewriter {
 
 export interface GenerationHistoryEntry {
   text: string;
-  mode: 'continue' | 'rephrase' | 'hint';
+  mode: 'continue' | 'rephrase' | 'hint' | 'translate';
   timestamp: number;
 }
 
