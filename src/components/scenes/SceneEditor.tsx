@@ -71,7 +71,7 @@ export function SceneEditor() {
       {settingsOpen && (
         <SceneModal
           mode="edit"
-          initial={{ name: scene.name, tags: scene.tags, notes: scene.notes }}
+          initial={{ name: scene.name, tags: scene.tags, notes: scene.notes, background: scene.background }}
           takenNames={project.scenes.filter(s => s.id !== scene.id).map(s => s.name)}
           sceneId={scene.id}
           onSave={data => updateSceneSettings(scene.id, data)}

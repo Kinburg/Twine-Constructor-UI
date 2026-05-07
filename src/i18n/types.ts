@@ -59,6 +59,32 @@ export interface Translations {
     groupUngrouped: string;
     makeStart: string;
     startTagHint: string;
+    tabSettings: string;
+    tabBackground: string;
+    bgNone: string;
+    bgStatic: string;
+    bgBound: string;
+    bgAiStatic: string;
+    bgAiBound: string;
+    bgSection: string;
+    bgHint: string;
+    bgBlur: string;
+    bgOpacity: string;
+    bgSize: string;
+    bgSizeCover: string;
+    bgSizeContain: string;
+    bgSizeFill: string;
+    bgPosX: string;
+    bgPosY: string;
+    bgOverlayColor: string;
+    bgOverlayOpacity: string;
+    bgNoImage: string;
+    bgGenerate: string;
+    bgRemove: string;
+    bgVariable: string;
+    bgDisplaySection: string;
+    bgOverlaySection: string;
+    bgColorSection: string;
   };
 
   block: {

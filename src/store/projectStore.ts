@@ -1062,7 +1062,7 @@ interface ProjectState {
   updateSceneNote: (id: string, notes: string | undefined) => void;
   updateSceneGraphPosition: (id: string, x: number, y: number) => void;
   updateSceneTags: (id: string, tags: string[]) => void;
-  updateSceneSettings: (id: string, data: { name: string; tags: string[]; notes?: string }) => void;
+  updateSceneSettings: (id: string, data: { name: string; tags: string[]; notes?: string; background?: import('../types').SceneBackground }) => void;
   reorderScenes: (scenes: Scene[]) => void;
   duplicateScene: (sceneId: string) => void;
   makeStartScene: (sceneId: string) => void;
@@ -1396,7 +1396,7 @@ export const useProjectStore = create<ProjectState>()(
           });
         },
 
-        updateSceneSettings: (id, { name, tags, notes }) => {
+        updateSceneSettings: (id, { name, tags, notes, background }) => {
           get().saveSnapshot();
           // Protect start tag: preserve it if scene had it, strip it if scene didn't
           set(s => {
@@ -1406,7 +1406,7 @@ export const useProjectStore = create<ProjectState>()(
             const safeTags = hadStart
               ? (tags.includes(START_TAG) ? tags : [START_TAG, ...tags])
               : tags.filter(t => t !== START_TAG);
-            return { project: updateScene(s.project, id, sc => ({ ...sc, name, tags: safeTags, notes: notes || undefined })) };
+            return { project: updateScene(s.project, id, sc => ({ ...sc, name, tags: safeTags, notes: notes || undefined, background: background || undefined })) };
           });
         },
 

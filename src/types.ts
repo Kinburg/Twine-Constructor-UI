@@ -634,6 +634,39 @@ export interface SceneGroup {
   collapsed?: boolean;
 }
 
+export type SceneBgImageType = 'none' | 'static' | 'bound' | 'ai-static' | 'ai-bound';
+export type SceneBgSize = 'cover' | 'contain' | 'fill';
+
+export interface SceneBackground {
+  imageType: SceneBgImageType;
+  /** Solid background color — used in 'none' mode without an image */
+  bgColor?: string;
+  /** Image path — static and ai-static modes */
+  src?: string;
+  /** Variable ID — bound and ai-bound modes */
+  variableId?: string;
+  /** Mapping entries — bound and ai-bound modes */
+  mapping?: ImageBoundMapping[];
+  /** Fallback image when no mapping matches */
+  defaultSrc?: string;
+  /** AI generation settings — ai-static and ai-bound */
+  genSettings?: AvatarGenSettings;
+  /** CSS blur in px (0 = no blur) */
+  blur?: number;
+  /** Opacity 0–100 (default 100) */
+  opacity?: number;
+  /** CSS background-size (default 'cover') */
+  size?: SceneBgSize;
+  /** background-position-x 0–100 (default 50) */
+  posX?: number;
+  /** background-position-y 0–100 (default 50) */
+  posY?: number;
+  /** Optional color overlay (#rrggbb) */
+  overlayColor?: string;
+  /** Overlay opacity 0–100 (default 0) */
+  overlayOpacity?: number;
+}
+
 export interface Scene {
   id: string;
   name: string;
@@ -645,6 +678,8 @@ export interface Scene {
   groupId?: string;
   /** Position of this scene's node in the scene graph window. */
   graphPosition?: { x: number; y: number };
+  /** Optional background image configuration */
+  background?: SceneBackground;
 }
 
 // ─── Character ──────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ import type {
   Watcher, WatcherCondition, AudioBlock, ContainerBlock, TimeManipulationBlock,
   VariableTreeNode, VariableGroup, ItemDefinition,
   PluginBlockDef, PluginBlock,
+  SceneBackground,
 } from '../types';
 import { START_TAG } from '../types';
 import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
@@ -2079,6 +2080,7 @@ export function exportToTwee(project: Project, plugins: PluginBlockDef[] = []): 
     buildInventoryScript(project),
     buildContainerScript(project),
     buildPaperdollScript(project),
+    hasScenesWithBg(scenes) ? buildSceneBgScript() : '',
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load',
       '$(document).on(":passagedisplay", function() {',
@@ -2098,10 +2100,18 @@ export function exportToTwee(project: Project, plugins: PluginBlockDef[] = []): 
   for (const scene of scenes) {
     const exportTags = scene.tags.filter(t => t !== START_TAG);
     const tags = exportTags.length > 0 ? ` [${exportTags.join(' ')}]` : '';
-    const body = scene.blocks
+
+    // Scene background — prepended to passage body
+    const bgMarkup = scene.background
+      ? exportSceneBg(scene.background, variables, variableNodes)
+      : '';
+
+    const blocksBody = scene.blocks
       .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName, project))
       .filter(Boolean)
       .join('\n');
+
+    const body = [bgMarkup, blocksBody].filter(Boolean).join('\n');
 
     // Graph hint: <<if false>>[[Target1]][[Target2]]<</if>>
     // Twine's editor finds [[...]] by regex to draw connections.
@@ -2182,6 +2192,225 @@ export function buildContainerCSS(): string {
     '.tg-detail-action:hover:not(:disabled) { background: #4f46e5; }',
     '.tg-detail-action:disabled { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.3); cursor: not-allowed; }',
     '.tg-cont-empty { color: rgba(255,255,255,0.3); font-size: 13px; padding: 16px 0; }',
+  ].join('\n');
+}
+
+// ── Scene background ──────────────────────────────────────────────────────────
+
+/**
+ * Generates the SugarCube markup to set the scene background at the top of a passage.
+ *
+ * Static/AI-static:  <<tgSceneBg "path" blur opacity "size" posX posY "overlayColor" overlayOpacity>>
+ * Bound/AI-bound:    <<set _tgBg to "">>, conditional chain, <<tgSceneBg _tgBg ...>>
+ */
+export function exportSceneBg(
+  bg: SceneBackground,
+  vars: Variable[],
+  nodes: VariableTreeNode[],
+): string {
+  const { imageType } = bg;
+
+  // None mode — solid background color and/or overlay only
+  if (imageType === 'none') {
+    const bgColor    = bg.bgColor ?? '';
+    const ovColor    = bg.overlayColor ?? '';
+    const ovOp       = bg.overlayOpacity ?? 0;
+    if (!bgColor && (!ovColor || ovOp <= 0)) return '';
+    return `<<tgSceneBgColor "${bgColor}" "${ovColor}" ${ovOp}>>`;
+  }
+
+  const blur          = bg.blur          ?? 0;
+  const opacity       = bg.opacity       ?? 100;
+  const size          = bg.size          ?? 'cover';
+  const posX          = bg.posX          ?? 50;
+  const posY          = bg.posY          ?? 50;
+  const overlayColor  = bg.overlayColor  ?? '';
+  const overlayOpacity = bg.overlayOpacity ?? 0;
+
+  // Static args after src: blur opacity "size" posX posY "overlayColor" overlayOpacity
+  const displayArgs = `${blur} ${opacity} "${size}" ${posX} ${posY} "${overlayColor}" ${overlayOpacity}`;
+
+  if (imageType === 'static' || imageType === 'ai-static') {
+    if (!bg.src) return '';
+    return `<<tgSceneBg "${bg.src}" ${displayArgs}>>`;
+  }
+
+  if (imageType === 'bound' || imageType === 'ai-bound') {
+    const mapping   = bg.mapping ?? [];
+    const defaultSrc = bg.defaultSrc ?? '';
+    if (mapping.length === 0 && !defaultSrc) return '';
+
+    const bv    = vars.find(x => x.id === bg.variableId);
+    const vname = bv ? `$${varPath(bv, nodes)}` : '$???';
+
+    const lines: string[] = ['<<set _tgBg to "">>'];
+
+    if (mapping.length > 0) {
+      const cases = mapping.map((m, i) => {
+        const kw = i === 0 ? '<<if' : '<<elseif';
+        const mt = m.matchType ?? 'exact';
+        let cond: string;
+        if (mt === 'range') {
+          cond = `${vname} >= ${m.rangeMin ?? '0'} && ${vname} <= ${m.rangeMax ?? '0'}`;
+        } else {
+          const val = bv?.varType === 'string' ? `"${m.value}"` : m.value;
+          cond = `${vname} eq ${val}`;
+        }
+        return `${kw} ${cond}>><<set _tgBg to "${m.src}">>`;
+      });
+      if (defaultSrc) cases.push(`<<else>><<set _tgBg to "${defaultSrc}">>`);
+      cases.push('<</if>>');
+      lines.push(cases.join('\n'));
+    } else if (defaultSrc) {
+      lines.push(`<<set _tgBg to "${defaultSrc}">>`);
+    }
+
+    lines.push(`<<if _tgBg>><<tgSceneBg _tgBg ${displayArgs}>><</if>>`);
+    return lines.join('\n');
+  }
+
+  return '';
+}
+
+/**
+ * Returns true if at least one scene in the project has a background configured.
+ * Used to conditionally include the <<tgSceneBg>> macro in StoryScript.
+ */
+export function hasScenesWithBg(scenes: Scene[]): boolean {
+  return scenes.some(s => {
+    const bg = s.background;
+    if (!bg) return false;
+    if (bg.imageType !== 'none') return true;
+    return !!(bg.bgColor || (bg.overlayColor && (bg.overlayOpacity ?? 0) > 0));
+  });
+}
+
+/**
+ * Build the <<tgSceneBg>> macro JS definition.
+ * The macro:
+ *  - Inserts a fixed-position background div (id="tg-scene-bg")
+ *  - Optionally inserts an overlay div (id="tg-scene-bg-ov") when overlayColor is set
+ *  - Clears both divs on :passagestart if no tgSceneBg call was made in the new passage
+ *
+ * Args: src blur opacity size posX posY overlayColor overlayOpacity
+ */
+/**
+ * Implementation note:
+ * Using CSS injection via body::before / body::after instead of extra DOM divs.
+ * This guarantees z-ordering: pseudo-elements with negative z-index inside a
+ * positioned body are always painted behind SugarCube's #story content.
+ *
+ * Stacking order inside body's stacking context (body { position: relative }):
+ *   body::before (z-index: -2)  ← background image
+ *   body::after  (z-index: -1)  ← color overlay
+ *   #story / .passage (z-index: auto → above all negatives)  ← story content
+ */
+export function buildSceneBgScript(): string {
+  return [
+    '// ── Scene background macro ──',
+    // Track whether the current passage set a background
+    '$(document).on(":passagestart", function() { window._tgBgSet = false; });',
+    // On passageend: if no <<tgSceneBg>> was called, clear the injected CSS
+    // so scenes without a background don't keep the previous scene's image.
+    '$(document).on(":passageend", function() {',
+    '  if (!window._tgBgSet) {',
+    '    var s = document.getElementById("tg-bg-style");',
+    '    if (s) s.textContent = "";',
+    '  }',
+    '});',
+    '',
+    'Macro.add("tgSceneBg", {',
+    '  handler: function() {',
+    '    var src     = this.args[0] || "";',
+    '    if (!src) return;',
+    '    window._tgBgSet = true;',
+    '    var blur    = this.args[1] != null ? this.args[1] : 0;',
+    '    var opacity = this.args[2] != null ? this.args[2] : 100;',
+    '    var size    = this.args[3] || "cover";',
+    '    var posX    = this.args[4] != null ? this.args[4] : 50;',
+    '    var posY    = this.args[5] != null ? this.args[5] : 50;',
+    '    var ovColor = this.args[6] || "";',
+    '    var ovOp    = this.args[7] != null ? this.args[7] : 0;',
+    '',
+    '    var bgSz = size === "fill" ? "100% 100%" : size;',
+    // Extend inset to hide blur-edge artifacts
+    '    var ext = blur > 0 ? (blur * 2) + "px" : "0";',
+    '',
+    // Build the full CSS rule block for body + ::before (bg) + ::after (overlay)
+    '    var css = [',
+    // body: position:relative creates a stacking context so negative z-index pseudo-elements work;
+    // transparent background lets them show through
+    '      "body { position: relative; background-color: transparent !important; background-image: none !important; }",',
+    '      "body::before {",',
+    '      "  content: \'\';",',
+    '      "  position: fixed;",',
+    '      "  inset: -" + ext + ";",',
+    '      "  z-index: -2;",',
+    '      "  pointer-events: none;",',
+    '      "  background-image: url(\'" + src + "\');",',
+    '      "  background-size: " + bgSz + ";",',
+    '      "  background-position: " + posX + "% " + posY + "%;",',
+    '      "  background-repeat: no-repeat;",',
+    '    ].join("\\n");',
+    '    if (blur > 0)    css += "  filter: blur(" + blur + "px);\\n";',
+    '    if (opacity < 100) css += "  opacity: " + (opacity / 100) + ";\\n";',
+    '    css += "}";',
+    '',
+    // Overlay via body::after
+    '    if (ovColor && ovOp > 0) {',
+    '      var hex = ovColor.replace("#","");',
+    '      var r = parseInt(hex.substring(0,2),16)||0;',
+    '      var g = parseInt(hex.substring(2,4),16)||0;',
+    '      var b = parseInt(hex.substring(4,6),16)||0;',
+    '      css += [',
+    '        "\\nbody::after {",',
+    '        "  content: \'\'",',
+    '        "  position: fixed",',
+    '        "  inset: 0",',
+    '        "  z-index: -1",',
+    '        "  pointer-events: none",',
+    '        "  background: rgba(" + r + "," + g + "," + b + "," + (ovOp/100) + ")",',
+    '        "}"',
+    '      ].join(";\\n");',
+    '    }',
+    '',
+    // Inject or update the single style tag
+    '    var st = document.getElementById("tg-bg-style");',
+    '    if (!st) {',
+    '      st = document.createElement("style");',
+    '      st.id = "tg-bg-style";',
+    '      document.head.appendChild(st);',
+    '    }',
+    '    st.textContent = css;',
+    '  }',
+    '});',
+    '',
+    // Solid background color macro (no image): tgSceneBgColor bgColor ovColor ovOpacity
+    'Macro.add("tgSceneBgColor", {',
+    '  handler: function() {',
+    '    var bgColor = this.args[0] || "";',
+    '    var ovColor = this.args[1] || "";',
+    '    var ovOp    = this.args[2] != null ? this.args[2] : 0;',
+    '    if (!bgColor && (!ovColor || ovOp <= 0)) return;',
+    '    window._tgBgSet = true;',
+    '    var css = "body { position: relative; background-color: transparent !important; background-image: none !important; }\\n";',
+    '    if (bgColor) {',
+    '      css += "body::before { content: \'\'; position: fixed; inset: 0; z-index: -2; pointer-events: none; background-color: " + bgColor + "; }\\n";',
+    '    } else {',
+    '      css += "body::before { content: none; }\\n";',
+    '    }',
+    '    if (ovColor && ovOp > 0) {',
+    '      var hex = ovColor.replace("#","");',
+    '      var r = parseInt(hex.substring(0,2),16)||0;',
+    '      var g = parseInt(hex.substring(2,4),16)||0;',
+    '      var b = parseInt(hex.substring(4,6),16)||0;',
+    '      css += "body::after { content: \'\'; position: fixed; inset: 0; z-index: -1; pointer-events: none; background: rgba(" + r + "," + g + "," + b + "," + (ovOp/100) + "); }\\n";',
+    '    }',
+    '    var st = document.getElementById("tg-bg-style");',
+    '    if (!st) { st = document.createElement("style"); st.id = "tg-bg-style"; document.head.appendChild(st); }',
+    '    st.textContent = css;',
+    '  }',
+    '});',
   ].join('\n');
 }
 

@@ -1,7 +1,7 @@
 import type { Project, ProjectSettings, Character, PluginBlockDef } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS, setPluginRegistry } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS, setPluginRegistry, exportSceneBg, buildSceneBgScript, hasScenesWithBg } from './exportToTwee';
 import { collectPluginIds, expandPluginDeps } from './pluginUtils';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -179,10 +179,14 @@ export function buildPassages(project: Project, plugins: PluginBlockDef[] = []):
   let startPid = pid; // fallback to first scene
 
   scenes.forEach((scene, idx) => {
-    const body = scene.blocks
+    const bgMarkup = scene.background
+      ? exportSceneBg(scene.background, variables, variableNodes)
+      : '';
+    const blocksBody = scene.blocks
       .map(b => blockToSC(b, characters, variables, variableNodes, '', idToName, project))
       .filter(Boolean)
       .join('\n');
+    const body = [bgMarkup, blocksBody].filter(Boolean).join('\n');
     const scenePid = pid++;
     if (scene.tags.includes(START_TAG)) startPid = scenePid;
     const exportTags = scene.tags.filter(t => t !== START_TAG);
@@ -241,6 +245,7 @@ export function buildPassages(project: Project, plugins: PluginBlockDef[] = []):
     buildInventoryScript(project),
     buildContainerScript(project),
     buildPaperdollScript(project),
+    hasScenesWithBg(scenes) ? buildSceneBgScript() : '',
     buildPurlSignatureScript(),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load (audio + video)',
