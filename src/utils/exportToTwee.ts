@@ -240,7 +240,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         const attr = htmlAttr(block.content);
         return `${indent}<span class="tg-live" data-wiki="${attr}">${block.content}</span>`;
       }
-      return indent + block.content;
+      return `${indent}<div class="tg-text">${block.content}</div>`;
 
     case 'dialogue': {
       const char = chars.find(c => c.id === block.characterId);
@@ -298,7 +298,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         .join('');
 
       // ── Color variables: use runtime $vars so color changes reflect immediately ─
-      // Inline @style overrides static CSS and is re-evaluated on every render.
+      // @style is only applied when variable bindings exist; otherwise CSS classes handle colors.
       const bgColorVar     = char?.varIds?.bgColorVarId
         ? vars.find(v => v.id === char!.varIds!.bgColorVarId)    : null;
       const borderColorVar = char?.varIds?.borderColorVarId
@@ -307,26 +307,25 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         ? vars.find(v => v.id === char!.varIds!.nameColorVarId)   : null;
       const textColorVar   = char?.varIds?.textColorVarId
         ? vars.find(v => v.id === char!.varIds!.textColorVarId)   : null;
-      // Fallback to static value (quoted string literal) when variable not found
-      const bgExpr       = bgColorVar     ? `$${varPath(bgColorVar, nodes)}`     : `'${char?.bgColor     ?? '#23262e'}'`;
-      const borderExpr   = borderColorVar ? `$${varPath(borderColorVar, nodes)}` : `'${char?.borderColor  ?? '#4a90d9'}'`;
-      const nameExpr     = nameColorVar   ? `$${varPath(nameColorVar, nodes)}`   : `'${char?.nameColor    ?? '#e0e0e0'}'`;
-      const textExpr     = textColorVar   ? `$${varPath(textColorVar, nodes)}`   : `'${char?.textColor    ?? '#e2e8f0'}'`;
-      // Border side switches with alignment; explicitly reset the opposite side
-      const borderDir     = block.align === 'right' ? 'right' : 'left';
-      const borderAntiDir = block.align === 'right' ? 'left'  : 'right';
-      const bodyStyleExpr = `'background:'+${bgExpr}+';border-${borderDir}:4px solid '+${borderExpr}+';border-${borderAntiDir}:none'`;
-      const nameStyleExpr = block.align === 'right'
-        ? `'text-align:right;color:'+${nameExpr}`
-        : `'color:'+${nameExpr}`;
-      const textStyleExpr = `'color:'+${textExpr}`;
-      const body = `<div class="char-body" @style="${bodyStyleExpr}"><span class="char-name" @style="${nameStyleExpr}">${charNameDisplay}</span><span class="char-text" @style="${textStyleExpr}">${block.text}</span>${innerBlocksHtml}</div>`;
+
+      // Color expressions: runtime variable or quoted static fallback
+      const bgExpr     = bgColorVar     ? `$${varPath(bgColorVar, nodes)}`     : `'${char?.bgColor     ?? '#23262e'}'`;
+      const borderExpr = borderColorVar ? `$${varPath(borderColorVar, nodes)}` : `'${char?.borderColor  ?? '#4a90d9'}'`;
+      const nameExpr   = nameColorVar   ? `$${varPath(nameColorVar, nodes)}`   : `'${char?.nameColor    ?? '#e0e0e0'}'`;
+      const textExpr   = textColorVar   ? `$${varPath(textColorVar, nodes)}`   : `'${char?.textColor    ?? '#e2e8f0'}'`;
+
+      // Set colors as CSS custom properties on the .dialogue container so that
+      // story.css uses var(--purl-char-*) and addon.css can override via normal cascade.
+      const charVarsExpr = `'--purl-char-bg:'+${bgExpr}+';--purl-char-border:'+${borderExpr}+';--purl-char-name:'+${nameExpr}+';--purl-char-text:'+${textExpr}`;
+
+      const body = `<div class="char-body"><span class="char-name">${charNameDisplay}</span><span class="char-text">${block.text}</span>${innerBlocksHtml}</div>`;
+
       // Avatar always comes first in DOM for BOTH alignments.
       // CSS `.dlg-right { flex-direction: row-reverse }` flips the visual order for right-aligned dialogues,
       // placing the avatar on the right side without changing the DOM order.
       const inner = avatarHtml + body;
 
-      const divContent = `<div class="dialogue ${charClass} ${alignClass}">${inner}</div>`;
+      const divContent = `<div class="dialogue ${charClass} ${alignClass}" @style="${charVarsExpr}">${inner}</div>`;
       if (block.live) {
         const attr = htmlAttr(divContent);
         return `${indent}<span class="tg-live" data-wiki="${attr}">${divContent}</span>`;
@@ -463,11 +462,11 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
         if (block.defaultSrc) cases.push(`${indent}<<else>>${imgTag(block.defaultSrc)}`);
         cases.push(`${indent}<</if>>`);
-        return cases.join('\n');
+        return `${indent}<div class="tg-image">\n${cases.join('\n')}\n${indent}</div>`;
       }
 
       // ── Static mode ──────────────────────────────────────────────────────
-      return `${indent}${imgTag(block.src)}`;
+      return `${indent}<div class="tg-image">${imgTag(block.src)}</div>`;
     }
 
     case 'image-gen': {
@@ -495,10 +494,10 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
         if (block.defaultSrc) cases.push(`${indent}<<else>>${imgTag(block.defaultSrc)}`);
         cases.push(`${indent}<</if>>`);
-        return cases.join('\n');
+        return `${indent}<div class="tg-image">\n${cases.join('\n')}\n${indent}</div>`;
       }
 
-      return `${indent}${imgTag(block.src)}`;
+      return `${indent}<div class="tg-image">${imgTag(block.src)}</div>`;
     }
 
     case 'video': {
@@ -508,7 +507,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         block.loop ? 'loop' : '',
         block.width > 0 ? `width="${block.width}"` : '',
       ].filter(Boolean).join(' ');
-      return `${indent}<video src="${block.src}"${attrs ? ' ' + attrs : ''}></video>`;
+      return `${indent}<div class="tg-video"><video src="${block.src}"${attrs ? ' ' + attrs : ''}></video></div>`;
     }
 
     case 'input-field': {
@@ -523,10 +522,10 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       // $varname evaluates to its StoryInit default on first load, and to the
       // player's input on subsequent re-renders.
       const defVal = `$${path}`;
-      const lines: string[] = [];
-      if (block.label) lines.push(`${indent}${block.label}`);
-      lines.push(`${indent}<<${macro} "${vname}" ${defVal}>>`);
-      return lines.join('\n');
+      const inner: string[] = [];
+      if (block.label) inner.push(block.label);
+      inner.push(`<<${macro} "${vname}" ${defVal}>>`);
+      return `${indent}<div class="tg-input-field">${inner.join('\n')}</div>`;
     }
 
     case 'raw':
@@ -537,33 +536,32 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       const raw = (block as IncludeBlock).passageName.trim();
       if (!raw) return '';
       const includeArg = sceneTarget(raw, idToName);
-
       const include = `<<include ${includeArg}>>`;
 
-      const styles: string[] = [];
+      const cssVars: string[] = [];
       if (block.maxWidth && block.maxWidth > 0)
-        styles.push(`max-width:${block.maxWidth}px`);
+        cssVars.push(`--tg-inc-max-width:${block.maxWidth}px`);
       if (block.bordered) {
         const bw = block.borderWidth ?? 1;
         const bc = block.borderColor ?? '#555555';
         const br = block.borderRadius ?? 0;
-        styles.push(`border:${bw}px solid ${bc}`);
-        if (br > 0) styles.push(`border-radius:${br}px`);
+        cssVars.push(`--tg-inc-border-width:${bw}px`, `--tg-inc-border-color:${bc}`);
+        if (br > 0) cssVars.push(`--tg-inc-radius:${br}px`);
       }
       if (block.padding && block.padding > 0)
-        styles.push(`padding:${block.padding}px`);
+        cssVars.push(`--tg-inc-padding:${block.padding}px`);
       if (block.bgColor)
-        styles.push(`background-color:${block.bgColor}`);
+        cssVars.push(`--tg-inc-bg:${block.bgColor}`);
 
-      if (styles.length === 0) return `${indent}${include}`;
-      return `${indent}<div style="${styles.join(';')}">${include}</div>`;
+      const styleAttr = cssVars.length > 0 ? ` style="${cssVars.join(';')}"` : '';
+      return `${indent}<div class="tg-include"${styleAttr}>${include}</div>`;
     }
 
     case 'divider': {
       const color     = block.color     ?? '#555555';
       const thickness = block.thickness ?? 1;
       const marginV   = block.marginV   ?? 8;
-      return `${indent}<hr style="border:none;border-top:${thickness}px solid ${color};margin:${marginV}px 0;">`;
+      return `${indent}<hr class="tg-divider" style="--tg-div-color:${color};--tg-div-thickness:${thickness}px;--tg-div-margin:${marginV}px">`;
     }
 
     case 'note':
@@ -683,7 +681,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         }).join('');
         lines.push(`${indent}<<script>>setTimeout(function(){${handlers}},0);<</script>>`);
       }
-      return lines.join('\n');
+      return `${indent}<div class="tg-checkbox">${lines.join('\n')}</div>`;
     }
 
     case 'radio': {
@@ -696,7 +694,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       for (const opt of rb.options) {
         lines.push(`${indent}<<radiobutton "${vname}" "${opt.value}" autocheck>> ${opt.label}`);
       }
-      return lines.join('\n');
+      return `${indent}<div class="tg-radio">${lines.join('\n')}</div>`;
     }
 
     case 'popup': {
@@ -907,12 +905,14 @@ function buildProgressBarSC(c: CellProgress, vars: Variable[], nodes: VariableTr
         `+'<span style="width:'+_tgP+'%;background:'+${colorRef}+';height:100%;display:flex;align-items:center;justify-content:center;font-size:0.75em;${textColorCSS}">'+${textRef}+'</span></span>'`;
     return `${setPct}${setColor}<<print ${printExpr}>>`;
   } else {
-    // StoryCaption: use CSS classes (.tg-progress / .tg-bar), override bg via inline style
+    // StoryCaption: CSS classes handle layout; colors via CSS custom properties
+    const textColorVar = c.textColor ? `;--tg-bar-text:${c.textColor}` : '';
+    const vertClass = vert ? ' tg-progress-vert' : '';
     const printExpr = vert
-      ? `'<span class="tg-progress" style="background:${emptyColor};flex-direction:column-reverse;align-items:stretch;">'` +
-        `+'<span class="tg-bar" style="height:'+_tgP+'%;width:100%;background:'+${colorRef}+';${textColorCSS}">'+${textRef}+'</span></span>'`
-      : `'<span class="tg-progress" style="background:${emptyColor};">'` +
-        `+'<span class="tg-bar" style="width:'+_tgP+'%;background:'+${colorRef}+';${textColorCSS}">'+${textRef}+'</span></span>'`;
+      ? `'<span class="tg-progress${vertClass}" style="--tg-bar-empty:${emptyColor};--tg-bar-fill:'+${colorRef}+'${textColorVar}">'` +
+        `+'<span class="tg-bar" style="height:'+_tgP+'%;width:100%">'+${textRef}+'</span></span>'`
+      : `'<span class="tg-progress${vertClass}" style="--tg-bar-empty:${emptyColor};--tg-bar-fill:'+${colorRef}+'${textColorVar}">'` +
+        `+'<span class="tg-bar" style="width:'+_tgP+'%">'+${textRef}+'</span></span>'`;
     return `${setPct}${setColor}<<print ${printExpr}>>`;
   }
 }
@@ -1195,11 +1195,17 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
   if (block.rows.length === 0) return '';
   const s = block.style;
 
-  const outerParts = [
-    'display:flex', 'flex-direction:column', `gap:${s.rowGap}px`, 'margin:0', 'padding:0',
+  // CSS custom properties for user-overridable values; structural layout handled by .tg-table class
+  const outerStyles: string[] = [
+    `--tg-tbl-gap:${s.rowGap}px`,
+    `--tg-tbl-border-color:${s.borderColor}`,
+    `--tg-tbl-border-width:${s.borderWidth}px`,
   ];
   if (s.showOuterBorder) {
-    outerParts.push(`border:${s.borderWidth}px solid ${s.borderColor}`, 'padding:2px');
+    outerStyles.push(
+      `border:var(--tg-tbl-border-width) solid var(--tg-tbl-border-color)`,
+      `padding:2px`,
+    );
   }
 
   const rowsHTML = block.rows.map(row => {
@@ -1209,7 +1215,7 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
       `height:${row.height}px`,
     ];
     if (s.showRowBorders) {
-      rowParts.push(`border:${s.borderWidth}px solid ${s.borderColor}`);
+      rowParts.push(`border:var(--tg-tbl-border-width) solid var(--tg-tbl-border-color)`);
     }
     const cellsHTML = row.cells.map((cell, ci) => {
       const cellParts = [
@@ -1217,7 +1223,7 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
         'font-size:0.85em', 'min-width:0', 'box-sizing:border-box', 'padding:2px 4px',
       ];
       if (s.showCellBorders && ci > 0) {
-        cellParts.push(`border-left:${s.borderWidth}px solid ${s.borderColor}`);
+        cellParts.push(`border-left:var(--tg-tbl-border-width) solid var(--tg-tbl-border-color)`);
       }
       return `<span style="${cellParts.join(';')}">${tableCellInnerToSC(cell, vars, nodes, idToName, characters, items)}</span>`;
     }).join('');
@@ -1225,7 +1231,7 @@ function tableBlockToSC(block: TableBlock, vars: Variable[], nodes: VariableTree
   }).filter(Boolean).join('');
 
   if (!rowsHTML) return '';
-  return `${indent}<div style="${outerParts.join(';')}">${rowsHTML}</div>`;
+  return `${indent}<div class="tg-table" style="${outerStyles.join(';')}">${rowsHTML}</div>`;
 }
 
 // ─── Panel → StoryCaption markup ──────────────────────────────────────────────
@@ -1424,8 +1430,9 @@ export function buildPanelCSS(panel: SidebarPanel): string {
     `.tg-panel { display: flex; flex-direction: column; gap: ${s.rowGap}px; margin: 0; padding: 0; }`,
     `.tg-row { display: flex; overflow: hidden; align-items: stretch; margin: 0; }`,
     '.tg-cell { display: flex; align-items: center; overflow: hidden; font-size: 0.85em; min-width: 0; box-sizing: border-box; }',
-    '.tg-progress { width: 100%; height: 100%; background: #333; border-radius: 2px; overflow: hidden; display: flex; align-items: center; }',
-    '.tg-bar { height: 100%; transition: width 0.3s; display: flex; align-items: center; justify-content: center; font-size: 0.75em; }',
+    '.tg-progress { width: 100%; height: 100%; background: var(--tg-bar-empty, #333); border-radius: 2px; overflow: hidden; display: flex; align-items: center; }',
+    '.tg-progress-vert { flex-direction: column-reverse; align-items: stretch; }',
+    '.tg-bar { height: 100%; background: var(--tg-bar-fill, #4a90d9); transition: width 0.3s, height 0.3s; display: flex; align-items: center; justify-content: center; font-size: 0.75em; color: var(--tg-bar-text, inherit); }',
     '.tg-cell-img { width: 100%; height: 100%; display: block; }',
     cellBorder,
     rowBorder,

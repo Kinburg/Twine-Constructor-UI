@@ -1186,6 +1186,8 @@ export interface Translations {
     deleteGroupWithScenes: string;
     sectionExport: string;
     confirmOpenFolderAfterExport: string;
+    autoStylesFolder: string;
+    autoStylesFolderDesc: string;
     titleBarStyleLabel: string;
     titleBarStyleCustom: string;
     titleBarStyleNative: string;

@@ -1156,6 +1156,8 @@ const ua: Translations = {
     deleteGroupWithScenes:        'Видалити групу разом зі сценами',
     sectionExport:                'Експорт',
     confirmOpenFolderAfterExport: 'Запитувати про відкриття папки після HTML-експорту',
+    autoStylesFolder:             'Авто-створення папки styles/ при експорті',
+    autoStylesFolderDesc:         'Генерує окремі CSS-файли в release/styles/ (існуючі пропускаються)',
     titleBarStyleLabel:           'Рядок заголовка вікна',
     titleBarStyleCustom:          'Кастомний (стиль застосунку)',
     titleBarStyleNative:          'Нативний (системний стиль)',

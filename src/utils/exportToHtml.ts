@@ -20,6 +20,11 @@ function escAttr(s: string): string {
 
 // ─── Project settings → CSS / JS ──────────────────────────────────────────────
 
+function withSection(label: string, css: string): string {
+  if (!css) return '';
+  return `/* ═══ ${label} ═══ */\n${css}`;
+}
+
 function buildGlobalCSS(settings?: ProjectSettings): string {
   if (!settings) return '';
   const rules: string[] = [];
@@ -69,22 +74,40 @@ function buildCharacterCSS(characters: Character[]): string {
     const cls = `char-${c.id}`;
     return [
       `.dialogue.${cls} .char-body {`,
-      `  background: ${c.bgColor};`,
-      `  border-left: 4px solid ${c.borderColor};`,
+      `  background: var(--purl-char-bg, ${c.bgColor});`,
+      `  border-left: 4px solid var(--purl-char-border, ${c.borderColor});`,
       `}`,
       `.dialogue.dlg-right.${cls} .char-body {`,
       `  border-left: none;`,
-      `  border-right: 4px solid ${c.borderColor};`,
+      `  border-right: 4px solid var(--purl-char-border, ${c.borderColor});`,
       `}`,
       `.dialogue.${cls} .char-name {`,
-      `  color: ${c.nameColor};`,
+      `  color: var(--purl-char-name, ${c.nameColor});`,
       `}`,
       `.dialogue.${cls} .char-text {`,
-      `  color: ${c.textColor ?? '#e2e8f0'};`,
+      `  color: var(--purl-char-text, ${c.textColor ?? '#e2e8f0'});`,
       `}`,
     ].join('\n');
   }).join('\n\n');
   return `${base}\n\n${perChar}`;
+}
+
+// ─── Block type CSS hooks ─────────────────────────────────────────────────────
+
+function buildBlockTypesCSS(): string {
+  return [
+    '.tg-text { }',
+    '.tg-image { }',
+    '.tg-image img { }',
+    '.tg-video { }',
+    '.tg-video video { max-width: 100%; }',
+    '.tg-divider { border: none; border-top: var(--tg-div-thickness, 1px) solid var(--tg-div-color, #555555); margin: var(--tg-div-margin, 8px) 0; }',
+    '.tg-input-field { }',
+    '.tg-checkbox { }',
+    '.tg-radio { }',
+    '.tg-include { max-width: var(--tg-inc-max-width, none); border: var(--tg-inc-border-width, 0px) solid var(--tg-inc-border-color, transparent); border-radius: var(--tg-inc-radius, 0); padding: var(--tg-inc-padding, 0); background-color: var(--tg-inc-bg, transparent); }',
+    '.tg-table { display: flex; flex-direction: column; gap: var(--tg-tbl-gap, 4px); margin: 0; padding: 0; }',
+  ].join('\n');
 }
 
 // ─── Passage builder ──────────────────────────────────────────────────────────
@@ -223,15 +246,16 @@ export function buildPassages(project: Project, plugins: PluginBlockDef[] = []):
     }
   }
 
-  const charCSS      = buildCharacterCSS(characters);
-  const panelCSS     = buildPanelCSS(sidebarPanel);
-  const buttonCSS    = buildButtonsCSS(scenes);
-  const tipCSS       = buildTooltipCSS();
-  const globalCSS    = buildGlobalCSS(project.settings);
-  const containerCSS = buildContainerCSS();
-  const paperdollCSS = buildPaperdollCSS(project);
-  const inventoryCSS = buildInventoryCSS(project);
-  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS, containerCSS, paperdollCSS, inventoryCSS].filter(Boolean).join('\n\n');
+  const charCSS      = withSection('Dialogue',      buildCharacterCSS(characters));
+  const panelCSS     = withSection('Sidebar Panel', buildPanelCSS(sidebarPanel));
+  const buttonCSS    = withSection('Buttons',       buildButtonsCSS(scenes));
+  const tipCSS       = withSection('Tooltips',      buildTooltipCSS());
+  const globalCSS    = withSection('Global',        buildGlobalCSS(project.settings));
+  const containerCSS = withSection('Containers',    buildContainerCSS());
+  const paperdollCSS = withSection('Paperdoll',     buildPaperdollCSS(project));
+  const inventoryCSS = withSection('Inventory',     buildInventoryCSS(project));
+  const blockTypesCSS = withSection('Block Types', buildBlockTypesCSS());
+  const combinedCSS = [globalCSS, charCSS, panelCSS, buttonCSS, tipCSS, containerCSS, paperdollCSS, inventoryCSS, blockTypesCSS].filter(Boolean).join('\n\n');
 
   const settingsScript = buildSettingsScript(project.settings);
   const scriptContent = [
@@ -262,12 +286,37 @@ export function buildPassages(project: Project, plugins: PluginBlockDef[] = []):
   return { passages, startPid, combinedCSS, scriptContent };
 }
 
+// ─── CSS sections export ──────────────────────────────────────────────────────
+
+export interface CssSection { file: string; label: string; content: string }
+
+export function buildCssSections(project: Project, plugins: PluginBlockDef[] = []): CssSection[] {
+  setPluginRegistry(plugins);
+  const { scenes, characters, sidebarPanel } = project;
+
+  const candidates: CssSection[] = [
+    { file: 'global.css',      label: 'Global',        content: buildGlobalCSS(project.settings) },
+    { file: 'dialog.css',      label: 'Dialogue',      content: buildCharacterCSS(characters) },
+    { file: 'panel.css',       label: 'Sidebar Panel', content: buildPanelCSS(sidebarPanel) },
+    { file: 'buttons.css',     label: 'Buttons',       content: buildButtonsCSS(scenes) },
+    { file: 'tooltips.css',    label: 'Tooltips',      content: buildTooltipCSS() },
+    { file: 'containers.css',  label: 'Containers',    content: buildContainerCSS() },
+    { file: 'paperdoll.css',   label: 'Paperdoll',     content: buildPaperdollCSS(project) },
+    { file: 'inventory.css',   label: 'Inventory',     content: buildInventoryCSS(project) },
+    { file: 'block-types.css', label: 'Block Types',   content: buildBlockTypesCSS() },
+  ];
+
+  return candidates
+    .filter(s => s.content.trim().length > 0)
+    .map(s => ({ ...s, content: withSection(s.label, s.content) }));
+}
+
 // ─── Standalone HTML generator ────────────────────────────────────────────────
 
-export function generateStandaloneHtml(project: Project, scTemplate: string, plugins: PluginBlockDef[] = []): string {
+export function generateStandaloneHtml(project: Project, scTemplate: string, plugins: PluginBlockDef[] = [], addonFiles: string[] = []): { html: string; css: string } {
   const { passages, startPid, combinedCSS, scriptContent } = buildPassages(project, plugins);
 
-  const styleBlock  = `<style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css">${esc(combinedCSS)}</style>`;
+  const styleBlock  = `<style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css"></style>`;
   const scriptBlock = `<script role="script" id="twine-user-script" type="text/twine-javascript">${scriptContent}</script>`;
 
   const passageBlocks = passages.map(p =>
@@ -303,5 +352,15 @@ export function generateStandaloneHtml(project: Project, scTemplate: string, plu
     `$1${startPid}"`,
   );
 
-  return html;
+  const addonLinks = addonFiles
+    .map(f => `  <link rel="stylesheet" href="styles/${f}">`)
+    .join('\n');
+  const cssLinks = [
+    '  <link rel="stylesheet" href="story.css">',
+    ...(addonLinks ? [addonLinks] : []),
+    '  <link rel="stylesheet" href="addon.css">',
+  ].join('\n');
+  html = html.replace('</head>', `${cssLinks}\n</head>`);
+
+  return { html, css: combinedCSS };
 }

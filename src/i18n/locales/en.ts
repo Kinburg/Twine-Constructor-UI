@@ -1157,6 +1157,8 @@ const en: Translations = {
     deleteGroupWithScenes:        'Delete group and all scenes inside',
     sectionExport:                'Export',
     confirmOpenFolderAfterExport: 'Ask to open folder after HTML export',
+    autoStylesFolder:             'Auto-create styles/ folder on export',
+    autoStylesFolderDesc:         'Generates per-section CSS files in release/styles/ (skips existing files)',
     titleBarStyleLabel:           'Window title bar',
     titleBarStyleCustom:          'Custom (app style)',
     titleBarStyleNative:          'Native (system style)',
