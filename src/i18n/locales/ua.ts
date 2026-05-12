@@ -93,7 +93,7 @@ const ua: Translations = {
     modeBoundNote:       'Обирає варіант стилю на основі значення числової змінної. Перший збіг має пріоритет.',
     fieldsHeader:        'Поля стилю',
     rawCssLabel:         'Додатковий CSS',
-    rawCssPlaceholder:   '/* Приклад:\n.char-body { border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }\n.char-name { font-family: \'Georgia\', serif; letter-spacing: 0.04em; }\n.char-text { line-height: 1.6; }\n*/',
+    rawCssPlaceholder:   '/* Приклад:\n.char-body { border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }\n.char-name { font-family: \'Georgia\', serif; letter-spacing: 0.04em; }\n.char-text { line-height: 1.6; }\n.char-avatar { border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }\n*/',
     rawCssScopedNote:    'Правила автоматично обмежуються областю цього шару — не зачіпають інші блоки.',
     rawCssHelpToggle:    'Доступні селектори та приклад',
     rawCssHelpIntro:     'Правила автоматично обмежуються областю цього стилю. Доступні селектори всередині:',

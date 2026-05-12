@@ -460,7 +460,8 @@ function RawCssEditor({ value, onChange }: { value: string; onChange: (v: string
             <div className="text-slate-400 mb-0.5">{tt.rawCssExampleLabel}</div>
             <pre className="font-mono text-[10px] bg-slate-900/60 border border-slate-700 rounded p-2 whitespace-pre overflow-x-auto leading-snug">{`.char-body { border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
 .char-name { font-family: 'Georgia', serif; letter-spacing: 0.04em; }
-.char-text { line-height: 1.6; }`}</pre>
+.char-text { line-height: 1.6; }
+.char-avatar { border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }`}</pre>
           </div>
         </div>
       </details>

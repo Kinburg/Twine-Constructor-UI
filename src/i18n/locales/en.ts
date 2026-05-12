@@ -93,7 +93,7 @@ const en: Translations = {
     modeBoundNote:       'Pick a style variant based on a numeric variable\'s value. First match wins.',
     fieldsHeader:        'Style fields',
     rawCssLabel:         'Additional CSS',
-    rawCssPlaceholder:   '/* Example:\n.char-body { border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }\n.char-name { font-family: \'Georgia\', serif; letter-spacing: 0.04em; }\n.char-text { line-height: 1.6; }\n*/',
+    rawCssPlaceholder:   '/* Example:\n.char-body { border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }\n.char-name { font-family: \'Georgia\', serif; letter-spacing: 0.04em; }\n.char-text { line-height: 1.6; }\n.char-avatar { border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }\n*/',
     rawCssScopedNote:    'Rules are automatically scoped to this layer — won\'t affect other blocks.',
     rawCssHelpToggle:    'Supported selectors & example',
     rawCssHelpIntro:     'Rules are auto-scoped to this style. Selectors you can target inside:',
