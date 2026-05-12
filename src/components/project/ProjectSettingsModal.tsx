@@ -104,7 +104,7 @@ function applyHeaderImageToPanel(
 //  Component
 // ═══════════════════════════════════════════════════════════════════════════
 
-type TabId = 'general' | 'appearance' | 'aiImage' | 'advanced';
+type TabId = 'general' | 'appearance' | 'blockDefaults' | 'aiImage' | 'advanced';
 
 interface Props {
   mode: 'create' | 'edit';
@@ -176,7 +176,7 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
   // Advanced
   const [historyControls, setHistoryControls] = useState(existing.historyControls);
   const [saveLoadMenu,    setSaveLoadMenu]    = useState(existing.saveLoadMenu);
-  const [audioUnlockText, setAudioUnlockText] = useState(existing.audioUnlockText ?? '');
+  const [audioUnlockText,  setAudioUnlockText]  = useState(existing.audioUnlockText  ?? '');
 
   const [titleError, setTitleError] = useState<string | null>(null);
   const [busy, setBusy]             = useState(false);
@@ -431,7 +431,9 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
     if (titleFont.trim())    s.titleFont    = titleFont.trim();
     if (headerSrc)           s.headerImageSrc = headerSrc;
     if (rowId)               s.headerRowId = rowId;
-    if (audioUnlockText.trim()) s.audioUnlockText = audioUnlockText.trim();
+    if (audioUnlockText.trim())  s.audioUnlockText  = audioUnlockText.trim();
+    // Preserve existing block defaults (edited via Block defaults tab).
+    if (project.settings.defaultBlockStyles) s.defaultBlockStyles = project.settings.defaultBlockStyles;
     return s;
   }
 
@@ -550,10 +552,11 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
   const hasHeaderImage = headerPreviewUrl && !headerRemoved;
 
   const tabs: { id: TabId; label: string; icon: ReactNode }[] = [
-    { id: 'general',    label: ps.tabGeneral,    icon: <IconDocument /> },
-    { id: 'appearance', label: ps.tabAppearance, icon: <IconPalette /> },
-    { id: 'aiImage',    label: ps.tabAiImage,    icon: <IconImage /> },
-    { id: 'advanced',   label: ps.tabAdvanced,   icon: <IconCog /> },
+    { id: 'general',       label: ps.tabGeneral,        icon: <IconDocument /> },
+    { id: 'appearance',    label: ps.tabAppearance,     icon: <IconPalette /> },
+    { id: 'blockDefaults', label: ps.tabBlockDefaults,  icon: <IconPalette /> },
+    { id: 'aiImage',       label: ps.tabAiImage,        icon: <IconImage /> },
+    { id: 'advanced',      label: ps.tabAdvanced,       icon: <IconCog /> },
   ];
 
   return (
@@ -738,6 +741,11 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
                 <p className="text-[10px] text-slate-500 mt-1">{ps.headerImageAiHint}</p>
               </ModalSection>
             </>
+          )}
+
+          {/* ── Block defaults ─────────────────────────────────────────── */}
+          {tab === 'blockDefaults' && (
+            <BlockDefaultsTab />
           )}
 
           {/* ── AI Image ───────────────────────────────────────────────── */}
@@ -984,6 +992,23 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
 }
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
+// ─── Block defaults tab ─────────────────────────────────────────────────────
+
+function BlockDefaultsTab() {
+  const t = useT();
+  const ps = t.projectSettings;
+  return (
+    <ModalSection title={ps.sectionBlockDefaults}>
+      <p className="text-xs text-slate-400 leading-relaxed mb-3">{ps.blockDefaultsDescription}</p>
+      <div className="text-xs text-slate-500 italic bg-slate-900/40 border border-slate-700 rounded p-3 leading-relaxed">
+        Phase 1 supports per-character common styles via the Characters editor.
+        Project-wide block-type defaults (buttons, images, includes, etc.) will be added
+        in subsequent phases — the data model is in place but the editors are not yet wired here.
+      </div>
+    </ModalSection>
+  );
+}
+
 // 16×16 line icons, currentColor. Matches the visual weight of other modal icons.
 
 const IconBook = () => (

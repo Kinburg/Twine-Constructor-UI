@@ -87,6 +87,45 @@ export interface Translations {
     bgColorSection: string;
   };
 
+  // ─── Style override editor (shared, used in CharacterModal / DialogueBlockEditor / ProjectSettings) ──
+  styleOverride: {
+    sectionTitle: string;          // "Custom style"
+    enable: string;                // "Override style"
+    enableNote: string;            // small explainer near the toggle
+    modeStatic: string;            // "Static"
+    modeBound: string;             // "Bound to variable"
+    modeBoundNote: string;         // explainer for bound mode
+    fieldsHeader: string;          // "Style fields"
+    rawCssLabel: string;           // "Additional CSS"
+    rawCssPlaceholder: string;     // multi-line textarea placeholder
+    rawCssScopedNote: string;      // hint that rules are auto-scoped
+    rawCssHelpToggle: string;      // "Show supported selectors & example"
+    rawCssHelpIntro: string;       // intro line for help block
+    rawCssSelectorBody: string;
+    rawCssSelectorName: string;
+    rawCssSelectorText: string;
+    rawCssSelectorAvatar: string;
+    rawCssExampleLabel: string;    // "Example:"
+    bindVariableLabel: string;     // "Variable (number)"
+    bindVariableEmpty: string;     // "Pick a numeric variable"
+    variants: string;              // "Variants"
+    variantAdd: string;            // "+ Variant"
+    variantEmpty: string;          // shown when list is empty
+    variantMatchExact: string;     // "Exact"
+    variantMatchRange: string;     // "Range"
+    variantMatchValue: string;     // "Value"
+    variantMatchMin: string;       // "From"
+    variantMatchMax: string;       // "To"
+    variantConditionHint: string;  // "first match wins"
+    variantDefault: string;        // "Default (no match)"
+    variantDefaultNote: string;    // explainer
+    reset: string;                 // "Reset"
+    fieldBgColor: string;
+    fieldBorderColor: string;
+    fieldNameColor: string;
+    fieldTextColor: string;
+  };
+
   block: {
     /** Block type display names */
     text: string;
@@ -1186,8 +1225,6 @@ export interface Translations {
     deleteGroupWithScenes: string;
     sectionExport: string;
     confirmOpenFolderAfterExport: string;
-    autoStylesFolder: string;
-    autoStylesFolderDesc: string;
     titleBarStyleLabel: string;
     titleBarStyleCustom: string;
     titleBarStyleNative: string;
@@ -1356,8 +1393,11 @@ export interface Translations {
     // Tabbed layout (merged AI Settings)
     tabGeneral:             string;
     tabAppearance:          string;
+    tabBlockDefaults:       string;
     tabAiImage:             string;
     tabAdvanced:            string;
+    sectionBlockDefaults:   string;
+    blockDefaultsDescription: string;
     sectionColors:          string;
     fieldLore:              string;
     fieldLorePlaceholder:   string;

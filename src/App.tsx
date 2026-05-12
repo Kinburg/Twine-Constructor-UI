@@ -14,6 +14,7 @@ import { useAutosave } from './hooks/useAutosave';
 import { Toaster } from 'sonner';
 import { useT } from './i18n';
 import { fsApi, joinPath, safeName } from './lib/fsApi';
+import { injectPreviewCSS } from './utils/previewCss';
 
 export default function App() {
   const { fixVariableNames, undo, redo, projectDir, project, setProjectDir } = useProjectStore();
@@ -36,6 +37,11 @@ export default function App() {
   useEffect(() => {
     usePluginStore.getState().loadFromDisk(projectDir);
   }, [projectDir]);
+
+  // Inject story preview CSS into the editor whenever characters change.
+  useEffect(() => {
+    injectPreviewCSS(project.characters);
+  }, [project.characters]);
 
   // Show project settings modal on first launch (no folder selected = brand new session)
   useEffect(() => {

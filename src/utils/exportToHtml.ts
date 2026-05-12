@@ -1,8 +1,9 @@
-import type { Project, ProjectSettings, Character, PluginBlockDef } from '../types';
+import type { Project, ProjectSettings, PluginBlockDef } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
 import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS, setPluginRegistry, exportSceneBg, buildSceneBgScript, hasScenesWithBg } from './exportToTwee';
 import { collectPluginIds, expandPluginDeps } from './pluginUtils';
+import { buildAllDialogueCss, buildStyleBindScript, hasStyleBindings } from './styleCascade';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -56,40 +57,6 @@ function buildSettingsScript(settings?: ProjectSettings): string {
     lines.push('if (window.UIBar) UIBar.stow(); Config.saves.isAllowed = () => false;');
 
   return lines.join('\n');
-}
-
-// ─── CSS generation ───────────────────────────────────────────────────────────
-
-function buildCharacterCSS(characters: Character[]): string {
-  if (characters.length === 0) return '';
-  const base = [
-    '.dialogue { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0; font-style: italic; }',
-    '.dialogue.dlg-right { flex-direction: row-reverse; }',
-    '.char-avatar { width: 96px; height: 96px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }',
-    '.char-body { flex: 1; padding: 8px 12px; border-radius: 4px; }',
-    '.char-name { font-weight: bold; display: block; margin-bottom: 4px; }',
-    '.char-text { display: block; margin: 0 !important; padding: 0; }',
-  ].join('\n');
-  const perChar = characters.map(c => {
-    const cls = `char-${c.id}`;
-    return [
-      `.dialogue.${cls} .char-body {`,
-      `  background: var(--purl-char-bg, ${c.bgColor});`,
-      `  border-left: 4px solid var(--purl-char-border, ${c.borderColor});`,
-      `}`,
-      `.dialogue.dlg-right.${cls} .char-body {`,
-      `  border-left: none;`,
-      `  border-right: 4px solid var(--purl-char-border, ${c.borderColor});`,
-      `}`,
-      `.dialogue.${cls} .char-name {`,
-      `  color: var(--purl-char-name, ${c.nameColor});`,
-      `}`,
-      `.dialogue.${cls} .char-text {`,
-      `  color: var(--purl-char-text, ${c.textColor ?? '#e2e8f0'});`,
-      `}`,
-    ].join('\n');
-  }).join('\n\n');
-  return `${base}\n\n${perChar}`;
 }
 
 // ─── Block type CSS hooks ─────────────────────────────────────────────────────
@@ -246,7 +213,7 @@ export function buildPassages(project: Project, plugins: PluginBlockDef[] = []):
     }
   }
 
-  const charCSS      = withSection('Dialogue',      buildCharacterCSS(characters));
+  const charCSS      = withSection('Dialogue',      buildAllDialogueCss(characters));
   const panelCSS     = withSection('Sidebar Panel', buildPanelCSS(sidebarPanel));
   const buttonCSS    = withSection('Buttons',       buildButtonsCSS(scenes));
   const tipCSS       = withSection('Tooltips',      buildTooltipCSS());
@@ -270,6 +237,7 @@ export function buildPassages(project: Project, plugins: PluginBlockDef[] = []):
     buildContainerScript(project),
     buildPaperdollScript(project),
     hasScenesWithBg(scenes) ? buildSceneBgScript() : '',
+    hasStyleBindings(project) ? buildStyleBindScript(project) : '',
     buildPurlSignatureScript(),
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load (audio + video)',
@@ -286,34 +254,9 @@ export function buildPassages(project: Project, plugins: PluginBlockDef[] = []):
   return { passages, startPid, combinedCSS, scriptContent };
 }
 
-// ─── CSS sections export ──────────────────────────────────────────────────────
-
-export interface CssSection { file: string; label: string; content: string }
-
-export function buildCssSections(project: Project, plugins: PluginBlockDef[] = []): CssSection[] {
-  setPluginRegistry(plugins);
-  const { scenes, characters, sidebarPanel } = project;
-
-  const candidates: CssSection[] = [
-    { file: 'global.css',      label: 'Global',        content: buildGlobalCSS(project.settings) },
-    { file: 'dialog.css',      label: 'Dialogue',      content: buildCharacterCSS(characters) },
-    { file: 'panel.css',       label: 'Sidebar Panel', content: buildPanelCSS(sidebarPanel) },
-    { file: 'buttons.css',     label: 'Buttons',       content: buildButtonsCSS(scenes) },
-    { file: 'tooltips.css',    label: 'Tooltips',      content: buildTooltipCSS() },
-    { file: 'containers.css',  label: 'Containers',    content: buildContainerCSS() },
-    { file: 'paperdoll.css',   label: 'Paperdoll',     content: buildPaperdollCSS(project) },
-    { file: 'inventory.css',   label: 'Inventory',     content: buildInventoryCSS(project) },
-    { file: 'block-types.css', label: 'Block Types',   content: buildBlockTypesCSS() },
-  ];
-
-  return candidates
-    .filter(s => s.content.trim().length > 0)
-    .map(s => ({ ...s, content: withSection(s.label, s.content) }));
-}
-
 // ─── Standalone HTML generator ────────────────────────────────────────────────
 
-export function generateStandaloneHtml(project: Project, scTemplate: string, plugins: PluginBlockDef[] = [], addonFiles: string[] = []): { html: string; css: string } {
+export function generateStandaloneHtml(project: Project, scTemplate: string, plugins: PluginBlockDef[] = []): { html: string; css: string } {
   const { passages, startPid, combinedCSS, scriptContent } = buildPassages(project, plugins);
 
   const styleBlock  = `<style role="stylesheet" id="twine-user-stylesheet" type="text/twine-css"></style>`;
@@ -352,12 +295,8 @@ export function generateStandaloneHtml(project: Project, scTemplate: string, plu
     `$1${startPid}"`,
   );
 
-  const addonLinks = addonFiles
-    .map(f => `  <link rel="stylesheet" href="styles/${f}">`)
-    .join('\n');
   const cssLinks = [
     '  <link rel="stylesheet" href="story.css">',
-    ...(addonLinks ? [addonLinks] : []),
     '  <link rel="stylesheet" href="addon.css">',
   ].join('\n');
   html = html.replace('</head>', `${cssLinks}\n</head>`);

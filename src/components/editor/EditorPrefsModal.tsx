@@ -536,12 +536,6 @@ function BehaviorTab() {
           <Row label={ep.confirmOpenFolderAfterExport}>
             <Toggle value={prefs.confirmOpenFolderAfterExport} onChange={() => toggle('confirmOpenFolderAfterExport')} />
           </Row>
-          <Row label={ep.autoStylesFolder}>
-            <Toggle value={prefs.autoStylesFolder} onChange={() => toggle('autoStylesFolder')} />
-          </Row>
-          {prefs.autoStylesFolder && (
-            <p className="text-[10px] text-slate-500 leading-relaxed pl-0.5">{ep.autoStylesFolderDesc}</p>
-          )}
         </div>
       </Section>
     </>

@@ -1,3 +1,59 @@
+// ─── Style overrides (cascade: standard → common custom → spot custom) ──────
+
+/** Static = one style applied always. Bound = numeric-variable-driven mapping. */
+export type StyleMode = 'static' | 'bound';
+
+/**
+ * One variant in a variable-bound style override. Numeric variables only.
+ * - matchType 'exact': fires when $var === value
+ * - matchType 'range': fires when rangeMin ≤ $var ≤ rangeMax (inclusive)
+ */
+export interface StyleMappingEntry {
+  id: string;
+  matchType: 'exact' | 'range';
+  /** Numeric literal as string (parsed on use). Used when matchType === 'exact'. */
+  value?: string;
+  /** Numeric literal as string. Used when matchType === 'range' (inclusive). */
+  rangeMin?: string;
+  rangeMax?: string;
+  /** Structured field overrides for this variant (keys depend on block type). */
+  fields?: Record<string, string | number | boolean>;
+  /** Raw CSS body for this variant — auto-scoped to the variant's class. */
+  rawCss?: string;
+}
+
+/**
+ * Generic style override. Applied at one of three cascade layers:
+ *   1. Standard         — built-in fields on Character/Block (no override)
+ *   2. Common custom    — Character.customDialogueStyle / ProjectSettings.defaultBlockStyles[type]
+ *   3. Spot custom      — block.customStyle (always static)
+ *
+ * Bound mode is allowed only at the common-custom layer. Spot-custom is always static.
+ */
+export interface BlockStyleOverride {
+  /** Master switch. When false, the whole override is ignored. */
+  enabled: boolean;
+  /**
+   * 'static' = single style applied always. Default.
+   * 'bound'  = variable-driven mapping (common-custom layer only; treat as 'static' at spot layer).
+   */
+  mode?: StyleMode;
+
+  // ─── Static mode ─────────────────────────────────────────────────────────
+  fields?: Record<string, string | number | boolean>;
+  /** Auto-scoped to the layer's class; appears after `fields` in the rule body. */
+  rawCss?: string;
+
+  // ─── Bound mode (common-custom layer only) ───────────────────────────────
+  /** Numeric variable's ID. */
+  variableId?: string;
+  /** Variants — first matching entry wins (top-to-bottom = priority). */
+  mapping?: StyleMappingEntry[];
+  /** Fallback fields when no entry matches (or variable is undefined/non-numeric). */
+  defaultFields?: Record<string, string | number | boolean>;
+  defaultRawCss?: string;
+}
+
 // ─── Block appearance effects ────────────────────────────────────────────────
 
 /** Delayed appearance: wraps block in <<timed Xs>>...<</timed>> on export */
@@ -47,6 +103,8 @@ export interface DialogueBlock {
   delay?: BlockDelay;
   typewriter?: BlockTypewriter;
   generationHistory?: GenerationHistoryEntry[];
+  /** Spot-level style override (always static; supersedes character's common custom). */
+  customStyle?: BlockStyleOverride;
 }
 
 export interface ChoiceOption {
@@ -829,6 +887,11 @@ export interface Character {
   varIds?: CharacterVarIds;
   /** Marks this character as the main hero (used automatically in container interactions). */
   isHero?: boolean;
+  /**
+   * Common custom dialogue style for this character (cascade layer 2).
+   * Supports both static and bound (number-variable-driven) modes.
+   */
+  customDialogueStyle?: BlockStyleOverride;
 }
 
 // ─── Item ────────────────────────────────────────────────────────────────────
@@ -1209,6 +1272,12 @@ export interface ProjectSettings {
   headerRowId?:    string;
   /** Text shown on the click-to-begin overlay when audio autoplay is blocked */
   audioUnlockText?: string;
+  /**
+   * Common custom styles per block type (cascade layer 2 for non-dialogue blocks).
+   * Dialogue uses Character.customDialogueStyle instead.
+   * Supports both static and bound modes.
+   */
+  defaultBlockStyles?: Partial<Record<BlockType, BlockStyleOverride>>;
 }
 
 export interface Project {

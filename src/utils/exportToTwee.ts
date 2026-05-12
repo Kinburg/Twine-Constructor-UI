@@ -13,6 +13,14 @@ import { DEFAULT_PANEL_STYLE } from '../store/projectStore';
 import { flattenVariables, getVariablePath, hasLeafVariables } from './treeUtils';
 import { collectPluginIds, expandPluginDeps, pluginValueLiteral } from './pluginUtils';
 import { paramsToVirtualNodes, rewriteParamRefs } from './pluginParamScope';
+import {
+  buildAllDialogueCss,
+  buildStyleBindScript,
+  hasStyleBindings,
+  buildDialogueSpotStyleBlock,
+  dialogueElementClasses,
+  dialogueDataStyleBind,
+} from './styleCascade';
 
 // ─── Plugin registry (set by exportToTwee / buildPassages at start of export) ─
 // Keeps blockToSC* recursive calls simple — they look up defs through this module-scope map.
@@ -244,8 +252,6 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
     case 'dialogue': {
       const char = chars.find(c => c.id === block.characterId);
-      const charClass = char ? `char-${char.id}` : 'char-unknown';
-      const alignClass = block.align === 'right' ? 'dlg-right' : 'dlg-left';
 
       // Use runtime $name variable if available, otherwise fall back to static name
       const nameVarId = char?.varIds?.nameVarId;
@@ -262,7 +268,6 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
 
       let avatarHtml = '';
       if (cfg?.mode === 'bound' && cfg.variableId) {
-        // Bound mode: generate <<if>>...<<elseif>>...<<else>>...<</if>> chain
         const boundVar = vars.find(v => v.id === cfg.variableId);
         const vname = boundVar ? `$${varPath(boundVar, nodes)}` : '$???';
         const imgTag = (src: string) => `<img class="char-avatar" src="${src}">`;
@@ -284,10 +289,8 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         if (cases.length > 0) cases.push('<</if>>');
         avatarHtml = cases.join('');
       } else if (cfg?.mode === 'static' && cfg.src) {
-        // Static mode: fixed image path
         avatarHtml = `<img class="char-avatar" src="${cfg.src}">`;
       } else if (avatarVar) {
-        // Legacy: avatar stored in a $variable
         avatarHtml = `<<if $${varPath(avatarVar, nodes)}>><img class="char-avatar" @src="$${varPath(avatarVar, nodes)}"><</if>>`;
       }
 
@@ -297,35 +300,20 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         .filter(Boolean)
         .join('');
 
-      // ── Color variables: use runtime $vars so color changes reflect immediately ─
-      // @style is only applied when variable bindings exist; otherwise CSS classes handle colors.
-      const bgColorVar     = char?.varIds?.bgColorVarId
-        ? vars.find(v => v.id === char!.varIds!.bgColorVarId)    : null;
-      const borderColorVar = char?.varIds?.borderColorVarId
-        ? vars.find(v => v.id === char!.varIds!.borderColorVarId) : null;
-      const nameColorVar   = char?.varIds?.nameColorVarId
-        ? vars.find(v => v.id === char!.varIds!.nameColorVarId)   : null;
-      const textColorVar   = char?.varIds?.textColorVarId
-        ? vars.find(v => v.id === char!.varIds!.textColorVarId)   : null;
-
-      // Color expressions: runtime variable or quoted static fallback
-      const bgExpr     = bgColorVar     ? `$${varPath(bgColorVar, nodes)}`     : `'${char?.bgColor     ?? '#23262e'}'`;
-      const borderExpr = borderColorVar ? `$${varPath(borderColorVar, nodes)}` : `'${char?.borderColor  ?? '#4a90d9'}'`;
-      const nameExpr   = nameColorVar   ? `$${varPath(nameColorVar, nodes)}`   : `'${char?.nameColor    ?? '#e0e0e0'}'`;
-      const textExpr   = textColorVar   ? `$${varPath(textColorVar, nodes)}`   : `'${char?.textColor    ?? '#e2e8f0'}'`;
-
-      // Set colors as CSS custom properties on the .dialogue container so that
-      // story.css uses var(--purl-char-*) and addon.css can override via normal cascade.
-      const charVarsExpr = `'--purl-char-bg:'+${bgExpr}+';--purl-char-border:'+${borderExpr}+';--purl-char-name:'+${nameExpr}+';--purl-char-text:'+${textExpr}`;
-
       const body = `<div class="char-body"><span class="char-name">${charNameDisplay}</span><span class="char-text">${block.text}</span>${innerBlocksHtml}</div>`;
 
-      // Avatar always comes first in DOM for BOTH alignments.
-      // CSS `.dlg-right { flex-direction: row-reverse }` flips the visual order for right-aligned dialogues,
-      // placing the avatar on the right side without changing the DOM order.
+      // Avatar always comes first in DOM for both alignments. The `.dlg-right`
+      // class flips visual order via flex-direction: row-reverse.
       const inner = avatarHtml + body;
 
-      const divContent = `<div class="dialogue ${charClass} ${alignClass}" @style="${charVarsExpr}">${inner}</div>`;
+      // Style cascade classes + spot <style> block + data-style-bind
+      const classes = char ? dialogueElementClasses(char, block) : ['dialogue', 'dlg-unknown'];
+      classes.push(block.align === 'right' ? 'dlg-right' : 'dlg-left');
+      const dataBind = char ? dialogueDataStyleBind(char) : '';
+      const dataBindAttr = dataBind ? ` data-style-bind="${dataBind}"` : '';
+      const spotStyleBlock = char ? buildDialogueSpotStyleBlock(block) : '';
+
+      const divContent = `${spotStyleBlock}<div class="${classes.join(' ')}"${dataBindAttr}>${inner}</div>`;
       if (block.live) {
         const attr = htmlAttr(divContent);
         return `${indent}<span class="tg-live" data-wiki="${attr}">${divContent}</span>`;
@@ -596,6 +584,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
         actionLines.push(`${indent}  <<run $('.tg-live[data-wiki]').each(function(){$(this).empty().wiki($(this).attr('data-wiki'));})>>`);
       }
       actionLines.push(`${indent}  <<run window._tgCheckWatchers && window._tgCheckWatchers()>>`);
+      actionLines.push(`${indent}  <<run window._tgRefreshStyleBind && window._tgRefreshStyleBind()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
         `${indent}<span class="tg-btn ${cls}">` +
@@ -636,6 +625,7 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       actionLines.push(`${indent}  <<include ${funcTarget}>>`);
       actionLines.push(`${indent}  <<run $('.tg-live[data-wiki]').each(function(){$(this).empty().wiki($(this).attr('data-wiki'));})>>`);
       actionLines.push(`${indent}  <<run window._tgCheckWatchers && window._tgCheckWatchers()>>`);
+      actionLines.push(`${indent}  <<run window._tgRefreshStyleBind && window._tgRefreshStyleBind()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
         `${indent}<span class="tg-btn ${cls}"><<link "${block.label}">>\n` +
@@ -952,6 +942,7 @@ function buildCellButtonSC(c: CellButton, cellId: string, vars: Variable[], node
     .filter(Boolean);
 
   macros.push('<<run window._tgCheckWatchers && window._tgCheckWatchers()>>');
+  macros.push('<<run window._tgRefreshStyleBind && window._tgRefreshStyleBind()>>');
   macros.push('<<run UIBar.update()>>');
 
   if (c.navigate?.type === 'back') {
@@ -1925,39 +1916,7 @@ export function buildAudioScript(scenes: Scene[], unlockText?: string): string {
 }
 
 // ─── Character CSS ─────────────────────────────────────────────────────────────
-
-function buildCharacterCSS(characters: Character[]): string {
-  if (characters.length === 0) return '';
-  const base = [
-    '.dialogue { display: flex; align-items: flex-start; gap: 8px; margin: 4px 0; font-style: italic; }',
-    '.dialogue.dlg-right { flex-direction: row-reverse; }',
-    '.char-avatar { width: 96px; height: 96px; object-fit: cover; border-radius: 4px; flex-shrink: 0; }',
-    '.char-body { flex: 1; padding: 8px 12px; border-radius: 4px; }',
-    '.char-name { font-weight: bold; display: block; margin-bottom: 4px; }',
-    '.dialogue.dlg-right .char-name { text-align: right; }',
-    '.char-text { display: block; margin: 0 !important; padding: 0; }',
-  ].join('\n');
-  const perChar = characters.map(c => {
-    const cls = `char-${c.id}`;
-    return (
-      `.dialogue.${cls} .char-body {\n` +
-      `  background: ${c.bgColor};\n` +
-      `  border-left: 4px solid ${c.borderColor};\n` +
-      `}\n` +
-      `.dialogue.dlg-right.${cls} .char-body {\n` +
-      `  border-left: none;\n` +
-      `  border-right: 4px solid ${c.borderColor};\n` +
-      `}\n` +
-      `.dialogue.${cls} .char-name {\n` +
-      `  color: ${c.nameColor};\n` +
-      `}\n` +
-      `.dialogue.${cls} .char-text {\n` +
-      `  color: ${c.textColor ?? '#e2e8f0'};\n` +
-      `}`
-    );
-  }).join('\n\n');
-  return `${base}\n\n${perChar}`;
-}
+// Implementation moved to styleCascade.ts (buildAllDialogueCss).
 
 // ─── Twine graph hint helpers ─────────────────────────────────────────────────
 
@@ -2066,7 +2025,7 @@ export function exportToTwee(project: Project, plugins: PluginBlockDef[] = []): 
   }
 
   // StoryStylesheet
-  const charCSS      = buildCharacterCSS(characters);
+  const charCSS      = buildAllDialogueCss(characters);
   const panelCSS     = buildPanelCSS(sidebarPanel);
   const buttonCSS    = buildButtonsCSS(scenes);
   const animCSS      = buildAnimationCSS(scenes);
@@ -2088,6 +2047,7 @@ export function exportToTwee(project: Project, plugins: PluginBlockDef[] = []): 
     buildContainerScript(project),
     buildPaperdollScript(project),
     hasScenesWithBg(scenes) ? buildSceneBgScript() : '',
+    hasStyleBindings(project) ? buildStyleBindScript(project) : '',
     hasAudioVolume ? [
       '// Audio volume: restore from saved state on load',
       '$(document).on(":passagedisplay", function() {',

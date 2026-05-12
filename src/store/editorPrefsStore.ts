@@ -49,8 +49,6 @@ export interface EditorPrefs {
 
   // ── Export ────────────────────────────────────────────────────────────────
   confirmOpenFolderAfterExport: boolean;
-  /** Auto-create release/styles/ with per-section CSS files on HTML export */
-  autoStylesFolder: boolean;
 
   // ── Add-block menu ──────────────────────────────────────────────────────
   recentBlockTypes: BlockType[];
@@ -107,7 +105,6 @@ const DEFAULTS: EditorPrefs = {
   deleteGroupWithScenes: false,
 
   confirmOpenFolderAfterExport: true,
-  autoStylesFolder: false,
 
   recentBlockTypes: [],
 

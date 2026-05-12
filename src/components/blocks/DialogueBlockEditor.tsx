@@ -25,9 +25,11 @@ import { NoteBlockEditor } from './NoteBlockEditor';
 import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { TextInsertToolbar } from '../shared/TextInsertToolbar';
 import { LLMGenerateButton } from '../shared/LLMGenerateButton';
+import { StyleOverrideEditor } from '../shared/StyleOverrideEditor';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
 import { useVariableNodes } from '../shared/VariableScope';
 import { EmojiIcon } from '../shared/EmojiIcons';
+import { dialogueElementClasses, buildDialogueSpotStyleBlock } from '../../utils/styleCascade';
 
 /**
  * Converts an avatar src value to a URL the editor renderer can actually load:
@@ -248,15 +250,12 @@ export function DialogueBlockEditor({
   const showBound     = !showImg && Boolean(selectedChar) && isBoundAvatar;
   const showNoAvatar  = !showImg && Boolean(selectedChar) && !isBoundAvatar;
 
-  // Inline preview: body style
-  const bodyStyle = selectedChar ? {
-    background: selectedChar.bgColor,
-    borderLeft:  isRight ? undefined           : `4px solid ${selectedChar.borderColor}`,
-    borderRight: isRight ? `4px solid ${selectedChar.borderColor}` : undefined,
-    borderRadius: '4px',
-    padding: '6px 10px',
-    flex: 1,
-  } : { flex: 1 };
+  // Build preview class list + spot <style> snippet matching the export.
+  // For bound common-custom, the preview shows the default variant (no runtime swap).
+  const previewClasses = selectedChar
+    ? dialogueElementClasses(selectedChar, block).join(' ')
+    : 'dialogue';
+  const spotStyleBlock = selectedChar ? buildDialogueSpotStyleBlock(block) : '';
 
   return (
     <div className="flex flex-col gap-2">
@@ -332,35 +331,43 @@ export function DialogueBlockEditor({
         </label>
       </div>
 
-      {/* Text + preview */}
-      <div className={`flex gap-2 items-start ${isRight ? 'flex-row-reverse' : ''}`}>
-        {/* Avatar thumbnail */}
+      {/* Dialogue preview — uses the same CSS classes + spot <style> as the exported story */}
+      {spotStyleBlock && (
+        <div dangerouslySetInnerHTML={{ __html: spotStyleBlock }} />
+      )}
+      <div className={`${previewClasses}${isRight ? ' dlg-right' : ''}`}>
+        {/* Avatar thumbnail — keep editor size (40×40) regardless of story CSS */}
         {showImg && (
           <img
             src={avatarPreviewSrc}
-            className="w-10 h-10 object-cover rounded flex-shrink-0"
+            className="char-avatar object-cover"
+            style={{ width: 40, height: 40 }}
             alt=""
             onError={() => setImgFailed(true)}
           />
         )}
         {showBound && (
           <div
-            className="w-10 h-10 rounded flex-shrink-0 bg-slate-700 flex items-center justify-center text-slate-500 text-xs"
+            className="char-avatar bg-slate-700 flex items-center justify-center text-slate-500 text-xs"
+            style={{ width: 40, height: 40 }}
             title={t.dialogueBlock.dynamicAvatarTitle}
           >
             <EmojiIcon name="chart" size={20} />
           </div>
         )}
         {showNoAvatar && (
-          <div className="w-10 h-10 rounded flex-shrink-0 bg-slate-700 flex items-center justify-center text-slate-500 text-xs">
+          <div
+            className="char-avatar bg-slate-700 flex items-center justify-center text-slate-500 text-xs"
+            style={{ width: 40, height: 40 }}
+          >
             <EmojiIcon name="person" size={20} />
           </div>
         )}
 
-        {/* Name + text area */}
-        <div style={bodyStyle} className="relative">
+        {/* Body */}
+        <div className="char-body relative" style={selectedChar ? undefined : { flex: 1 }}>
           {selectedChar && (
-            <span className="text-xs font-bold block mb-1" style={{ color: selectedChar.nameColor, textAlign: isRight ? 'right' : 'left' }}>
+            <span className="char-name text-xs">
               {selectedChar.name}{block.nameSuffix ? ` (${block.nameSuffix})` : ''}
             </span>
           )}
@@ -384,8 +391,7 @@ export function DialogueBlockEditor({
           </div>
           <textarea
             ref={dialogueRef}
-            className={`w-full bg-transparent text-sm rounded px-0 py-0 outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-20' : 'pr-20'}`}
-            style={{ color: selectedChar ? (selectedChar.textColor ?? '#e2e8f0') : undefined }}
+            className={`char-text w-full bg-transparent rounded outline-none min-h-[60px] placeholder-slate-500 ${isRight ? 'pl-20' : 'pr-20'}`}
             placeholder={t.dialogueBlock.linePlaceholder}
             value={block.text}
             onFocus={saveSnapshot}
@@ -399,6 +405,21 @@ export function DialogueBlockEditor({
       {!onUpdate && (
         <InnerBlocksList block={block} sceneId={sceneId} />
       )}
+
+      {/* Spot-level style override (static only — bound is at character level) */}
+      <details className="border border-slate-700/60 rounded bg-slate-900/30">
+        <summary className="text-xs text-slate-300 px-2 py-1.5 cursor-pointer select-none hover:bg-slate-800/50">
+          {t.styleOverride.sectionTitle}
+        </summary>
+        <div className="px-2 pb-2 pt-1">
+          <StyleOverrideEditor
+            value={block.customStyle}
+            onChange={v => update({ customStyle: v })}
+            variableNodes={variableNodes}
+            allowBound={false}
+          />
+        </div>
+      </details>
 
       <BlockEffectsPanel
         delay={block.delay}

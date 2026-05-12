@@ -6,7 +6,7 @@ import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT, useLocaleStore, getLocales } from '../../i18n';
 import { useConfirm } from '../shared/ConfirmModal';
 import { useDropdown } from '../shared/useDropdown';
-import { generateStandaloneHtml, buildCssSections } from '../../utils/exportToHtml';
+import { generateStandaloneHtml } from '../../utils/exportToHtml';
 import { exportToTwee } from '../../utils/exportToTwee';
 import { extractProjectStrings, applyTranslations, type TranslationMap } from '../../utils/i18nUtils';
 import {
@@ -37,7 +37,6 @@ export function Header() {
   const { setProjectSettingsOpen, setEditorPrefsOpen, setLLMSettingsOpen } = useEditorStore();
 
   const confirmOpenFolderAfterExport = useEditorPrefsStore(s => s.confirmOpenFolderAfterExport);
-  const autoStylesFolder             = useEditorPrefsStore(s => s.autoStylesFolder);
 
   const t = useT();
 
@@ -48,7 +47,6 @@ export function Header() {
   const [scReady, setScReady]           = useState(hasSCTemplate());
   const [scVersion, setScVersion]       = useState(getSCVersion());
   const [aboutOpen, setAboutOpen]       = useState(false);
-  const [addonCssModal, setAddonCssModal] = useState<string[]>([]);
   const [busy, setBusy]                 = useState(false);
   const [isMaximized, setIsMaximized]   = useState(false);
   const { ask, modal: confirmModal }    = useConfirm();
@@ -240,31 +238,12 @@ export function Header() {
       try {
         const dir = await ensureProjectDir();
         if (!dir) return;
-        const releaseDir  = joinPath(dir, 'release');
-        const stylesDir   = joinPath(releaseDir, 'styles');
+        const releaseDir = joinPath(dir, 'release');
 
-        // Auto-generate per-section CSS files if the toggle is on
-        if (autoStylesFolder) {
-          await fsApi.mkdir(stylesDir);
-          const sections = buildCssSections(project, usePluginStore.getState().plugins);
-          for (const s of sections) {
-            const filePath = joinPath(stylesDir, s.file);
-            const exists = await fsApi.exists(filePath);
-            if (!exists) await fsApi.writeFile(filePath, s.content);
-          }
-        }
+        const { html, css } = generateStandaloneHtml(
+          project, template, usePluginStore.getState().plugins,
+        );
 
-        // Always scan styles/ for CSS files to link (even if toggle is off)
-        let styleFiles: string[] = [];
-        try {
-          const entries = await fsApi.listDir(stylesDir);
-          styleFiles = entries
-            .filter(e => !e.isDir && e.name.toLowerCase().endsWith('.css'))
-            .map(e => e.name)
-            .sort((a, b) => a.localeCompare(b));
-        } catch { /* folder doesn't exist — no styles */ }
-
-        const { html, css } = generateStandaloneHtml(project, template, usePluginStore.getState().plugins, styleFiles);
         await fsApi.writeFile(joinPath(releaseDir, 'index.html'), html);
         await fsApi.writeFile(joinPath(releaseDir, 'story.css'), css);
         toast.success(t.header.successExportHtml);
@@ -408,41 +387,6 @@ export function Header() {
     } finally {
       setBusy(false);
     }
-  };
-
-  const handleCreateSeparateCss = async () => {
-    exportDD.close();
-    if (!projectDir) {
-      toast.info('Save the project first before creating CSS files');
-      return;
-    }
-    const stylesDir = joinPath(projectDir, 'release', 'styles');
-
-    const doCreate = async () => {
-      await fsApi.mkdir(stylesDir);
-      const sections = buildCssSections(project, usePluginStore.getState().plugins);
-      for (const s of sections) {
-        await fsApi.writeFile(joinPath(stylesDir, s.file), s.content);
-      }
-      setAddonCssModal(sections.map(s => s.file));
-    };
-
-    // Warn if any CSS files already exist in styles/
-    let hasExisting = false;
-    try {
-      const entries = await fsApi.listDir(stylesDir);
-      hasExisting = entries.some(e => !e.isDir && e.name.toLowerCase().endsWith('.css'));
-    } catch { /* folder doesn't exist yet — fine */ }
-
-    if (hasExisting) {
-      ask(
-        { message: 'CSS files already exist in release/styles/. They will be overwritten with fresh copies. Continue?', variant: 'danger' },
-        doCreate,
-      );
-      return;
-    }
-
-    await doCreate();
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────
@@ -654,13 +598,6 @@ export function Header() {
                   onClick={handleExportTwee}
                   disabled={busy}
                 />
-                <DDItem
-                  icon={<Icon.filePlus className="w-4 h-4" />}
-                  label="Create separate CSS styles"
-                  desc="Split styles into styles/ files — edit only what you need"
-                  onClick={handleCreateSeparateCss}
-                  disabled={busy}
-                />
               </div>
             )}
           </div>
@@ -843,45 +780,6 @@ export function Header() {
       )}
 
       {confirmModal}
-
-      {/* Separate CSS files created modal */}
-      {addonCssModal.length > 0 && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-slate-800 border border-slate-700 rounded-xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center shrink-0">
-                  <Icon.filePlus className="w-5 h-5 text-indigo-400" />
-                </div>
-                <div>
-                  <h2 className="text-base font-semibold text-white">CSS files created</h2>
-                  <p className="text-slate-400 text-xs">{projectDir ? joinPath(projectDir, 'release', 'styles') : 'release/styles'}/</p>
-                </div>
-              </div>
-              <div className="h-px bg-slate-700/50 mb-3" />
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {addonCssModal.map(f => (
-                  <code key={f} className="text-xs bg-slate-900/70 border border-slate-700 text-indigo-300 px-2 py-0.5 rounded">{f}</code>
-                ))}
-              </div>
-              <ul className="space-y-2 text-sm text-slate-300">
-                <li className="flex gap-2"><span className="text-indigo-400 shrink-0">·</span>Edit only the files you need — delete the rest or leave them as-is.</li>
-                <li className="flex gap-2"><span className="text-indigo-400 shrink-0">·</span>Files in <code className="text-indigo-300">styles/</code> are picked up automatically on every export.</li>
-                <li className="flex gap-2"><span className="text-indigo-400 shrink-0">·</span>Add <code className="text-indigo-300">addon.css</code> alongside them as a final master override if needed.</li>
-              </ul>
-            </div>
-            <div className="bg-slate-900/50 p-3 flex justify-end border-t border-slate-700">
-              <button
-                className="px-4 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded text-sm font-medium transition-colors cursor-pointer"
-                onClick={() => setAddonCssModal([])}
-              >
-                Got it
-              </button>
-            </div>
-          </div>
-          <div className="absolute inset-0 -z-10" onClick={() => setAddonCssModal([])} />
-        </div>
-      )}
 
       {/* About Modal */}
       {aboutOpen && (
