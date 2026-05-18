@@ -97,14 +97,20 @@ export interface Translations {
     modeBoundNote: string;         // explainer for bound mode
     fieldsHeader: string;          // "Style fields"
     rawCssLabel: string;           // "Additional CSS"
-    rawCssPlaceholder: string;     // multi-line textarea placeholder
+    rawCssPlaceholder: string;     // generic fallback textarea placeholder
+    placeholderDialogue: string;   // textarea placeholder for dialogue overrides
+    placeholderButton: string;     // textarea placeholder for button/link/function overrides
     rawCssScopedNote: string;      // hint that rules are auto-scoped
     rawCssHelpToggle: string;      // "Show supported selectors & example"
     rawCssHelpIntro: string;       // intro line for help block
-    rawCssSelectorBody: string;
-    rawCssSelectorName: string;
-    rawCssSelectorText: string;
-    rawCssSelectorAvatar: string;
+    rawCssDisclaimer: string;      // "Any valid CSS works ..." — emphasises no whitelist
+    rawCssCheatsheetTitle: string; // "Common properties"
+    rawCssCheatsheet: {
+      motion:      string;         // "Motion & animation"
+      effects:     string;         // "Visual effects"
+      layout:      string;         // "Layout & spacing"
+      interaction: string;         // "Interaction"
+    };
     rawCssExampleLabel: string;    // "Example:"
     bindVariableLabel: string;     // "Variable (number)"
     bindVariableEmpty: string;     // "Pick a numeric variable"
@@ -120,10 +126,33 @@ export interface Translations {
     variantDefault: string;        // "Default (no match)"
     variantDefaultNote: string;    // explainer
     reset: string;                 // "Reset"
-    fieldBgColor: string;
-    fieldBorderColor: string;
-    fieldNameColor: string;
-    fieldTextColor: string;
+    // Tristate UI labels (boolean fields: bold / fullWidth)
+    tristateUnset: string;         // "—" (let lower cascade layer through)
+    tristateOff: string;
+    tristateOn: string;
+    // Field labels — keyed by StyleFieldDescriptor.labelKey
+    fields: {
+      bgColor:      string;
+      borderColor:  string;
+      nameColor:    string;
+      textColor:    string;
+      borderRadius: string;
+      paddingV:     string;
+      paddingH:     string;
+      fontSize:     string;
+      bold:         string;
+      fullWidth:    string;
+    };
+    // Raw-CSS help selector descriptions — keyed by StyleRawCssHelp.selectors[i].descKey
+    selectors: {
+      selectorBody:           string;
+      selectorName:           string;
+      selectorText:           string;
+      selectorAvatar:         string;
+      selectorButtonA:        string;
+      selectorButtonAHover:   string;
+      selectorButtonAActive:  string;
+    };
   };
 
   block: {
@@ -1396,8 +1425,15 @@ export interface Translations {
     tabBlockDefaults:       string;
     tabAiImage:             string;
     tabAdvanced:            string;
-    sectionBlockDefaults:   string;
-    blockDefaultsDescription: string;
+    sectionBlockDefaults:        string;  // legacy single section title
+    blockDefaultsDescription:    string;
+    // Per-type section titles + descriptions for Phase 2 Block defaults tab
+    sectionBlockDefaultsButton:  string;
+    sectionBlockDefaultsLink:    string;
+    sectionBlockDefaultsFunction:string;
+    blockDefaultsButtonDesc:     string;
+    blockDefaultsLinkDesc:       string;
+    blockDefaultsFunctionDesc:   string;
     sectionColors:          string;
     fieldLore:              string;
     fieldLorePlaceholder:   string;

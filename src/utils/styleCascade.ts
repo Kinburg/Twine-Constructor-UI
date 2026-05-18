@@ -15,12 +15,99 @@
  */
 
 import type {
+  Block,
+  ButtonBlock,
   Character,
   DialogueBlock,
+  FunctionBlock,
+  LinkBlock,
   Project,
-  VariableTreeNode,
+  ProjectSettings,
+  Scene,
 } from '../types';
 import { getVariablePath } from './treeUtils';
+
+// ─── Field schemas (shared with StyleOverrideEditor) ─────────────────────────
+
+/** Type of a single editable field in a style override. */
+export type StyleFieldType = 'color' | 'number' | 'boolean';
+
+/**
+ * Schema describing one editable field of `BlockStyleOverride.fields`.
+ * Used both for UI rendering (StyleOverrideEditor) and CSS emission helpers.
+ */
+export interface StyleFieldDescriptor {
+  /** Key inside `BlockStyleOverride.fields`. */
+  key: string;
+  type: StyleFieldType;
+  /** i18n key under `t.styleOverride.fields`. */
+  labelKey: string;
+  /** For type === 'number'. */
+  min?: number;
+  max?: number;
+  suffix?: string;
+}
+
+/** Help block shown inside the raw-CSS editor's <details> panel. */
+export interface StyleRawCssHelp {
+  /** Class/element selector names valid for this block type. */
+  selectors: Array<{ name: string; descKey: string }>;
+  /** Example raw-CSS snippet shown in <pre>. */
+  exampleCode: string;
+  /**
+   * i18n key under `t.styleOverride` resolving to a block-type-specific
+   * placeholder for the textarea. Falls back to `t.styleOverride.rawCssPlaceholder`
+   * when unset or when the resolved value is empty.
+   */
+  placeholderKey?: string;
+}
+
+export const DIALOGUE_FIELD_SCHEMA: ReadonlyArray<StyleFieldDescriptor> = [
+  { key: 'bgColor',     type: 'color', labelKey: 'bgColor' },
+  { key: 'borderColor', type: 'color', labelKey: 'borderColor' },
+  { key: 'nameColor',   type: 'color', labelKey: 'nameColor' },
+  { key: 'textColor',   type: 'color', labelKey: 'textColor' },
+];
+
+export const BUTTON_FIELD_SCHEMA: ReadonlyArray<StyleFieldDescriptor> = [
+  { key: 'bgColor',      type: 'color',   labelKey: 'bgColor' },
+  { key: 'textColor',    type: 'color',   labelKey: 'textColor' },
+  { key: 'borderColor',  type: 'color',   labelKey: 'borderColor' },
+  { key: 'borderRadius', type: 'number',  labelKey: 'borderRadius', min: 0, max: 50, suffix: 'px' },
+  { key: 'paddingV',     type: 'number',  labelKey: 'paddingV',     min: 0, max: 40, suffix: 'px' },
+  { key: 'paddingH',     type: 'number',  labelKey: 'paddingH',     min: 0, max: 80, suffix: 'px' },
+  { key: 'fontSize',     type: 'number',  labelKey: 'fontSize',     min: 6, max: 30, suffix: '×0.1em' },
+  { key: 'bold',         type: 'boolean', labelKey: 'bold' },
+  { key: 'fullWidth',    type: 'boolean', labelKey: 'fullWidth' },
+];
+
+export const DIALOGUE_RAW_CSS_HELP: StyleRawCssHelp = {
+  selectors: [
+    { name: '.char-body',   descKey: 'selectorBody' },
+    { name: '.char-name',   descKey: 'selectorName' },
+    { name: '.char-text',   descKey: 'selectorText' },
+    { name: '.char-avatar', descKey: 'selectorAvatar' },
+  ],
+  exampleCode:
+`.char-body { border-radius: 12px; padding: 14px 18px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+.char-name { font-family: 'Georgia', serif; letter-spacing: 0.04em; }
+.char-text { line-height: 1.6; }
+.char-avatar { border-radius: 50%; border: 2px solid #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.4); }`,
+  placeholderKey: 'placeholderDialogue',
+};
+
+export const BUTTON_RAW_CSS_HELP: StyleRawCssHelp = {
+  selectors: [
+    { name: 'a',        descKey: 'selectorButtonA' },
+    { name: 'a:hover',  descKey: 'selectorButtonAHover' },
+    { name: 'a:active', descKey: 'selectorButtonAActive' },
+  ],
+  exampleCode:
+`a { box-shadow: 0 2px 8px rgba(0,0,0,0.3); text-transform: uppercase; letter-spacing: 0.06em; }
+a:hover { transform: translateY(-1px); filter: brightness(1.15); }
+a:active { transform: translateY(1px); }`,
+  placeholderKey: 'placeholderButton',
+};
 
 // ─── Dialogue field → CSS mapping ─────────────────────────────────────────────
 
@@ -321,13 +408,237 @@ export function dialogueDataStyleBind(char: Character): string {
   return '';
 }
 
+// ─── Button family (Button / Link / Function) ────────────────────────────────
+
+export type ButtonFamilyType = 'button' | 'link' | 'function';
+type ButtonFamilyBlock = ButtonBlock | LinkBlock | FunctionBlock;
+
+function buttonShortId(blockId: string): string {
+  return blockId.replace(/-/g, '').substring(0, 12);
+}
+
+/** Per-instance Std class — same shape as today's `tg-btn-{id}`. */
+export function buttonInstanceClass(blockId: string): string {
+  return `tg-btn-${buttonShortId(blockId)}`;
+}
+
+/** Common (per-block-type project default) class. */
+export function buttonDefaultClass(type: ButtonFamilyType): string {
+  return `tg-btn-default-${type}`;
+}
+
+/** Bound variant class for a given type and variant key (idx or 'default'). */
+export function buttonDefaultVariantClass(type: ButtonFamilyType, variantKey: string): string {
+  return `tg-btn-default-${type}-v-${variantKey}`;
+}
+
+/** Spot (per-block) class. */
+export function buttonSpotClass(blockId: string): string {
+  return `tg-btn-spot-${buttonShortId(blockId)}`;
+}
+
+/** Copy `block.style` fields into the generic style-override fields record. */
+function buttonStdFields(block: ButtonFamilyBlock): Record<string, string | number | boolean> {
+  const s = block.style;
+  return {
+    bgColor:      s.bgColor,
+    textColor:    s.textColor,
+    borderColor:  s.borderColor,
+    borderRadius: s.borderRadius,
+    paddingV:     s.paddingV,
+    paddingH:     s.paddingH,
+    fontSize:     s.fontSize,
+    bold:         s.bold,
+    fullWidth:    s.fullWidth,
+  };
+}
+
+/**
+ * Build CSS rules for one button-family scope (`tg-btn-{id}`, `tg-btn-default-{type}`,
+ * `tg-btn-default-{type}-v-{idx}`, or `tg-btn-spot-{id}`).
+ *
+ * Skips fields that are undefined / empty so partial overrides (e.g. common only
+ * setting `bgColor`) let lower layers show through.
+ */
+function buildButtonRulesForScope(
+  scopeClass: string,
+  fields: Record<string, string | number | boolean>,
+  rawCss?: string,
+): string {
+  const parts: string[] = [];
+
+  // ─── Declarations on the inner <a> ─────────────────────────────────────────
+  const aDecls: string[] = [];
+
+  if (fields.bgColor      !== undefined && fields.bgColor      !== '') aDecls.push(`background: ${fields.bgColor}`);
+  if (fields.textColor    !== undefined && fields.textColor    !== '') aDecls.push(`color: ${fields.textColor}`);
+  if (fields.borderColor  !== undefined && fields.borderColor  !== '') aDecls.push(`border: 1px solid ${fields.borderColor}`);
+  if (fields.borderRadius !== undefined && fields.borderRadius !== '') aDecls.push(`border-radius: ${fields.borderRadius}px`);
+
+  const pvSet = fields.paddingV !== undefined && fields.paddingV !== '';
+  const phSet = fields.paddingH !== undefined && fields.paddingH !== '';
+  if (pvSet && phSet) {
+    aDecls.push(`padding: ${fields.paddingV}px ${fields.paddingH}px`);
+  } else if (pvSet) {
+    aDecls.push(`padding-top: ${fields.paddingV}px`);
+    aDecls.push(`padding-bottom: ${fields.paddingV}px`);
+  } else if (phSet) {
+    aDecls.push(`padding-left: ${fields.paddingH}px`);
+    aDecls.push(`padding-right: ${fields.paddingH}px`);
+  }
+
+  if (fields.fontSize !== undefined && fields.fontSize !== '') {
+    const n = Number(fields.fontSize);
+    if (Number.isFinite(n)) aDecls.push(`font-size: ${(n / 10).toFixed(1)}em`);
+  }
+
+  if (fields.bold === true)  aDecls.push(`font-weight: bold`);
+  if (fields.bold === false) aDecls.push(`font-weight: normal`);
+
+  if (aDecls.length > 0) {
+    parts.push(`.${scopeClass} a { ${aDecls.join('; ')}; }`);
+  }
+
+  // ─── Full-width handling (affects wrapper <span> + <a>) ────────────────────
+  if (fields.fullWidth === true) {
+    parts.push(`.${scopeClass} { display: block; }`);
+    parts.push(`.${scopeClass} a { display: block; width: 100%; box-sizing: border-box; text-align: center; }`);
+  } else if (fields.fullWidth === false) {
+    parts.push(`.${scopeClass} { display: inline-block; }`);
+    parts.push(`.${scopeClass} a { display: inline-block; width: auto; text-align: left; }`);
+  }
+
+  // ─── Raw CSS (auto-scoped) ─────────────────────────────────────────────────
+  if (rawCss && rawCss.trim()) {
+    parts.push(autoScopeRawCss(`.${scopeClass}`, rawCss));
+  }
+
+  return parts.join('\n');
+}
+
+/** Collect all button/link/function blocks from a scene tree (recurses into IF branches). */
+export function collectButtonFamilyBlocks(blocks: Block[]): ButtonFamilyBlock[] {
+  const result: ButtonFamilyBlock[] = [];
+  for (const b of blocks) {
+    if (b.type === 'button' || b.type === 'link' || b.type === 'function') result.push(b);
+    if (b.type === 'condition') {
+      for (const br of b.branches) result.push(...collectButtonFamilyBlocks(br.blocks));
+    }
+  }
+  return result;
+}
+
+/**
+ * Generate the full CSS for button-family blocks: structural base + per-instance Std
+ * rules + per-type Common rules (static or bound variants).
+ *
+ * Spot rules are emitted separately by `buildButtonSpotStyleBlock` (passage-inline).
+ */
+export function buildButtonsCascadeCss(scenes: Scene[], settings: ProjectSettings): string {
+  const buttons = scenes.flatMap(s => collectButtonFamilyBlocks(s.blocks));
+  const defaults = settings.defaultBlockStyles ?? {};
+
+  const enabledTypes: ButtonFamilyType[] = (['button', 'link', 'function'] as const)
+    .filter(t => defaults[t]?.enabled);
+
+  if (buttons.length === 0 && enabledTypes.length === 0) return '';
+
+  const base = [
+    '.tg-btn { display: inline-block; }',
+    '.tg-btn a { display: inline-block; text-decoration: none; cursor: pointer; transition: filter 0.15s; }',
+    '.tg-btn a:hover { filter: brightness(1.2); }',
+  ].join('\n');
+
+  const parts: string[] = [base];
+
+  // Per-block Std rules (one per button-family instance)
+  for (const b of buttons) {
+    const rule = buildButtonRulesForScope(buttonInstanceClass(b.id), buttonStdFields(b));
+    if (rule) parts.push(rule);
+  }
+
+  // Common rules per type (static = 1 rule, bound = N+1 variant rules)
+  for (const type of enabledTypes) {
+    const cs = defaults[type]!;
+    if ((cs.mode ?? 'static') === 'static') {
+      const rule = buildButtonRulesForScope(buttonDefaultClass(type), cs.fields ?? {}, cs.rawCss);
+      if (rule) parts.push(rule);
+    } else {
+      // Bound: emit default variant + one per mapping entry
+      const defaultRule = buildButtonRulesForScope(
+        buttonDefaultVariantClass(type, 'default'),
+        cs.defaultFields ?? {},
+        cs.defaultRawCss,
+      );
+      if (defaultRule) parts.push(defaultRule);
+      (cs.mapping ?? []).forEach((entry, idx) => {
+        const rule = buildButtonRulesForScope(
+          buttonDefaultVariantClass(type, String(idx)),
+          entry.fields ?? {},
+          entry.rawCss,
+        );
+        if (rule) parts.push(rule);
+      });
+    }
+  }
+
+  return parts.filter(Boolean).join('\n\n');
+}
+
+/**
+ * Generate a `<style>` block scoped to the block's spot class. Returns '' when
+ * the block has no enabled customStyle. Spot is always static.
+ */
+export function buildButtonSpotStyleBlock(block: ButtonFamilyBlock): string {
+  const cs = block.customStyle;
+  if (!cs?.enabled) return '';
+  const fields = cs.fields ?? {};
+  const rawCss = cs.rawCss;
+  if (Object.keys(fields).length === 0 && (!rawCss || !rawCss.trim())) return '';
+  const rules = buildButtonRulesForScope(buttonSpotClass(block.id), fields, rawCss);
+  return rules ? `<style>${rules}</style>` : '';
+}
+
+/** Class list for a rendered button-family `<span>` wrapper. */
+export function buttonElementClasses(block: ButtonFamilyBlock, settings: ProjectSettings): string[] {
+  const out = ['tg-btn', buttonInstanceClass(block.id)];
+  const cs = settings.defaultBlockStyles?.[block.type];
+  if (cs?.enabled) {
+    if ((cs.mode ?? 'static') === 'bound') {
+      out.push(buttonDefaultVariantClass(block.type as ButtonFamilyType, 'default'));
+    } else {
+      out.push(buttonDefaultClass(block.type as ButtonFamilyType));
+    }
+  }
+  if (block.customStyle?.enabled) {
+    out.push(buttonSpotClass(block.id));
+  }
+  return out;
+}
+
+/** Returns `data-style-bind` value (e.g. `"default-button"`) when bound, else ''. */
+export function buttonDataStyleBind(block: ButtonFamilyBlock, settings: ProjectSettings): string {
+  const cs = settings.defaultBlockStyles?.[block.type];
+  if (cs?.enabled && (cs.mode ?? 'static') === 'bound') {
+    return `default-${block.type}`;
+  }
+  return '';
+}
+
 // ─── Runtime style-bind script ───────────────────────────────────────────────
 
 interface RuntimeBinding {
-  /** data-style-bind value (matches `dialogueDataStyleBind`). */
+  /** data-style-bind value (matches the element's attribute). */
   key: string;
   /** SugarCube variable path WITHOUT leading $. */
   varPath: string;
+  /**
+   * Class-name prefix used to strip stale variant classes from the element
+   * before adding the new one. Examples:
+   *   - dialogue: `dlg-{charKey}-v-`
+   *   - button family: `tg-btn-default-{type}-v-`
+   */
+  classPrefix: string;
   /** Variant entries — first match wins. */
   variants: Array<
     | { kind: 'exact'; value: number; cls: string }
@@ -337,17 +648,20 @@ interface RuntimeBinding {
   defaultCls: string;
 }
 
-/** Build a list of runtime bindings for all characters with bound common-custom. */
-function collectRuntimeBindings(
-  characters: Character[],
-  variableNodes: VariableTreeNode[],
-): RuntimeBinding[] {
+/**
+ * Build runtime bindings for every layer that uses bound common-custom:
+ *   - Dialogue: one entry per character with bound `customDialogueStyle`
+ *   - Button family: one entry per type whose `defaultBlockStyles[type]` is bound
+ */
+function collectRuntimeBindings(project: Project): RuntimeBinding[] {
   const bindings: RuntimeBinding[] = [];
-  for (const char of characters) {
+
+  // ─── Dialogue (per character) ──────────────────────────────────────────────
+  for (const char of project.characters) {
     const cs = char.customDialogueStyle;
     if (!cs?.enabled || (cs.mode ?? 'static') !== 'bound') continue;
     if (!cs.variableId) continue;
-    const varPath = getVariablePath(cs.variableId, variableNodes);
+    const varPath = getVariablePath(cs.variableId, project.variableNodes);
     if (!varPath) continue;
 
     const variants: RuntimeBinding['variants'] = [];
@@ -365,13 +679,49 @@ function collectRuntimeBindings(
       }
     });
 
+    const charKey = charClassId(char.id);
     bindings.push({
-      key: charClassId(char.id),
+      key: charKey,
       varPath,
+      classPrefix: `dlg-${charKey}-v-`,
       variants,
       defaultCls: dialogueVariantClass(char.id, 'default'),
     });
   }
+
+  // ─── Button family (per type) ─────────────────────────────────────────────
+  const defaults = project.settings.defaultBlockStyles ?? {};
+  for (const type of ['button', 'link', 'function'] as const) {
+    const cs = defaults[type];
+    if (!cs?.enabled || (cs.mode ?? 'static') !== 'bound') continue;
+    if (!cs.variableId) continue;
+    const varPath = getVariablePath(cs.variableId, project.variableNodes);
+    if (!varPath) continue;
+
+    const variants: RuntimeBinding['variants'] = [];
+    (cs.mapping ?? []).forEach((entry, idx) => {
+      const cls = buttonDefaultVariantClass(type, String(idx));
+      if (entry.matchType === 'exact') {
+        const v = Number(entry.value);
+        if (Number.isFinite(v)) variants.push({ kind: 'exact', value: v, cls });
+      } else {
+        const min = Number(entry.rangeMin);
+        const max = Number(entry.rangeMax);
+        if (Number.isFinite(min) && Number.isFinite(max)) {
+          variants.push({ kind: 'range', min, max, cls });
+        }
+      }
+    });
+
+    bindings.push({
+      key: `default-${type}`,
+      varPath,
+      classPrefix: `tg-btn-default-${type}-v-`,
+      variants,
+      defaultCls: buttonDefaultVariantClass(type, 'default'),
+    });
+  }
+
   return bindings;
 }
 
@@ -391,7 +741,7 @@ function collectRuntimeBindings(
  * mid-passage updates (added separately in exportToTwee).
  */
 export function buildStyleBindScript(project: Project): string {
-  const bindings = collectRuntimeBindings(project.characters, project.variableNodes);
+  const bindings = collectRuntimeBindings(project);
   if (bindings.length === 0) return '';
 
   const registryEntries = bindings.map(b => {
@@ -401,7 +751,7 @@ export function buildStyleBindScript(project: Project): string {
       }
       return `{kind:"range",min:${v.min},max:${v.max},cls:${JSON.stringify(v.cls)}}`;
     }).join(',');
-    return `${JSON.stringify(b.key)}:{varPath:${JSON.stringify(b.varPath)},variants:[${variants}],defaultCls:${JSON.stringify(b.defaultCls)}}`;
+    return `${JSON.stringify(b.key)}:{varPath:${JSON.stringify(b.varPath)},classPrefix:${JSON.stringify(b.classPrefix)},variants:[${variants}],defaultCls:${JSON.stringify(b.defaultCls)}}`;
   }).join(',');
 
   return [
@@ -429,8 +779,8 @@ export function buildStyleBindScript(project: Project): string {
     '        if (entry.kind === "range" && n >= entry.min && n <= entry.max) { picked = entry.cls; break; }',
     '      }',
     '    }',
-    '    // Remove any v-* class for this binding, then add the chosen one',
-    '    var prefix = "dlg-" + key + "-v-";',
+    '    // Strip any prior variant class for this binding, then add the chosen one.',
+    '    var prefix = b.classPrefix;',
     '    var classes = el.className.split(/\\s+/).filter(function(c) { return c.indexOf(prefix) !== 0; });',
     '    classes.push(picked);',
     '    el.className = classes.join(" ");',
@@ -481,6 +831,11 @@ export function buildDialogueLivePreviewCss(
 export function hasStyleBindings(project: Project): boolean {
   for (const char of project.characters) {
     const cs = char.customDialogueStyle;
+    if (cs?.enabled && (cs.mode ?? 'static') === 'bound' && cs.variableId) return true;
+  }
+  const defaults = project.settings.defaultBlockStyles ?? {};
+  for (const type of ['button', 'link', 'function'] as const) {
+    const cs = defaults[type];
     if (cs?.enabled && (cs.mode ?? 'static') === 'bound' && cs.variableId) return true;
   }
   return false;

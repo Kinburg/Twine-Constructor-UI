@@ -26,6 +26,7 @@ import { BlockEffectsPanel } from './BlockEffectsPanel';
 import { TextInsertToolbar } from '../shared/TextInsertToolbar';
 import { LLMGenerateButton } from '../shared/LLMGenerateButton';
 import { StyleOverrideEditor } from '../shared/StyleOverrideEditor';
+import { DIALOGUE_FIELD_SCHEMA, DIALOGUE_RAW_CSS_HELP } from '../../utils/styleCascade';
 import { flattenVariables, flattenAssets } from '../../utils/treeUtils';
 import { useVariableNodes } from '../shared/VariableScope';
 import { EmojiIcon } from '../shared/EmojiIcons';
@@ -417,6 +418,8 @@ export function DialogueBlockEditor({
             onChange={v => update({ customStyle: v })}
             variableNodes={variableNodes}
             allowBound={false}
+            fieldsSchema={DIALOGUE_FIELD_SCHEMA}
+            rawCssHelp={DIALOGUE_RAW_CSS_HELP}
           />
         </div>
       </details>

@@ -8,6 +8,8 @@ import { ArrayAccessorInput } from './ArrayAccessorInput';
 import { VarInsertButton } from '../shared/VarInsertButton';
 import { VariablePicker } from '../shared/VariablePicker';
 import { useVariableNodes, usePluginParams } from '../shared/VariableScope';
+import { StyleOverrideEditor } from '../shared/StyleOverrideEditor';
+import { BUTTON_FIELD_SCHEMA, BUTTON_RAW_CSS_HELP } from '../../utils/styleCascade';
 
 const OPERATORS: { value: VarOperator; label: string }[] = [
   { value: '=',  label: '=' },
@@ -473,6 +475,23 @@ export function LinkBlockEditor({
           />
         ))}
       </div>
+
+      {/* Spot-level style override (static only — bound is at project-defaults level) */}
+      <details className="border border-slate-700/60 rounded bg-slate-900/30">
+        <summary className="text-xs text-slate-300 px-2 py-1.5 cursor-pointer select-none hover:bg-slate-800/50">
+          {t.styleOverride.sectionTitle}
+        </summary>
+        <div className="px-2 pb-2 pt-1">
+          <StyleOverrideEditor
+            value={block.customStyle}
+            onChange={v => update({ customStyle: v })}
+            variableNodes={variableNodes}
+            allowBound={false}
+            fieldsSchema={BUTTON_FIELD_SCHEMA}
+            rawCssHelp={BUTTON_RAW_CSS_HELP}
+          />
+        </div>
+      </details>
 
       <BlockEffectsPanel
         delay={block.delay}

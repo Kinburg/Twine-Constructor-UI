@@ -3,6 +3,7 @@ import { useProjectStore, charToVarPrefix, pregenCharVarIds } from '../../store/
 import { toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { VariablePicker } from '../shared/VariablePicker';
 import { StyleOverrideEditor } from '../shared/StyleOverrideEditor';
+import { DIALOGUE_FIELD_SCHEMA, DIALOGUE_RAW_CSS_HELP } from '../../utils/styleCascade';
 import { TreeLevel } from '../variables/VariableManager';
 import type { TreeActions } from '../variables/variableTreeShared';
 import type {
@@ -716,6 +717,8 @@ function BasicsTab({
           onChange={onCustomDialogueStyleChange}
           variableNodes={variableNodes}
           allowBound={true}
+          fieldsSchema={DIALOGUE_FIELD_SCHEMA}
+          rawCssHelp={DIALOGUE_RAW_CSS_HELP}
         />
       </Section>
 

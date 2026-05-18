@@ -388,6 +388,8 @@ export interface ButtonBlock {
   style: ButtonStyle;
   actions: ButtonAction[];
   refreshScene?: boolean;  // add <<run Engine.show()>> on export to re-render passage
+  /** Spot-level style override (always static; supersedes ProjectSettings.defaultBlockStyles.button). */
+  customStyle?: BlockStyleOverride;
 }
 
 /** Navigation target for LinkBlock */
@@ -406,6 +408,8 @@ export interface LinkBlock {
   targetSceneId?: string;  // used when target === 'scene'
   actions: ButtonAction[];
   style: ButtonStyle;
+  /** Spot-level style override (always static; supersedes ProjectSettings.defaultBlockStyles.link). */
+  customStyle?: BlockStyleOverride;
 }
 
 /**
@@ -590,6 +594,8 @@ export interface FunctionBlock {
   actions: ButtonAction[];
   style: ButtonStyle;
   delay?: BlockDelay;
+  /** Spot-level style override (always static; supersedes ProjectSettings.defaultBlockStyles.function). */
+  customStyle?: BlockStyleOverride;
 }
 
 /** Renders a container (shop/chest/loot) in a passage */

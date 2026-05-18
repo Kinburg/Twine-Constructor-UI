@@ -1,9 +1,9 @@
 import type { Project, ProjectSettings, PluginBlockDef } from '../types';
 import { START_TAG } from '../types';
 import { flattenVariables, hasLeafVariables } from './treeUtils';
-import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildButtonsCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS, setPluginRegistry, exportSceneBg, buildSceneBgScript, hasScenesWithBg } from './exportToTwee';
+import { blockToSC, buildStoryCaptionSC, buildPanelCSS, buildTooltipCSS, buildPanelScript, buildInputScript, buildLiveScript, buildWatcherScript, buildPurlSignatureScript, defaultValueLiteral, buildObjectLiteral, buildAudioCacheLines, buildAudioScript, buildInventoryScript, buildInventoryCSS, buildContainerScript, buildContainerCSS, buildDateTimeScript, buildPaperdollScript, buildPaperdollCSS, setPluginRegistry, exportSceneBg, buildSceneBgScript, hasScenesWithBg } from './exportToTwee';
 import { collectPluginIds, expandPluginDeps } from './pluginUtils';
-import { buildAllDialogueCss, buildStyleBindScript, hasStyleBindings } from './styleCascade';
+import { buildAllDialogueCss, buildStyleBindScript, hasStyleBindings, buildButtonsCascadeCss } from './styleCascade';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -215,7 +215,7 @@ export function buildPassages(project: Project, plugins: PluginBlockDef[] = []):
 
   const charCSS      = withSection('Dialogue',      buildAllDialogueCss(characters));
   const panelCSS     = withSection('Sidebar Panel', buildPanelCSS(sidebarPanel));
-  const buttonCSS    = withSection('Buttons',       buildButtonsCSS(scenes));
+  const buttonCSS    = withSection('Buttons',       buildButtonsCascadeCss(scenes, project.settings));
   const tipCSS       = withSection('Tooltips',      buildTooltipCSS());
   const globalCSS    = withSection('Global',        buildGlobalCSS(project.settings));
   const containerCSS = withSection('Containers',    buildContainerCSS());

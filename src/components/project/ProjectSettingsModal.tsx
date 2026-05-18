@@ -5,13 +5,18 @@ import { useEditorPrefsStore } from '../../store/editorPrefsStore';
 import { useT } from '../../i18n';
 import { fsApi, joinPath, safeName, toLocalFileUrl, resolveAssetPath } from '../../lib/fsApi';
 import { toast } from 'sonner';
-import type { Project, ProjectSettings, SidebarPanel, SidebarTab, SidebarRow } from '../../types';
+import type {
+  Project, ProjectSettings, SidebarPanel, SidebarTab, SidebarRow,
+  BlockStyleOverride, VariableTreeNode,
+} from '../../types';
 import {
   ModalShell, ModalBody,
   ModalField, ModalRow, ModalSection, Toggle, Segmented,
   PrimaryButton, SecondaryButton, ColorSwatchInput, INPUT_CLS,
 } from '../shared/ModalShell';
 import { EmojiIcon } from '../shared/EmojiIcons';
+import { StyleOverrideEditor } from '../shared/StyleOverrideEditor';
+import { BUTTON_FIELD_SCHEMA, BUTTON_RAW_CSS_HELP } from '../../utils/styleCascade';
 
 /** AI-button label: sparkle SVG followed by the action text. */
 function AiLabel({ children }: { children: React.ReactNode }) {
@@ -177,6 +182,11 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
   const [historyControls, setHistoryControls] = useState(existing.historyControls);
   const [saveLoadMenu,    setSaveLoadMenu]    = useState(existing.saveLoadMenu);
   const [audioUnlockText,  setAudioUnlockText]  = useState(existing.audioUnlockText  ?? '');
+
+  // Block defaults (per-block-type cascade common-custom). Empty record = no overrides.
+  const [defaultBlockStyles, setDefaultBlockStyles] = useState<ProjectSettings['defaultBlockStyles']>(
+    existing.defaultBlockStyles ?? {},
+  );
 
   const [titleError, setTitleError] = useState<string | null>(null);
   const [busy, setBusy]             = useState(false);
@@ -432,8 +442,10 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
     if (headerSrc)           s.headerImageSrc = headerSrc;
     if (rowId)               s.headerRowId = rowId;
     if (audioUnlockText.trim())  s.audioUnlockText  = audioUnlockText.trim();
-    // Preserve existing block defaults (edited via Block defaults tab).
-    if (project.settings.defaultBlockStyles) s.defaultBlockStyles = project.settings.defaultBlockStyles;
+    // Block defaults (cascade common-custom per block type) — set when at least one entry exists.
+    if (defaultBlockStyles && Object.keys(defaultBlockStyles).length > 0) {
+      s.defaultBlockStyles = defaultBlockStyles;
+    }
     return s;
   }
 
@@ -745,7 +757,11 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
 
           {/* ── Block defaults ─────────────────────────────────────────── */}
           {tab === 'blockDefaults' && (
-            <BlockDefaultsTab />
+            <BlockDefaultsTab
+              defaultBlockStyles={defaultBlockStyles}
+              onChange={setDefaultBlockStyles}
+              variableNodes={project.variableNodes}
+            />
           )}
 
           {/* ── AI Image ───────────────────────────────────────────────── */}
@@ -994,18 +1010,69 @@ export function ProjectSettingsModal({ mode, onClose, initialTab = 'general' }: 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 // ─── Block defaults tab ─────────────────────────────────────────────────────
 
-function BlockDefaultsTab() {
+function BlockDefaultsTab({
+  defaultBlockStyles,
+  onChange,
+  variableNodes,
+}: {
+  defaultBlockStyles: ProjectSettings['defaultBlockStyles'];
+  onChange: (next: ProjectSettings['defaultBlockStyles']) => void;
+  variableNodes: VariableTreeNode[];
+}) {
   const t = useT();
   const ps = t.projectSettings;
+
+  const patchEntry = (type: 'button' | 'link' | 'function', value: BlockStyleOverride | undefined) => {
+    const next = { ...(defaultBlockStyles ?? {}) };
+    if (value === undefined) delete next[type];
+    else next[type] = value;
+    onChange(next);
+  };
+
   return (
-    <ModalSection title={ps.sectionBlockDefaults}>
-      <p className="text-xs text-slate-400 leading-relaxed mb-3">{ps.blockDefaultsDescription}</p>
-      <div className="text-xs text-slate-500 italic bg-slate-900/40 border border-slate-700 rounded p-3 leading-relaxed">
-        Phase 1 supports per-character common styles via the Characters editor.
-        Project-wide block-type defaults (buttons, images, includes, etc.) will be added
-        in subsequent phases — the data model is in place but the editors are not yet wired here.
-      </div>
-    </ModalSection>
+    <>
+      <ModalSection title={(ps as any).sectionBlockDefaultsButton ?? 'Button defaults'}>
+        <p className="text-xs text-slate-400 leading-relaxed mb-3">
+          {(ps as any).blockDefaultsButtonDesc ?? ps.blockDefaultsDescription}
+        </p>
+        <StyleOverrideEditor
+          value={defaultBlockStyles?.button}
+          onChange={v => patchEntry('button', v)}
+          variableNodes={variableNodes}
+          allowBound={true}
+          fieldsSchema={BUTTON_FIELD_SCHEMA}
+          rawCssHelp={BUTTON_RAW_CSS_HELP}
+        />
+      </ModalSection>
+
+      <ModalSection title={(ps as any).sectionBlockDefaultsLink ?? 'Link defaults'}>
+        <p className="text-xs text-slate-400 leading-relaxed mb-3">
+          {(ps as any).blockDefaultsLinkDesc ?? ps.blockDefaultsDescription}
+        </p>
+        <StyleOverrideEditor
+          value={defaultBlockStyles?.link}
+          onChange={v => patchEntry('link', v)}
+          variableNodes={variableNodes}
+          allowBound={true}
+          fieldsSchema={BUTTON_FIELD_SCHEMA}
+          rawCssHelp={BUTTON_RAW_CSS_HELP}
+        />
+      </ModalSection>
+
+      <ModalSection title={(ps as any).sectionBlockDefaultsFunction ?? 'Function defaults'}>
+        <p className="text-xs text-slate-400 leading-relaxed mb-3">
+          {(ps as any).blockDefaultsFunctionDesc ?? ps.blockDefaultsDescription}
+        </p>
+        <StyleOverrideEditor
+          value={defaultBlockStyles?.function}
+          onChange={v => patchEntry('function', v)}
+          variableNodes={variableNodes}
+          allowBound={true}
+          fieldsSchema={BUTTON_FIELD_SCHEMA}
+          rawCssHelp={BUTTON_RAW_CSS_HELP}
+        />
+      </ModalSection>
+    </>
   );
 }
 

@@ -1,7 +1,7 @@
 import type {
   Project, Block, Character, Variable, ConditionBranch, ChoiceOption,
   SidebarPanel, SidebarRow, SidebarCell, PanelStyle, TableBlock,
-  Scene, ButtonBlock, LinkBlock, FunctionBlock, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
+  Scene, ButtonStyle, CellProgress, CellButton, BlockDelay, BlockTypewriter, IncludeBlock,
   ArrayAccessor, ButtonAction, CheckboxBlock, RadioBlock, CellList, CellDateTime, DateTimeDisplayMode,
   Watcher, WatcherCondition, AudioBlock, ContainerBlock, TimeManipulationBlock,
   VariableTreeNode, VariableGroup, ItemDefinition,
@@ -20,6 +20,10 @@ import {
   buildDialogueSpotStyleBlock,
   dialogueElementClasses,
   dialogueDataStyleBind,
+  buildButtonsCascadeCss,
+  buildButtonSpotStyleBlock,
+  buttonElementClasses,
+  buttonDataStyleBind,
 } from './styleCascade';
 
 // ─── Plugin registry (set by exportToTwee / buildPassages at start of export) ─
@@ -574,7 +578,14 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     }
 
     case 'button': {
-      const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
+      const settings = project?.settings;
+      const classAttr = settings
+        ? buttonElementClasses(block, settings).join(' ')
+        : `tg-btn tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
+      const bindKey = settings ? buttonDataStyleBind(block, settings) : '';
+      const bindAttr = bindKey ? ` data-style-bind="${bindKey}"` : '';
+      const spotStyle = buildButtonSpotStyleBlock(block);
+      const spotPrefix = spotStyle ? `${indent}${spotStyle}\n` : '';
       const actionLines = block.actions
         .map(a => actionToSC(a, vars, nodes, `${indent}  `, idToName))
         .filter(Boolean);
@@ -587,7 +598,8 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       actionLines.push(`${indent}  <<run window._tgRefreshStyleBind && window._tgRefreshStyleBind()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
-        `${indent}<span class="tg-btn ${cls}">` +
+        spotPrefix +
+        `${indent}<span class="${classAttr}"${bindAttr}>` +
         `<<link "${block.label}">>\n` +
         actionLines.join('\n') + '\n' +
         `${indent}<</link>></span>`
@@ -595,7 +607,14 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
     }
 
     case 'link': {
-      const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
+      const settings = project?.settings;
+      const classAttr = settings
+        ? buttonElementClasses(block, settings).join(' ')
+        : `tg-btn tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
+      const bindKey = settings ? buttonDataStyleBind(block, settings) : '';
+      const bindAttr = bindKey ? ` data-style-bind="${bindKey}"` : '';
+      const spotStyle = buildButtonSpotStyleBlock(block);
+      const spotPrefix = spotStyle ? `${indent}${spotStyle}\n` : '';
       const actionLines = block.actions
         .map(a => actionToSC(a, vars, nodes, `${indent}  `, idToName))
         .filter(Boolean);
@@ -610,14 +629,22 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       }
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
-        `${indent}<span class="tg-btn ${cls}"><<link "${block.label}">>\n` +
+        spotPrefix +
+        `${indent}<span class="${classAttr}"${bindAttr}><<link "${block.label}">>\n` +
         actionLines.join('\n') + '\n' +
         `${indent}<</link>></span>`
       );
     }
 
     case 'function': {
-      const cls = `tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
+      const settings = project?.settings;
+      const classAttr = settings
+        ? buttonElementClasses(block, settings).join(' ')
+        : `tg-btn tg-btn-${block.id.replace(/-/g, '').substring(0, 12)}`;
+      const bindKey = settings ? buttonDataStyleBind(block, settings) : '';
+      const bindAttr = bindKey ? ` data-style-bind="${bindKey}"` : '';
+      const spotStyle = buildButtonSpotStyleBlock(block);
+      const spotPrefix = spotStyle ? `${indent}${spotStyle}\n` : '';
       const actionLines = block.actions
         .map(a => actionToSC(a, vars, nodes, `${indent}  `, idToName))
         .filter(Boolean);
@@ -628,7 +655,8 @@ function blockToSCInner(block: Block, chars: Character[], vars: Variable[], node
       actionLines.push(`${indent}  <<run window._tgRefreshStyleBind && window._tgRefreshStyleBind()>>`);
       actionLines.push(`${indent}  <<run UIBar.update()>>`);
       return (
-        `${indent}<span class="tg-btn ${cls}"><<link "${block.label}">>\n` +
+        spotPrefix +
+        `${indent}<span class="${classAttr}"${bindAttr}><<link "${block.label}">>\n` +
         actionLines.join('\n') + '\n' +
         `${indent}<</link>></span>`
       );
@@ -1740,48 +1768,9 @@ export function buildTooltipCSS(): string {
 }
 
 // ─── Button CSS ───────────────────────────────────────────────────────────────
-
-function collectButtons(blocks: Block[]): (ButtonBlock | LinkBlock | FunctionBlock)[] {
-  const result: (ButtonBlock | LinkBlock | FunctionBlock)[] = [];
-  for (const b of blocks) {
-    if (b.type === 'button' || b.type === 'link' || b.type === 'function') result.push(b);
-    if (b.type === 'condition') {
-      for (const br of b.branches) result.push(...collectButtons(br.blocks));
-    }
-  }
-  return result;
-}
-
-/** Generate per-block CSS for styled tg-btn-XXXX classes (ButtonBlock + LinkBlock). */
-export function buildButtonsCSS(scenes: Scene[]): string {
-  const buttons = scenes.flatMap(s => collectButtons(s.blocks));
-  if (buttons.length === 0) return '';
-
-  const base = [
-    '.tg-btn { display: inline-block; }',
-    '.tg-btn a { display: inline-block; text-decoration: none; cursor: pointer; transition: filter 0.15s; }',
-    '.tg-btn a:hover { filter: brightness(1.2); }',
-    '.tg-btn.full a { display: block; width: 100%; text-align: center; box-sizing: border-box; }',
-  ].join('\n');
-
-  const perBtn = buttons.map(b => {
-    const s = b.style;
-    const cls = `.tg-btn-${b.id.replace(/-/g, '').substring(0, 12)} a`;
-    return [
-      `${cls} {`,
-      `  background: ${s.bgColor};`,
-      `  color: ${s.textColor};`,
-      `  border: 1px solid ${s.borderColor};`,
-      `  border-radius: ${s.borderRadius}px;`,
-      `  padding: ${s.paddingV}px ${s.paddingH}px;`,
-      `  font-size: ${(s.fontSize / 10).toFixed(1)}em;`,
-      s.bold ? `  font-weight: bold;` : null,
-      `}`,
-    ].filter(Boolean).join('\n');
-  }).join('\n\n');
-
-  return `${base}\n\n${perBtn}`;
-}
+// Button-family CSS emission now lives in styleCascade.ts:
+//   - buildButtonsCascadeCss(scenes, settings)  — per-block Std + per-type Common
+//   - buildButtonSpotStyleBlock(block)          — per-block Spot (inline <style>)
 
 // ─── Audio helpers ──────────────────────────────────────────────────────────────
 
@@ -2027,7 +2016,7 @@ export function exportToTwee(project: Project, plugins: PluginBlockDef[] = []): 
   // StoryStylesheet
   const charCSS      = buildAllDialogueCss(characters);
   const panelCSS     = buildPanelCSS(sidebarPanel);
-  const buttonCSS    = buildButtonsCSS(scenes);
+  const buttonCSS    = buildButtonsCascadeCss(scenes, project.settings);
   const animCSS      = buildAnimationCSS(scenes);
   const tipCSS       = buildTooltipCSS();
   const containerCSS = buildContainerCSS();
